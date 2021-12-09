@@ -2,12 +2,13 @@ import { CommandsLogic, WithdrawOptions } from '../CommandsLogic'
 import { gsnCommander, getKeystorePath, getServerConfig } from '../utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { toBN } from 'web3-utils'
+import { fromWei, toBN } from 'web3-utils'
 
 const commander = gsnCommander(['f', 'g'])
   .option('-k, --keystore-path <keystorePath>', 'relay manager keystore directory', process.cwd() + '/gsndata/manager/')
   .option('-s, --server-config <serverConfig>', 'server config file', process.cwd() + '/config/gsn-relay-config.json')
   .option('-b, --broadcast', 'broadcast tx after logging it to console', false)
+  .option('-i, --relayHubId <relayHubId>', 'relayHubId in VersionRegistry contract (if present)', 'hub')
   .requiredOption('-a, --amount <amount>', 'amount of funds to withdraw to owner address, in wei')
   .parse(process.argv);
 
@@ -26,7 +27,8 @@ const commander = gsnCommander(['f', 'g'])
     broadcast: commander.broadcast
   }
   console.log('config is', config)
-  console.log('withdrawalAmount is', withdrawOptions.withdrawAmount.toString())
+  config.relayHubId = config.relayHubId ?? commander.relayHubId
+  console.log(`withdrawalAmount is ${withdrawOptions.withdrawAmount.toString()} (${fromWei(withdrawOptions.withdrawAmount)}eth)`)
   console.log('broadcast is', withdrawOptions.broadcast)
   const result = await logic.withdrawToOwner(withdrawOptions)
   if (result.success) {

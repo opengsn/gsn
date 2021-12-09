@@ -349,9 +349,9 @@ export class CommandsLogic {
       }
 
       const balance = await relayHub.balanceOf(relayManager)
-      console.log('Relay manager hub balance is', balance.toString())
+      console.log(`Relay manager hub balance is ${balance.toString()} (${fromWei(balance)}eth)`)
       if (balance.lt(options.withdrawAmount)) {
-        throw new Error(`Relay manager hub balance ${balance.toString()} lower than withdrawalAmount`)
+        throw new Error('Relay manager hub balance lower than withdrawalAmount')
       }
       const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
       const encodedCall = method.encodeABI()
