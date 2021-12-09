@@ -355,11 +355,9 @@ export class CommandsLogic {
       }
       const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
       const encodedCall = method.encodeABI()
-      console.log('encodedCall', encodedCall)
       const nonce = await this.contractInteractor.getTransactionCount(relayManager)
       const gasPrice = parseInt(await this.contractInteractor.getGasPrice())
       const gasLimit = 1e5
-      console.log('gasPrice, nonce', gasPrice, nonce)
       const txToSign = new Transaction({
         to: relayHubAddress,
         value: 0,
