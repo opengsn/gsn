@@ -8,7 +8,7 @@ import {
   saveDeployment,
   showDeployment
 } from '../utils'
-import { toWei } from 'web3-utils'
+import { toBN, toWei } from 'web3-utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
 
@@ -49,7 +49,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
     return gasPrice
   }
 
-  const gasPrice = toWei(commander.gasPrice, 'gwei').toString() ?? await getGasPrice()
+  const gasPrice = commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await getGasPrice()
   const gasLimit = commander.gasLimit
 
   const deploymentResult = await logic.deployGsnContracts({

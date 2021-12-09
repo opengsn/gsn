@@ -40,7 +40,7 @@ export interface RegisterOptions {
   /** number of times to sleep before timeout */
   sleepCount: number
   from: Address
-  gasPrice: string | BN
+  gasPrice?: string | BN
   stake: string | BN
   funds: string | BN
   relayUrl: string
@@ -52,6 +52,7 @@ export interface WithdrawOptions {
   keyManager: KeyManager
   config: ServerConfigParams
   broadcast: boolean
+  gasPrice?: BN
 }
 
 interface DeployOptions {
@@ -210,6 +211,7 @@ export class CommandsLogic {
     try {
       console.log(`Registering GSN relayer at ${options.relayUrl}`)
 
+      const gasPrice = options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice())
       const response = await this.httpClient.getPingResponse(options.relayUrl)
         .catch((error: any) => {
           console.error(error)
@@ -251,7 +253,7 @@ export class CommandsLogic {
           to: relayAddress,
           value: options.funds,
           gas: 1e6,
-          gasPrice: options.gasPrice
+          gasPrice
         })
         if (fundTx.transactionHash == null) {
           return {
@@ -298,7 +300,7 @@ export class CommandsLogic {
             value: stakeValue,
             from: options.from,
             gas: 1e6,
-            gasPrice: options.gasPrice
+            gasPrice
           })
         // @ts-ignore
         transactions.push(stakeTx.transactionHash)
@@ -312,7 +314,7 @@ export class CommandsLogic {
           .authorizeHubByOwner(relayAddress, relayHubAddress, {
             from: options.from,
             gas: 1e6,
-            gasPrice: options.gasPrice
+            gasPrice
           })
         // @ts-ignore
         transactions.push(authorizeTx.transactionHash)
@@ -356,7 +358,7 @@ export class CommandsLogic {
       const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
       const encodedCall = method.encodeABI()
       const nonce = await this.contractInteractor.getTransactionCount(relayManager)
-      const gasPrice = parseInt(await this.contractInteractor.getGasPrice())
+      const gasPrice = options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice())
       const gasLimit = 1e5
       const txToSign = new Transaction({
         to: relayHubAddress,

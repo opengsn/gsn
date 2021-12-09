@@ -2,14 +2,14 @@ import { CommandsLogic, WithdrawOptions } from '../CommandsLogic'
 import { gsnCommander, getKeystorePath, getServerConfig } from '../utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { fromWei, toBN } from 'web3-utils'
+import { fromWei, toBN, toWei } from 'web3-utils'
+import { ether } from '@opengsn/common/dist'
 
-const commander = gsnCommander(['f', 'g'])
+const commander = gsnCommander(['g'])
   .option('-k, --keystore-path <keystorePath>', 'relay manager keystore directory', process.cwd() + '/gsndata/manager/')
   .option('-s, --server-config <serverConfig>', 'server config file', process.cwd() + '/config/gsn-relay-config.json')
   .option('-b, --broadcast', 'broadcast tx after logging it to console', false)
-  .option('-i, --relayHubId <relayHubId>', 'relayHubId in VersionRegistry contract (if present)', 'hub')
-  .requiredOption('-a, --amount <amount>', 'amount of funds to withdraw to owner address, in wei')
+  .requiredOption('-a, --amount <amount>', 'amount of funds to withdraw to owner address, in eth')
   .parse(process.argv);
 
 (async () => {
@@ -21,14 +21,15 @@ const commander = gsnCommander(['f', 'g'])
   const keyManager = new KeyManager(1, keystorePath)
 
   const withdrawOptions: WithdrawOptions = {
-    withdrawAmount: toBN(commander.amount),
+    withdrawAmount: ether(commander.amount),
     keyManager,
     config,
-    broadcast: commander.broadcast
+    broadcast: commander.broadcast,
+    gasPrice: commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : undefined
   }
   console.log('config is', config)
-  config.relayHubId = config.relayHubId ?? commander.relayHubId
-  console.log(`withdrawalAmount is ${withdrawOptions.withdrawAmount.toString()} (${fromWei(withdrawOptions.withdrawAmount)}eth)`)
+  config.relayHubId = config.relayHubId ?? 'hub'
+  console.log(`withdrawalAmount is ${fromWei(withdrawOptions.withdrawAmount)}eth`)
   console.log('broadcast is', withdrawOptions.broadcast)
   const result = await logic.withdrawToOwner(withdrawOptions)
   if (result.success) {

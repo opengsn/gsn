@@ -106,8 +106,9 @@ function formatVersion (id: string, versionInfo: VersionInfo, showDate = false):
   } else {
     if ((add == null) === (cancel == null)) error('must specify --add or --cancel, but not both')
     const from = commander.from ?? await logic.findWealthyAccount()
+    const gasPrice = commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : await (logic as any).contractInteractor.getGasPrice()
     const sendOptions = {
-      gasPrice: toWei(commander.gasPrice, 'gwei'),
+      gasPrice,
       gas: 1e6,
       from
     }
