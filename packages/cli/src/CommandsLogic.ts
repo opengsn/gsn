@@ -5,7 +5,7 @@ import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
 import { HttpProvider } from 'web3-core'
-import { fromWei, toBN } from 'web3-utils'
+import { fromWei, toBN, toHex } from 'web3-utils'
 import ow from 'ow'
 
 import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
@@ -211,7 +211,7 @@ export class CommandsLogic {
     try {
       console.log(`Registering GSN relayer at ${options.relayUrl}`)
 
-      const gasPrice = options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice())
+      const gasPrice = toHex(options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice()))
       const response = await this.httpClient.getPingResponse(options.relayUrl)
         .catch((error: any) => {
           console.error(error)
@@ -358,7 +358,7 @@ export class CommandsLogic {
       const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
       const encodedCall = method.encodeABI()
       const nonce = await this.contractInteractor.getTransactionCount(relayManager)
-      const gasPrice = options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice())
+      const gasPrice = toHex(options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice()))
       const gasLimit = 1e5
       const txToSign = new Transaction({
         to: relayHubAddress,

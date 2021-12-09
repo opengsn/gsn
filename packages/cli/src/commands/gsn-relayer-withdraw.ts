@@ -2,7 +2,7 @@ import { CommandsLogic, WithdrawOptions } from '../CommandsLogic'
 import { gsnCommander, getKeystorePath, getServerConfig } from '../utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { fromWei, toBN, toWei } from 'web3-utils'
+import { fromWei, toWei } from 'web3-utils'
 import { ether } from '@opengsn/common/dist'
 
 const commander = gsnCommander(['g'])
