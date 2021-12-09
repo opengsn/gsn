@@ -5,8 +5,8 @@ import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { toBN } from 'web3-utils'
 
 const commander = gsnCommander(['f', 'g'])
-  .option('-k, --keystore-path <keystorePath>', 'relay manager keystore directory', '/app/data/gsndata/manager/')
-  .option('-s, --server-config <serverConfig>', 'server config file', '/app/data/config/gsn-relay-config.json')
+  .option('-k, --keystore-path <keystorePath>', 'relay manager keystore directory', process.cwd() + '/gsndata/manager/')
+  .option('-s, --server-config <serverConfig>', 'server config file', process.cwd() + '/config/gsn-relay-config.json')
   .option('-b, --broadcast', 'broadcast tx after logging it to console', false)
   .requiredOption('-a, --amount <amount>', 'amount of funds to withdraw to owner address, in wei')
   .parse(process.argv);

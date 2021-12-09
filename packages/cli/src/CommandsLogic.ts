@@ -344,7 +344,6 @@ export class CommandsLogic {
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { owner } = await stakeManager.getStakeInfo(relayManager)
       if (owner.toLowerCase() !== options.config.ownerAddress.toLowerCase()) {
-        // throw new Error(`Already owned by ${owner}, our account=${options.from}`)
         throw new Error(`Owner in relayHub ${owner} is different than in server config ${options.config.ownerAddress}`)
       }
 
