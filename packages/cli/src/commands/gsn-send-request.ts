@@ -46,6 +46,7 @@ async function getProvider (
   logger: LoggerInterface,
   host: string): Promise<Web3ProviderBaseInterface> {
   const config: Partial<GSNConfig> = {
+    clientId: '0',
     paymasterAddress: commander.paymaster
   }
   const provider: HttpProvider = new Web3.providers.HttpProvider(host, {

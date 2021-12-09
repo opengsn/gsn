@@ -25,7 +25,6 @@ import { event2topic, GSNBatchingContractsDeployment, removeHexPrefix } from '@o
 import { BatchRelayClient } from './BatchRelayClient'
 import { CacheDecoderInteractor } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
 import { ExternalBLSKeypairType, InternalBLSKeypairType } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
-import { batchLog } from '@opengsn/relay/dist/BatchManager'
 
 export class BatchRelayProvider extends RelayProvider {
   web3: Web3
@@ -153,7 +152,6 @@ export class BatchRelayProvider extends RelayProvider {
     relayRequestID: string,
     batchTransactionReceipt: TransactionReceipt
   ): TransactionReceipt {
-
     // TODO: this code doesn't belong here. should move into RelayClient
     const topics = event2topic(this.relayClient.dependencies.contractInteractor.relayHubInstance.contract, ['TransactionRelayed', 'TransactionRejectedByPaymaster']) as string[]
     let previousIndex = 0
