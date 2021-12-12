@@ -13,6 +13,7 @@ import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
+import { toBN } from 'web3-utils'
 
 export enum LoggingProviderMode {
   NONE,
@@ -35,7 +36,6 @@ export interface ServerConfigParams {
   ethereumNodeUrl: string
   workdir: string
   checkInterval: number
-  readyTimeout: number
   devMode: boolean
   loggingProvider: LoggingProviderMode
   // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
@@ -63,6 +63,7 @@ export interface ServerConfigParams {
   managerMinStake: string
   managerTargetBalance: number
   minHubWithdrawalBalance: number
+  withdrawToOwnerOnBalance?: number
   refreshStateTimeoutBlocks: number
   pendingTransactionTimeoutBlocks: number
   confirmationsNeeded: number
@@ -122,7 +123,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   managerTargetBalance: 0.3e18,
   minHubWithdrawalBalance: 0.1e18,
   checkInterval: 10000,
-  readyTimeout: 30000,
   devMode: false,
   loggingProvider: LoggingProviderMode.NONE,
   runPenalizer: true,
@@ -170,7 +170,6 @@ const ConfigParamsTypes = {
   ethereumNodeUrl: 'string',
   workdir: 'string',
   checkInterval: 'number',
-  readyTimeout: 'number',
   devMode: 'boolean',
   loggingProvider: 'number',
   logLevel: 'string',
@@ -192,6 +191,7 @@ const ConfigParamsTypes = {
   managerMinStake: 'string',
   managerTargetBalance: 'number',
   minHubWithdrawalBalance: 'number',
+  withdrawToOwnerOnBalance: 'number',
   defaultGasLimit: 'number',
   requestMinValidBlocks: 'number',
 
@@ -303,6 +303,32 @@ export function parseServerConfig (args: string[], env: any): any {
   return entriesToObj(Object.entries(config).map(explicitType))
 }
 
+export async function resolveConfigRelayHubAddress (config: Partial<ServerConfigParams>, contractInteractor: ContractInteractor): Promise<string> {
+  let relayHubAddress: string
+  if (config.versionRegistryAddress != null) {
+    if (config.relayHubAddress != null) {
+      error('missing param: must have either relayHubAddress or versionRegistryAddress')
+    }
+    const relayHubId = config.relayHubId ?? error('missing param: relayHubId to read from VersionRegistry')
+    contractInteractor.validateAddress(config.versionRegistryAddress, 'Invalid param versionRegistryAddress: ')
+    if (!await contractInteractor.isContractDeployed(config.versionRegistryAddress)) {
+      error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
+    }
+    const versionRegistry = new VersionRegistry(config.coldRestartLogsFromBlock ?? 1, contractInteractor)
+    const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
+    contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
+    console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
+    relayHubAddress = value
+  } else {
+    if (config.relayHubAddress == null) {
+      error('missing param: must have either relayHubAddress or versionRegistryAddress')
+    }
+    contractInteractor.validateAddress(config.relayHubAddress, 'invalid param: "relayHubAddress" is not a valid address:')
+    relayHubAddress = config.relayHubAddress
+  }
+  return relayHubAddress
+}
+
 // resolve params, and validate the resulting struct
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<{
   config: ServerConfigParams
@@ -333,26 +359,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   })
   await contractInteractor._initializeContracts()
   await contractInteractor._initializeNetworkParams()
-  if (config.versionRegistryAddress != null) {
-    if (config.relayHubAddress != null) {
-      error('missing param: must have either relayHubAddress or versionRegistryAddress')
-    }
-    const relayHubId = config.relayHubId ?? error('missing param: relayHubId to read from VersionRegistry')
-    contractInteractor.validateAddress(config.versionRegistryAddress, 'Invalid param versionRegistryAddress: ')
-    if (!await contractInteractor.isContractDeployed(config.versionRegistryAddress)) {
-      error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
-    }
-    const versionRegistry = new VersionRegistry(config.coldRestartLogsFromBlock ?? 1, contractInteractor)
-    const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
-    contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
-    console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
-    config.relayHubAddress = value
-  } else {
-    if (config.relayHubAddress == null) {
-      error('missing param: must have either relayHubAddress or versionRegistryAddress')
-    }
-    contractInteractor.validateAddress(config.relayHubAddress, 'invalid param: "relayHubAddress" is not a valid address:')
-  }
+  config.relayHubAddress = await resolveConfigRelayHubAddress(config, contractInteractor)
 
   if (config.relayHubAddress == null) {
     error('relayHubAddress is still null')
@@ -363,9 +370,35 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
   if (config.ownerAddress == null || config.ownerAddress === constants.ZERO_ADDRESS) error('missing param: ownerAddress')
+  const finalConfig = { ...serverDefaultConfiguration, ...config }
+  validateBalanceParams(finalConfig)
   return {
-    config: { ...serverDefaultConfiguration, ...config },
+    config: finalConfig,
     environment
+  }
+}
+
+export function validateBalanceParams (config: ServerConfigParams): void {
+  const workerTargetBalance = toBN(config.workerTargetBalance)
+  const managerTargetBalance = toBN(config.managerTargetBalance)
+  const managerMinBalance = toBN(config.managerMinBalance)
+  const workerMinBalance = toBN(config.workerMinBalance)
+  const minHubWithdrawalBalance = toBN(config.minHubWithdrawalBalance)
+  if (managerTargetBalance.lt(managerMinBalance)) {
+    throw new Error('managerTargetBalance must be at least managerMinBalance')
+  }
+  if (workerTargetBalance.lt(workerMinBalance)) {
+    throw new Error('workerTargetBalance must be at least workerMinBalance')
+  }
+  if (config.withdrawToOwnerOnBalance == null) {
+    return
+  }
+  const withdrawToOwnerOnBalance = toBN(config.withdrawToOwnerOnBalance)
+  if (minHubWithdrawalBalance.gt(withdrawToOwnerOnBalance)) {
+    throw new Error('withdrawToOwnerOnBalance must be at least minHubWithdrawalBalance')
+  }
+  if (managerTargetBalance.add(workerTargetBalance).gte(withdrawToOwnerOnBalance)) {
+    throw new Error('withdrawToOwnerOnBalance must be larger than managerTargetBalance + workerTargetBalance')
   }
 }
 

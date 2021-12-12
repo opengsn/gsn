@@ -35,7 +35,6 @@ import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import Timeout = NodeJS.Timeout
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -59,14 +58,13 @@ export class RelayServer extends EventEmitter {
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
   minMaxPriorityFeePerGas: number = 0
-  _workerSemaphoreOn = false
+  running = false
   alerted = false
   alertedBlock: number = 0
   initialized: boolean = false
   readonly contractInteractor: ContractInteractor
   readonly gasPriceFetcher: GasPriceFetcher
   private readonly versionManager: VersionsManager
-  private workerTask?: Timeout
   config: ServerConfigParams
   transactionManager: TransactionManager
   txStoreManager: TxStoreManager
@@ -428,70 +426,19 @@ returnValue        | ${viewRelayCallRet.returnValue}
     return signedTx
   }
 
-  async intervalHandler (): Promise<void> {
-    const now = Date.now()
-    let workerTimeout: Timeout
-    if (!this.config.devMode) {
-      workerTimeout = setTimeout(() => {
-        const timedOut = Date.now() - now
-        this.logger.warn(chalk.bgRedBright(`Relay state: Timed-out after ${timedOut}`))
-      }, this.config.readyTimeout)
-    }
-    let gotBlock = false
-    // eslint-disable-next-line @typescript-eslint/return-await
-    return this.contractInteractor.getBlockNumber()
-      .then(
-        blockNumber => {
-          gotBlock = true
-          if (blockNumber < this.config.coldRestartLogsFromBlock) {
-            throw new Error(
-              `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${blockNumber}`)
-          }
-          if (blockNumber > this.lastScannedBlock) {
-            return this._workerSemaphore.bind(this)(blockNumber)
-          }
-        })
-      .catch((e) => {
-        this.emit('error', e)
-        const error = e as Error
-        this.logger.error(`error in worker: ${error.message} gotBlockNumber: ${gotBlock} ${error.stack}`)
-        this.setReadyState(false)
-      })
-      .finally(() => {
-        clearTimeout(workerTimeout)
-      })
-  }
-
   start (): void {
-    this.logger.debug(`Started polling for new blocks every ${this.config.checkInterval}ms`)
+    this.logger.info(`Started polling for new blocks every ${this.config.checkInterval}ms`)
+    this.running = true
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    this.workerTask = setInterval(this.intervalHandler.bind(this), this.config.checkInterval)
+    setTimeout(this.intervalHandler.bind(this), this.config.checkInterval)
   }
 
   stop (): void {
-    if (this.workerTask == null) {
+    if (!this.running) {
       throw new Error('Server not started')
     }
-    clearInterval(this.workerTask)
-    this.logger.info('Successfully stopped polling!!')
-  }
-
-  async _workerSemaphore (blockNumber: number): Promise<void> {
-    if (this._workerSemaphoreOn) {
-      this.logger.warn('Different worker is not finished yet, skipping this block')
-      return
-    }
-    this._workerSemaphoreOn = true
-
-    await this._worker(blockNumber)
-      .then((transactions) => {
-        if (transactions.length !== 0) {
-          this.logger.debug(`Done handling block #${blockNumber}. Created ${transactions.length} transactions.`)
-        }
-      })
-      .finally(() => {
-        this._workerSemaphoreOn = false
-      })
+    this.running = false
+    this.logger.info('Stopping server')
   }
 
   fatal (message: string): void {
@@ -538,7 +485,10 @@ returnValue        | ${viewRelayCallRet.returnValue}
       throw new Error('_init was already called')
     }
     const latestBlock = await this.contractInteractor.getBlock('latest')
-    // todo remove once updating to web3 1.6.1
+    if (latestBlock.number < this.config.coldRestartLogsFromBlock) {
+      throw new Error(
+        `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${latestBlock.number}`)
+    }
     if (latestBlock.baseFeePerGas != null) {
       this.transactionType = TransactionType.TYPE_TWO
     }
@@ -642,13 +592,40 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return transactionHashes
   }
 
+  async intervalHandler (): Promise<void> {
+    try {
+      const blockNumber = await this.contractInteractor.getBlockNumber()
+      if (blockNumber > this.lastScannedBlock) {
+        await this._worker(blockNumber)
+          .then((transactions) => {
+            if (transactions.length !== 0) {
+              this.logger.debug(`Done handling block #${blockNumber}. Created ${transactions.length} transactions.`)
+            }
+          })
+      }
+    } catch (e) {
+      this.emit('error', e)
+      const error = e as Error
+      this.logger.error(`error in worker: ${error.message}`)
+      this.setReadyState(false)
+    } finally {
+      if (this.running) {
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        setTimeout(this.intervalHandler.bind(this), this.config.checkInterval)
+      } else {
+        this.logger.info('Shutting down worker task')
+      }
+    }
+  }
+
   async _worker (blockNumber: number): Promise<PrefixedHexString[]> {
     if (!this.initialized) {
-      await this.init()
+      throw new Error('Please run init() first')
     }
     if (blockNumber <= this.lastScannedBlock) {
       throw new Error('Attempt to scan older block, aborting')
     }
+    await this.withdrawToOwnerIfNeeded(blockNumber)
     if (!this._shouldRefreshState(blockNumber)) {
       return []
     }
@@ -821,6 +798,29 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       fromBlock: this.config.coldRestartLogsFromBlock
     })
     return getLatestEventData(events)
+  }
+
+  async withdrawToOwnerIfNeeded (blockNumber: number): Promise<PrefixedHexString[]> {
+    try {
+      let txHashes: PrefixedHexString[] = []
+      if (!this.isReady() || this.config.withdrawToOwnerOnBalance == null) {
+        return txHashes
+      }
+      // todo multiply workerTargetBalance by workerCount when adding multiple workers
+      const reserveBalance = toBN(this.config.managerTargetBalance).add(toBN(this.config.workerTargetBalance))
+      const effectiveWithdrawOnBalance = toBN(this.config.withdrawToOwnerOnBalance).add(reserveBalance)
+      const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
+      if (managerHubBalance.lt(effectiveWithdrawOnBalance)) {
+        return txHashes
+      }
+      const withdrawalAmount = managerHubBalance.sub(reserveBalance)
+      txHashes = txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(blockNumber, withdrawalAmount))
+      this.logger.info(`Withdrew ${withdrawalAmount.toString()} to owner`)
+      return txHashes
+    } catch (e) {
+      this.logger.error(`withdrawToOwnerIfNeeded: ${(e as Error).message}`)
+      return []
+    }
   }
 
   /**

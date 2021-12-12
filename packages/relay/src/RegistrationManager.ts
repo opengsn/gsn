@@ -446,20 +446,25 @@ export class RegistrationManager {
     return transactionHashes
   }
 
-  async _sendManagerHubBalanceToOwner (currentBlock: number): Promise<PrefixedHexString[]> {
+  async _sendManagerHubBalanceToOwner (currentBlock: number, amount?: BN): Promise<PrefixedHexString[]> {
     if (this.ownerAddress == null) {
       throw new Error('Owner address not initialized')
     }
     const transactionHashes: PrefixedHexString[] = []
     const gasPrice = await this.contractInteractor.getGasPrice()
     const managerHubBalance = await this.contractInteractor.hubBalanceOf(this.managerAddress)
+    if (amount == null) {
+      amount = managerHubBalance
+    } else if (amount.gt(managerHubBalance)) {
+      throw new Error(`Withdrawal amount ${amount.toString()} larger than manager hub balance ${managerHubBalance.toString()}`)
+    }
     const {
       gasLimit,
       gasCost,
       method
-    } = await this.contractInteractor.withdrawHubBalanceEstimateGas(managerHubBalance, this.ownerAddress, this.managerAddress, gasPrice)
-    if (managerHubBalance.gte(gasCost)) {
-      this.logger.info(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
+    } = await this.contractInteractor.withdrawHubBalanceEstimateGas(amount, this.ownerAddress, this.managerAddress, gasPrice)
+    if (amount.gte(gasCost)) {
+      this.logger.info(`Sending manager hub balance ${amount.toString()} to owner`)
       const details: SendTransactionDetails = {
         gasLimit,
         signer: this.managerAddress,
