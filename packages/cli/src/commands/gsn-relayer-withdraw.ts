@@ -36,7 +36,7 @@ const commander = gsnCommander(['g'])
     if (withdrawOptions.broadcast) {
       console.log('Withdrew to owner successfully! Transactions:\n', result.transactions)
     } else {
-      console.log('Running in view mode succeeded! Run against with --broadcast to send the transaction on-chain')
+      console.log('Running in view mode succeeded! Run again with --broadcast to send the transaction on-chain')
     }
     process.exit(0)
   } else {
