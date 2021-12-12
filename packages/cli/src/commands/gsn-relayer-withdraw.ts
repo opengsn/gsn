@@ -33,7 +33,11 @@ const commander = gsnCommander(['g'])
   console.log('broadcast is', withdrawOptions.broadcast)
   const result = await logic.withdrawToOwner(withdrawOptions)
   if (result.success) {
-    console.log('Withdrew to owner successfully! Transactions:\n', result.transactions)
+    if (withdrawOptions.broadcast) {
+      console.log('Withdrew to owner successfully! Transactions:\n', result.transactions)
+    } else {
+      console.log('Running in view mode succeeded! Run against with --broadcast to send the transaction on-chain')
+    }
     process.exit(0)
   } else {
     console.error('Failed to withdraw to owner:', result.error)
