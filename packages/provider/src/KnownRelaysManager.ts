@@ -11,22 +11,34 @@ import {
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { isSameAddress } from '@opengsn/common'
+import { MAX_INTEGER } from 'ethereumjs-util'
+import { toBN } from 'web3-utils'
+import BN from 'bn.js'
 
-export const EmptyFilter: RelayFilter = (): boolean => {
+export const DefaultRelayFilter: RelayFilter = function (registeredEventInfo: RelayRegisteredEventInfo): boolean {
+  const maxPctRelayFee = 100
+  const maxBaseRelayFee = 1e17
+  if (
+    parseInt(registeredEventInfo.pctRelayFee) > maxPctRelayFee ||
+    parseInt(registeredEventInfo.baseRelayFee) > maxBaseRelayFee
+  ) {
+    return false
+  }
   return true
 }
 /**
  * Basic score is reversed transaction fee, higher is better.
  * Relays that failed to respond recently will be downgraded for some period of time.
  */
-export const DefaultRelayScore = async function (relay: RelayRegisteredEventInfo, txDetails: GsnTransactionDetails, failures: RelayFailureInfo[]): Promise<number> {
-  const gasLimit = parseInt(txDetails.gas ?? '0')
-  const maxPriorityFeePerGas = parseInt(txDetails.maxPriorityFeePerGas ?? '0')
-  const pctFee = parseInt(relay.pctRelayFee)
-  const baseFee = parseInt(relay.baseRelayFee)
-  const transactionCost = baseFee + (gasLimit * maxPriorityFeePerGas * (100 + pctFee)) / 100
-  let score = Math.max(Number.MAX_SAFE_INTEGER - transactionCost, 0)
-  score = score * Math.pow(0.9, failures.length)
+export const DefaultRelayScore: AsyncScoreCalculator = async function (relay: RelayRegisteredEventInfo, txDetails: GsnTransactionDetails, failures: RelayFailureInfo[]): Promise<BN> {
+  const gasLimit = toBN(txDetails.gas ?? '0')
+  const maxPriorityFeePerGas = toBN(txDetails.maxPriorityFeePerGas ?? '0')
+  const pctFee = toBN(relay.pctRelayFee)
+  const baseFee = toBN(relay.baseRelayFee)
+  const transactionCost = baseFee.add(gasLimit.mul(maxPriorityFeePerGas).muln((100 + pctFee.toNumber()) / 100)
+  )
+  let score = MAX_INTEGER.sub(transactionCost)
+  score = score.muln(Math.pow(0.9, failures.length))
   return score
 }
 
@@ -46,7 +58,7 @@ export class KnownRelaysManager {
   constructor (contractInteractor: ContractInteractor, logger: LoggerInterface, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
     this.config = config
     this.logger = logger
-    this.relayFilter = relayFilter ?? EmptyFilter
+    this.relayFilter = relayFilter ?? DefaultRelayFilter
     this.scoreCalculator = scoreCalculator ?? DefaultRelayScore
     this.contractInteractor = contractInteractor
   }
@@ -121,9 +133,9 @@ export class KnownRelaysManager {
   }
 
   async _sortRelaysInternal (gsnTransactionDetails: GsnTransactionDetails, activeRelays: RelayInfoUrl[]): Promise<RelayInfoUrl[]> {
-    const scores = new Map<string, number>()
+    const scores = new Map<string, BN>()
     for (const activeRelay of activeRelays) {
-      let score = 0
+      let score = toBN(0)
       if (isInfoFromEvent(activeRelay)) {
         const eventInfo = activeRelay as RelayRegisteredEventInfo
         score = await this.scoreCalculator(eventInfo, gsnTransactionDetails, this.relayFailures.get(activeRelay.relayUrl) ?? [])
@@ -135,9 +147,9 @@ export class KnownRelaysManager {
       .filter(isInfoFromEvent)
       .map(value => (value as RelayRegisteredEventInfo))
       .sort((a, b) => {
-        const aScore = scores.get(a.relayManager) ?? 0
-        const bScore = scores.get(b.relayManager) ?? 0
-        return bScore - aScore
+        const aScore = scores.get(a.relayManager) ?? toBN(0)
+        const bScore = scores.get(b.relayManager) ?? toBN(0)
+        return bScore.cmp(aScore)
       })
   }
 
