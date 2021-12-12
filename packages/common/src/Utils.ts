@@ -283,3 +283,57 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
 export function signedTransactionToHash (signedTransaction: PrefixedHexString, transactionOptions: TxOptions): PrefixedHexString {
   return bufferToHex(Transaction.fromSerializedTx(toBuffer(signedTransaction), transactionOptions).hash())
 }
+
+
+export interface WaitForSuccessResults<T> {
+  winner?: T
+  results: T[]
+  errors: any[]
+}
+/**
+ * wait for a list of promises.
+ * After the first successful result, wait for another "graceTime" period, before selecting a response
+ * then select a "winner" at random one of those successful results.
+ * in any case, return also all errors
+ * @param promises
+ * @param graceTime how much to wait after first successful result
+ * @param random Math.random-equivalent function (use for testing)
+ * @return results
+ *  winner - the selected result (if at least one resolved sucessfully
+ *  results - all results, in the order they resolved.
+ *  errors - all rejection results
+ */
+export async function waitForSuccess<T> (promises: Promise<T>[], graceTime: number, random = Math.random): Promise<WaitForSuccessResults<T>> {
+  return new Promise((resolve) => {
+    const ret: WaitForSuccessResults<T> = {
+      errors: [],
+      results: []
+    }
+
+    function complete () {
+      if (ret.results.length) {
+        ret.winner = ret.results[Math.floor(random() * ret.results.length)]
+      }
+      resolve(ret)
+    }
+
+    promises.forEach(promise => {
+      promise
+        .then(result => {
+          ret.results.push(result)
+          if (ret.results.length + ret.errors.length == promises.length) {
+            complete()
+          } else if (ret.results.length == 1) {
+            setTimeout(complete, graceTime)
+          }
+        })
+        .catch(err => {
+          ret.errors.push(err)
+          if (ret.results.length + ret.errors.length == promises.length) {
+            complete()
+          }
+        })
+    })
+  })
+}
+

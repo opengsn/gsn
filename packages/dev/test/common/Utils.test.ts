@@ -17,6 +17,7 @@ import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '@ope
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encodeRevertReason } from '../TestUtils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
+import { waitForSuccess } from '@opengsn/common'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -190,6 +191,54 @@ contract('Utils', function (accounts) {
         const logs = await recipient.contract.getPastEvents(null, { fromBlock: 1 })
         assert.equal(logs[0].event, 'SampleRecipientEmitted')
       })
+    })
+  })
+
+  describe('#waitForSuccess', function () {
+    async function after (t: number): Promise<number> {
+      await new Promise(resolve => setTimeout(resolve, t))
+      return t
+    }
+
+    it('should return a single response', async () => {
+      assert.equal(await waitForSuccess([Promise.resolve(1)], 100).then(r => r.winner), 1)
+    })
+
+    it('should select at random if multiple responses resolve', async () => {
+      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], 100, () => 0).then(r => r.winner), 1)
+      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], 100, () => 0.6).then(r => r.winner), 2)
+    })
+
+    it('should reject with first error if all fail', async () => {
+      const ret = await waitForSuccess([Promise.reject(Error('err1')), Promise.reject(Error('err2'))], 100)
+      assert.equal(ret.winner, null)
+      assert.equal(ret.errors[0].message, 'err1')
+    })
+
+    it('should resolve immediately (without grace) if all promises are done', async () => {
+      const now = Date.now()
+      await waitForSuccess([Promise.reject(Error('err1')), after(50), after(20)],
+        2000)
+
+      assert.closeTo(Date.now() - now, 50, 200, 'should not wait entire 2000 grace time if all are completed')
+    })
+
+    it('should ignore rejection if at least one response is successful', async () => {
+      assert.equal(
+        await waitForSuccess([Promise.reject(Error('err1')), after(50), after(1000)],
+          200),
+        50)
+    })
+
+    it('should wait after first response', async () => {
+      assert.equal(
+        await waitForSuccess([after(1), after(50), after(1000)],
+          200, () => 0),
+        1)
+      assert.equal(
+        await waitForSuccess([after(1), after(50), after(1000)],
+          200, () => 0.9),
+        50)
     })
   })
 })
