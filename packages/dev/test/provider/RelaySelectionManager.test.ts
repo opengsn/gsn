@@ -7,7 +7,7 @@ import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { RelaySelectionManager } from '@opengsn/provider/dist/RelaySelectionManager'
-import { EmptyFilter, KnownRelaysManager } from '@opengsn/provider/dist/KnownRelaysManager'
+import { DefaultRelayFilter, KnownRelaysManager } from '@opengsn/provider/dist/KnownRelaysManager'
 import { GasPricePingFilter } from '@opengsn/provider/dist/RelayClient'
 import { PartialRelayInfo, RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { PingFilter } from '@opengsn/common/dist/types/Aliases'
@@ -75,7 +75,7 @@ contract('RelaySelectionManager', function (accounts) {
         logger
       }).init()
       httpClient = new HttpClient(new HttpWrapper(), this.logger)
-      knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), EmptyFilter)
+      knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), DefaultRelayFilter)
       stubGetRelaysSorted = sinon.stub(knownRelaysManager, 'getRelaysSortedForTransaction')
       stubGetRelaysSorted.returns(Promise.resolve([[eventInfo]]))
       relaySelectionManager = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
@@ -120,7 +120,7 @@ contract('RelaySelectionManager', function (accounts) {
         const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
         relayHub = await deployHub(stakeManager.address, penalizer.address)
         await stake(stakeManager, relayHub, relayManager, accounts[0])
-        await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
+        await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '77')
 
         await contractInteractor.initDeployment({
           relayHubAddress: relayHub.address,
@@ -162,7 +162,7 @@ contract('RelaySelectionManager', function (accounts) {
         assert.equal(nextRelay.relayInfo.relayUrl, preferredRelayUrl)
         assert.equal(nextRelay.relayInfo.relayManager, relayManager)
         assert.equal(nextRelay.relayInfo.baseRelayFee, '666')
-        assert.equal(nextRelay.relayInfo.pctRelayFee, '777')
+        assert.equal(nextRelay.relayInfo.pctRelayFee, '77')
       })
     })
 
