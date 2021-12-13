@@ -13,9 +13,9 @@ import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { decodeRevertReason, removeNullValues } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
+
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-
 import { AccountKeypair, AccountManager } from './AccountManager'
 import { DefaultRelayScore, DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
@@ -62,6 +62,7 @@ export interface GSNUnresolvedConstructorInput {
 
 interface RelayingAttempt {
   transaction?: TypedTransaction
+  isRelayError?: boolean
   error?: Error
   auditPromise?: Promise<AuditResponse>
 }
@@ -218,7 +219,10 @@ export class RelayClient {
         }
         if (relayingAttempt.transaction == null) {
           relayingErrors.set(activeRelay.relayInfo.relayUrl, relayingAttempt.error ?? new Error('No error reason was given'))
-          continue
+          if (relayingAttempt.isRelayError) {
+            // continue with next relayer
+            continue
+          }
         }
       }
       return {
@@ -255,6 +259,7 @@ export class RelayClient {
   ): Promise<RelayingAttempt> {
     this.logger.info(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
     const httpRequest = await this._prepareRelayHttpRequest(relayInfo, gsnTransactionDetails)
+
     this.emit(new GsnValidateRequestEvent())
 
     const viewCallGasLimit =
@@ -293,13 +298,14 @@ export class RelayClient {
         this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       }
       this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
-      return { error }
+      return { error, isRelayError: true }
     }
     if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
       this.emit(new GsnRelayerResponseEvent(false))
       this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return {
         auditPromise,
+        isRelayError: true,
         error: new Error('Returned transaction did not pass validation')
       }
     }
@@ -373,13 +379,11 @@ export class RelayClient {
 
     relayRequest.relayData.transactionCalldataGasUsed =
       this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
-
     // put paymasterData into struct before signing
     relayRequest.relayData.paymasterData = await this.dependencies.asyncPaymasterData(relayRequest)
     this.emit(new GsnSignRequestEvent())
     const signature = await this.dependencies.accountManager.sign(relayRequest)
     const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
-
     if (toBuffer(relayRequest.relayData.paymasterData).length >
       this.config.maxPaymasterDataLength) {
       throw new Error('actual paymasterData larger than maxPaymasterDataLength')
@@ -388,7 +392,6 @@ export class RelayClient {
       this.config.maxApprovalDataLength) {
       throw new Error('actual approvalData larger than maxApprovalDataLength')
     }
-
     // max nonce is not signed, as contracts cannot access addresses' nonces.
     const transactionCount = await this.dependencies.contractInteractor.getTransactionCount(relayWorker)
     const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
