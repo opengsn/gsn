@@ -32,7 +32,7 @@ import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { resolveConfigRelayHubAddress, ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
-import { Transaction } from '@ethereumjs/tx'
+import { Transaction, TypedTransaction } from '@ethereumjs/tx'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -53,6 +53,7 @@ export interface WithdrawOptions {
   config: ServerConfigParams
   broadcast: boolean
   gasPrice?: BN
+  useAccountBalance: boolean
 }
 
 interface DeployOptions {
@@ -350,32 +351,53 @@ export class CommandsLogic {
         throw new Error(`Owner in relayHub ${owner} is different than in server config ${options.config.ownerAddress}`)
       }
 
-      const balance = await relayHub.balanceOf(relayManager)
-      console.log(`Relay manager hub balance is ${balance.toString()} (${fromWei(balance)}eth)`)
-      if (balance.lt(options.withdrawAmount)) {
-        throw new Error('Relay manager hub balance lower than withdrawalAmount')
-      }
-      const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
-      const encodedCall = method.encodeABI()
       const nonce = await this.contractInteractor.getTransactionCount(relayManager)
       const gasPrice = toHex(options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice()))
       const gasLimit = 1e5
-      const txToSign = new Transaction({
-        to: relayHubAddress,
-        value: 0,
-        gasLimit,
-        gasPrice,
-        data: Buffer.from(encodedCall.slice(2), 'hex'),
-        nonce
-      }, this.contractInteractor.getRawTxOptions())
-      console.log('Calling in view mode')
-      await method.call({
-        from: relayManager,
-        to: relayHubAddress,
-        value: 0,
-        gas: gasLimit,
-        gasPrice
-      })
+      let txToSign: TypedTransaction
+      if (options.useAccountBalance) {
+        const balance = toBN(await this.contractInteractor.getBalance(relayManager))
+        console.log(`Relay manager account balance is ${balance.toString()} (${fromWei(balance)}eth)`)
+        if (balance.lt(options.withdrawAmount)) {
+          throw new Error('Relay manager hub balance lower than withdrawal amount')
+        }
+        const web3TxData = {
+          to: options.config.ownerAddress,
+          value: options.withdrawAmount,
+          gas: gasLimit,
+          gasPrice,
+          nonce
+        }
+        console.log('Calling in view mode')
+        await this.contractInteractor.web3.eth.call({ ...web3TxData })
+        const txData = { ...web3TxData, gasLimit: web3TxData.gas }
+        delete txData.gas
+        txToSign = new Transaction(txData, this.contractInteractor.getRawTxOptions())
+      } else {
+        const balance = await relayHub.balanceOf(relayManager)
+        console.log(`Relay manager hub balance is ${balance.toString()} (${fromWei(balance)}eth)`)
+        if (balance.lt(options.withdrawAmount)) {
+          throw new Error('Relay manager hub balance lower than withdrawal amount')
+        }
+        const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
+        const encodedCall = method.encodeABI()
+        txToSign = new Transaction({
+          to: relayHubAddress,
+          value: 0,
+          gasLimit,
+          gasPrice,
+          data: Buffer.from(encodedCall.slice(2), 'hex'),
+          nonce
+        }, this.contractInteractor.getRawTxOptions())
+        console.log('Calling in view mode')
+        await method.call({
+          from: relayManager,
+          to: relayHubAddress,
+          value: 0,
+          gas: gasLimit,
+          gasPrice
+        })
+      }
       console.log('Signing tx', txToSign.toJSON())
       const signedTx = options.keyManager.signTransaction(relayManager, txToSign)
       console.log(`signed withdrawal hex tx: ${signedTx.rawTx}`)
