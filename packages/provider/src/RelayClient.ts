@@ -19,7 +19,7 @@ import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { RelaySelectionManager } from './RelaySelectionManager'
 import { RelayedTransactionValidator } from './RelayedTransactionValidator'
-import { DefaultRelayScore, EmptyFilter, KnownRelaysManager } from './KnownRelaysManager'
+import { DefaultRelayScore, DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { createClientLogger } from './ClientWinstonLogger'
 import { defaultGsnConfig, defaultLoggerConfiguration, GSNConfig, GSNDependencies } from './GSNConfigurator'
 
@@ -448,7 +448,7 @@ export class RelayClient {
 
     const httpClient = overrideDependencies?.httpClient ?? new HttpClient(new HttpWrapper(), this.logger)
     const pingFilter = overrideDependencies?.pingFilter ?? GasPricePingFilter
-    const relayFilter = overrideDependencies?.relayFilter ?? EmptyFilter
+    const relayFilter = overrideDependencies?.relayFilter ?? DefaultRelayFilter
     const asyncApprovalData = overrideDependencies?.asyncApprovalData ?? EmptyDataCallback
     const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
     const scoreCalculator = overrideDependencies?.scoreCalculator ?? DefaultRelayScore
