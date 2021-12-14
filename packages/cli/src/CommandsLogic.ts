@@ -471,7 +471,8 @@ export class CommandsLogic {
         .contract(json)
         .deploy(constructorArgs)
       const estimatedGasCost = await sendMethod.estimateGas()
-      const maxCost = new BN(options.gasPrice).mul(new BN(options.gas))
+      console.log('options', JSON.stringify(options, null, 2))
+      const maxCost = toBN(options.gasPrice.toString()).mul(toBN(options.gas.toString()))
       console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice.toString(), 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
       if (!skipConfirmation) {
         await this.confirm()
