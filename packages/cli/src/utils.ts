@@ -6,12 +6,14 @@ import path from 'path'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 
 const cliInfuraId = '$INFURA_ID'
 export const networks = new Map<string, string>([
   ['localhost', 'http://127.0.0.1:8545'],
   ['xdai', 'https://dai.poa.network'],
   ['arbitrum_rinkeby', 'https://rinkeby.arbitrum.io/rpc'],
+  ['optimism_kovan', 'https://kovan.optimism.io/'],
   ['ropsten', 'https://ropsten.infura.io/v3/' + cliInfuraId],
   ['rinkeby', 'https://rinkeby.infura.io/v3/' + cliInfuraId],
   ['kovan', 'https://kovan.infura.io/v3/' + cliInfuraId],
@@ -22,6 +24,7 @@ export const networks = new Map<string, string>([
 export const networksBlockExplorers = new Map<string, string>([
   ['xdai', 'https://blockscout.com/poa/xdai/'],
   ['arbitrum_rinkeby', 'https://rinkeby-explorer.arbitrum.io/#/'],
+  ['optimism_kovan', 'https://kovan-optimistic.etherscan.io/'],
   ['ropsten', 'https://ropsten.etherscan.io/'],
   ['rinkeby', 'https://rinkeby.etherscan.io/'],
   ['kovan', 'https://kovan.etherscan.io/'],
@@ -59,6 +62,25 @@ export function getMnemonic (mnemonicFile: string): string | undefined {
   }
   console.log('Using mnemonic from file ' + mnemonicFile)
   return fs.readFileSync(mnemonicFile, { encoding: 'utf8' }).replace(/\r?\n|\r/g, '')
+}
+
+export function getKeystorePath (keystorePath: string): string {
+  if (!fs.existsSync(keystorePath)) {
+    throw new Error(`keystorePath ${keystorePath} not found`)
+  }
+  if (fs.lstatSync(keystorePath).isDirectory() && fs.existsSync(keystorePath + '/keystore')) {
+    return keystorePath
+  } else if (fs.lstatSync(keystorePath).isFile() && path.basename(keystorePath) === 'keystore') {
+    return path.dirname(keystorePath)
+  }
+  throw new Error(`keystorePath ${keystorePath} not a file or directory`)
+}
+
+export function getServerConfig (configFilename: string): ServerConfigParams {
+  if (!fs.existsSync(configFilename) || !fs.lstatSync(configFilename).isFile()) {
+    throw new Error(`configFilename ${configFilename} must be a file`)
+  }
+  return JSON.parse(fs.readFileSync(configFilename, 'utf8'))
 }
 
 export function getRelayHubConfiguration (configFile: string): RelayHubConfiguration | undefined {
@@ -157,7 +179,7 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\'')
         break
       case 'g':
-        commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.', '1')
+        commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.')
         break
     }
   })

@@ -8,7 +8,7 @@ import {
 } from '../utils'
 import { VersionInfo, VersionRegistry } from '@opengsn/common/dist/VersionRegistry'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { toWei } from 'web3-utils'
+import { toHex, toWei } from 'web3-utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 import { defaultEnvironment, GSNContractsDeployment } from '@opengsn/common'
 
@@ -106,8 +106,9 @@ function formatVersion (id: string, versionInfo: VersionInfo, showDate = false):
   } else {
     if ((add == null) === (cancel == null)) error('must specify --add or --cancel, but not both')
     const from = commander.from ?? await logic.findWealthyAccount()
+    const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : await (logic as any).contractInteractor.getGasPrice())
     const sendOptions = {
-      gasPrice: toWei(commander.gasPrice, 'gwei'),
+      gasPrice,
       gas: 1e6,
       from
     }

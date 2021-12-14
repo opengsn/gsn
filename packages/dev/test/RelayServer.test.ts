@@ -18,7 +18,7 @@ import { sleep } from '@opengsn/common/dist/Utils'
 import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } from './TestUtils'
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
+import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
@@ -605,6 +605,89 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     })
   })
 
+  describe('withdrawToOwnerIfNeeded', function () {
+    let currentBlockNumber: number
+    const withdrawToOwnerOnBalance = 3e18
+    beforeEach(async function () {
+      await env.newServerInstance({ withdrawToOwnerOnBalance }, getTemporaryWorkdirs())
+      assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, withdrawToOwnerOnBalance)
+      currentBlockNumber = await env.web3.eth.getBlockNumber()
+    })
+    afterEach(async function () {
+      sinon.restore()
+    })
+    it('should not withdraw if relayer is not ready', async function () {
+      env.relayServer.setReadyState(false)
+      const serverSpy = sinon.spy(env.relayServer)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      assert.deepEqual(txHashes, [])
+      sinon.assert.calledOnce(serverSpy.isReady)
+      assert.isFalse(serverSpy.isReady.returnValues[0])
+    })
+
+    it('should not withdraw if withdrawToOwnerOnBalance is not given', async function () {
+      await env.newServerInstance({}, getTemporaryWorkdirs())
+      assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, undefined)
+      const serverSpy = sinon.spy(env.relayServer)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      assert.deepEqual(txHashes, [])
+      sinon.assert.calledOnce(serverSpy.isReady)
+      assert.isTrue(serverSpy.isReady.returnValues[0])
+    })
+
+    it('should withdraw to owner when hub balance is sufficient', async function () {
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      const owner = env.relayServer.config.ownerAddress
+      const balanceBefore = toBN(await env.web3.eth.getBalance(owner))
+      const serverSpy = sinon.spy(env.relayServer)
+      const sendBalanceSpy = sinon.spy(env.relayServer.registrationManager, '_sendManagerHubBalanceToOwner')
+      const loggerSpy = sinon.spy(env.relayServer.logger, 'info')
+      const managerTargetBalance = toBN(env.relayServer.config.managerTargetBalance)
+      const workerTargetBalance = toBN(env.relayServer.config.workerTargetBalance)
+      const reserveBalance = managerTargetBalance.add(workerTargetBalance)
+      const managerHubBalanceBefore = await env.relayHub.balanceOf(env.relayServer.managerAddress)
+      assert.isTrue(managerHubBalanceBefore.gte(toBN(withdrawToOwnerOnBalance).add(reserveBalance)))
+      const withdrawalAmount = managerHubBalanceBefore.sub(reserveBalance)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      const balanceAfter = await env.web3.eth.getBalance(owner)
+      assert.deepEqual(txHashes.length, 1)
+      assert.equal(balanceBefore.add(withdrawalAmount).toString(), balanceAfter)
+      sinon.assert.callOrder(
+        serverSpy.isReady,
+        sendBalanceSpy,
+        loggerSpy
+      )
+      sinon.assert.calledWith(loggerSpy, `Withdrew ${withdrawalAmount.toString()} to owner`)
+      sinon.assert.calledWith(sendBalanceSpy, currentBlockNumber, withdrawalAmount)
+    })
+
+    it('should not withdraw to owner when hub balance is too low', async function () {
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 1e18.toString() })
+      const owner = env.relayServer.config.ownerAddress
+      const balanceBefore = toBN(await env.web3.eth.getBalance(owner))
+      const serverSpy = sinon.spy(env.relayServer)
+      const sendBalanceSpy = sinon.spy(env.relayServer.registrationManager, '_sendManagerHubBalanceToOwner')
+      const loggerSpy = sinon.spy(env.relayServer.logger, 'info')
+      const managerTargetBalance = toBN(env.relayServer.config.managerTargetBalance)
+      const workerTargetBalance = toBN(env.relayServer.config.workerTargetBalance)
+      const reserveBalance = managerTargetBalance.add(workerTargetBalance)
+      const managerHubBalanceBefore = await env.relayHub.balanceOf(env.relayServer.managerAddress)
+      assert.isTrue(managerHubBalanceBefore.gte(toBN(withdrawToOwnerOnBalance)))
+      assert.isTrue(managerHubBalanceBefore.lt(toBN(withdrawToOwnerOnBalance).add(reserveBalance)))
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      const balanceAfter = await env.web3.eth.getBalance(owner)
+      assert.deepEqual(txHashes.length, 0)
+      assert.equal(balanceBefore.toString(), balanceAfter)
+      sinon.assert.callOrder(
+        serverSpy.isReady
+      )
+      sinon.assert.notCalled(loggerSpy)
+      sinon.assert.notCalled(sendBalanceSpy)
+    })
+  })
+
   describe('relay workers/manager rebalancing', function () {
     let relayServer: RelayServer
     const workerIndex = 0
@@ -837,36 +920,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     })
   })
 
-  describe('Function testing', function () {
-    let relayServer: RelayServer
-
-    beforeEach(function () {
-      relayServer = env.relayServer
-    })
-    it('_workerSemaphore', async function () {
-      assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false first')
-      const workerOrig = relayServer._worker
-      let shouldRun = true
-      try {
-        relayServer._worker = async function (): Promise<PrefixedHexString[]> {
-          // eslint-disable-next-line no-unmodified-loop-condition
-          while (shouldRun) {
-            await sleep(200)
-          }
-          return []
-        }
-        const latestBlock = await env.web3.eth.getBlock('latest')
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        relayServer._workerSemaphore(latestBlock.number)
-        assert.isTrue(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be true after')
-        shouldRun = false
-        await sleep(200)
-        assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false after')
-      } finally {
-        relayServer._worker = workerOrig
-      }
-    })
-  })
   // TODO add _worker flow tests, specifically not trying to boost if balance is too low
   describe('_worker', function () {
   })
