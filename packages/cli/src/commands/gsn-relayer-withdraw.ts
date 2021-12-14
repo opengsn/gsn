@@ -10,7 +10,7 @@ const commander = gsnCommander(['g'])
   .option('-s, --server-config <serverConfig>', 'server config file', process.cwd() + '/config/gsn-relay-config.json')
   .option('-b, --broadcast', 'broadcast tx after logging it to console', false)
   .option('-a, --eth-account-amount <ethAccountAmount>', 'withdraw from relay manager eth account balance, in eth')
-  .option('-d, --hub-deposit-amount <hubDepositAmount>', 'withdraw from relay manager hub balance, in eth')
+  .option('-d, --hub-balance-amount <hubBalanceAmount>', 'withdraw from relay manager hub balance, in eth')
   .parse(process.argv);
 
 (async () => {
@@ -20,25 +20,25 @@ const commander = gsnCommander(['g'])
   const logic = await new CommandsLogic(host, logger, { versionRegistryAddress: config.versionRegistryAddress }).init()
   const keystorePath = getKeystorePath(commander.keystorePath)
   const keyManager = new KeyManager(1, keystorePath)
+  config.relayHubId = config.relayHubId ?? 'hub'
 
-  if (commander.ethAccountAmount == null && commander.hubDepositAmount == null) {
+  if (commander.ethAccountAmount == null && commander.hubBalanceAmount == null) {
     await logic.displayManagerBalances(config, keyManager)
     return
   }
-  if (commander.ethAccountAmount != null && commander.hubDepositAmount != null) {
+  if (commander.ethAccountAmount != null && commander.hubBalanceAmount != null) {
     throw new Error('Must provide exactly one option of -d (--hub-deposit-amount) or -e (--eth-account-amount)')
   }
 
   const withdrawOptions: WithdrawOptions = {
-    withdrawAmount: ether(commander.ethAccountAmount ?? commander.hubDepositAmount),
+    withdrawAmount: ether(commander.ethAccountAmount ?? commander.hubBalanceAmount),
     keyManager,
     config,
     broadcast: commander.broadcast,
     gasPrice: commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : undefined,
     useAccountBalance: commander.ethAccountAmount != null
   }
-  console.log('Using config', config)
-  config.relayHubId = config.relayHubId ?? 'hub'
+
   console.log(`Withdrawal amount is ${fromWei(withdrawOptions.withdrawAmount)}eth`)
   console.log('Should broadcast?', withdrawOptions.broadcast)
   const result = await logic.withdrawToOwner(withdrawOptions)

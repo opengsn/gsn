@@ -342,7 +342,7 @@ export class CommandsLogic {
     const relayHubAddress = await resolveConfigRelayHubAddress(config, this.contractInteractor)
     const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
     const accountBalance = toBN(await this.contractInteractor.getBalance(relayManager))
-    console.log(`Relay manager account balance is ${fromWei(accountBalance)}eth`)
+    console.log(`Relay manager EOA balance is ${fromWei(accountBalance)}eth`)
     const hubBalance = await relayHub.balanceOf(relayManager)
     console.log(`Relay manager hub balance is ${fromWei(hubBalance)}eth`)
   }
@@ -370,7 +370,7 @@ export class CommandsLogic {
         const balance = toBN(await this.contractInteractor.getBalance(relayManager))
         console.log(`Relay manager account balance is ${fromWei(balance)}eth`)
         if (balance.lt(options.withdrawAmount)) {
-          throw new Error('Relay manager hub balance lower than withdrawal amount')
+          throw new Error('Relay manager account balance lower than withdrawal amount')
         }
         const web3TxData = {
           to: options.config.ownerAddress,
@@ -504,7 +504,7 @@ export class CommandsLogic {
         .contract(json)
         .deploy(constructorArgs)
       const estimatedGasCost = await sendMethod.estimateGas()
-      const maxCost = new BN(options.gasPrice).mul(new BN(options.gas))
+      const maxCost = toBN(options.gasPrice.toString()).mul(toBN(options.gas.toString()))
       console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice.toString(), 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
       if (!skipConfirmation) {
         await this.confirm()
