@@ -13,6 +13,7 @@ export const networks = new Map<string, string>([
   ['localhost', 'http://127.0.0.1:8545'],
   ['xdai', 'https://dai.poa.network'],
   ['arbitrum_rinkeby', 'https://rinkeby.arbitrum.io/rpc'],
+  ['optimism_kovan', 'https://kovan.optimism.io/'],
   ['ropsten', 'https://ropsten.infura.io/v3/' + cliInfuraId],
   ['rinkeby', 'https://rinkeby.infura.io/v3/' + cliInfuraId],
   ['kovan', 'https://kovan.infura.io/v3/' + cliInfuraId],
@@ -23,6 +24,7 @@ export const networks = new Map<string, string>([
 export const networksBlockExplorers = new Map<string, string>([
   ['xdai', 'https://blockscout.com/poa/xdai/'],
   ['arbitrum_rinkeby', 'https://rinkeby-explorer.arbitrum.io/#/'],
+  ['optimism_kovan', 'https://kovan-optimistic.etherscan.io/'],
   ['ropsten', 'https://ropsten.etherscan.io/'],
   ['rinkeby', 'https://rinkeby.etherscan.io/'],
   ['kovan', 'https://kovan.etherscan.io/'],
