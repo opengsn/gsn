@@ -336,6 +336,17 @@ export class CommandsLogic {
     }
   }
 
+  async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
+    const relayManager = keyManager.getAddress(0)
+    console.log('relayManager is', relayManager)
+    const relayHubAddress = await resolveConfigRelayHubAddress(config, this.contractInteractor)
+    const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+    const accountBalance = toBN(await this.contractInteractor.getBalance(relayManager))
+    console.log(`Relay manager account balance is ${fromWei(accountBalance)}eth`)
+    const hubBalance = await relayHub.balanceOf(relayManager)
+    console.log(`Relay manager hub balance is ${fromWei(hubBalance)}eth`)
+  }
+
   async withdrawToOwner (options: WithdrawOptions): Promise<WithdrawalResult> {
     const transactions: string[] = []
     try {
@@ -357,7 +368,7 @@ export class CommandsLogic {
       let txToSign: TypedTransaction
       if (options.useAccountBalance) {
         const balance = toBN(await this.contractInteractor.getBalance(relayManager))
-        console.log(`Relay manager account balance is ${balance.toString()} (${fromWei(balance)}eth)`)
+        console.log(`Relay manager account balance is ${fromWei(balance)}eth`)
         if (balance.lt(options.withdrawAmount)) {
           throw new Error('Relay manager hub balance lower than withdrawal amount')
         }
@@ -375,7 +386,7 @@ export class CommandsLogic {
         txToSign = new Transaction(txData, this.contractInteractor.getRawTxOptions())
       } else {
         const balance = await relayHub.balanceOf(relayManager)
-        console.log(`Relay manager hub balance is ${balance.toString()} (${fromWei(balance)}eth)`)
+        console.log(`Relay manager hub balance is ${fromWei(balance)}eth`)
         if (balance.lt(options.withdrawAmount)) {
           throw new Error('Relay manager hub balance lower than withdrawal amount')
         }

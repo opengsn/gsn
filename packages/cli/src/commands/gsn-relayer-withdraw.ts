@@ -9,20 +9,25 @@ const commander = gsnCommander(['g'])
   .option('-k, --keystore-path <keystorePath>', 'relay manager keystore directory', process.cwd() + '/gsndata/manager/')
   .option('-s, --server-config <serverConfig>', 'server config file', process.cwd() + '/config/gsn-relay-config.json')
   .option('-b, --broadcast', 'broadcast tx after logging it to console', false)
-  .option('-e, --eth-account-amount <ethAccountAmount>', 'withdraw from relay manager eth account balance, in eth')
+  .option('-a, --eth-account-amount <ethAccountAmount>', 'withdraw from relay manager eth account balance, in eth')
   .option('-d, --hub-deposit-amount <hubDepositAmount>', 'withdraw from relay manager hub balance, in eth')
   .parse(process.argv);
 
 (async () => {
-  if ((commander.ethAccountAmount != null && commander.hubDepositAmount != null) || (commander.ethAccountAmount == null && commander.hubDepositAmount == null)) {
-    throw new Error('Must provide exactly one option of -d (--hub-deposit-amount) or -e (--eth-account-amount)')
-  }
   const config = getServerConfig(commander.serverConfig)
   const host = config.ethereumNodeUrl
   const logger = createCommandsLogger(commander.loglevel)
   const logic = await new CommandsLogic(host, logger, { versionRegistryAddress: config.versionRegistryAddress }).init()
   const keystorePath = getKeystorePath(commander.keystorePath)
   const keyManager = new KeyManager(1, keystorePath)
+
+  if (commander.ethAccountAmount == null && commander.hubDepositAmount == null) {
+    await logic.displayManagerBalances(config, keyManager)
+    return
+  }
+  if (commander.ethAccountAmount != null && commander.hubDepositAmount != null) {
+    throw new Error('Must provide exactly one option of -d (--hub-deposit-amount) or -e (--eth-account-amount)')
+  }
 
   const withdrawOptions: WithdrawOptions = {
     withdrawAmount: ether(commander.ethAccountAmount ?? commander.hubDepositAmount),
