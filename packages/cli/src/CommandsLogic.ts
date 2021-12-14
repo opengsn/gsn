@@ -342,7 +342,7 @@ export class CommandsLogic {
     const relayHubAddress = await resolveConfigRelayHubAddress(config, this.contractInteractor)
     const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
     const accountBalance = toBN(await this.contractInteractor.getBalance(relayManager))
-    console.log(`Relay manager EOA balance is ${fromWei(accountBalance)}eth`)
+    console.log(`Relay manager account balance is ${fromWei(accountBalance)}eth`)
     const hubBalance = await relayHub.balanceOf(relayManager)
     console.log(`Relay manager hub balance is ${fromWei(hubBalance)}eth`)
   }
