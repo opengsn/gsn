@@ -369,7 +369,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           await env.relayServer.transactionManager.sendTransaction({
             signer,
             serverAction: ServerAction.VALUE_TRANSFER,
-            gasLimit: defaultEnvironment.mintxgascost,
             destination: accounts[0],
             creationBlockNumber: 0
           })
@@ -703,7 +702,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         signer: relayServer.workerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: accounts[0],
-        gasLimit: defaultEnvironment.mintxgascost,
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
         creationBlockNumber: 0,
@@ -750,7 +748,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
         destination: accounts[0],
-        gasLimit: defaultEnvironment.mintxgascost,
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
         value: toHex((await relayServer.getManagerBalance()).sub(txCost))
@@ -803,7 +800,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
         destination: accounts[0],
-        gasLimit: defaultEnvironment.mintxgascost,
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
         value: toHex((await relayServer.getManagerBalance()).sub(txCost))

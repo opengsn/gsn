@@ -299,7 +299,6 @@ export class CommandsLogic {
           .stakeForRelayManager(relayAddress, options.unstakeDelay.toString(), {
             value: stakeValue,
             from: options.from,
-            gas: 1e6,
             gasPrice
           })
         // @ts-ignore
