@@ -156,7 +156,7 @@ data                     | ${transaction.data}
         to: txDetails.destination,
         data: txDetails.method,
         value: txDetails.value
-      } as any)
+      })
       console.log('sendTransaction: gasLimit from estimate', gasLimit)
     }
     await this.validateBalance(txDetails.signer, maxFeePerGas, gasLimit)
