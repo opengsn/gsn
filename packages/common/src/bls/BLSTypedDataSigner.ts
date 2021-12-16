@@ -8,7 +8,6 @@ import {
   MAPPING_MODE_TI,
   aggreagate,
   g1ToBN,
-  g1ToHex,
   g2ToBN,
   init,
   mclToHex,
@@ -18,8 +17,6 @@ import {
   setDomain,
   setMappingMode,
   sign,
-  newG2,
-  newFp2,
   SecretKey,
   PublicKey,
   deserializeHexStrToFr, secretToPubkey, hashToPoint
@@ -35,7 +32,7 @@ export interface InternalBLSKeypairType {
 // TODO: an interface for this class should not leak any internal structures and use strings exclusively
 export interface ExternalBLSKeypairType {
   secret: string
-  pubkey: string
+  pubkey: string[]
 }
 
 export const BigNumberToBN = (it: BigNumber): BN => toBN(it.toString())
@@ -61,12 +58,6 @@ export class BLSTypedDataSigner {
     return newKeyPair()
   }
 
-  static async parseKeypair (keypair: ExternalBLSKeypairType): Promise<InternalBLSKeypairType> {
-    const pubkey = this._hex_to_mcl_G2_type(JSON.parse(keypair.pubkey))
-    const secret = this._hex_to_mcl_FR_type(JSON.parse(keypair.secret))
-    return { pubkey, secret }
-  }
-
   aggregateSignatures (signatures: PrefixedHexString[][]): BN[] {
     let aggSignature = newG1()
     for (const signature of signatures) {
@@ -74,45 +65,6 @@ export class BLSTypedDataSigner {
       aggSignature = aggreagate(aggSignature, signatureG1)
     }
     return BLSTypedDataSigner.g1SignatureToBN(aggSignature)
-  }
-
-  static _hex_to_mcl_G2_type (hex: PrefixedHexString[]): any {
-    // reverse this:
-    //
-    // export function g2ToBN (p: mclG2) {
-    //   const x = mclToHex(p.getX(), false)
-    //   const y = mclToHex(p.getY(), false)
-    //   return [
-    //     toBig('0x' + x.slice(64)),
-    //     toBig('0x' + x.slice(0, 64)),
-    //     toBig('0x' + y.slice(64)),
-    //     toBig('0x' + y.slice(0, 64)),
-    //   ]
-    // }
-
-    const xStr = `0x${hex[0].replace('0x', '').padStart(64, '0')}${hex[1].replace('0x', '').padStart(64, '0')}`
-    const yStr = `0x${hex[2].replace('0x', '').padStart(64, '0')}${hex[3].replace('0x', '').padStart(64, '0')}`
-
-    const x = newFp2()
-    const y = newFp2()
-    const z = newFp2()
-    const p = newG2()
-
-    // Do not commit - does not work
-    x.deserialize(Buffer.from(xStr))
-    y.deserialize(Buffer.from(yStr))
-    z.deserialize(Buffer.from([1]))
-    p.setX(x)
-    p.setY(y)
-    p.setZ(z)
-
-    console.log(`_hex_to_mcl_G2_type input: ${JSON.stringify(hex)} output: ${JSON.stringify(g1ToHex(p))}`)
-
-    return p
-  }
-
-  static _hex_to_mcl_FR_type (hex: PrefixedHexString[]): any {
-    return {}
   }
 
   static _hex_to_mcl_G1_type (hex: PrefixedHexString[]): any {
@@ -166,7 +118,7 @@ export class BLSTypedDataSigner {
     return this.blsKeypair.secret.serializeToHexStr()
   }
 
-  deserializeHexStringKeypair (serializedSecretKey: PrefixedHexString): InternalBLSKeypairType {
+  static deserializeHexStringKeypair (serializedSecretKey: PrefixedHexString): InternalBLSKeypairType {
     const secret = deserializeHexStrToFr(serializedSecretKey)
     const pubkey = secretToPubkey(secret)
     return {

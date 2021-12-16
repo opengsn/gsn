@@ -37,7 +37,7 @@ async function createAuthorizationElement (
   blsKeypair: any,
   registrar: BLSAddressAuthorizationsRegistrarInstance): Promise<AuthorizationElement> {
   const accountManager = new AccountManager(web3.currentProvider as HttpProvider, 1337, configureGSN({}))
-  accountManager.setBLSKeypair(blsKeypair)
+  accountManager._setBLSKeypairInternal(blsKeypair)
   return await accountManager.createAccountAuthorizationElement(from, registrar.address.toLowerCase())
 }
 
@@ -52,6 +52,7 @@ export async function createRelayRequestAndAuthorization (
     blsSignature: PrefixedHexString[]
   }> {
   const blsTypedDataSigner = new BLSTypedDataSigner()
+  await blsTypedDataSigner.init()
   const keypair = await blsTypedDataSigner.newKeypair()
   blsTypedDataSigner.setKeypair(keypair)
   const authorizationElement = await createAuthorizationElement(from, blsTypedDataSigner.blsKeypair, registrar)

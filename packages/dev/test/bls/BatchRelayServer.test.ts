@@ -15,6 +15,7 @@ import {
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { createRelayRequestAndAuthorization } from './BLSBatchGateway.test'
 import { ContractInteractor } from '@opengsn/common'
+import { BLSTypedDataSigner } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 
 contract.only('BatchRelayServer integration test', function (accounts: Truffle.Accounts) {
   let globalId: string
@@ -85,7 +86,7 @@ contract.only('BatchRelayServer integration test', function (accounts: Truffle.A
         calldataCacheDecoderInteractors: env.calldataCacheDecoderInteractors,
         cachingGasConstants
       }).init()
-
+      await new BLSTypedDataSigner().init()
       const {
         authorizationElement, blsSignature
       } = await createRelayRequestAndAuthorization(relayRequest, accounts[0], cacheDecoderInteractor, env.batchingContractsInstances.authorizationsRegistrar)

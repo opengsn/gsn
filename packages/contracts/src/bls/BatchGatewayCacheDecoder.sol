@@ -26,8 +26,6 @@ contract BatchGatewayCacheDecoder is IBatchGatewayCacheDecoder {
     CacheLibrary.WordCache private paymastersCache;
     CacheLibrary.WordCache private cacheDecodersCache;
 
-    mapping(bytes4 => uint256) public knownGasLimits;
-
     constructor(address _forwarder) {
         forwarder = _forwarder;
         // taking over ID 1 for special value (use encodedData as-is)

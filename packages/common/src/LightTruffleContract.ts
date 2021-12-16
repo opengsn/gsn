@@ -13,7 +13,7 @@ function getComponent (key: string, components: AbiOutput[]): AbiOutput | undefi
 
 function retypeItem (abiOutput: AbiOutput, ret: any): any {
   // array of some type. parse each member separately
-  if (abiOutput.type.endsWith('[]')) {
+  if (abiOutput.type.endsWith('[]') || abiOutput.type.endsWith('[4]')) {
     const arrayMemberType = abiOutput.type.substr(0, abiOutput.type.length - 2)
     return ret.map((item: any) => retypeItem({
       ...abiOutput,

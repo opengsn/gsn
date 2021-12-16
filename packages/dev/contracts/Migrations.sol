@@ -40,6 +40,7 @@ import "@opengsn/contracts/src/bls/ERC20CacheDecoder.sol";
 import "@opengsn/contracts/src/test/BLSTestBatchGateway.sol";
 import "@opengsn/contracts/src/test/BLSTestHub.sol";
 import "@opengsn/contracts/src/test/TestToken.sol";
+import "@opengsn/contracts/src/test/TestCacheLibrary.sol";
 
 import "@opengsn/contracts/src/arbitrum/ArbRelayHub.sol";
 

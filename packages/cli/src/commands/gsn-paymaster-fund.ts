@@ -29,6 +29,7 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
 
   const balance = await logic.fundPaymaster(from, paymaster, amount)
   console.log(`Paymaster ${paymaster} balance is now ${balance.toString()} wei`)
+  process.exit(0)
 })().catch(
   reason => {
     console.error(reason)

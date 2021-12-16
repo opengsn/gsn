@@ -75,6 +75,7 @@ export class BatchManager {
     await this.cacheDecoderInteractor.init()
     await this.blsTypedDataSigner.init()
     await this.blsVerifierInteractor.init()
+    await this.authorizationsRegistrarInteractor.init()
     return this
   }
 
@@ -98,7 +99,7 @@ export class BatchManager {
       baseRelayFee: this.config.baseRelayFee,
       maxAcceptanceBudget: this.config.maxAcceptanceBudget
     }
-    this.printCurrentBlockInfo()
+    this.printBatchStatus(currentBlockNumber)
     this.validateCurrentBatchParameters2()
   }
 
@@ -144,8 +145,10 @@ new target :${newBatchTarget}
 
     // Trigger the interval worker to send the batch faster if possible
     const blockNumber = await this.contractInteractor.getBlockNumberRightNow()
+
+    this.printBatchStatus(blockNumber)
     // eslint-disable-next-line no-void
-    void this.intervalWorker(blockNumber)
+    void this.intervalWorker(blockNumber, true)
   }
 
   async getAuthorizedBLSPublicKey (_: { address: Address, authorizationElement?: AuthorizationElement }): Promise<BN[]> {
@@ -233,7 +236,7 @@ Right worker address: (${this.workerAddress})
     return true
   }
 
-  isCurrentBatchReady (blockNumber: number): boolean {
+  isCurrentBatchReady (blockNumber: number, printInfoAnyway: boolean = false): boolean {
     if (this.currentBatch == null) {
       return false
     }
@@ -249,6 +252,26 @@ Right worker address: (${this.workerAddress})
     const gasLimitAboveMinimum = currentBatchGasLimit.gte(toBN(this.config.batchMinimalGasLimit))
     const currentBatchCanBeExtended = isTimeNearTarget && !(gasLimitAboveMinimum || isGasLimitNearTarget || isBlockNumberNearTarget || isSizeMaxedOut)
 
+    if (isCurrentBatchReady || printInfoAnyway) {
+      this.printBatchStatus(blockNumber, isTimeNearTarget, isGasLimitNearTarget, isBlockNumberNearTarget, isSizeMaxedOut)
+    }
+    if (currentBatchCanBeExtended) {
+      // TODO: implement batch duration extension
+      console.log('batch can be extended')
+    }
+    return isCurrentBatchReady
+  }
+
+  private printBatchStatus (
+    blockNumber: number,
+    isTimeNearTarget: boolean = false,
+    isGasLimitNearTarget: boolean = false,
+    isBlockNumberNearTarget: boolean = false,
+    isSizeMaxedOut: boolean = false
+  ) {
+    const now = Date.now()
+    const currentBatchGasLimit = this.getCurrentBatchGasLimit()
+
     function pickColor (flag: boolean, message: string): string {
       if (flag) {
         return chalk.green(message)
@@ -257,28 +280,22 @@ Right worker address: (${this.workerAddress})
       }
     }
 
-    if (isCurrentBatchReady) {
-      const timeMessage = `
+    const timeMessage = `
+Batch number        | ${this.currentBatch.id}
 target time         | ${this.currentBatch.targetSubmissionTimestamp} (${new Date(this.currentBatch.targetSubmissionTimestamp).toISOString()})
 current time        | ${now} (${new Date(now).toISOString()})`
-      const gasLimitMessage = `
+    const gasLimitMessage = `
 target gas limit    | ${this.currentBatch.targetGasLimit.toString()}
-current gas limit   | ${currentBatchGasLimit.toString()}`
-      const blockMessage = `
+current gas limit   | ${currentBatchGasLimit}`
+    const blockMessage = `
 target block        | ${this.currentBatch.targetBlock}
 current block       | ${blockNumber}`
-      const sizeMessage = `
+    const sizeMessage = `
 target size         : ${this.currentBatch.targetSize}
 current size        : ${this.currentBatch.transactions.length}`
-      console.log(`
-batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitNearTarget, gasLimitMessage)}${pickColor(isBlockNumberNearTarget, blockMessage)}${pickColor(isSizeMaxedOut, sizeMessage)}
+    console.log(`
+${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitNearTarget, gasLimitMessage)}${pickColor(isBlockNumberNearTarget, blockMessage)}${pickColor(isSizeMaxedOut, sizeMessage)}
 `)
-    }
-    if (currentBatchCanBeExtended) {
-      // TODO: implement batch duration extension
-      console.log('batch can be extended')
-    }
-    return isCurrentBatchReady
   }
 
   getCurrentBatchGasLimit (): BN {
@@ -370,12 +387,12 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
     return this.blsTypedDataSigner.aggregateSignatures(signatures)
   }
 
-  intervalWorker (blockNumber: number): void {
+  intervalWorker (blockNumber: number, printInfoAnyway: boolean = false): void {
     if (this._workerSemaphoreOn) {
       console.warn('BatchManager: different worker is not finished yet, skipping this block')
       return
     }
-    if (this.isCurrentBatchReady(blockNumber)) {
+    if (this.isCurrentBatchReady(blockNumber, printInfoAnyway)) {
       this._workerSemaphoreOn = true
       this.closeCurrentBatch()
       this.broadcastCurrentBatch()
@@ -396,16 +413,5 @@ batch is ready${pickColor(isTimeNearTarget, timeMessage)}${pickColor(isGasLimitN
     // 2. batchDurationMS > > timeThreshold
     // 3. gas target < < block gas limit
     // 4. gas overhead < < gas target
-  }
-
-  private printCurrentBlockInfo (): void {
-    console.log(`
-New batch is initialized:
-Batch number       | ${this.currentBatch.id}
-Target gas         | ${this.currentBatch.targetGasLimit.toString()}
-Target size        | ${this.currentBatch.targetSize}
-Target time        | ${this.currentBatch.targetSubmissionTimestamp}
-Target block       | ${this.currentBatch.targetBlock}
-`)
   }
 }

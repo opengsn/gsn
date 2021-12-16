@@ -24,6 +24,9 @@ import {
 import { GsnSendToRelayerEvent, GsnSignRequestEvent } from '../GsnEvents'
 import { ICalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ICalldataCacheDecoderInteractor'
 import { ERC20CalldataCacheDecoderInteractor } from '@opengsn/common/dist/bls/ERC20CalldataCacheDecoderInteractor'
+import {
+  BLSAddressAuthorizationsRegistrarInteractor
+} from '@opengsn/common/dist/bls/BLSAddressAuthorizationsRegistrarInteractor'
 
 export interface GSNBatchingUnresolvedConstructorInput extends GSNUnresolvedConstructorInput {
   // TODO: this only supports one target and does not allow stubbing
@@ -35,6 +38,7 @@ export interface GSNBatchingUnresolvedConstructorInput extends GSNUnresolvedCons
 export class BatchRelayClient extends RelayClient {
   private readonly rawBatchConstructorInput: GSNBatchingUnresolvedConstructorInput
   cacheDecoderInteractor!: CacheDecoderInteractor
+  authorizationsRegistrarInteractor!: BLSAddressAuthorizationsRegistrarInteractor
 
   constructor (
     rawBatchConstructorInput: GSNBatchingUnresolvedConstructorInput
@@ -62,7 +66,12 @@ export class BatchRelayClient extends RelayClient {
       calldataCacheDecoderInteractors,
       cachingGasConstants
     })
+    this.authorizationsRegistrarInteractor = new BLSAddressAuthorizationsRegistrarInteractor({
+      provider: this.rawBatchConstructorInput.provider,
+      addressAuthorizationsRegistrarAddress: this.rawBatchConstructorInput.batchingContractsDeployment.authorizationsRegistrar
+    })
     await this.cacheDecoderInteractor.init()
+    await this.authorizationsRegistrarInteractor.init()
     return this
   }
 
@@ -103,10 +112,15 @@ export class BatchRelayClient extends RelayClient {
     }
   }
 
+  async _isAuthorizationIssuedToAddress (address: Address): Promise<boolean> {
+    const authorizedBLSPublicKey = await this.authorizationsRegistrarInteractor.getAuthorizedBLSPublicKey(address)
+    return authorizedBLSPublicKey != null
+  }
+
   async prepareRelayRequestMetadata (relayRequest: RelayRequest, relayInfo: RelayInfo, deployment: GSNContractsDeploymentResolvedForRequest): Promise<RelayMetadata> {
     this.emit(new GsnSignRequestEvent())
     let authorizationElement: AuthorizationElement | undefined
-    const authorizationIssued = await this.dependencies.accountManager.isAuthorizationIssuedToCurrentBLSPrivateKey(relayRequest.request.from)
+    const authorizationIssued = await this._isAuthorizationIssuedToAddress(relayRequest.request.from)
     if (!authorizationIssued) {
       authorizationElement = await this.dependencies.accountManager.createAccountAuthorizationElement(relayRequest.request.from, this.rawBatchConstructorInput.batchingContractsDeployment.authorizationsRegistrar)
     }

@@ -8,6 +8,7 @@ commander
   .command('start', 'all-on-one: deploy all contracts, start relay')
   .command('deploy', 'deploy RelayHub and other GSN contracts instances')
   .command('deploy-batching', 'deploy BatchGateway and other batching-related contracts instances')
+  .command('bls-create-keypair', 'create new BLS keypair')
   .command('relayer-register', 'stake for a relayer and fund it')
   .command('relayer-run', 'launch a relayer server')
   .command('paymaster-fund', 'fund a paymaster contract so it can pay for relayed calls')

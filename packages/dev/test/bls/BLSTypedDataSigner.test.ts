@@ -104,7 +104,7 @@ contract.only('BLSTypedDataSigner', function ([address]: string[]) {
       await blsTypedDataSigner.newKeypair()
       const privateKeySerialized = '495fcacda7aa8ddaf59f3c81eae6a66a2abc935a8d405a0cbcad20c57c89670b'
       const publicKey0Serialized = '1696d393da25ffbb2b0b8061ed6cfb5de57186a5df5e032cb3cc08593da203c3'
-      const deserializedKeypair = blsTypedDataSigner.deserializeHexStringKeypair(privateKeySerialized)
+      const deserializedKeypair = BLSTypedDataSigner.deserializeHexStringKeypair(privateKeySerialized)
       assert.equal(deserializedKeypair.secret.serializeToHexStr(), privateKeySerialized)
       assert.equal(g2ToBN(deserializedKeypair.pubkey).map(BigNumberToBN)[0].toString('hex'), publicKey0Serialized)
     })

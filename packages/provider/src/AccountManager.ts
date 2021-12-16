@@ -12,7 +12,7 @@ import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/com
 import {
   InternalBLSKeypairType,
   BLSTypedDataSigner,
-  ExternalBLSKeypairType
+  ExternalBLSKeypairType, getPublicKeySerialized
 } from '@opengsn/common/dist/bls/BLSTypedDataSigner'
 import { ApprovalDataInterface, TypedApprovalData } from '@opengsn/common/dist/bls/TypedApprovalData'
 import { AuthorizationElement } from '@opengsn/common/dist/bls/CacheDecoderInteractor'
@@ -153,8 +153,14 @@ export class AccountManager {
    * @param keypair
    */
   setBLSKeypair (keypair: ExternalBLSKeypairType): void {
-    // TODO: does not make sense, accept serialized keypair here!
-    this.blsTypedDataSigner.setKeypair(keypair)
+    const internalKeypair = BLSTypedDataSigner.deserializeHexStringKeypair(keypair.secret)
+
+    const pubkey = getPublicKeySerialized(internalKeypair.pubkey)
+    const secret = internalKeypair.secret.serializeToHexStr()
+
+    console.log('input:', JSON.stringify(keypair))
+    console.log('parsed:', JSON.stringify({ pubkey, secret }))
+    this.blsTypedDataSigner.setKeypair(internalKeypair)
   }
 
   _setBLSKeypairInternal (keypair: InternalBLSKeypairType): void {
@@ -230,8 +236,4 @@ export class AccountManager {
     return authorizationElement
   }
 
-  // TODO
-  async isAuthorizationIssuedToCurrentBLSPrivateKey (ethereumAddress: Address): Promise<boolean> {
-    return false
-  }
 }

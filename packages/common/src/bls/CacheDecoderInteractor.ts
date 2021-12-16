@@ -147,7 +147,6 @@ export class CacheDecoderInteractor {
   async compressRelayRequest (_: { relayRequest: RelayRequest, cachedEncodedData?: PrefixedHexString }): Promise<RelayRequestCachingResult> {
     const nonce = toBN(_.relayRequest.request.nonce)
 
-    // TODO: return the tuple of 'address, type' so that all addresses can be queried in one RPC request!
     const resolved = await this.compressAddressesToIds(
       [_.relayRequest.request.from],
       [_.relayRequest.request.to],
@@ -220,13 +219,16 @@ export class CacheDecoderInteractor {
     const countSlots = ret.flatMap(x => x)
       .reduce((sum, x) => x.gt(toBN('0xffffffff')) ? sum + 1 : sum, 0)
 
-    return {
+    const result = {
       senderAsIds: ret[0],
       targetAsIds: ret[1],
       paymasterAsIds: ret[2],
       cacheDecoders: ret[3],
       writeSlotsCount: countSlots
     }
+    console.log('compressAddressesToIds input:', JSON.stringify({ froms, tos, paymasters, cacheDecoders }))
+    console.log('compressAddressesToIds output:', JSON.stringify(result))
+    return result
   }
 
   _calculateCalldataCostForRelayRequestsElement (relayRequestElement: RelayRequestElement, authorizationElement?: AuthorizationElement): BN {
