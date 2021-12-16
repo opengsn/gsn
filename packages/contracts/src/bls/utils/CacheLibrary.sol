@@ -21,6 +21,10 @@ library CacheLibrary {
             return 0;
         }
         if (id > ID_MAX_VALUE) {
+            if (wordCache.cache.length == 0) {
+                // stored IDs start with 2;
+                wordCache.cache.push(0);
+            }
             if (wordCache.reverse[id] == 0) {
                 wordCache.cache.push(id);
                 wordCache.reverse[id] = wordCache.cache.length;
