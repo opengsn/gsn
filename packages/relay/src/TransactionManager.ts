@@ -157,7 +157,7 @@ data                     | ${transaction.data}
         data: txDetails.method,
         value: txDetails.value
       })
-      this.logger.debug('sendTransaction: gasLimit from estimate', gasLimit)
+      this.logger.debug(`sendTransaction: gasLimit from estimate: ${gasLimit}`)
     }
     await this.validateBalance(txDetails.signer, maxFeePerGas, gasLimit)
     if (isSameAddress(txDetails.destination, constants.ZERO_ADDRESS)) {
