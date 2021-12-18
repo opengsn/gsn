@@ -692,12 +692,14 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     const workerIndex = 0
     const gasPrice = 1e9.toString()
     let beforeDescribeId: string
-    const txCost = toBN(defaultEnvironment.mintxgascost * parseInt(gasPrice))
+    // web3 estimate seems to add '1 gas' somewhere
+    const txCost = toBN((defaultEnvironment.mintxgascost + 1) * parseInt(gasPrice))
 
     // TODO: not needed, worker is not funded at this point!
     beforeEach('deplete worker balance', async function () {
       relayServer = env.relayServer
       beforeDescribeId = (await snapshot()).result
+      const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.workerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
@@ -705,7 +707,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
         creationBlockNumber: 0,
-        value: toHex((await relayServer.getWorkerBalance(workerIndex)).sub(txCost))
+        value: toHex(workerBalanceBefore.sub(txCost))
       })
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.lt(toBN(relayServer.config.workerMinBalance)),
@@ -743,6 +745,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
     it('should withdraw hub balance to manager first, then use eth balance to fund workers', async function () {
       await env.relayHub.depositFor(relayServer.managerAddress, { value: 1e18.toString() })
+      const managerEthBalanceFirst = await relayServer.getManagerBalance()
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
@@ -750,11 +753,12 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         destination: accounts[0],
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
-        value: toHex((await relayServer.getManagerBalance()).sub(txCost))
+        value: toHex(managerEthBalanceFirst.sub(txCost))
       })
-      assert.equal((await relayServer.getManagerBalance()).toString(), '0')
+      //  web3 estimate seems to add '1 gas' somewhere
+      assert.equal((await relayServer.getManagerBalance()).toString(), '1000000000')
       await env.web3.eth.sendTransaction(
-        { from: accounts[0], to: relayServer.managerAddress, value: relayServer.config.managerTargetBalance - 1e7 })
+        { from: accounts[0], to: relayServer.managerAddress, value: relayServer.config.managerTargetBalance - 1e10 })
       const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
       const managerEthBalanceBefore = await relayServer.getManagerBalance()
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)

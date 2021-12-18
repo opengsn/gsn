@@ -149,7 +149,7 @@ data                     | ${transaction.data}
     const maxFeePerGas = parseInt(txDetails.maxFeePerGas ?? await this.gasPriceFetcher.getGasPrice())
     const maxPriorityFeePerGas = parseInt(txDetails.maxPriorityFeePerGas ?? maxFeePerGas.toString())
 
-    let gasLimit = txDetails.gasLimit;
+    let gasLimit = txDetails.gasLimit
     if (gasLimit == null) {
       gasLimit = await this.contractInteractor.estimateGas({
         from: txDetails.signer,
