@@ -578,8 +578,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
           serverAction: ServerAction.VALUE_TRANSFER,
           destination: this.workerAddress,
           value: toHex(refill),
-          creationBlockNumber: currentBlock,
-          gasLimit: this.environment.mintxgascost
+          creationBlockNumber: currentBlock
         }
         const { transactionHash } = await this.transactionManager.sendTransaction(details)
         transactionHashes.push(transactionHash)
