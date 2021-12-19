@@ -30,7 +30,7 @@ export interface SendTransactionDetails {
   method?: any
   destination: Address
   value?: IntString
-  gasLimit: number
+  gasLimit?: number
   maxFeePerGas?: IntString
   maxPriorityFeePerGas?: IntString
   creationBlockNumber: number
@@ -149,7 +149,17 @@ data                     | ${transaction.data}
     const maxFeePerGas = parseInt(txDetails.maxFeePerGas ?? await this.gasPriceFetcher.getGasPrice())
     const maxPriorityFeePerGas = parseInt(txDetails.maxPriorityFeePerGas ?? maxFeePerGas.toString())
 
-    await this.validateBalance(txDetails.signer, maxFeePerGas, txDetails.gasLimit)
+    let gasLimit = txDetails.gasLimit
+    if (gasLimit == null) {
+      gasLimit = await this.contractInteractor.estimateGas({
+        from: txDetails.signer,
+        to: txDetails.destination,
+        data: txDetails.method,
+        value: txDetails.value
+      })
+      this.logger.debug(`sendTransaction: gasLimit from estimate: ${gasLimit}`)
+    }
+    await this.validateBalance(txDetails.signer, maxFeePerGas, gasLimit)
     if (isSameAddress(txDetails.destination, constants.ZERO_ADDRESS)) {
       const msg = `Preventing to send transaction with action id ${txDetails.serverAction} to address(0)! Validate your configuration!`
       this.logger.error(msg)
@@ -166,7 +176,7 @@ data                     | ${transaction.data}
         txToSign = new FeeMarketEIP1559Transaction({
           to: txDetails.destination,
           value: txDetails.value,
-          gasLimit: txDetails.gasLimit,
+          gasLimit: gasLimit,
           maxFeePerGas,
           maxPriorityFeePerGas: maxPriorityFeePerGas,
           data: Buffer.from(encodedCall.slice(2), 'hex'),
@@ -176,7 +186,7 @@ data                     | ${transaction.data}
         txToSign = new Transaction({
           to: txDetails.destination,
           value: txDetails.value,
-          gasLimit: txDetails.gasLimit,
+          gasLimit: gasLimit,
           gasPrice: maxFeePerGas,
           data: Buffer.from(encodedCall.slice(2), 'hex'),
           nonce
@@ -260,8 +270,8 @@ data                     | ${transaction.data}
 
   _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {
     let isMaxGasPriceReached = false
-    let newMaxFee = oldMaxFee * this.config.retryGasPriceFactor
-    let newMaxPriorityFee = oldMaxPriorityFee * this.config.retryGasPriceFactor
+    let newMaxFee = Math.round(oldMaxFee * this.config.retryGasPriceFactor)
+    let newMaxPriorityFee = Math.round(oldMaxPriorityFee * this.config.retryGasPriceFactor)
     // TODO: use BN for ETH values
     // Sanity check to ensure we are not burning all our balance in gas fees
     if (newMaxFee > parseInt(this.config.maxGasPrice)) {

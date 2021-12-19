@@ -703,8 +703,8 @@ export class ContractInteractor {
     return await this.web3.eth.sendSignedTransaction(rawTx)
   }
 
-  async estimateGas (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
-    return await this.web3.eth.estimateGas(gsnTransactionDetails)
+  async estimateGas (transactionDetails: TransactionConfig): Promise<number> {
+    return await this.web3.eth.estimateGas(transactionDetails)
   }
 
   async estimateGasWithoutCalldata (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
