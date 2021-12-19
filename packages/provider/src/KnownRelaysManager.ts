@@ -22,10 +22,11 @@ export const DefaultRelayFilter: RelayFilter = function (registeredEventInfo: Re
     parseInt(registeredEventInfo.pctRelayFee) > maxPctRelayFee ||
     parseInt(registeredEventInfo.baseRelayFee) > maxBaseRelayFee
   ) {
-    return false
+    throw new Error(`Relay ${registeredEventInfo.relayUrl} returned fees of [${registeredEventInfo.pctRelayFee}% + ${registeredEventInfo.baseRelayFee} wei] but client is configured with maximum of [${maxPctRelayFee}% + ${maxBaseRelayFee}]`)
   }
   return true
 }
+
 /**
  * Basic score is reversed transaction fee, higher is better.
  * Relays that failed to respond recently will be downgraded for some period of time.
