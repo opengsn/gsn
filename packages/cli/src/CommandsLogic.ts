@@ -215,7 +215,6 @@ export class CommandsLogic {
       console.log('current stake=', fromWei(stake, 'ether'))
 
       if (owner !== constants.ZERO_ADDRESS && !isSameAddress(owner, options.from)) {
-        // throw new Error(`Already owned by ${owner}, our account=${options.from}`)
         throw new Error(`Already owned by ${owner}, our account=${options.from}`)
       }
 
@@ -325,7 +324,6 @@ export class CommandsLogic {
       value: 0,
       gasPrice: deployOptions.gasPrice
     }
-
     const sInstance = await this.getContractInstance(StakeManager, {
       arguments: [defaultEnvironment.maxUnstakeDelay]
     }, deployOptions.stakeManagerAddress, { ...options }, deployOptions.skipConfirmation)
@@ -383,7 +381,7 @@ export class CommandsLogic {
       const sendMethod = this
         .contract(json)
         .deploy(constructorArgs)
-      const estimatedGasCost = await sendMethod.estimateGas()
+      const estimatedGasCost = await sendMethod.estimateGas({ ...options })
       const maxCost = new BN(options.gasPrice).muln(options.gas)
       console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice, 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
       if (!skipConfirmation) {
