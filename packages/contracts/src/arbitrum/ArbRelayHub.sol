@@ -8,7 +8,7 @@ import "./ArbSys.sol";
 contract ArbRelayHub is RelayHub {
 
     function versionHub() override public pure returns (string memory){
-        return "2.2.3+opengsn.arbhub.irelayhub";
+        return "3.0.0-alpha.1+opengsn.arbhub.irelayhub";
     }
 
     ArbSys public immutable arbsys;

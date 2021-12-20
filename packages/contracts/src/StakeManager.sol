@@ -9,7 +9,7 @@ import "./interfaces/IStakeManager.sol";
 contract StakeManager is IStakeManager {
     using SafeMath for uint256;
 
-    string public override versionSM = "2.2.3+opengsn.stakemanager.istakemanager";
+    string public override versionSM = "3.0.0-alpha.1+opengsn.stakemanager.istakemanager";
     uint256 public immutable override maxUnstakeDelay;
 
     /// maps relay managers to their stakes

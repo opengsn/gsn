@@ -39,11 +39,11 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
     uint256 public permitMethodDataLength;
 
     function versionPaymaster() external override virtual view returns (string memory){
-        return "2.2.3+opengsn.permit-erc20-uniswap-v3.ipaymaster";
+        return "3.0.0-alpha.1+opengsn.permit-erc20-uniswap-v3.ipaymaster";
     }
 
     function versionRecipient() external override virtual view returns (string memory){
-        return "2.2.3+opengsn.permit-erc20-uniswap-v3.irelayrecipient";
+        return "3.0.0-alpha.1+opengsn.permit-erc20-uniswap-v3.irelayrecipient";
     }
 
     function trustedForwarder() override(BasePaymaster, BaseRelayRecipient) public view returns (address forwarder){

@@ -26,7 +26,7 @@ contract RelayHub is IRelayHub, Ownable {
     using SafeMath for uint256;
 
     function versionHub() override virtual public pure returns (string memory){
-        return "2.2.3+opengsn.hub.irelayhub";
+        return "3.0.0-alpha.1+opengsn.hub.irelayhub";
     }
 
     IStakeManager public immutable override stakeManager;
