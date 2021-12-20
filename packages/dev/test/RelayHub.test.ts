@@ -811,7 +811,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
               message: 'Method with no parameters',
               realSender: senderAddress,
-              msgSender: forwarder,
+              msgSender: gatewayForwarder.address,
               origin: batchGateway
             })
           })
