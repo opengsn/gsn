@@ -31,6 +31,7 @@ contract RelayHub is IRelayHub, Ownable {
 
     IStakeManager public immutable override stakeManager;
     address public immutable override penalizer;
+    address public override batchGateway;
 
     //TODO: make immutable (currently has a setter. deployment requires future address, since there is cross-references between RH and RR
     address public override relayRegistrar;
@@ -69,6 +70,11 @@ contract RelayHub is IRelayHub, Ownable {
     function setRegistrar(address _relayRegistrar) public onlyOwner {
         require(relayRegistrar == address(0), "relayRegistrar already set");
         relayRegistrar = _relayRegistrar;
+    }
+
+    function setBatchGateway(address _batchGateway) external onlyOwner {
+        require(batchGateway == address(0), "batchGateway already set");
+        batchGateway = _batchGateway;
     }
 
     function verifyCanRegister(address relayManager) external view override {
@@ -162,6 +168,7 @@ contract RelayHub is IRelayHub, Ownable {
         uint256 gasBeforeInner;
         bytes retData;
         address relayManager;
+        bytes32 relayRequestId;
     }
 
     function relayCall(
@@ -176,8 +183,12 @@ contract RelayHub is IRelayHub, Ownable {
     {
         RelayCallData memory vars;
         vars.initialGasLeft = aggregateGasleft();
+        vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
         require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
+        if (msg.sender == batchGateway){
+        require(signature.length == 0, "batch gateway signature not zero");
+        } else {
         require(msg.sender == tx.origin, "relay worker must be EOA");
         vars.relayManager = workerToManager[msg.sender];
         require(vars.relayManager != address(0), "Unknown relay worker");
@@ -186,6 +197,7 @@ contract RelayHub is IRelayHub, Ownable {
             isRelayManagerStaked(vars.relayManager),
             "relay manager not staked"
         );
+        }
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft);
@@ -238,6 +250,7 @@ contract RelayHub is IRelayHub, Ownable {
                 emit TransactionRejectedByPaymaster(
                     vars.relayManager,
                     relayRequest.relayData.paymaster,
+                    vars.relayRequestId,
                     relayRequest.request.from,
                     relayRequest.request.to,
                     msg.sender,
@@ -258,6 +271,7 @@ contract RelayHub is IRelayHub, Ownable {
         emit TransactionRelayed(
             vars.relayManager,
             msg.sender,
+            vars.relayRequestId,
             relayRequest.request.from,
             relayRequest.request.to,
             relayRequest.relayData.paymaster,
