@@ -56,6 +56,7 @@ const { expect, assert } = chai.use(chaiAsPromised)
 chai.use(sinonChai)
 
 const localhostOne = 'http://localhost:8090'
+const localhost127One = 'http://127.0.0.1:8090'
 const underlyingProvider = web3.currentProvider as HttpProvider
 
 class MockHttpClient extends HttpClient {
@@ -349,7 +350,7 @@ contract('RelayClient', function (accounts) {
       const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
       const mockRelays = [
         { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
       ]
 
       // relayClient.dependencies.httpClient.getPingResponse = async (relayUrl) => {
@@ -369,9 +370,10 @@ contract('RelayClient', function (accounts) {
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
-      assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.size, 2)
       assert.equal(relayingErrors.get(localhostOne)!.message, BadHttpClient.message)
     })
+
     it('should return errors in callback (asyncApprovalData) ', async function () {
       const relayClient =
         new RelayClient({
