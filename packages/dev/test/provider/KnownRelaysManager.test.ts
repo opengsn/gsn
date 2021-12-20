@@ -3,7 +3,7 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
 
-import { KnownRelaysManager, DefaultRelayScore } from '@opengsn/provider/dist/KnownRelaysManager'
+import { KnownRelaysManager, DefaultRelayScore, DefaultRelayFilter } from '@opengsn/provider/dist/KnownRelaysManager'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
@@ -21,6 +21,7 @@ import { RelayInfoUrl, RelayRegisteredEventInfo } from '@opengsn/common/dist/typ
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { toBN } from 'web3-utils'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -170,7 +171,7 @@ contract('KnownRelaysManager 2', function (accounts) {
   let logger: LoggerInterface
 
   const transactionDetails = {
-    gas: '0x10000',
+    gas: '0x10000000',
     maxFeePerGas: '0x300000',
     maxPriorityFeePerGas: '0x300000',
     from: '',
@@ -268,6 +269,23 @@ contract('KnownRelaysManager 2', function (accounts) {
       assert.equal(relays.length, 1)
       assert.equal(relays[0].relayUrl, 'stakeAndAuthorization2')
     })
+
+    it('should use DefaultRelayFilter to remove unsuitable relays when none was provided', async function () {
+      const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, logger, config)
+      // @ts-ignore
+      assert.equal(knownRelaysManagerWithFilter.relayFilter.toString(), DefaultRelayFilter.toString())
+    })
+
+    describe('DefaultRelayFilter', function () {
+      it('should filter expensive relayers', function () {
+        const eventInfo = { relayUrl: 'url', relayManager: accounts[0] }
+        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '101', baseRelayFee: 1e16.toString() }))
+        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '99', baseRelayFee: 2e17.toString() }))
+        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '101', baseRelayFee: 2e17.toString() }))
+        assert.isTrue(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '100', baseRelayFee: 1e17.toString() }))
+        assert.isTrue(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '50', baseRelayFee: '0' }))
+      })
+    })
   })
 
   describe('#getRelaysSortedForTransaction()', function () {
@@ -325,19 +343,24 @@ contract('KnownRelaysManager 2', function (accounts) {
         const relayScoreOneFailure = await DefaultRelayScore(relayInfoHighFee, transactionDetails, [failure])
         const relayScoreTenFailures = await DefaultRelayScore(relayInfoHighFee, transactionDetails, Array(10).fill(failure))
         const relayScoreLowFees = await DefaultRelayScore(relayInfoLowFee, transactionDetails, [])
-        assert.isAbove(relayScoreNoFailures, relayScoreOneFailure)
-        assert.isAbove(relayScoreOneFailure, relayScoreTenFailures)
-        assert.isAbove(relayScoreLowFees, relayScoreNoFailures)
+        assert.isTrue(relayScoreNoFailures.gt(relayScoreOneFailure))
+        assert.isTrue(relayScoreOneFailure.gt(relayScoreTenFailures))
+        assert.isTrue(relayScoreLowFees.gt(relayScoreNoFailures))
+      })
+      it('should use DefaultRelayScore to remove unsuitable relays when none was provided', async function () {
+        const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, logger, configureGSN({}))
+        // @ts-ignore
+        assert.equal(knownRelaysManagerWithFilter.scoreCalculator.toString(), DefaultRelayScore.toString())
       })
     })
   })
 
   describe('getRelaysSortedForTransaction', function () {
-    const biasedRelayScore = async function (relay: RelayRegisteredEventInfo): Promise<number> {
+    const biasedRelayScore = async function (relay: RelayRegisteredEventInfo): Promise<BN> {
       if (relay.relayUrl === 'alex') {
-        return await Promise.resolve(1000)
+        return await Promise.resolve(toBN(1000))
       } else {
-        return await Promise.resolve(100)
+        return await Promise.resolve(toBN(100))
       }
     }
     const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), undefined, biasedRelayScore)
