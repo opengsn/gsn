@@ -17,6 +17,7 @@ import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { cleanValue } from './utils/chaiHelper'
 
 const { assert } = chai.use(chaiAsPromised)
 
@@ -250,15 +251,37 @@ contract('RelayHub Configuration',
             maxWorkerCount: 0xef.toString(),
             minimumStake: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
-            maximumRecipientDeposit: 0xef.toString()
+            maximumRecipientDeposit: 0xef.toString(),
+            devInfo: {
+              addr: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
+              fee: 0x11.toString()
+            }
           }
           let configFromHub = await relayHub.getConfiguration()
           // relayHub.getConfiguration() returns an array, so we need to construct an object with its fields to compare to config.
           expect({ ...configFromHub }).to.not.include(config)
           const res = await relayHub.setConfiguration(config, { from: relayHubOwner })
           expectEvent(res, 'RelayHubConfigured')
-          configFromHub = await relayHub.getConfiguration()
-          expect({ ...configFromHub }).to.include(config)
+          configFromHub = cleanValue(await relayHub.getConfiguration())
+          expect(configFromHub).to.deep.include(config)
+        })
+        it('should not set dev fee to over 100% of charge', async function () {
+          const config = {
+            gasOverhead: 0xef.toString(),
+            postOverhead: 0xef.toString(),
+            gasReserve: 0xef.toString(),
+            maxWorkerCount: 0xef.toString(),
+            minimumStake: 0xef.toString(),
+            minimumUnstakeDelay: 0xef.toString(),
+            maximumRecipientDeposit: 0xef.toString(),
+            devInfo: {
+              addr: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
+              fee: '101'
+            }
+          }
+          await expectRevert(
+            relayHub.setConfiguration(config, { from: relayHubOwner }),
+            'dev fee too high')
         })
       })
     })

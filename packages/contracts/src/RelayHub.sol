@@ -42,6 +42,7 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function setConfiguration(RelayHubConfig memory _config) public override onlyOwner {
+        require(_config.devInfo.fee < 100, "dev fee too high");
         config = _config;
         emit RelayHubConfigured(config);
     }
@@ -251,9 +252,11 @@ contract RelayHub is IRelayHub, Ownable {
         // We now perform the actual charge calculation, based on the measured gas used
         uint256 gasUsed = relayRequest.relayData.transactionCalldataGasUsed + (vars.initialGasLeft - aggregateGasleft()) + config.gasOverhead;
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
+        uint256 devCharge = calculateDevCharge(charge);
 
         balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
-        balances[vars.relayManager] = balances[vars.relayManager].add(charge);
+        balances[vars.relayManager] = balances[vars.relayManager].add(charge.sub(devCharge));
+        balances[config.devInfo.addr] = balances[config.devInfo.addr].add(devCharge);
 
         emit TransactionRelayed(
             vars.relayManager,
@@ -379,6 +382,10 @@ contract RelayHub is IRelayHub, Ownable {
 
             revert(dataPtr, dataSize)
         }
+    }
+
+    function calculateDevCharge(uint256 charge) public view returns (uint256){
+        return charge.mul(config.devInfo.fee).div(100);
     }
 
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
