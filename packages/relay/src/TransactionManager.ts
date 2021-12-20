@@ -268,17 +268,27 @@ data                     | ${transaction.data}
     return await this.tryBroadcastTransaction(signedTransaction.rawTx, storedTx.txId)
   }
 
-  _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {
+  _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number, minMaxPriorityFee: number, minMaxFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {
     let isMaxGasPriceReached = false
     let newMaxFee = Math.round(oldMaxFee * this.config.retryGasPriceFactor)
     let newMaxPriorityFee = Math.round(oldMaxPriorityFee * this.config.retryGasPriceFactor)
+    if (newMaxPriorityFee < minMaxPriorityFee) {
+      this.logger.warn(`Adjusting newMaxPriorityFee ${newMaxPriorityFee} to current minimum of ${minMaxPriorityFee}`)
+      newMaxPriorityFee = minMaxPriorityFee
+    }
+    if (newMaxFee < minMaxFee) {
+      this.logger.warn(`Adjusting minMaxFee ${newMaxFee} to current minimum of ${minMaxFee}`)
+      newMaxFee = minMaxFee
+    }
     // TODO: use BN for ETH values
     // Sanity check to ensure we are not burning all our balance in gas fees
     if (newMaxFee > parseInt(this.config.maxGasPrice)) {
       isMaxGasPriceReached = true
+      this.logger.warn(`Adjusting newMaxFee ${newMaxFee} to maxGasPrice ${this.config.maxGasPrice}`)
       newMaxFee = parseInt(this.config.maxGasPrice)
     }
     if (newMaxPriorityFee > newMaxFee) {
+      this.logger.warn(`Adjusting newMaxPriorityFee ${newMaxPriorityFee} to newMaxFee ${newMaxFee}`)
       newMaxPriorityFee = newMaxFee
     }
     return { newMaxFee, newMaxPriorityFee, isMaxGasPriceReached }
@@ -349,7 +359,7 @@ data                     | ${transaction.data}
    * This methods uses the oldest pending transaction for reference. If it was not mined in a reasonable time,
    * it is boosted. All consequent transactions with gas price lower then that are boosted as well.
    */
-  async boostUnderpricedPendingTransactionsForSigner (signer: string, currentBlockHeight: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+  async boostUnderpricedPendingTransactionsForSigner (signer: string, currentBlockHeight: number, minMaxPriorityFee: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const boostedTransactions = new Map<PrefixedHexString, SignedTransactionDetails>()
 
     // Load unconfirmed transactions from store again
@@ -372,8 +382,9 @@ data                     | ${transaction.data}
       return boostedTransactions
     }
 
-    // Calculate new gas price as a % increase over the previous one
-    const { newMaxFee, newMaxPriorityFee, isMaxGasPriceReached } = this._resolveNewGasPrice(oldestPendingTx.maxFeePerGas, oldestPendingTx.maxPriorityFeePerGas)
+    // Calculate new gas price as a % increase over the previous one, with a minimum value
+    const gasFees = await this.contractInteractor.getGasFees()
+    const { newMaxFee, newMaxPriorityFee, isMaxGasPriceReached } = this._resolveNewGasPrice(oldestPendingTx.maxFeePerGas, oldestPendingTx.maxPriorityFeePerGas, minMaxPriorityFee, parseInt(gasFees.baseFeePerGas))
     const underpricedTransactions = sortedTxs.filter(it => it.maxFeePerGas < newMaxFee || it.maxPriorityFeePerGas < newMaxPriorityFee)
     for (const transaction of underpricedTransactions) {
       const boostedTransactionDetails = await this.resendTransaction(transaction, currentBlockHeight, newMaxFee, newMaxPriorityFee, isMaxGasPriceReached)
