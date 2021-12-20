@@ -14,6 +14,8 @@ export const networks = new Map<string, string>([
   ['ropsten', 'https://ropsten.infura.io/v3/' + cliInfuraId],
   ['rinkeby', 'https://rinkeby.infura.io/v3/' + cliInfuraId],
   ['kovan', 'https://kovan.infura.io/v3/' + cliInfuraId],
+  ['optimism_kovan', 'https://kovan.optimism.io/'],
+  ['optimism', 'https://mainnet.optimism.io/'],
   ['goerli', 'https://goerli.infura.io/v3/' + cliInfuraId],
   ['mainnet', 'https://mainnet.infura.io/v3/' + cliInfuraId]
 ])
@@ -23,6 +25,8 @@ export const networksBlockExplorers = new Map<string, string>([
   ['ropsten', 'https://ropsten.etherscan.io/'],
   ['rinkeby', 'https://rinkeby.etherscan.io/'],
   ['kovan', 'https://kovan.etherscan.io/'],
+  ['optimism_kovan', 'https://kovan-optimistic.etherscan.io/'],
+  ['optimism', 'https://optimistic.etherscan.io/'],
   ['goerli', 'https://goerli.etherscan.io/'],
   ['mainnet', 'https://etherscan.io/']
 ])
