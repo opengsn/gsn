@@ -20,7 +20,7 @@ import {
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, EmptyDataCallback } from '@opengsn/provider/dist/RelayClient'
-import { Address, IntString, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
+import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 import { defaultGsnConfig, GSNConfig, LoggerConfiguration } from '@opengsn/provider/dist/GSNConfigurator'
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
@@ -43,7 +43,6 @@ import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { RelayInfoUrl, RelayRegisteredEventInfo } from "@opengsn/common/dist/types/GSNContractsDataTypes";
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 
 const StakeManager = artifacts.require('StakeManager')
@@ -304,7 +303,6 @@ contract('RelayClient', function (accounts) {
       }
     })
 
-
     it('should return errors encountered in ping', async function () {
       const badHttpClient = new BadHttpClient(logger, true, false, false)
       const relayClient =
@@ -337,7 +335,7 @@ contract('RelayClient', function (accounts) {
       assert.equal(relayingErrors.get(localhostOne)!.message, BadHttpClient.message)
     })
 
-//TODO: incomplete
+    // TODO: incomplete
     it('should continue looking up relayers after relayer error', async function () {
       const badHttpClient = new BadHttpClient(logger, false, true, false)
       const relayClient =
@@ -350,9 +348,9 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore
       const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
       const mockRelays = [
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42,'1'), baseRelayFee: '0', pctRelayFee: '70' },
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42,'2'), baseRelayFee: '0', pctRelayFee: '70' }
-      ];
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
+      ]
 
       // relayClient.dependencies.httpClient.getPingResponse = async (relayUrl) => {
       //   console.log('xx mock ping ', relayUrl)
