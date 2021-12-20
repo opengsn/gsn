@@ -22,7 +22,7 @@ export const DefaultRelayFilter: RelayFilter = function (registeredEventInfo: Re
     parseInt(registeredEventInfo.pctRelayFee) > maxPctRelayFee ||
     parseInt(registeredEventInfo.baseRelayFee) > maxBaseRelayFee
   ) {
-    throw new Error(`Relay ${registeredEventInfo.relayUrl} returned fees of [${registeredEventInfo.pctRelayFee}% + ${registeredEventInfo.baseRelayFee} wei] but client is configured with maximum of [${maxPctRelayFee}% + ${maxBaseRelayFee}]`)
+    return false
   }
   return true
 }
@@ -85,7 +85,11 @@ export class KnownRelaysManager {
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
 
     this.latestScannedBlock = toBlock
-    return relayInfos.filter(this.relayFilter)
+    const filteredRelayInfos = relayInfos.filter(this.relayFilter)
+    if (filteredRelayInfos.length !== relayInfos.length) {
+      this.logger.warn(`RelayFilter: removing ${relayInfos.length - filteredRelayInfos.length} relays from results`)
+    }
+    return filteredRelayInfos
   }
 
   _refreshFailures (): void {

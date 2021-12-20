@@ -279,9 +279,9 @@ contract('KnownRelaysManager 2', function (accounts) {
     describe('DefaultRelayFilter', function () {
       it('should filter expensive relayers', function () {
         const eventInfo = { relayUrl: 'url', relayManager: accounts[0] }
-        assert.throws(() => DefaultRelayFilter({ ...eventInfo, pctRelayFee: '101', baseRelayFee: 1e16.toString() }), 'but client is configured with maximum of')
-        assert.throws(() => DefaultRelayFilter({ ...eventInfo, pctRelayFee: '99', baseRelayFee: 2e17.toString() }), 'but client is configured with maximum of')
-        assert.throws(() => DefaultRelayFilter({ ...eventInfo, pctRelayFee: '101', baseRelayFee: 2e17.toString() }), 'but client is configured with maximum of')
+        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '101', baseRelayFee: 1e16.toString() }))
+        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '99', baseRelayFee: 2e17.toString() }))
+        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '101', baseRelayFee: 2e17.toString() }))
         assert.isTrue(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '100', baseRelayFee: 1e17.toString() }))
         assert.isTrue(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '50', baseRelayFee: '0' }))
       })
