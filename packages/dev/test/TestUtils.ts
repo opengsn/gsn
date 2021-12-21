@@ -292,10 +292,11 @@ export async function emptyBalance (source: Address, target: Address): Promise<v
   const gasPrice = toBN(1e9)
   const txCost = toBN(defaultEnvironment.mintxgascost).mul(gasPrice)
   let balance = toBN(await web3.eth.getBalance(source))
-  if (balance === toBN(0)) {
-    return
+  const transferValue = balance.sub(txCost)
+  console.log('bal=', balance.toString(), 'xfer=', transferValue.toString())
+  if (transferValue.gtn(0)) {
+    await web3.eth.sendTransaction({ from: source, to: target, value: transferValue, gasPrice, gas: defaultEnvironment.mintxgascost })
   }
-  await web3.eth.sendTransaction({ from: source, to: target, value: balance.sub(txCost), gasPrice, gas: defaultEnvironment.mintxgascost })
   balance = toBN(await web3.eth.getBalance(source))
   assert.isTrue(balance.eqn(0))
 }

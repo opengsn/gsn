@@ -288,13 +288,21 @@ export class RelayClient {
       this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
       return { error, isRelayError: true }
     }
-    if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, maxAcceptanceBudget, hexTransaction)) {
+    let validationError: Error|undefined
+    try {
+      if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, maxAcceptanceBudget, hexTransaction)) {
+        validationError = new Error('Returned transaction did not pass validation')
+      }
+    } catch (e) {
+      validationError = e
+    }
+    if (validationError != null) {
       this.emit(new GsnRelayerResponseEvent(false))
       this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return {
         auditPromise,
         isRelayError: true,
-        error: new Error('Returned transaction did not pass validation')
+        error: validationError
       }
     }
     this.emit(new GsnRelayerResponseEvent(true))
