@@ -14,7 +14,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-import { Environment } from '@opengsn/common'
+import { constants, Environment } from '@opengsn/common'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
@@ -275,6 +275,7 @@ export function encodeRevertReason (reason: string): PrefixedHexString {
 export async function deployHub (
   stakeManager: string,
   penalizer: string,
+  batchGateway: string = constants.ZERO_ADDRESS,
   configOverride: Partial<RelayHubConfiguration> = {},
   environment: Environment = defaultEnvironment): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
@@ -284,6 +285,7 @@ export async function deployHub (
   const hub: RelayHubInstance = await RelayHub.new(
     stakeManager,
     penalizer,
+    batchGateway,
     relayHubConfiguration)
 
   const relayRegistrar = await RelayRegistrar.new(hub.address, true)

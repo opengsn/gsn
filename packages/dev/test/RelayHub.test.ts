@@ -14,14 +14,14 @@ import {
   TestRecipientInstance,
   ForwarderInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestPaymasterConfigurableMisbehaviorInstance
+  TestPaymasterConfigurableMisbehaviorInstance,
+  GatewayForwarderInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { constants } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -777,11 +777,27 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         context('with BatchGateway configured', function () {
           const batchGateway = other
 
+          let gatewayForwarder: GatewayForwarderInstance
+          let relayHubInstance: RelayHubInstance
+          let recipientContract: TestRecipientInstance
+          let relayRequest: RelayRequest
+
           beforeEach(async function () {
-            const bg = await relayHubInstance.batchGateway()
-            if (bg === constants.ZERO_ADDRESS) {
-              await relayHubInstance.setBatchGateway(batchGateway)
-            }
+            relayRequest = cloneRelayRequest(sharedRelayRequestData)
+            gatewayForwarder = await GatewayForwarder.new()
+            relayHubInstance = await deployHub(stakeManager.address, penalizer.address, batchGateway)
+            recipientContract = await TestRecipient.new(gatewayForwarder.address)
+            await gatewayForwarder.setTrustedRelayHub(relayHubInstance.address)
+            await paymasterContract.setTrustedForwarder(gatewayForwarder.address)
+            await paymasterContract.setRelayHub(relayHub)
+            await relayHubInstance.depositFor(paymasterContract.address, {
+              from: senderAddress,
+              value: ether('1')
+            })
+            relayRequest.request.to = recipientContract.address
+            relayRequest.request.data = recipientContract.contract.methods.emitMessageNoParams().encodeABI()
+            relayRequest.relayData.paymaster = paymasterContract.address
+            relayRequest.relayData.forwarder = gatewayForwarder.address
           })
 
           it('should reject relayCall with non-empty signature coming from the BatchGateway', async function () {
@@ -794,14 +810,6 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
 
           it('should accept relayCall with empty signature coming from the BatchGateway', async function () {
-            const relayRequest = cloneRelayRequest(sharedRelayRequestData)
-            const gatewayForwarder = await GatewayForwarder.new(relayHub)
-            const recipientContract = await TestRecipient.new(gatewayForwarder.address)
-            await paymasterContract.setTrustedForwarder(gatewayForwarder.address)
-            relayRequest.request.to = recipientContract.address
-            relayRequest.request.data = recipientContract.contract.methods.emitMessageNoParams().encodeABI()
-            relayRequest.relayData.paymaster = paymasterContract.address
-            relayRequest.relayData.forwarder = gatewayForwarder.address
             const {
               tx
             } = await relayHubInstance.relayCall(10e6, relayRequest, '0x', '0x', {

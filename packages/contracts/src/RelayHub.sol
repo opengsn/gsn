@@ -60,21 +60,18 @@ contract RelayHub is IRelayHub, Ownable {
     constructor (
         IStakeManager _stakeManager,
         address _penalizer,
+        address _batchGateway,
         RelayHubConfig memory _config
     ) {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
+        batchGateway = _batchGateway;
         setConfiguration(_config);
     }
 
     function setRegistrar(address _relayRegistrar) public onlyOwner {
         require(relayRegistrar == address(0), "relayRegistrar already set");
         relayRegistrar = _relayRegistrar;
-    }
-
-    function setBatchGateway(address _batchGateway) external onlyOwner {
-        require(batchGateway == address(0), "batchGateway already set");
-        batchGateway = _batchGateway;
     }
 
     function verifyCanRegister(address relayManager) external view override {
@@ -187,16 +184,16 @@ contract RelayHub is IRelayHub, Ownable {
         require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
         if (msg.sender == batchGateway){
-        require(signature.length == 0, "batch gateway signature not zero");
+            require(signature.length == 0, "batch gateway signature not zero");
         } else {
-        require(msg.sender == tx.origin, "relay worker must be EOA");
-        vars.relayManager = workerToManager[msg.sender];
-        require(vars.relayManager != address(0), "Unknown relay worker");
-        require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
-        require(
-            isRelayManagerStaked(vars.relayManager),
-            "relay manager not staked"
-        );
+            require(msg.sender == tx.origin, "relay worker must be EOA");
+            vars.relayManager = workerToManager[msg.sender];
+            require(vars.relayManager != address(0), "Unknown relay worker");
+            require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
+            require(
+                isRelayManagerStaked(vars.relayManager),
+                "relay manager not staked"
+            );
         }
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =

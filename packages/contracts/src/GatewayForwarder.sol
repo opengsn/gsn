@@ -5,9 +5,9 @@ pragma abicoder v2;
 import "./forwarder/Forwarder.sol";
 
 contract GatewayForwarder is Forwarder {
-    address public immutable trustedRelayHub;
+    address public trustedRelayHub;
 
-    constructor(address _trustedRelayHub) Forwarder() {
+    function setTrustedRelayHub(address _trustedRelayHub) external {
         trustedRelayHub = _trustedRelayHub;
     }
 
@@ -21,6 +21,7 @@ contract GatewayForwarder is Forwarder {
     override
     view
     {
+        // trustedRelayHub can only be called from a verified Gateway where the signatures are actually checked
         if (msg.sender != trustedRelayHub) {
             super._verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         }
