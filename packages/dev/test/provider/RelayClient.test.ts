@@ -337,7 +337,54 @@ contract('RelayClient', function (accounts) {
       assert.equal(relayingErrors.get(localhostOne)!.message, BadHttpClient.message)
     })
 
-    // TODO: incomplete
+    it('should abort scanning if user cancels signature request', async () => {
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: gsnConfig
+        })
+      await relayClient.init()
+      // @ts-ignore
+      const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
+      const mockRelays = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
+      ]
+
+      getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
+      sinon.stub(relayClient.dependencies.accountManager, 'sign').onCall(0).throws(new Error('client sig failure'))
+
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.get(localhost127One)!.message, 'client sig failure')
+    })
+
+    it('should continue scanning if returned relayer TX is malformed', async () => {
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: gsnConfig
+        })
+      await relayClient.init()
+      // @ts-ignore
+      const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
+      const mockRelays = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '70', pctRelayFee: '70' },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '70', pctRelayFee: '70' }
+      ]
+
+      getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
+      sinon.stub(relayClient.dependencies.transactionValidator, 'validateRelayResponse').throws(new Error('fail returned tx'))
+
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 2)
+      assert.equal(relayingErrors.get(localhostOne)!.message, 'fail returned tx')
+    })
+
     it('should continue looking up relayers after relayer error', async function () {
       const badHttpClient = new BadHttpClient(logger, false, true, false)
       const relayClient =
@@ -353,18 +400,6 @@ contract('RelayClient', function (accounts) {
         { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
         { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
       ]
-
-      // relayClient.dependencies.httpClient.getPingResponse = async (relayUrl) => {
-      //   console.log('xx mock ping ', relayUrl)
-      //   const r = mockRelays.find(m => m.relayUrl === relayUrl)!
-      //   return {
-      //     relayWorkerAddress: r.relayManager,
-      //     relayManagerAddress: r.relayManager,
-      //     minGasPrice: '1',
-      //     // maxAcceptanceBudget: IntString
-      //     ready: true
-      //   } as any
-      // }
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
 
