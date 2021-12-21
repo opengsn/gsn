@@ -12,6 +12,7 @@
   },
   "scripts": {
     "deploy": "hardhat deploy",
+    "verify": "hh etherscan-verify --force-license  --license GPL-3.0",
     "tsc": "tsc",
     "watch-tsc": "tsc -w",
     "truffle-compile": "truffle compile",
