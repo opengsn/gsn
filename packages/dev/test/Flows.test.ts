@@ -17,7 +17,7 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { ether } from '@opengsn/common'
+import { constants, ether } from '@opengsn/common'
 import Web3 from 'web3'
 
 const TestRecipient = artifacts.require('TestRecipient')
@@ -64,7 +64,7 @@ options.forEach(params => {
 
       sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
       const p = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-      rhub = await deployHub(sm.address, p.address)
+      rhub = await deployHub(sm.address, p.address, constants.ZERO_ADDRESS)
       if (params.relay) {
         relayproc = await startRelay(rhub.address, sm, {
           stake: 1e18,

@@ -5,7 +5,7 @@ import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { deployHub, evmMine, evmMineMany } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
-import { defaultEnvironment, getEip712Signature } from '@opengsn/common/dist'
+import { defaultEnvironment, getEip712Signature, constants } from '@opengsn/common/dist'
 import {
   ForwarderInstance,
   PenalizerInstance,
@@ -68,7 +68,7 @@ contract('RelayHub Configuration',
       penalizer = await Penalizer.new(
         defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
         defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-      relayHub = await deployHub(stakeManager.address, penalizer.address)
+      relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
       relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)

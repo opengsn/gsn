@@ -22,6 +22,7 @@ import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUt
 
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { constants } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -63,7 +64,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   beforeEach(async function () {
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHubInstance = await deployHub(stakeManager.address, penalizer.address)
+    relayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
     relayRegistrar = await RelayRegistrar.at(await relayHubInstance.relayRegistrar())
 
     paymasterContract = await TestPaymasterEverythingAccepted.new()
