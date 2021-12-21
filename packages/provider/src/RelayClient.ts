@@ -13,9 +13,9 @@ import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { decodeRevertReason, removeNullValues } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
+
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-
 import { AccountKeypair, AccountManager } from './AccountManager'
 import { DefaultRelayScore, DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
@@ -62,6 +62,7 @@ export interface GSNUnresolvedConstructorInput {
 
 interface RelayingAttempt {
   transaction?: TypedTransaction
+  isRelayError?: boolean
   error?: Error
   auditPromise?: Promise<AuditResponse>
 }
@@ -218,7 +219,10 @@ export class RelayClient {
         }
         if (relayingAttempt.transaction == null) {
           relayingErrors.set(activeRelay.relayInfo.relayUrl, relayingAttempt.error ?? new Error('No error reason was given'))
-          continue
+          if (relayingAttempt.isRelayError ?? false) {
+            // continue with next relayer
+            continue
+          }
         }
       }
       return {
@@ -293,13 +297,14 @@ export class RelayClient {
         this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       }
       this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
-      return { error }
+      return { error, isRelayError: true }
     }
     if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
       this.emit(new GsnRelayerResponseEvent(false))
       this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return {
         auditPromise,
+        isRelayError: true,
         error: new Error('Returned transaction did not pass validation')
       }
     }

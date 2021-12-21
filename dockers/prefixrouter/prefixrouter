@@ -3,19 +3,17 @@
 # arguments: list of hosts
 # maps  http://hostname/prefix/something  to http://prefix/something
 # that is, the path prefix becomes a hostname.
-conf=/etc/nginx.conf
+conf=/etc/nginx/conf.d/default.conf
 
 #create config on each launch.
-echo "daemon off;" > $conf
 
-echo "events { worker_connections  1024; }" >> $conf
-echo "http { server {" >> $conf
+echo "server {" > $conf
 
 for prefix in $*; do
 	echo "/$prefix/ => http://$prefix/"
 	echo "  location /$prefix/ { proxy_pass http://$prefix/; }" >> $conf
 done
 
-echo "} }" >> $conf
+echo "}" >> $conf
 
-nginx -c $conf
+nginx -g 'daemon off;'
