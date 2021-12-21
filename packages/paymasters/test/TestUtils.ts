@@ -42,6 +42,7 @@ export async function deployTestHub (calculator: boolean = false): Promise<Truff
   return await contract.new(
     constants.ZERO_ADDRESS,
     constants.ZERO_ADDRESS,
+    constants.ZERO_ADDRESS,
     defaultEnvironment.relayHubConfiguration,
     { gas: 10000000 })
 }

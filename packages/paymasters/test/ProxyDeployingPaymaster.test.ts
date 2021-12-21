@@ -91,6 +91,7 @@ export async function deployHub (
   const hub = await RelayHub.new(
     stakeManager,
     penalizer,
+    constants.ZERO_ADDRESS,
     relayHubConfiguration)
 
   const relayRegistrar = await RelayRegistrar.new(hub.address, true)
@@ -142,6 +143,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     testHub = await TestHub.new(
       stakeManager.address,
+      constants.ZERO_ADDRESS,
       constants.ZERO_ADDRESS,
       defaultEnvironment.relayHubConfiguration,
       { gas: 10000000 })
