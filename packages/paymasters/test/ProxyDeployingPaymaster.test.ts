@@ -35,7 +35,6 @@ import {
 
 import { transferErc20Error } from './TokenPaymaster.test'
 
-
 const RelayHub = artifacts.require('RelayHub')
 const TestHub = artifacts.require('TestHub')
 const Forwarder = artifacts.require('Forwarder')
