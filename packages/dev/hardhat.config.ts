@@ -42,6 +42,7 @@ const config: HardhatUserConfig = {
     'http://localhost:8545': { url: 'http://localhost:8545' },
 
     dev: getNetwork('http://localhost:8545'),
+    rarb: getNetwork('https://rinkeby.arbitrum.io/rpc'),
     goerli: infuraNetwork('goarli'),
     kovan: infuraNetwork('kovan')
   },
