@@ -746,10 +746,35 @@
     bech32 "1.1.4"
     ws "7.4.6"
 
-"@ethersproject/providers@5.5.0", "@ethersproject/providers@^5.4.4":
+"@ethersproject/providers@5.5.0":
   version "5.5.0"
   resolved "https://registry.yarnpkg.com/@ethersproject/providers/-/providers-5.5.0.tgz#bc2876a8fe5e0053ed9828b1f3767ae46e43758b"
   integrity sha512-xqMbDnS/FPy+J/9mBLKddzyLLAQFjrVff5g00efqxPzcAwXiR+SiCGVy6eJ5iAIirBOATjx7QLhDNPGV+AEQsw==
+  dependencies:
+    "@ethersproject/abstract-provider" "^5.5.0"
+    "@ethersproject/abstract-signer" "^5.5.0"
+    "@ethersproject/address" "^5.5.0"
+    "@ethersproject/basex" "^5.5.0"
+    "@ethersproject/bignumber" "^5.5.0"
+    "@ethersproject/bytes" "^5.5.0"
+    "@ethersproject/constants" "^5.5.0"
+    "@ethersproject/hash" "^5.5.0"
+    "@ethersproject/logger" "^5.5.0"
+    "@ethersproject/networks" "^5.5.0"
+    "@ethersproject/properties" "^5.5.0"
+    "@ethersproject/random" "^5.5.0"
+    "@ethersproject/rlp" "^5.5.0"
+    "@ethersproject/sha2" "^5.5.0"
+    "@ethersproject/strings" "^5.5.0"
+    "@ethersproject/transactions" "^5.5.0"
+    "@ethersproject/web" "^5.5.0"
+    bech32 "1.1.4"
+    ws "7.4.6"
+
+"@ethersproject/providers@^5.4.4":
+  version "5.5.1"
+  resolved "https://registry.yarnpkg.com/@ethersproject/providers/-/providers-5.5.1.tgz#ba87e3c93219bbd2e2edf8b369873aee774abf04"
+  integrity sha512-2zdD5sltACDWhjUE12Kucg2PcgM6V2q9JMyVvObtVGnzJu+QSmibbP+BHQyLWZUBfLApx2942+7DC5D+n4wBQQ==
   dependencies:
     "@ethersproject/abstract-provider" "^5.5.0"
     "@ethersproject/abstract-signer" "^5.5.0"
@@ -1836,11 +1861,6 @@
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-ethers/-/hardhat-ethers-2.0.2.tgz#c472abcba0c5185aaa4ad4070146e95213c68511"
   integrity sha512-6quxWe8wwS4X5v3Au8q1jOvXYEPkS1Fh+cME5u6AwNdnI4uERvPlVjlgRWzpnb+Rrt1l/cEqiNRH9GlsBMSDQg==
-
-"@nomiclabs/hardhat-ethers@^2.0.3":
-  version "2.0.3"
-  resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-ethers/-/hardhat-ethers-2.0.3.tgz#06e20a57274f6ce3148132910e723948a711edf1"
-  integrity sha512-IJ0gBotVtO7YyLZyHNgbxzskUtFok+JkRlKPo8YELqj1ms9XL6Qm3vsfsGdZr22wnJeVEF5TQPotKuwQk21Dag==
 
 "@nomiclabs/hardhat-etherscan@^2.1.8":
   version "2.1.8"
@@ -5775,7 +5795,7 @@ debug@3.2.6:
   dependencies:
     ms "^2.1.1"
 
-debug@4, debug@^4.0.1, debug@^4.1.0, debug@^4.1.1, debug@^4.3.1, debug@^4.3.2:
+debug@4, debug@^4.0.1, debug@^4.1.0, debug@^4.1.1, debug@^4.3.1:
   version "4.3.2"
   resolved "https://registry.yarnpkg.com/debug/-/debug-4.3.2.tgz#f0a49c18ac8779e31d4a0c6029dfb76873c7428b"
   integrity sha512-mOp8wKcvj7XxC78zLgw/ZA+6TSgkoE2C/ienthhRD298T7UNwAg9diBpLRxC0mOezLl4B0xV7M0cCO6P/O0Xhw==
@@ -5788,6 +5808,13 @@ debug@^3.1.0, debug@^3.2.7:
   integrity sha512-CFjzYYAi4ThfiQvizrFQevTTXHtnCqWfe7x1AhgEscTz6ZbLbfoLRLPugTQyBth6f8ZERVUSyWHFD/7Wu4t1XQ==
   dependencies:
     ms "^2.1.1"
+
+debug@^4.3.2:
+  version "4.3.3"
+  resolved "https://registry.yarnpkg.com/debug/-/debug-4.3.3.tgz#04266e0b70a98d4462e6e288e38259213332b664"
+  integrity sha512-/zxw5+vh1Tfv+4Qn7a5nsbcJKPaSvCDhojn6FEl9vupwK2VCSDtEiEtqr8DFtzYFOdz63LBkxec7DYuc2jon6Q==
+  dependencies:
+    ms "2.1.2"
 
 debuglog@^1.0.1:
   version "1.0.1"
@@ -8406,10 +8433,10 @@ hardhat-deploy-ethers@~0.3.0-beta.11:
   resolved "https://registry.yarnpkg.com/hardhat-deploy-ethers/-/hardhat-deploy-ethers-0.3.0-beta.11.tgz#7f9122301853b01cb85b5ac85ba84dd764c98b07"
   integrity sha512-HnniBGBYsFRQDXBy3bQ27i86pQQnHkN0Mxdwiu869jZURY2gDQ4OEZxcXItnWQqBjYiEaavVyw/Xle7qwKOBAg==
 
-hardhat-deploy@^0.9.4:
-  version "0.9.4"
-  resolved "https://registry.yarnpkg.com/hardhat-deploy/-/hardhat-deploy-0.9.4.tgz#8039b6283e8adc8bc908a3af8079f0d4c9850387"
-  integrity sha512-0Zr8R5SAq6oK/gi170yCDqPTvKNPHdlm6wQe3ZQg/uiIDZxofpRM2frQVPUFlgdI2yUXtVcGBiPcC2r2fEockw==
+hardhat-deploy@^0.9.14:
+  version "0.9.14"
+  resolved "https://registry.yarnpkg.com/hardhat-deploy/-/hardhat-deploy-0.9.14.tgz#88c07497efd14cfca6f9fed1574f0bad65f0a8a0"
+  integrity sha512-mCwXeXdqtrQN8dL1gOnoGUh0z9Jylfsh56UNVZJC0c8AhjlwjLPgGE3pzNmMuyy88pj9OX4qo53X57bW2W7NJQ==
   dependencies:
     "@ethersproject/abi" "^5.4.0"
     "@ethersproject/abstract-signer" "^5.4.1"

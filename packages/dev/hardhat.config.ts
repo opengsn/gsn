@@ -10,6 +10,8 @@ import '@nomiclabs/hardhat-etherscan'
 import fs from 'fs'
 import { HardhatUserConfig } from 'hardhat/config'
 import { NetworkUserConfig } from 'hardhat/src/types/config'
+import path from 'path'
+import chalk from 'chalk'
 
 const mnemonicFileName = process.env.MNEMONIC_FILE
 let mnemonic = 'test '.repeat(11) + 'junk'
@@ -24,14 +26,30 @@ function getNetwork (url: string): NetworkUserConfig {
   }
 }
 
-function infuraNetwork (name: string): NetworkUserConfig {
-  return getNetwork(`https://${name}.infura.io/v3/${process.env.INFURA_ID}`)
+const infuraUrl = (name: string) => `https://${name}.infura.io/v3/${process.env.INFURA_ID}`
+
+function getInfuraNetwork (name: string): NetworkUserConfig {
+  return getNetwork(infuraUrl(name))
+}
+
+const CONTRACTS_LINK = 'contracts-link'
+
+if (!fs.existsSync(path.join(CONTRACTS_LINK, 'RelayHub.sol'))) {
+  console.log('== creating symlink', chalk.yellow(CONTRACTS_LINK), 'for contracts')
+  fs.symlinkSync('../contracts/src', CONTRACTS_LINK)
 }
 
 const config: HardhatUserConfig = {
-  solidity: '0.8.7',
+  solidity: {
+    version: '0.8.7',
+    settings: {
+      optimizer: {
+        enabled: true
+      }
+    }
+  },
   paths: {
-    sources: './contracts-src'
+    sources: CONTRACTS_LINK // can't use "../contracts/src" directly.
   },
   networks: {
     hardhat: { chainId: 1337 },
@@ -39,26 +57,28 @@ const config: HardhatUserConfig = {
       url: 'http://127.0.0.1:8544'
     },
 
-    'http://localhost:8545': { url: 'http://localhost:8545' },
-
     dev: getNetwork('http://localhost:8545'),
     rarb: getNetwork('https://rinkeby.arbitrum.io/rpc'),
-    goerli: infuraNetwork('goarli'),
-    kovan: infuraNetwork('kovan')
+    goerli: getInfuraNetwork('goarli'),
+    kovan: getInfuraNetwork('kovan'),
+
+    mainnet: {
+      url: infuraUrl('mainnet'),
+      tags: ['NoRegistrarStorage']
+    }
   },
-  namedAccounts: {
-    deployer: 0
-  },
+
   etherscan: { apiKey: process.env.ETHERSCAN_API_KEY }
 }
 
 // support url-based network: either start with "http", or a single work (infura network name)
 const neturl = process.argv.find((val, i, env) => (env[i - 1] === '--network'))
 if (neturl != null && config.networks != null && config.networks[neturl] == null) {
+  console.log(chalk.yellow('NOTE:'), 'using --network', chalk.yellow(neturl), 'which doesn\'t appear in config file')
   if (neturl.match(/^http/) != null) {
     config.networks[neturl] = getNetwork(neturl)
   } else if (neturl.match(/^[\w-]+$/) != null) {
-    config.networks[neturl] = infuraNetwork(neturl)
+    config.networks[neturl] = getInfuraNetwork(neturl)
   }
 }
 

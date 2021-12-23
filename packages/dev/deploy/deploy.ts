@@ -7,11 +7,13 @@ import {
   EnvironmentsKeys,
   VersionRegistry
 } from '@opengsn/common'
-import { ethers } from 'hardhat'
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
+import { formatEther } from 'ethers/lib/utils'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { ethers } from "hardhat";
+import { toHex } from 'web3-utils'
 
 const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   async function deploy (name: string, options: DeployOptions): Promise<DeployResult> {
@@ -21,26 +23,31 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
     return res
   }
 
-  const { deployer } = await hre.getNamedAccounts()
+  const accounts = await ethers.provider.listAccounts()
+  const deployer = accounts[0]
+
   const balance = await ethers.provider.getBalance(deployer)
-  console.log('deployer=', deployer, 'balance=', balance.toString())
+  console.log('deployer=', deployer, 'balance=', formatEther(balance.toString()))
   // if (balance.isZero()) {
   //   console.error(chalk.red(`deployer account ${deployer as string} doesn't have eth balance ${balance.toString()}`))
   //   process.exit(1)
   // }
-  const chainId = hre.network.config.chainId
+
+  const arbSysAddress = '0x' + '64'.padStart(40, '0')
+  const isArbitrum = await ethers.provider.getCode(arbSysAddress) === '0xfe'
+
+  if (isArbitrum) {
+    console.log('== Arbitrum - found signs of', chalk.yellowBright('ArbSys'))
+  }
+  const chainId = parseInt(await hre.getChainId())
+
   const envname = Object.keys(environments).find(env => environments[env as EnvironmentsKeys].chainId === chainId)
-  console.log('loading env', envname ?? 'DefaultEnvironment')
+  console.log('loading env ( based on chainId', chainId, ')', envname ?? 'DefaultEnvironment')
   const env = envname != null ? environments[envname as EnvironmentsKeys] : defaultEnvironment
 
-  const useStorage = process.env.USE_STORAGE
-  if (useStorage == null) {
-    console.error('must set USE_STORAGE to true/false')
-    process.exit(1)
-  }
+  const isUsingRegistryStorage: boolean = (process.env.USE_STORAGE ?? 'true').match(/^[t1y]/i) != null
 
-  const isUsingRegistryStorage = useStorage?.match(/^[TtYy1]/) != null
-  console.log( 'isUsingRegistryStorage=',isUsingRegistryStorage)
+  console.log('isUsingRegistryStorage=', isUsingRegistryStorage, '(set with', chalk.yellow('USE_STORAGE'), ')')
 
   const deployedForwarder = await deploy('Forwarder', {
     from: deployer
@@ -66,14 +73,30 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   })
 
   const hubConfig = env.relayHubConfiguration
-  const relayHub = await deploy('RelayHub', {
-    from: deployer,
-    args: [
-      stakeManager.address,
-      penalizer.address,
-      hubConfig
-    ]
-  })
+  let relayHub: DeployResult
+  if (isArbitrum) {
+    console.log(`Using ${chalk.yellow('Arbitrum')} relayhub`)
+
+    relayHub = await deploy('ArbRelayHub', {
+      from: deployer,
+      args: [
+        '0x0000000000000000000000000000000000000064',
+        stakeManager.address,
+        penalizer.address,
+        hubConfig
+      ]
+    })
+  } else {
+    relayHub = await deploy('RelayHub', {
+      from: deployer,
+      args: [
+        stakeManager.address,
+        penalizer.address,
+        hubConfig
+      ]
+    })
+  }
+
 
   const relayRegistrar = await deploy('RelayRegistrar', {
     from: deployer,
@@ -105,7 +128,8 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
       deployment: { versionRegistryAddress }
     }
     const contractInteractor = await new ContractInteractor(params).init()
-    const reg = new VersionRegistry(versionRegistry.receipt!.blockNumber, contractInteractor)
+    // @ts-ignore
+    const reg = new VersionRegistry(versionRegistry.receipt.blockNumber, contractInteractor)
     // version is unique string for this hub deployment
     const ver = await ethers.provider.getBlockNumber()
     await reg.addVersion('hub', ver.toString(), relayHub.address, { from: deployer })
