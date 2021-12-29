@@ -75,13 +75,11 @@
     "@typechain/truffle-v5": "^6.0.0",
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.2.12",
-    "@types/mocha": "^8.2.0",
     "@types/eth-sig-util": "^2.1.0",
+    "@types/mocha": "^8.2.0",
     "@typescript-eslint/eslint-plugin": "^4.8.1",
     "@typescript-eslint/parser": "^4.8.1",
-    "lerna": "^3.22.1",
-    "patch-package": "^6.2.2",
-    "eth-sig-util": "2.5.2",
+    "bn.js": "^5.2.0",
     "eslint": "^7.13.0",
     "eslint-config-standard": "14.1.1",
     "eslint-config-standard-with-typescript": "18.0.2",
@@ -89,7 +87,10 @@
     "eslint-plugin-node": "11.1.0",
     "eslint-plugin-promise": "4.2.1",
     "eslint-plugin-standard": "4.0.1",
+    "eth-sig-util": "2.5.2",
     "ganache-cli": "^6.12.2",
+    "lerna": "^3.22.1",
+    "patch-package": "^6.2.2",
     "run-with-testrpc": "^0.3.1",
     "truffle": "5.1.26",
     "ts-node": "8.6.2",
@@ -97,7 +98,6 @@
     "typescript": "3.8.3",
     "verdaccio": "^4.12.0",
     "web3": "1.6.1",
-    "bn.js": "^5.2.0",
     "web3-core": "1.6.1",
     "web3-core-helpers": "1.6.1",
     "web3-eth": "1.6.1",
@@ -106,5 +106,8 @@
     "web3-utils": "1.6.1",
     "webpack": "^4.37.0",
     "webpack-cli": "^3.3.6"
+  },
+  "dependencies": {
+    "ethers": "^5.5.2"
   }
 }

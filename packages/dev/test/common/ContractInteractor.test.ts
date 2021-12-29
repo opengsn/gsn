@@ -14,7 +14,6 @@ import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
 import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
-import { constants } from '@opengsn/common/dist/Constants'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { deployHub } from '../TestUtils'
@@ -24,12 +23,11 @@ import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeploym
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { EventName } from '@opengsn/common/dist/types/Aliases'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { AddressZero } from 'ethers/constants'
 import { toHex } from 'web3-utils'
 import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contracts'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-
+import { constants } from "@opengsn/common";
 const { expect } = chai.use(chaiAsPromised)
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
@@ -522,7 +520,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      relayReg = await RelayRegistrar.new(AddressZero, true)
+      relayReg = await RelayRegistrar.new(constants.ZERO_ADDRESS, true)
       lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
 
       await relayReg.registerRelayServer(10, 11, 'url1', { from: accounts[1] })

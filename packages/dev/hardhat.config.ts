@@ -52,7 +52,7 @@ const config: HardhatUserConfig = {
     sources: CONTRACTS_LINK // can't use "../contracts/src" directly.
   },
   networks: {
-    hardhat: { chainId: 1337 },
+    hardhat: { chainId: parseInt(process.env.FORK  ?? '1337' ) },
     npmtest: { // used from "npm test". see package.json
       url: 'http://127.0.0.1:8544'
     },

@@ -1,9 +1,9 @@
 import { expect } from 'chai'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { AddressZero, HashZero } from 'ethers/constants'
 import '../utils/chaiHelper'
 import { cleanValue } from './chaiHelper'
 import { evmMineMany } from '../TestUtils'
+import { constants } from '@opengsn/common'
 
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
@@ -14,7 +14,7 @@ contract('#RelayRegistrar', function ([fromAddress, relay, relay2]) {
   let secondBlockNumber: number
 
   before(async function () {
-    reg = await RelayRegistrar.new(AddressZero, true)
+    reg = await RelayRegistrar.new(constants.ZERO_ADDRESS, true)
     await reg.registerRelayServer(1, 2, 'http://relay', { from: relay })
     relay1block = await web3.eth.getBlockNumber()
     await reg.registerRelayServer(210, 220, 'http://relay20', { from: relay2 })
@@ -31,9 +31,9 @@ contract('#RelayRegistrar', function ([fromAddress, relay, relay2]) {
   })
 
   it('#splitString, packString', async () => {
-    expect(await reg.splitString('1')).to.eql(['0x31'.padEnd(66, '0'), HashZero, HashZero])
-    expect(await reg.splitString('1'.repeat(32))).to.eql(['0x' + '31'.repeat(32), HashZero, HashZero])
-    expect(await reg.splitString('1'.repeat(33))).to.eql(['0x' + '31'.repeat(32), '0x31'.padEnd(66, '0'), HashZero])
+    expect(await reg.splitString('1')).to.eql(['0x31'.padEnd(66, '0'), constants.ZERO_BYTES32, constants.ZERO_BYTES32])
+    expect(await reg.splitString('1'.repeat(32))).to.eql(['0x' + '31'.repeat(32), constants.ZERO_BYTES32, constants.ZERO_BYTES32])
+    expect(await reg.splitString('1'.repeat(33))).to.eql(['0x' + '31'.repeat(32), '0x31'.padEnd(66, '0'), constants.ZERO_BYTES32])
 
     expect(await reg.packString(await reg.splitString('1'.repeat(33)))).to.eql('1'.repeat(33))
 

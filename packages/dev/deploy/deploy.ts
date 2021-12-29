@@ -12,7 +12,8 @@ import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
 import { formatEther, parseEther } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { ethers } from 'hardhat'
+// @ts-ignore
+import { deployments, ethers } from 'hardhat'
 
 const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
@@ -20,12 +21,14 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const useVersionRegistry = false
   const deployTestPaymaster = true
 
+  // TODO: there should be type extensions to support these...
+  const { web3, deployments, getChainId } = hre as any
   const accounts = await ethers.provider.listAccounts()
   const deployer = accounts[0]
 
   async function deploy (name: string, options: DeployOptions): Promise<DeployResult> {
     console.log('Deploying: ', name)
-    const res = await hre.deployments.deploy(name, options)
+    const res = await deployments.deploy(name, options)
     console.log(name, res.address, res.newlyDeployed ? chalk.yellow('newlyDeployed') : chalk.gray('existing'))
     return res
   }
@@ -53,11 +56,12 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   if (isArbitrum) {
     console.log('== Arbitrum - found signs of', chalk.yellowBright('ArbSys'))
   }
-  const chainId = parseInt(await hre.getChainId())
+  const chainId = parseInt(await getChainId())
 
   const envname = Object.keys(environments).find(env => environments[env as EnvironmentsKeys].chainId === chainId)
   console.log('loading env ( based on chainId', chainId, ')', envname ?? 'DefaultEnvironment')
   const env = envname != null ? environments[envname as EnvironmentsKeys] : defaultEnvironment
+  env.relayHubConfiguration.minimumStake = parseEther('0.01').toString()
 
   const isUsingRegistryStorage: boolean = (process.env.USE_STORAGE ?? 'true').match(/^[t1y]/i) != null
 
@@ -66,7 +70,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const deployedForwarder = await deploy('Forwarder', { from: deployer })
 
   if (deployedForwarder.newlyDeployed) {
-    const f = new hre.web3.eth.Contract(deployedForwarder.abi, deployedForwarder.address)
+    const f = new web3.eth.Contract(deployedForwarder.abi, deployedForwarder.address)
     await registerForwarderForGsn(f, {
       from: deployer
     })
@@ -89,7 +93,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   let hubContractName: string
   if (isArbitrum) {
     console.log(`Using ${chalk.yellow('Arbitrum')} relayhub`)
-    hubContractName = 'ArbRelayHub';
+    hubContractName = 'ArbRelayHub'
     relayHub = await deploy(hubContractName, {
       from: deployer,
       args: [
@@ -100,7 +104,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
       ]
     })
   } else {
-    hubContractName = 'RelayHub';
+    hubContractName = 'RelayHub'
     relayHub = await deploy(hubContractName, {
       from: deployer,
       args: [
@@ -137,7 +141,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
     if (versionRegistry.newlyDeployed || relayHub.newlyDeployed) {
       const versionRegistryAddress = versionRegistry.address
       const params: ConstructorParams = {
-        provider: web3.currentProvider as any,
+        provider: web3.currentProvider,
         environment: env,
         maxPageSize: -1,
         logger: console,
@@ -152,8 +156,10 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
     }
   }
 
+  let deployedPm: DeployResult
   if (deployTestPaymaster) {
-    const deployedPm = await deploy('TestPaymasterEverythingAccepted', { from: deployer, log: true })
+    deployedPm = await deploy('TestPaymasterEverythingAccepted', { from: deployer, log: true })
+
     await setField('TestPaymasterEverythingAccepted', 'getHubAddr', 'setRelayHub', relayHub.address)
     await setField('TestPaymasterEverythingAccepted', 'trustedForwarder', 'setTrustedForwarder', deployedForwarder.address)
 
