@@ -321,7 +321,7 @@ export class RelayServer extends EventEmitter {
       relayCallGasLimit: req.relayRequest.request.gas
     })
 
-    const maxPossibleGas = GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
+    const maxPossibleGas = this.config.extraRelayCallGasLimit + GAS_RESERVE + Math.floor(tmpMaxPossibleGas * GAS_FACTOR)
     if (maxPossibleGas > this.maxGasLimit) {
       throw new Error(`maxPossibleGas (${maxPossibleGas}) exceeds maxGasLimit (${this.maxGasLimit})`)
     }

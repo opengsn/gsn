@@ -72,6 +72,8 @@ export interface ServerConfigParams {
   maxGasPrice: string
   defaultPriorityFee: string
   defaultGasLimit: number
+  extraRelayCallGasLimit: number  // constant to add to relayCall's gasLimit.
+
   requestMinValidBlocks: number
 
   runPenalizer: boolean
@@ -146,6 +148,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   defaultGasLimit: 500000,
   maxGasPrice: 500e9.toString(),
   defaultPriorityFee: 1e9.toString(),
+  extraRelayCallGasLimit: 0,  // constant to add to relayCall's gasLimit.
 
   requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true,
@@ -193,6 +196,8 @@ const ConfigParamsTypes = {
   minHubWithdrawalBalance: 'number',
   withdrawToOwnerOnBalance: 'number',
   defaultGasLimit: 'number',
+  extraRelayCallGasLimit: 'number',
+
   requestMinValidBlocks: 'number',
 
   trustedPaymasters: 'list',
