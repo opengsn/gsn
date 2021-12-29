@@ -8,10 +8,11 @@ IMAGE=opengsn/jsrelay
 
 #build docker image of relay
 #rebuild if there is a newer src file:
-find ./dbuild.sh ../../packages/*/src/ -type f -newer dist/relayserver.js 2>&1 | grep . && {
-	yarn prepublish
-	npx webpack
+find ./dbuild.sh ../../packages/*/src/ -type f -newer ../../packages/relay/tsconfig.tsbuildinfo 2>&1 | grep . && {
+	yarn preprocess
 }
+#todo: can check if its newer than dist/relayserver.js
+npx webpack
 
 docker build -t $IMAGE .
 docker tag $IMAGE $IMAGE:$VERSION
