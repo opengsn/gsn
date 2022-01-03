@@ -8,8 +8,6 @@ export interface RelayHubConfiguration {
   maximumRecipientDeposit: IntString | BN
   minimumUnstakeDelay: number | BN
   minimumStake: IntString | BN
-  devInfo: {
-    addr: string
-    fee: number | BN | string
-  }
+  devAddress: string
+  devFee: number | BN | string
 }

@@ -22,14 +22,11 @@ interface IRelayHub {
         uint256 minimumUnstakeDelay;
         // Minimum stake a relay can have. An attack on the network will never cost less than half this value.
         uint256 minimumStake;
-        // Developers information
-        DevInfo devInfo;
-    }
-
-    struct DevInfo {
-        address addr;
+        // Developers address
+        address devAddress;
         // 0 < fee < 100, as percentage of total charge from paymaster to relayer
-        uint256 fee;
+        uint256 devFee;
+
     }
 
     event RelayHubConfigured(RelayHubConfig config);

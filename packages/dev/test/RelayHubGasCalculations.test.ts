@@ -488,7 +488,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   if (devFee !== 0) {
                     gasOverhead += 2800
                   }
-                  await prepareForHub({ gasOverhead, devInfo: { fee: devFee, addr: devAddress } })
+                  await prepareForHub({ gasOverhead, devAddress, devFee })
                   // Avoid zero to non-zero storage gas costs when calculating fees.
                   await relayHub.depositFor(relayOwner, { value: (1).toString() })
 
