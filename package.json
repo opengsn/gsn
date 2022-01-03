@@ -48,6 +48,7 @@
     "postinstall": "patch-package",
     "preprocess": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn extract_abi && yarn lerna-tsc && yarn lerna-chmod-commands",
     "extract_abi": "./scripts/extract_abi.js",
+    "solpp": "./scripts/solpp.js",
     "lerna-typechain-generate": "lerna run typechain-generate --stream",
     "lerna-publish": "lerna publish",
     "lerna-publish-force-no-git": "lerna publish --no-push --no-git-tag-version --force-publish",

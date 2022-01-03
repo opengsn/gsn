@@ -7,6 +7,8 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
+import "hardhat/console.sol";
+
 import "./utils/MinLibBytes.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -174,6 +176,9 @@ contract RelayHub is IRelayHub, Ownable {
     override
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
+        // #if ENABLE_CONSOLE_LOG
+        console.log('relayCall maxAcceptanceBudget', maxAcceptanceBudget);
+        // #endif
         RelayCallData memory vars;
         vars.initialGasLeft = aggregateGasleft();
         require(!isDeprecated(), "hub deprecated");
