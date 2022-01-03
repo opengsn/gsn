@@ -22,7 +22,8 @@ contract GatewayForwarder is Forwarder {
     view
     {
         // trustedRelayHub can only be called from a verified Gateway where the signatures are actually checked
-        if (msg.sender != trustedRelayHub) {
+        // note that if signature field is set, it will be verified in this Forwarder anyway
+        if (msg.sender != trustedRelayHub || sig.length != 0) {
             super._verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         }
     }

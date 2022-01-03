@@ -31,7 +31,7 @@ contract RelayHub is IRelayHub, Ownable {
 
     IStakeManager public immutable override stakeManager;
     address public immutable override penalizer;
-    address public override batchGateway;
+    address public immutable override batchGateway;
 
     //TODO: make immutable (currently has a setter. deployment requires future address, since there is cross-references between RH and RR
     address public override relayRegistrar;
@@ -183,9 +183,8 @@ contract RelayHub is IRelayHub, Ownable {
         vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
         require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
-        if (msg.sender == batchGateway){
-            require(signature.length == 0, "batch gateway signature not zero");
-        } else {
+        if (msg.sender != batchGateway){
+            require(signature.length != 0, "missing signature or bad gateway");
             require(msg.sender == tx.origin, "relay worker must be EOA");
             vars.relayManager = workerToManager[msg.sender];
             require(vars.relayManager != address(0), "Unknown relay worker");

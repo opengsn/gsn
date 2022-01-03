@@ -360,7 +360,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           await misbehavingPaymaster.setReturnInvalidErrorCode(true)
           const relayCallView =
             await relayHubInstance.contract.methods
-              .relayCall(10e6, relayRequestMisbehavingPaymaster, '0x', '0x')
+              .relayCall(10e6, relayRequestMisbehavingPaymaster, '0x00', '0x')
               .call({ from: relayWorker, gas: 7e6, gasPrice: 1e9 })
 
           assert.equal(relayCallView.paymasterAccepted, false)
@@ -786,6 +786,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           beforeEach(async function () {
             relayRequest = cloneRelayRequest(sharedRelayRequestData)
             gatewayForwarder = await GatewayForwarder.new()
+            await registerForwarderForGsn(gatewayForwarder)
             relayHubInstance = await deployHub(stakeManager.address, penalizer.address, batchGateway)
             recipientContract = await TestRecipient.new(gatewayForwarder.address)
             await gatewayForwarder.setTrustedRelayHub(relayHubInstance.address)
@@ -801,13 +802,52 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             relayRequest.relayData.forwarder = gatewayForwarder.address
           })
 
-          it('should reject relayCall with non-empty signature coming from the BatchGateway', async function () {
+          it('should reject relayCall with incorrect non-empty signature coming from the BatchGateway', async function () {
+            const {
+              logs
+            } = await relayHubInstance.relayCall(10e6, relayRequest, '0xdeadbeef', '0x', {
+              from: batchGateway,
+              gas
+            })
+            // @ts-ignore
+            const reasonHex: string = logs[1].args?.reason as string
+            const rejectReason = decodeRevertReason(reasonHex)
+            assert.equal(rejectReason, 'ECDSA: invalid signature length')
+          })
+
+          it('should relay relayCall with correct non-empty signature coming from the BatchGateway', async function () {
+            const dataToSign = new TypedRequestData(
+              chainId,
+              gatewayForwarder.address,
+              relayRequest
+            )
+            signatureWithPermissivePaymaster = await getEip712Signature(
+              web3,
+              dataToSign
+            )
+            const {
+              tx
+            } = await relayHubInstance.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', {
+              from: batchGateway,
+              gas
+            })
+            await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+              message: 'Method with no parameters'
+            })
+          })
+
+          it('should reject relayCall with empty signature coming from a valid worker', async function () {
+            await stakeManager.authorizeHubByOwner(relayManager, relayHubInstance.address, { from: relayOwner })
+            await relayHubInstance.addRelayWorkers([relayWorker], {
+              from: relayManager
+            })
+
             await expectRevert(
-              relayHubInstance.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', {
-                from: batchGateway,
+              relayHubInstance.relayCall(10e6, relayRequest, '0x', '0x', {
+                from: relayWorker,
                 gas
               }),
-              'batch gateway signature not zero')
+              'missing signature or bad gateway')
           })
 
           it('should accept relayCall with empty signature coming from the BatchGateway', async function () {
