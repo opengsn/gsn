@@ -7,7 +7,7 @@
     "truffle-compile": "truffle compile",
     "typechain-generate": "yarn truffle-compile && typechain --target truffle-v5 '../cli/src/compiled/*.json'",
     "lint": "solhint -f unix \"src/**/*.sol\" --max-warnings 0",
-    "rm-dist": "rm -rf types"
+    "rm-dist": "rm -rf types solpp"
   },
   "files": [
     "src/*",

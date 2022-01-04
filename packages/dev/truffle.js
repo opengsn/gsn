@@ -17,7 +17,7 @@ if (fs.existsSync(secretMnemonicFile)) {
 
 module.exports = {
   contracts_build_directory: '../cli/src/compiled',
-  contracts_directory: './src',
+  contracts_directory: '../contracts/solpp',
 
   networks: {
 
