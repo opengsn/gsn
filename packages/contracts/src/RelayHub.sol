@@ -186,14 +186,14 @@ contract RelayHub is IRelayHub, Ownable {
         if (msg.sender != batchGateway){
             require(signature.length != 0, "missing signature or bad gateway");
             require(msg.sender == tx.origin, "relay worker must be EOA");
-            vars.relayManager = workerToManager[msg.sender];
-            require(vars.relayManager != address(0), "Unknown relay worker");
-            require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
-            require(
-                isRelayManagerStaked(vars.relayManager),
-                "relay manager not staked"
-            );
+            require(msg.sender == relayRequest.relayData.relayWorker, "Not a right worker");
         }
+        vars.relayManager = workerToManager[relayRequest.relayData.relayWorker];
+        require(vars.relayManager != address(0), "Unknown relay worker");
+        require(
+            isRelayManagerStaked(vars.relayManager),
+            "relay manager not staked"
+        );
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft);
