@@ -791,11 +791,18 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             recipientContract = await TestRecipient.new(gatewayForwarder.address)
             await gatewayForwarder.setTrustedRelayHub(relayHubInstance.address)
             await paymasterContract.setTrustedForwarder(gatewayForwarder.address)
-            await paymasterContract.setRelayHub(relayHub)
+            await paymasterContract.setRelayHub(relayHubInstance.address)
             await relayHubInstance.depositFor(paymasterContract.address, {
               from: senderAddress,
               value: ether('1')
             })
+
+            // register relay manager and worker
+            await stakeManager.authorizeHubByOwner(relayManager, relayHubInstance.address, { from: relayOwner })
+            await relayHubInstance.addRelayWorkers([relayWorker], {
+              from: relayManager
+            })
+
             relayRequest.request.to = recipientContract.address
             relayRequest.request.data = recipientContract.contract.methods.emitMessageNoParams().encodeABI()
             relayRequest.relayData.paymaster = paymasterContract.address
@@ -837,17 +844,23 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
 
           it('should reject relayCall with empty signature coming from a valid worker', async function () {
-            await stakeManager.authorizeHubByOwner(relayManager, relayHubInstance.address, { from: relayOwner })
-            await relayHubInstance.addRelayWorkers([relayWorker], {
-              from: relayManager
-            })
-
             await expectRevert(
               relayHubInstance.relayCall(10e6, relayRequest, '0x', '0x', {
                 from: relayWorker,
                 gas
               }),
               'missing signature or bad gateway')
+          })
+
+          it('should reject relayCall that reimburses an invalid worker', async function () {
+            const relayRequestWithInvalidWorker = cloneRelayRequest(relayRequest)
+            relayRequestWithInvalidWorker.relayData.relayWorker = incorrectWorker
+            await expectRevert(
+              relayHubInstance.relayCall(10e6, relayRequestWithInvalidWorker, signatureWithPermissivePaymaster, '0x', {
+                from: batchGateway,
+                gas
+              }),
+              'Unknown relay worker')
           })
 
           it('should accept relayCall with empty signature coming from the BatchGateway', async function () {
