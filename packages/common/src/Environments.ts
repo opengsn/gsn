@@ -13,6 +13,7 @@ export interface Environment {
   readonly gtxdatazero: number
   readonly dataOnChainHandlingGasCostPerByte: number
   readonly getGasPriceFactor: number
+  readonly nonZeroDevOverhead: number
 }
 
 /**
@@ -27,7 +28,7 @@ const defaultPenalizerConfiguration: PenalizerConfiguration = {
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 61976,
+  gasOverhead: 57072,
   postOverhead: 19037,
   gasReserve: 100000,
   maxWorkerCount: 10,
@@ -59,7 +60,8 @@ const ethereumMainnet: Environment = {
   mintxgascost: 21000,
   gtxdatanonzero: 16,
   gtxdatazero: 4,
-  getGasPriceFactor: 1
+  getGasPriceFactor: 1,
+  nonZeroDevOverhead: 7847
 }
 
 const ganacheLocal: Environment = {
@@ -72,7 +74,8 @@ const ganacheLocal: Environment = {
   mintxgascost: 21000,
   gtxdatanonzero: 16,
   gtxdatazero: 4,
-  getGasPriceFactor: 1
+  getGasPriceFactor: 1,
+  nonZeroDevOverhead: 7847
 }
 
 /* begin Arbitrum-specific Environment */
@@ -100,7 +103,8 @@ const arbitrum: Environment = {
   // there is currently a hard-coded to be 2 at arbitrum:eth.go:43 (commit: 12483cfa17a29e7d68c354c456ebc371b05a6ea2)
   // setting factor to 0.6 instead of 0.5 to allow the transaction to pass in case of moderate gas price increase
   // note that excess will be collected by the Relay Server as an extra profit
-  getGasPriceFactor: 0.6
+  getGasPriceFactor: 0.6,
+  nonZeroDevOverhead: 7847
 }
 
 /* end Arbitrum-specific Environment */

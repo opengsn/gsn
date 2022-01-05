@@ -256,7 +256,9 @@ contract RelayHub is IRelayHub, Ownable {
 
         balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
         balances[vars.relayManager] = balances[vars.relayManager].add(charge.sub(devCharge));
-        balances[config.devAddress] = balances[config.devAddress].add(devCharge);
+        if (devCharge > 0) { // save some gas in case of zero dev charge
+            balances[config.devAddress] = balances[config.devAddress].add(devCharge);
+        }
 
         emit TransactionRelayed(
             vars.relayManager,
@@ -385,6 +387,9 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function calculateDevCharge(uint256 charge) public view returns (uint256){
+        if (config.devFee == 0){ // save some gas in case of zero dev charge
+            return 0;
+        }
         return charge.mul(config.devFee).div(100);
     }
 

@@ -486,7 +486,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                 async function () {
                   let gasOverhead = parseInt(defaultEnvironment.relayHubConfiguration.gasOverhead.toString())
                   if (devFee !== 0) {
-                    gasOverhead += 2800
+                    gasOverhead += defaultEnvironment.nonZeroDevOverhead
                   }
                   await prepareForHub({ gasOverhead, devAddress, devFee })
                   // Avoid zero to non-zero storage gas costs when calculating fees.
