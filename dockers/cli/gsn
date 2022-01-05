@@ -1,1 +1,1 @@
-docker run --rm -ti -e INFURA_ID=$INFURA_ID -v $PWD:$PWD -w $PWD opengsn/cli "$@"
+docker run --rm -ti -e INFURA_ID=$INFURA_ID -v $PWD:$PWD -w $PWD opengsn/cli:${TAG:-latest} "$@"

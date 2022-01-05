@@ -55,6 +55,7 @@ export interface WithdrawOptions {
   config: ServerConfigParams
   broadcast: boolean
   gasPrice?: BN
+  withdrawTarget?: string
   useAccountBalance: boolean
 }
 
@@ -402,7 +403,6 @@ export class CommandsLogic {
     }
     return tokens[0].returnValues.token
   }
-
   async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
     const relayManager = keyManager.getAddress(0)
     console.log('relayManager is', relayManager)
@@ -423,9 +423,14 @@ export class CommandsLogic {
       const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { owner } = (await stakeManager.getStakeInfo(relayManager))[0]
-      if (owner.toLowerCase() !== options.config.ownerAddress.toLowerCase()) {
-        throw new Error(`Owner in relayHub ${owner} is different than in server config ${options.config.ownerAddress}`)
+      if ( options.config.ownerAddress!=null ) {
+        //old (2.1.0) relayers didn't have owners in config. 
+        // but its OK to withdraw from them...
+        if (owner.toLowerCase() !== options.config.ownerAddress.toLowerCase()) {
+          throw new Error(`Owner in relayHub ${owner} is different than in server config ${options.config.ownerAddress}`)
+        }
       }
+      const withdrawTarget = options.withdrawTarget ?? owner
 
       const nonce = await this.contractInteractor.getTransactionCount(relayManager)
       const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
@@ -438,16 +443,15 @@ export class CommandsLogic {
           throw new Error('Relay manager account balance lower than withdrawal amount')
         }
         const web3TxData = {
-          to: options.config.ownerAddress,
+          to: withdrawTarget,
           value: options.withdrawAmount,
           gas: gasLimit,
           gasPrice,
           nonce
         }
-        console.log('Calling in view mode')
+        console.log('Calling in view mode', web3TxData)
         await this.contractInteractor.web3.eth.call({ ...web3TxData })
         const txData = { ...web3TxData, gasLimit: web3TxData.gas }
-        // @ts-ignore
         delete txData.gas
         txToSign = new Transaction(txData, this.contractInteractor.getRawTxOptions())
       } else {
@@ -456,7 +460,7 @@ export class CommandsLogic {
         if (balance.lt(options.withdrawAmount)) {
           throw new Error('Relay manager hub balance lower than withdrawal amount')
         }
-        const method = relayHub.contract.methods.withdraw(owner, options.withdrawAmount)
+        const method = relayHub.contract.methods.withdraw(options.withdrawAmount, withdrawTarget)
         const encodedCall = method.encodeABI()
         txToSign = new Transaction({
           to: options.config.relayHubAddress,
@@ -488,6 +492,7 @@ export class CommandsLogic {
         transactions
       }
     } catch (e: any) {
+      console.log(e)
       return {
         success: false,
         transactions,
@@ -504,7 +509,6 @@ export class CommandsLogic {
 
   async deployGsnContracts (deployOptions: DeployOptions): Promise<GSNContractsDeployment> {
     ow(deployOptions, ow.object.partialShape(DeployOptionsPartialShape))
-
     const options: Required<SendOptions> = {
       from: deployOptions.from,
       gas: deployOptions.gasLimit,
@@ -541,6 +545,7 @@ export class CommandsLogic {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
     }
 
+
     let pmInstance: Contract | undefined
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, fInstance, deployOptions.skipConfirmation)
@@ -565,7 +570,6 @@ export class CommandsLogic {
 
     console.log(`Setting minimum stake of ${formatToken(deployOptions.minimumTokenStake)}`)
     await rInstance.methods.setMinimumStakes([stakingTokenAddress], [deployOptions.minimumTokenStake]).send({ ...options })
-
     this.deployment = {
       relayHubAddress: rInstance.options.address,
       stakeManagerAddress: sInstance.options.address,
