@@ -19,7 +19,9 @@ console.log('SOLPP: using configuration', JSON.stringify(configuration))
 async function preprocess (input, output) {
   const processedCode = await solpp.processFile(input, configuration)
   fs.mkdirSync(path.dirname(output), { recursive: true })
-  fs.chmodSync(output, 0o777)
+  if (fs.existsSync(output)) {
+    fs.chmodSync(output, 0o777)
+  }
   // make generated file read-only
   fs.writeFileSync(output, processedCode)
   fs.chmodSync(output, 0o444)
