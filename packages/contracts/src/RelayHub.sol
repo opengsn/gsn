@@ -177,7 +177,7 @@ contract RelayHub is IRelayHub, Ownable {
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
         // #if ENABLE_CONSOLE_LOG
-        console.log('relayCall maxAcceptanceBudget', maxAcceptanceBudget);
+        console.log("relayCall maxAcceptanceBudget", maxAcceptanceBudget);
         // #endif
         RelayCallData memory vars;
         vars.initialGasLeft = aggregateGasleft();
