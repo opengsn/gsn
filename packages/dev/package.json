@@ -15,11 +15,10 @@
     "watch-tsc": "tsc -w",
     "lint": "eslint -f unix .",
     "lint-fix": "yarn lint --fix",
-    "test": "truffle --compile-all --network npmtest test",
+    "solpp": "yarn --cwd=\"../..\" solpp",
+    "test": "yarn solpp && truffle --compile-all --network npmtest test",
     "truffle-console": "truffle console",
-    "truffle-test": "truffle test",
-    "test-only": "truffle --network npmtest test",
-    "just-truffle-test": "truffle test",
+    "truffle-test": "yarn solpp && truffle test",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },
   "dependencies": {

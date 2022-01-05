@@ -19,24 +19,31 @@ console.log('SOLPP: using configuration', JSON.stringify(configuration))
 async function preprocess (input, output) {
   const processedCode = await solpp.processFile(input, configuration)
   fs.mkdirSync(path.dirname(output), { recursive: true })
+  fs.chmodSync(output, 0o777)
+  // make generated file read-only
   fs.writeFileSync(output, processedCode)
+  fs.chmodSync(output, 0o444)
+  // keep original file timestamp
+  const srcStats = fs.statSync(input)
+  fs.utimesSync(output, srcStats.atime, srcStats.mtime)
 }
 
-const getAllFiles = async function (dirPath) {
+const recursiveSolidityPreprocess = async function (dirPath) {
   const files = fs.readdirSync(dirPath)
 
   for (const file of files) {
     if (fs.statSync(dirPath + '/' + file).isDirectory()) {
-      await getAllFiles(dirPath + '/' + file)
+      await recursiveSolidityPreprocess(dirPath + '/' + file)
     } else {
       const orig = path.join(dirPath, '/', file)
       const dest = orig.replace(contractsFolder, outAbiFolder)
-      console.log('preprocessor', dest)
+      console.log(dest)
       await preprocess(orig, dest)
     }
   }
 }
-
-getAllFiles(contractsFolder).then(function () {
-  console.log('solpp finished')
+console.time('solpp finished')
+console.log('solpp started')
+recursiveSolidityPreprocess(contractsFolder).then(function () {
+  console.timeEnd('solpp finished')
 })
