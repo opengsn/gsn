@@ -391,7 +391,7 @@ contract RelayHub is IRelayHub, Ownable {
             return 0;
         }
         unchecked {
-        return charge.mul(config.devFee).div(100);
+        return charge * config.devFee / 100;
         }
     }
 
