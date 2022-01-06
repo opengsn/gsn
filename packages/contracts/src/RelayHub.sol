@@ -390,7 +390,9 @@ contract RelayHub is IRelayHub, Ownable {
         if (config.devFee == 0){ // save some gas in case of zero dev charge
             return 0;
         }
+        unchecked {
         return charge.mul(config.devFee).div(100);
+        }
     }
 
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {

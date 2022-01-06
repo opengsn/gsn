@@ -25,7 +25,7 @@ interface IRelayHub {
         // Developers address
         address devAddress;
         // 0 < fee < 100, as percentage of total charge from paymaster to relayer
-        uint256 devFee;
+        uint8 devFee;
 
     }
 

@@ -572,8 +572,12 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
                   const expectedCharge = workerWeiGasUsed.add(calldataOverchargeWei).mul(
                     toBN(requestedFee).add(toBN(100))).div(toBN(100)).add(toBN(baseRelayFee))
+                  const gasDiff = actualCharge.sub(expectedCharge).div(gasPrice).toString()
                   assert.equal(actualCharge.toNumber(), expectedCharge.toNumber(),
-                    'actual charge from paymaster different than expected. diff= ' + actualCharge.sub(expectedCharge).div(gasPrice).toString())
+                    'actual charge from paymaster different than expected. diff= ' + gasDiff +
+                    '\n' +
+                    'new nonZeroDevOverhead:' +
+                    parseInt(defaultEnvironment.relayHubConfiguration.gasOverhead.toString()) + parseInt(gasDiff))
 
                   // Validate actual profit is with high precision $(requestedFee) percent higher then ether spent relaying
                   const devExpectedCharge = expectedCharge.mul(toBN(devFee)).div(toBN(100))
