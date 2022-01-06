@@ -50,12 +50,17 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   //   process.exit(1)
   // }
 
-  const arbSysAddress = '0x' + '64'.padStart(40, '0')
-  const isArbitrum = await ethers.provider.getCode(arbSysAddress) === '0xfe'
+  let isArbitrum = false
+  try {
+    const arbSysAddress = '0x' + '64'.padStart(40, '0')
+    const ArbSys = new ethers.Contract(arbSysAddress, ['function arbOSVersion() external pure returns (uint)'], ethers.provider)
+    const arbos = await ArbSys.arbOSVersion()
 
-  if (isArbitrum) {
-    console.log('== Arbitrum - found signs of', chalk.yellowBright('ArbSys'))
+    console.log('== Running on', chalk.yellowBright('Arbitrum'), 'arbOSVersion=', arbos)
+    isArbitrum = true
+  } catch (e) {
   }
+
   const chainId = parseInt(await getChainId())
 
   const envname = Object.keys(environments).find(env => environments[env as EnvironmentsKeys].chainId === chainId)
