@@ -19,7 +19,7 @@ import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
-import { ether } from '@opengsn/common/dist'
+import { ether } from '@opengsn/common'
 import sinon from 'sinon'
 import chai from 'chai'
 import sinonChai from 'sinon-chai'
@@ -213,22 +213,24 @@ contract('RegistrationManager', function (accounts) {
       let transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
       assert.equal(transactionHashes.length, 0, 'should not re-register if already registered')
 
+      const currentBlockFake = 1000000
+
       relayServer.config.baseRelayFee = (parseInt(relayServer.config.baseRelayFee) + 1).toString()
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, currentBlockFake, false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
       latestBlock = await env.web3.eth.getBlock('latest')
       await relayServer._worker(latestBlock.number)
 
       relayServer.config.pctRelayFee++
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, currentBlockFake, false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
       latestBlock = await env.web3.eth.getBlock('latest')
       await relayServer._worker(latestBlock.number)
 
       relayServer.config.url = 'fakeUrl'
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, currentBlockFake, false)
       await assertRelayAdded(transactionHashes, relayServer, false)
     })
   })

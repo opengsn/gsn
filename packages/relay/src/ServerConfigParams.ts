@@ -73,6 +73,8 @@ export interface ServerConfigParams {
   coldRestartLogsFromBlock: number
   // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
   pastEventsQueryMaxPageSize: number
+  // number of blocks the server will not repeat a ServerAction for regardless of blockchain state to avoid duplicates
+  recentActionAvoidRepeatDistanceBlocks: number
 }
 
 export interface ServerDependencies {
@@ -135,7 +137,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true,
   coldRestartLogsFromBlock: 1,
-  pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER
+  pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
+  recentActionAvoidRepeatDistanceBlocks: 10
 }
 
 const ConfigParamsTypes = {
@@ -202,7 +205,8 @@ const ConfigParamsTypes = {
   maxGasPrice: 'string',
   coldRestartLogsFromBlock: 'number',
   pastEventsQueryMaxPageSize: 'number',
-  confirmationsNeeded: 'number'
+  confirmationsNeeded: 'number',
+  recentActionAvoidRepeatDistanceBlocks: 'number'
 } as any
 
 // by default: no waiting period - use VersionRegistry entries immediately.
