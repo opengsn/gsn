@@ -249,8 +249,7 @@ contract('RelayHub Configuration',
             gasReserve: 0xef.toString(),
             maxWorkerCount: 0xef.toString(),
             minimumStake: 0xef.toString(),
-            minimumUnstakeDelay: 0xef.toString(),
-            maximumRecipientDeposit: 0xef.toString()
+            minimumUnstakeDelay: 0xef.toString()
           }
           let configFromHub = await relayHub.getConfiguration()
           // relayHub.getConfiguration() returns an array, so we need to construct an object with its fields to compare to config.
