@@ -1,6 +1,6 @@
-import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 import chai from 'chai'
+import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 
 import { deployHub, evmMine, evmMineMany } from './TestUtils'
 
@@ -16,6 +16,7 @@ import {
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { RelayRegistrarInstance } from '@opengsn/contracts'
 
 const { assert } = chai.use(chaiAsPromised)
 
@@ -24,6 +25,7 @@ const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('RelayHub Configuration',
   function ([relayHubDeployer, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectOwner]) { // eslint-disable-line no-unused-vars
@@ -33,6 +35,8 @@ contract('RelayHub Configuration',
     const baseRelayFee = new BN('300')
     const pctRelayFee = new BN('10')
     const gasPrice = new BN(1e9)
+    const maxFeePerGas = new BN(1e9)
+    const maxPriorityFeePerGas = new BN(1e9)
     const gasLimit = new BN('1000000')
     const externalGasLimit = 5e6.toString()
     const paymasterData = '0x'
@@ -43,6 +47,7 @@ contract('RelayHub Configuration',
     const blocksForward = 10
 
     let relayHub: RelayHubInstance
+    let relayRegistrar: RelayRegistrarInstance
     let stakeManager: StakeManagerInstance
     let penalizer: PenalizerInstance
     let recipient: TestRecipientInstance
@@ -60,9 +65,11 @@ contract('RelayHub Configuration',
       recipient = await TestRecipient.new(forwarder)
       paymaster = await TestPaymasterEverythingAccepted.new()
       stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
-      penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
+      penalizer = await Penalizer.new(
+        defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
         defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       relayHub = await deployHub(stakeManager.address, penalizer.address)
+      relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
       // Register hub's RelayRequest with forwarder, if not already done.
@@ -80,7 +87,7 @@ contract('RelayHub Configuration',
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-      await relayHub.registerRelayServer(0, pctRelayFee, '', { from: relayManager })
+      await relayRegistrar.registerRelayServer(0, pctRelayFee, '', { from: relayManager })
       encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
       relayRequest = {
         request: {
@@ -95,7 +102,9 @@ contract('RelayHub Configuration',
         relayData: {
           baseRelayFee: baseRelayFee.toString(),
           pctRelayFee: pctRelayFee.toString(),
-          gasPrice: gasPrice.toString(),
+          transactionCalldataGasUsed: '0',
+          maxFeePerGas: maxFeePerGas.toString(),
+          maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
           relayWorker,
           forwarder,
           paymaster: paymaster.address,
@@ -192,7 +201,7 @@ contract('RelayHub Configuration',
         await evmMineMany(blocksForward)
 
         await expectRevert(
-          relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, externalGasLimit, {
+          relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
             from: relayWorker,
             gasPrice,
             gas: externalGasLimit
@@ -201,7 +210,7 @@ contract('RelayHub Configuration',
       })
 
       it('should not revert before deprecationBlock set', async function () {
-        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, externalGasLimit, {
+        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
           from: relayWorker,
           gasPrice,
           gas: externalGasLimit
@@ -213,7 +222,7 @@ contract('RelayHub Configuration',
         const block = parseInt((await web3.eth.getBlockNumber()).toString()) + blocksForward
         await relayHub.deprecateHub(block)
         await evmMineMany(blocksForward - 3)
-        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, externalGasLimit, {
+        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
           from: relayWorker,
           gasPrice,
           gas: externalGasLimit
@@ -241,9 +250,7 @@ contract('RelayHub Configuration',
             maxWorkerCount: 0xef.toString(),
             minimumStake: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
-            maximumRecipientDeposit: 0xef.toString(),
-            dataGasCostPerByte: 0xef.toString(),
-            externalCallDataCostOverhead: 0xef.toString()
+            maximumRecipientDeposit: 0xef.toString()
           }
           let configFromHub = await relayHub.getConfiguration()
           // relayHub.getConfiguration() returns an array, so we need to construct an object with its fields to compare to config.

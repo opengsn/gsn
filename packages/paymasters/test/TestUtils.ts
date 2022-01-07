@@ -14,6 +14,7 @@ import { GasUsed } from '../types/truffle-contracts/TokenGasCalculator'
 
 const TestHub = artifacts.require('TestHub')
 const TokenGasCalculator = artifacts.require('TokenGasCalculator')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 export async function revertReason (func: Promise<any>): Promise<string> {
   try {
@@ -32,7 +33,8 @@ export async function registerAsRelayServer (stakeManager: IStakeManagerInstance
   })
   await stakeManager.authorizeHubByOwner(relay, hub.address, { from: relayOwner })
   await hub.addRelayWorkers([relay], { from: relay })
-  await hub.registerRelayServer(2e16.toString(), '10', 'url', { from: relay })
+  const relayRegistrar = await RelayRegistrar.at(await hub.relayRegistrar())
+  await relayRegistrar.registerRelayServer(2e16.toString(), '10', 'url', { from: relay })
 }
 
 export async function deployTestHub (calculator: boolean = false): Promise<Truffle.ContractInstance> {
@@ -40,15 +42,7 @@ export async function deployTestHub (calculator: boolean = false): Promise<Truff
   return await contract.new(
     constants.ZERO_ADDRESS,
     constants.ZERO_ADDRESS,
-    defaultEnvironment.relayHubConfiguration.maxWorkerCount,
-    defaultEnvironment.relayHubConfiguration.gasReserve,
-    defaultEnvironment.relayHubConfiguration.postOverhead,
-    defaultEnvironment.relayHubConfiguration.gasOverhead,
-    defaultEnvironment.relayHubConfiguration.maximumRecipientDeposit,
-    defaultEnvironment.relayHubConfiguration.minimumUnstakeDelay,
-    defaultEnvironment.relayHubConfiguration.minimumStake,
-    defaultEnvironment.relayHubConfiguration.dataGasCostPerByte,
-    defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead,
+    defaultEnvironment.relayHubConfiguration,
     { gas: 10000000 })
 }
 

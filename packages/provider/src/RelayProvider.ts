@@ -3,7 +3,7 @@ import abiDecoder from 'abi-decoder'
 import { HttpProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { Transaction } from '@ethereumjs/tx'
+import { TypedTransaction } from '@ethereumjs/tx'
 
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
@@ -91,7 +91,8 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     if (this._useGSN(payload)) {
       if (payload.method === 'eth_sendTransaction') {
         if (payload.params[0].to === undefined) {
-          throw new Error('GSN cannot relay contract deployment transactions. Add {from: accountWithEther, useGSN: false}.')
+          callback(new Error('GSN cannot relay contract deployment transactions. Add {from: accountWithEther, useGSN: false}.'))
+          return
         }
         this._ethSendTransaction(payload, callback)
         return
@@ -130,7 +131,14 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
 
   _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     this.logger.info('calling sendAsync' + JSON.stringify(payload))
-    const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
+    let gsnTransactionDetails: GsnTransactionDetails
+    try {
+      gsnTransactionDetails = this._fixGasFees(payload.params[0])
+    } catch (e) {
+      this.logger.error(e)
+      callback(e)
+      return
+    }
     this.relayClient.relayTransaction(gsnTransactionDetails)
       .then((relayingResult) => {
         if (relayingResult.transaction != null) {
@@ -149,7 +157,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       })
   }
 
-  _convertTransactionToRpcSendResponse (transaction: Transaction, request: JsonRpcPayload): JsonRpcResponse {
+  _convertTransactionToRpcSendResponse (transaction: TypedTransaction, request: JsonRpcPayload): JsonRpcResponse {
     const txHash: string = transaction.hash().toString('hex')
     const hash = `0x${txHash}`
     const id = (typeof request.id === 'string' ? parseInt(request.id) : request.id) ?? -1
@@ -203,6 +211,21 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     return gsnTransactionDetails?.useGSN ?? true
   }
 
+  _fixGasFees (_txDetails: any): GsnTransactionDetails {
+    const txDetails = { ..._txDetails }
+    if (txDetails.maxFeePerGas != null && txDetails.maxPriorityFeePerGas != null) {
+      delete txDetails.gasPrice
+      return txDetails
+    }
+    if (txDetails.gasPrice != null && txDetails.maxFeePerGas == null && txDetails.maxPriorityFeePerGas == null) {
+      txDetails.maxFeePerGas = txDetails.gasPrice
+      txDetails.maxPriorityFeePerGas = txDetails.gasPrice
+      delete txDetails.gasPrice
+      return txDetails
+    }
+    throw new Error('Relay Provider: must provide either gasPrice or (maxFeePerGas and maxPriorityFeePerGas)')
+  }
+
   /* wrapping HttpProvider interface */
 
   host: string
@@ -218,6 +241,10 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
 
   newAccount (): AccountKeypair {
     return this.relayClient.newAccount()
+  }
+
+  async calculateGasFees (): Promise<{ maxFeePerGas: PrefixedHexString, maxPriorityFeePerGas: PrefixedHexString }> {
+    return await this.relayClient.calculateGasFees()
   }
 
   addAccount (privateKey: PrefixedHexString): void {

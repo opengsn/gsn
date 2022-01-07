@@ -18,9 +18,11 @@ import { sleep } from '@opengsn/common/dist/Utils'
 import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } from './TestUtils'
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { assertRelayAdded, getTotalTxCosts } from './ServerTestUtils'
+import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
+import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -57,7 +59,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   })
 
   describe('#init()', function () {
-    it('should initialize relay params (chainId, networkId, gasPrice)', async function () {
+    it('should initialize relay params', async function () {
       const env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
       await env.init({})
       env.newServerInstanceNoFunding()
@@ -71,6 +73,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal(relayServerToInit.isReady(), false, 'relay should not be ready yet')
       assert.equal(relayServerToInit.chainId, chainId)
       assert.equal(relayServerToInit.networkId, networkId)
+      // @ts-ignore
+      expect(relayServerToInit.txStoreManager.txstore.persistence.autocompactionIntervalId).to.exist
     })
   })
 
@@ -83,7 +87,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       relayServer = env.relayServer
       // force "ready
       assert.equal(relayServer.isReady(), true)
-      const stub = sinon.stub(relayServer.contractInteractor, 'getBlock').rejects(Error('simulate getBlock failed'))
+      const stub = sinon.stub(relayServer.contractInteractor, 'getBlockNumber').rejects(Error('simulate getBlock failed'))
       try {
         await relayServer.intervalHandler()
       } finally {
@@ -96,17 +100,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal(relayServer.isReady(), false)
     })
 
-    it('after setReadyState(true), should stay non ready', () => {
-      relayServer.setReadyState(true)
-      assert.equal(relayServer.isReady(), false)
-    })
-
-    it('should become ready after processing few blocks', async () => {
-      await evmMineMany(1)
-      await relayServer.intervalHandler()
-      assert.equal(relayServer.isReady(), false)
-      await evmMineMany(1)
-      await relayServer.intervalHandler()
+    it('should become ready after processing a block', async () => {
       await evmMineMany(1)
       await relayServer.intervalHandler()
       assert.equal(relayServer.isReady(), true)
@@ -226,31 +220,56 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         }
       })
 
-      it('should fail to relay with low gasPrice', async function () {
-        const wrongGasPrice = env.relayServer.minGasPrice - 1
+      it('should fail to relay with low maxPriorityFeePerGas', async function () {
+        const wrongPriorityFee = env.relayServer.minMaxPriorityFeePerGas - 1
         const req = await env.createRelayHttpRequest()
-        req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
+        req.relayRequest.relayData.maxPriorityFeePerGas = wrongPriorityFee.toString()
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
+            `priorityFee given ${wrongPriorityFee} too low : ${env.relayServer.minMaxPriorityFeePerGas}`)
         }
       })
 
-      it('should fail to relay with high gasPrice', async function () {
-        const wrongGasPrice = parseInt(env.relayServer.config.maxGasPrice) + 1
-        const req = await env.createRelayHttpRequest()
-        req.relayRequest.relayData.gasPrice = wrongGasPrice.toString()
+      it('should fail to relay with maxPriorityFeePerGas > maxFeePerGas', async function () {
+        const req = await env.createRelayHttpRequest({ maxFeePerGas: toHex(1e9), maxPriorityFeePerGas: toHex(1e10) })
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            `gasPrice given ${wrongGasPrice} not in range : [${env.relayServer.minGasPrice}, ${env.relayServer.config.maxGasPrice}]`)
+            `maxFee ${req.relayRequest.relayData.maxFeePerGas} cannot be lower than priorityFee ${req.relayRequest.relayData.maxPriorityFeePerGas}`)
+        }
+      })
+
+      it('should fail to relay with high maxPriorityFeePerGas', async function () {
+        const wrongFee = parseInt(env.relayServer.config.maxGasPrice) + 1
+        const req = await env.createRelayHttpRequest()
+        req.relayRequest.relayData.maxFeePerGas = wrongFee.toString()
+        try {
+          env.relayServer.validateInput(req, 0)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `maxFee given ${wrongFee} too high : ${env.relayServer.config.maxGasPrice}`)
+        }
+      })
+
+      it('should fail to relay legacy tx with maxPriorityFeePerGas != maxFeePerGas', async function () {
+        const req = await env.createRelayHttpRequest({ maxFeePerGas: toHex(1e9), maxPriorityFeePerGas: toHex(1e10) })
+        try {
+          env.relayServer.transactionType = TransactionType.LEGACY
+          env.relayServer.validateRequestTxType(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message,
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `Network ${env.relayServer.contractInteractor.getNetworkType()} doesn't support eip1559`)
         }
       })
 
@@ -293,7 +312,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
     })
 
-    describe('#validateFees()', function () {
+    describe('#validateRelayFees()', function () {
       describe('with trusted paymaster', function () {
         beforeEach(async function () {
           await env.relayServer._initTrustedPaymasters([env.paymaster.address])
@@ -311,7 +330,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         it('should bypass fee checks and not throw if given trusted paymasters', async function () {
           const req = await env.createRelayHttpRequest()
           req.relayRequest.relayData.baseRelayFee = (parseInt(env.relayServer.config.baseRelayFee) - 1).toString()
-          env.relayServer.validateFees(req)
+          env.relayServer.validateRelayFees(req)
         })
       })
 
@@ -320,7 +339,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           const req = await env.createRelayHttpRequest()
           req.relayRequest.relayData.baseRelayFee = (parseInt(env.relayServer.config.baseRelayFee) - 1).toString()
           try {
-            env.relayServer.validateFees(req)
+            env.relayServer.validateRelayFees(req)
             assert.fail()
           } catch (e) {
             assert.include(e.message, 'Unacceptable baseRelayFee:')
@@ -332,7 +351,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           const req = await env.createRelayHttpRequest()
           req.relayRequest.relayData.pctRelayFee = wrongPctRelayFee
           try {
-            env.relayServer.validateFees(req)
+            env.relayServer.validateRelayFees(req)
             assert.fail()
           } catch (e) {
             assert.include(e.message, 'Unacceptable pctRelayFee:')
@@ -350,7 +369,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           await env.relayServer.transactionManager.sendTransaction({
             signer,
             serverAction: ServerAction.VALUE_TRANSFER,
-            gasLimit: defaultEnvironment.mintxgascost,
             destination: accounts[0],
             creationBlockNumber: 0
           })
@@ -371,24 +389,24 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
     })
 
-    describe('#_refreshGasPrice()', function () {
+    describe('#_refreshPriorityFee()', function () {
       it('should set min gas price to network average * gas price factor', async function () {
-        env.relayServer.minGasPrice = 0
-        await env.relayServer._refreshGasPrice()
-        const gasPrice = parseInt(await env.web3.eth.getGasPrice())
-        assert.equal(env.relayServer.minGasPrice, env.relayServer.config.gasPriceFactor * gasPrice)
+        env.relayServer.minMaxPriorityFeePerGas = 0
+        await env.relayServer._refreshPriorityFee()
+        const priorityFee = parseInt(await env.relayServer.contractInteractor.getMaxPriorityFee())
+        assert.equal(env.relayServer.minMaxPriorityFeePerGas, env.relayServer.config.gasPriceFactor * priorityFee)
       })
       it('should throw when min gas price is higher than max', async function () {
-        await env.relayServer._refreshGasPrice()
+        await env.relayServer._refreshPriorityFee()
         const originalMaxPrice = env.relayServer.config.maxGasPrice
-        env.relayServer.config.maxGasPrice = (env.relayServer.minGasPrice - 1).toString()
+        env.relayServer.config.maxGasPrice = (env.relayServer.minMaxPriorityFeePerGas - 1).toString()
         try {
-          await env.relayServer._refreshGasPrice()
+          await env.relayServer._refreshPriorityFee()
           assert.fail()
         } catch (e) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message,
-            `network gas price ${env.relayServer.minGasPrice} is higher than max gas price ${env.relayServer.config.maxGasPrice}`)
+            `network maxPriorityFeePerGas ${env.relayServer.minMaxPriorityFeePerGas} is higher than config.maxGasPrice ${env.relayServer.config.maxGasPrice}`)
         } finally {
           env.relayServer.config.maxGasPrice = originalMaxPrice
         }
@@ -405,6 +423,20 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         } catch (e) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message, `not a valid paymaster contract: ${accounts[1]}`)
+        }
+      })
+
+      it('should fail to relay with high maxPossibleGas', async function () {
+        const req = await env.createRelayHttpRequest()
+        const origMaxGas = env.relayServer.maxGasLimit
+        env.relayServer.maxGasLimit = 1
+        try {
+          await env.relayServer.validatePaymasterGasAndDataLimits(req)
+          assert.fail()
+        } catch (e) {
+          assert.include(e.message, 'exceeds maxGasLimit')
+        } finally {
+          env.relayServer.maxGasLimit = origMaxGas
         }
       })
 
@@ -443,6 +475,16 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
             assert.fail()
           } catch (e) {
             assert.include(e.message, 'paymaster acceptance budget + msg.data gas cost too high')
+          }
+        })
+
+        it('should reject a request if a transactionCalldataGasUsed  is too low', async function () {
+          req.relayRequest.relayData.transactionCalldataGasUsed = '500'
+          try {
+            await env.relayServer.validatePaymasterGasAndDataLimits(req)
+            assert.fail()
+          } catch (e) {
+            assert.include(e.message, 'Refusing to relay a transaction due to calldata cost. Client signed transactionCalldataGasUsed: 500')
           }
         })
 
@@ -487,14 +529,161 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       await env.relayServer.txStoreManager.clearAll()
     })
 
-    it('should relay transaction', async function () {
-      const req = await env.createRelayHttpRequest()
-      assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
-      await env.relayServer.createRelayTransaction(req)
-      const pendingTransactions = await env.relayServer.txStoreManager.getAll()
-      assert.equal(pendingTransactions.length, 1)
-      assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
-      // TODO: add asserts here!!!
+    async function fixTxDetails (details: Partial<GsnTransactionDetails>, type: number): Promise<void> {
+      if (type === TransactionType.TYPE_TWO) {
+        const { baseFeePerGas, priorityFeePerGas } = await env.relayServer.contractInteractor.getGasFees()
+        details.maxFeePerGas = toHex(parseInt(baseFeePerGas) + parseInt(priorityFeePerGas))
+        details.maxPriorityFeePerGas = toHex(priorityFeePerGas)
+        assert.isTrue(details.maxFeePerGas > details.maxPriorityFeePerGas)
+      }
+    }
+
+    const options = [
+      { title: 'legacy', type: TransactionType.LEGACY },
+      { title: 'type 2', type: TransactionType.TYPE_TWO }
+    ]
+    options.forEach(params => {
+      it(`should relay ${params.title} transaction without paymaster reputation`, async function () {
+        const overrideDetails: Partial<GsnTransactionDetails> = {}
+        await fixTxDetails(overrideDetails, params.type)
+        const req = await env.createRelayHttpRequest(overrideDetails)
+        const txMgrSpy = sinon.spy(env.relayServer.transactionManager)
+        const serverSpy = sinon.spy(env.relayServer)
+
+        assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
+        await env.relayServer.createRelayTransaction(req)
+        const pendingTransactions = await env.relayServer.txStoreManager.getAll()
+        assert.equal(pendingTransactions.length, 1)
+        assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
+        sinon.assert.callOrder(
+          serverSpy.isReady,
+          serverSpy.validateRequestTxType,
+          serverSpy.validateInput,
+          serverSpy.validateGasFees,
+          serverSpy.validateRelayFees,
+          serverSpy.validateMaxNonce,
+          serverSpy.validatePaymasterGasAndDataLimits,
+          serverSpy.validateViewCallSucceeds,
+          txMgrSpy.sendTransaction,
+          serverSpy.replenishServer
+        )
+        sinon.restore()
+      })
+
+      it(`should relay ${params.title} transaction without paymaster reputation`, async function () {
+        await env.newServerInstance({ runPaymasterReputations: true })
+        await env.clearServerStorage()
+        const overrideDetails: Partial<GsnTransactionDetails> = {}
+        await fixTxDetails(overrideDetails, params.type)
+        const req = await env.createRelayHttpRequest()
+        const txMgrSpy = sinon.spy(env.relayServer.transactionManager)
+        const repSpy = sinon.spy(env.relayServer.reputationManager)
+        const serverSpy = sinon.spy(env.relayServer)
+
+        assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
+        await env.relayServer.createRelayTransaction(req)
+        const pendingTransactions = await env.relayServer.txStoreManager.getAll()
+        assert.equal(pendingTransactions.length, 1)
+        assert.equal(pendingTransactions[0].serverAction, ServerAction.RELAY_CALL)
+        sinon.assert.callOrder(
+          serverSpy.isReady,
+          serverSpy.validateRequestTxType,
+          serverSpy.validateInput,
+          serverSpy.validateGasFees,
+          serverSpy.validateRelayFees,
+          serverSpy.validateMaxNonce,
+          serverSpy.validatePaymasterReputation,
+          serverSpy.validatePaymasterGasAndDataLimits,
+          serverSpy.validateViewCallSucceeds,
+          repSpy.onRelayRequestAccepted,
+          txMgrSpy.sendTransaction,
+          serverSpy.replenishServer
+        )
+        sinon.restore()
+      })
+    })
+  })
+
+  describe('withdrawToOwnerIfNeeded', function () {
+    let currentBlockNumber: number
+    const withdrawToOwnerOnBalance = 3e18
+    beforeEach(async function () {
+      await env.newServerInstance({ withdrawToOwnerOnBalance }, getTemporaryWorkdirs())
+      assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, withdrawToOwnerOnBalance)
+      currentBlockNumber = await env.web3.eth.getBlockNumber()
+    })
+    afterEach(async function () {
+      sinon.restore()
+    })
+    it('should not withdraw if relayer is not ready', async function () {
+      env.relayServer.setReadyState(false)
+      const serverSpy = sinon.spy(env.relayServer)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      assert.deepEqual(txHashes, [])
+      sinon.assert.calledOnce(serverSpy.isReady)
+      assert.isFalse(serverSpy.isReady.returnValues[0])
+    })
+
+    it('should not withdraw if withdrawToOwnerOnBalance is not given', async function () {
+      await env.newServerInstance({}, getTemporaryWorkdirs())
+      assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, undefined)
+      const serverSpy = sinon.spy(env.relayServer)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      assert.deepEqual(txHashes, [])
+      sinon.assert.calledOnce(serverSpy.isReady)
+      assert.isTrue(serverSpy.isReady.returnValues[0])
+    })
+
+    it('should withdraw to owner when hub balance is sufficient', async function () {
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      const owner = env.relayServer.config.ownerAddress
+      const balanceBefore = toBN(await env.web3.eth.getBalance(owner))
+      const serverSpy = sinon.spy(env.relayServer)
+      const sendBalanceSpy = sinon.spy(env.relayServer.registrationManager, '_sendManagerHubBalanceToOwner')
+      const loggerSpy = sinon.spy(env.relayServer.logger, 'info')
+      const managerTargetBalance = toBN(env.relayServer.config.managerTargetBalance)
+      const workerTargetBalance = toBN(env.relayServer.config.workerTargetBalance)
+      const reserveBalance = managerTargetBalance.add(workerTargetBalance)
+      const managerHubBalanceBefore = await env.relayHub.balanceOf(env.relayServer.managerAddress)
+      assert.isTrue(managerHubBalanceBefore.gte(toBN(withdrawToOwnerOnBalance).add(reserveBalance)))
+      const withdrawalAmount = managerHubBalanceBefore.sub(reserveBalance)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      const balanceAfter = await env.web3.eth.getBalance(owner)
+      assert.deepEqual(txHashes.length, 1)
+      assert.equal(balanceBefore.add(withdrawalAmount).toString(), balanceAfter)
+      sinon.assert.callOrder(
+        serverSpy.isReady,
+        sendBalanceSpy,
+        loggerSpy
+      )
+      sinon.assert.calledWith(loggerSpy, `Withdrew ${withdrawalAmount.toString()} to owner`)
+      sinon.assert.calledWith(sendBalanceSpy, currentBlockNumber, withdrawalAmount)
+    })
+
+    it('should not withdraw to owner when hub balance is too low', async function () {
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 2e18.toString() })
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: 1e18.toString() })
+      const owner = env.relayServer.config.ownerAddress
+      const balanceBefore = toBN(await env.web3.eth.getBalance(owner))
+      const serverSpy = sinon.spy(env.relayServer)
+      const sendBalanceSpy = sinon.spy(env.relayServer.registrationManager, '_sendManagerHubBalanceToOwner')
+      const loggerSpy = sinon.spy(env.relayServer.logger, 'info')
+      const managerTargetBalance = toBN(env.relayServer.config.managerTargetBalance)
+      const workerTargetBalance = toBN(env.relayServer.config.workerTargetBalance)
+      const reserveBalance = managerTargetBalance.add(workerTargetBalance)
+      const managerHubBalanceBefore = await env.relayHub.balanceOf(env.relayServer.managerAddress)
+      assert.isTrue(managerHubBalanceBefore.gte(toBN(withdrawToOwnerOnBalance)))
+      assert.isTrue(managerHubBalanceBefore.lt(toBN(withdrawToOwnerOnBalance).add(reserveBalance)))
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      const balanceAfter = await env.web3.eth.getBalance(owner)
+      assert.deepEqual(txHashes.length, 0)
+      assert.equal(balanceBefore.toString(), balanceAfter)
+      sinon.assert.callOrder(
+        serverSpy.isReady
+      )
+      sinon.assert.notCalled(loggerSpy)
+      sinon.assert.notCalled(sendBalanceSpy)
     })
   })
 
@@ -503,20 +692,22 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     const workerIndex = 0
     const gasPrice = 1e9.toString()
     let beforeDescribeId: string
-    const txCost = toBN(defaultEnvironment.mintxgascost * parseInt(gasPrice))
+    // web3 estimate seems to add '1 gas' somewhere
+    const txCost = toBN((defaultEnvironment.mintxgascost + 1) * parseInt(gasPrice))
 
     // TODO: not needed, worker is not funded at this point!
     beforeEach('deplete worker balance', async function () {
       relayServer = env.relayServer
       beforeDescribeId = (await snapshot()).result
+      const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.workerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: accounts[0],
-        gasLimit: defaultEnvironment.mintxgascost,
-        gasPrice: gasPrice,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         creationBlockNumber: 0,
-        value: toHex((await relayServer.getWorkerBalance(workerIndex)).sub(txCost))
+        value: toHex(workerBalanceBefore.sub(txCost))
       })
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.lt(toBN(relayServer.config.workerMinBalance)),
@@ -554,18 +745,20 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
     it('should withdraw hub balance to manager first, then use eth balance to fund workers', async function () {
       await env.relayHub.depositFor(relayServer.managerAddress, { value: 1e18.toString() })
+      const managerEthBalanceFirst = await relayServer.getManagerBalance()
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
         destination: accounts[0],
-        gasLimit: defaultEnvironment.mintxgascost,
-        gasPrice: gasPrice,
-        value: toHex((await relayServer.getManagerBalance()).sub(txCost))
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
+        value: toHex(managerEthBalanceFirst.sub(txCost))
       })
-      assert.equal((await relayServer.getManagerBalance()).toString(), '0')
+      //  web3 estimate seems to add '1 gas' somewhere
+      assert.equal((await relayServer.getManagerBalance()).toString(), '1000000000')
       await env.web3.eth.sendTransaction(
-        { from: accounts[0], to: relayServer.managerAddress, value: relayServer.config.managerTargetBalance - 1e7 })
+        { from: accounts[0], to: relayServer.managerAddress, value: relayServer.config.managerTargetBalance - 1e10 })
       const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
       const managerEthBalanceBefore = await relayServer.getManagerBalance()
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
@@ -611,8 +804,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
         destination: accounts[0],
-        gasLimit: defaultEnvironment.mintxgascost,
-        gasPrice: gasPrice.toString(),
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         value: toHex((await relayServer.getManagerBalance()).sub(txCost))
       })
       const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
@@ -727,35 +920,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     })
   })
 
-  describe('Function testing', function () {
-    let relayServer: RelayServer
-
-    beforeEach(function () {
-      relayServer = env.relayServer
-    })
-    it('_workerSemaphore', async function () {
-      assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false first')
-      const workerOrig = relayServer._worker
-      let shouldRun = true
-      try {
-        relayServer._worker = async function (): Promise<PrefixedHexString[]> {
-          // eslint-disable-next-line no-unmodified-loop-condition
-          while (shouldRun) {
-            await sleep(200)
-          }
-          return []
-        }
-        const latestBlock = await env.web3.eth.getBlock('latest')
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        relayServer._workerSemaphore(latestBlock.number)
-        assert.isTrue(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be true after')
-        shouldRun = false
-        await sleep(200)
-        assert.isFalse(relayServer._workerSemaphoreOn, '_workerSemaphoreOn should be false after')
-      } finally {
-        relayServer._worker = workerOrig
-      }
-    })
+  // TODO add _worker flow tests, specifically not trying to boost if balance is too low
+  describe('_worker', function () {
   })
 
   describe('alerted state as griefing mitigation', function () {
@@ -791,7 +957,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           destination,
           value = '0x',
           gasLimit,
-          gasPrice
+          maxFeePerGas,
+          maxPriorityFeePerGas
         }: SendTransactionDetails): Promise<SignedTransactionDetails> {
         await rejectingPaymaster.setRevertPreRelayCall(true)
         // @ts-ignore

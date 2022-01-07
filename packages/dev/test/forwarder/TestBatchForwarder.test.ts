@@ -21,6 +21,7 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const BatchForwarder = artifacts.require('BatchForwarder')
 const TestRecipient = artifacts.require('TestRecipient')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
   let paymaster: TestPaymasterEverythingAcceptedInstance
@@ -36,6 +37,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     hub = await deployHub(stakeManager.address, penalizer.address)
+    const relayRegistrar = await RelayRegistrar.at(await hub.relayRegistrar())
     const relayHub = hub
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
     await stakeManager.stakeForRelayManager(relayManager, 2000, {
@@ -46,7 +48,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     const baseRelayFee = 1
     const pctRelayFee = 2
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayHub.registerRelayServer(baseRelayFee, pctRelayFee, 'url', { from: relayManager })
+    await relayRegistrar.registerRelayServer(baseRelayFee, pctRelayFee, 'url', { from: relayManager })
 
     paymaster = await TestPaymasterEverythingAccepted.new({ gas: 1e7 })
     await hub.depositFor(paymaster.address, { value: paymasterDeposit })
@@ -59,6 +61,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     await paymaster.setTrustedForwarder(forwarder.address)
     await paymaster.setRelayHub(hub.address)
 
+    const gasPrice = await web3.eth.getGasPrice()
     sharedRelayRequestData = {
       request: {
         to: recipient.address,
@@ -72,7 +75,9 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       relayData: {
         pctRelayFee: '1',
         baseRelayFee: '0',
-        gasPrice: await web3.eth.getGasPrice(),
+        transactionCalldataGasUsed: '0',
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         relayWorker: relayWorker,
         forwarder: forwarder.address,
         paymaster: paymaster.address,
@@ -87,7 +92,8 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
       relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       relayRequest.request.to = forwarder.address
-      relayRequest.relayData.gasPrice = 1e6.toString()
+      relayRequest.relayData.maxFeePerGas = 1e6.toString()
+      relayRequest.relayData.maxPriorityFeePerGas = 1e6.toString()
       relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI(),
@@ -104,7 +110,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         dataToSign
       )
 
-      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', 7e6, {
+      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 7e6
       })
@@ -125,7 +131,8 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
       relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       relayRequest.request.to = forwarder.address
-      relayRequest.relayData.gasPrice = 1e6.toString()
+      relayRequest.relayData.maxFeePerGas = 1e6.toString()
+      relayRequest.relayData.maxPriorityFeePerGas = 1e6.toString()
       relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI(),
@@ -142,7 +149,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         dataToSign
       )
 
-      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', 7e6, {
+      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 7e6
       })
@@ -158,7 +165,8 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
       const relayRequest = cloneRelayRequest(sharedRelayRequestData)
       relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       relayRequest.request.to = forwarder.address
-      relayRequest.relayData.gasPrice = 1e6.toString()
+      relayRequest.relayData.maxFeePerGas = 1e6.toString()
+      relayRequest.relayData.maxPriorityFeePerGas = 1e6.toString()
       relayRequest.request.data = forwarder.contract.methods.sendBatch([recipient.address, recipient.address],
         [
           recipient.contract.methods.emitMessage('hello').encodeABI()
@@ -174,7 +182,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         dataToSign
       )
 
-      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', 7e6, {
+      const ret = await hub.relayCall(10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 7e6
       })

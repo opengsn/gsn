@@ -19,11 +19,12 @@ import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
-import { ether } from '@opengsn/common/dist'
+import { ether } from '@opengsn/common/dist/Utils'
 import sinon from 'sinon'
 import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const { oneEther } = constants
 
@@ -49,6 +50,7 @@ contract('RegistrationManager', function (accounts) {
     env.newServerInstanceNoFunding({}, serverWorkdirs)
     await env.clearServerStorage()
     relayServer = env.relayServer
+    await relayServer.init()
   })
 
   // When running server before staking/funding it, or when balance gets too low
@@ -124,6 +126,7 @@ contract('RegistrationManager', function (accounts) {
       const serverWeb3provider = new Web3.providers.HttpProvider((web3.currentProvider as HttpProvider).host)
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = new ContractInteractor({
+        environment: defaultEnvironment,
         provider: serverWeb3provider,
         logger,
         maxPageSize,
@@ -180,7 +183,7 @@ contract('RegistrationManager', function (accounts) {
       const receipts = await newServer._worker(latestBlock.number)
       await newServer._worker(latestBlock.number + 1)
       assert.equal(newServer.lastScannedBlock, latestBlock.number + 1)
-      assert.equal(newServer.minGasPrice, expectedGasPrice)
+      assert.equal(newServer.minMaxPriorityFeePerGas, expectedGasPrice)
       assert.equal(newServer.isReady(), true, 'relay no ready?')
       const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
       assert.deepEqual(newServer.registrationManager.stakeRequired.currentValue, oneEther)

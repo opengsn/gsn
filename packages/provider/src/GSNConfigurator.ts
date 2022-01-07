@@ -14,7 +14,8 @@ import {
   PingFilter,
   RelayFilter
 } from '@opengsn/common/dist/types/Aliases'
-import { gsnRequiredVersion } from '@opengsn/common/dist'
+import { gsnRequiredVersion } from '@opengsn/common/dist/Version'
+import { defaultEnvironment, Environment } from '@opengsn/common/dist/Environments'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -33,15 +34,20 @@ export const defaultGsnConfig: GSNConfig = {
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
-  minGasPrice: 0,
+  minMaxPriorityFeePerGas: 1e9,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
   sliceSize: 3,
   relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
   methodSuffix: '_v4',
   requiredVersionRange: gsnRequiredVersion,
-  jsonStringifyRequest: false,
-  auditorsCount: 1,
-  clientId: '1'
+  jsonStringifyRequest: true,
+  auditorsCount: 0,
+  clientId: '1',
+  requestValidBlocks: '6000',
+  maxViewableGasLimit: '12000000',
+  environment: defaultEnvironment,
+  maxApprovalDataLength: 0,
+  maxPaymasterDataLength: 0
 }
 
 export interface LoggerConfiguration {
@@ -75,12 +81,16 @@ export interface GSNConfig {
   gasPriceFactorPercent: number
   gasPriceOracleUrl: string
   gasPriceOraclePath: string
-  minGasPrice: number
+  minMaxPriorityFeePerGas: number
   maxRelayNonceGap: number
   paymasterAddress?: Address
   clientId: IntString
   auditorsCount: number
-  maxViewableGasLimit?: number
+  requestValidBlocks: IntString
+  maxViewableGasLimit: IntString
+  environment: Environment
+  maxApprovalDataLength: number
+  maxPaymasterDataLength: number
 }
 
 export interface GSNDependencies {

@@ -12,6 +12,15 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
+import { toBN } from 'web3-utils'
+
+export enum LoggingProviderMode {
+  NONE,
+  DURATION,
+  ALL,
+  CHATTY
+}
 
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
@@ -27,9 +36,8 @@ export interface ServerConfigParams {
   ethereumNodeUrl: string
   workdir: string
   checkInterval: number
-  readyTimeout: number
   devMode: boolean
-  loggingProvider: boolean
+  loggingProvider: LoggingProviderMode
   // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
   registrationBlockRate: number
   // if set, must match clients' "relayLookupWindowBlocks" parameter for relay to be discoverable
@@ -55,12 +63,14 @@ export interface ServerConfigParams {
   managerMinStake: string
   managerTargetBalance: number
   minHubWithdrawalBalance: number
+  withdrawToOwnerOnBalance?: number
   refreshStateTimeoutBlocks: number
   pendingTransactionTimeoutBlocks: number
-  successfulRoundsForReady: number
   confirmationsNeeded: number
+  dbAutoCompactionInterval: number
   retryGasPriceFactor: number
   maxGasPrice: string
+  defaultPriorityFee: string
   defaultGasLimit: number
   requestMinValidBlocks: number
 
@@ -73,6 +83,8 @@ export interface ServerConfigParams {
   coldRestartLogsFromBlock: number
   // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
   pastEventsQueryMaxPageSize: number
+
+  environmentName?: string
 }
 
 export interface ServerDependencies {
@@ -92,7 +104,10 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   minAlertedDelayMS: 0,
   maxAlertedDelayMS: 0,
   // set to paymasters' default acceptanceBudget + RelayHub.calldataGasCost(<paymasters' default calldataSizeLimit>)
-  maxAcceptanceBudget: defaultEnvironment.paymasterConfiguration.acceptanceBudget + defaultEnvironment.relayHubConfiguration.dataGasCostPerByte * defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
+  maxAcceptanceBudget:
+    defaultEnvironment.paymasterConfiguration.acceptanceBudget +
+    parseInt(defaultEnvironment.dataOnChainHandlingGasCostPerByte.toString()) *
+    defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
   blacklistedPaymasters: [],
@@ -108,9 +123,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   managerTargetBalance: 0.3e18,
   minHubWithdrawalBalance: 0.1e18,
   checkInterval: 10000,
-  readyTimeout: 30000,
   devMode: false,
-  loggingProvider: false,
+  loggingProvider: LoggingProviderMode.NONE,
   runPenalizer: true,
   logLevel: 'debug',
   loggerUrl: '',
@@ -126,11 +140,12 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   workdir: '',
   refreshStateTimeoutBlocks: 5,
   pendingTransactionTimeoutBlocks: 30, // around 5 minutes with 10 seconds block times
-  successfulRoundsForReady: 3, // successful mined blocks to become ready after exception
   confirmationsNeeded: 12,
+  dbAutoCompactionInterval: 604800000, // Week in ms: 1000*60*60*24*7
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
-  maxGasPrice: 100e9.toString(),
+  maxGasPrice: 500e9.toString(),
+  defaultPriorityFee: 1e9.toString(),
 
   requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true,
@@ -155,9 +170,8 @@ const ConfigParamsTypes = {
   ethereumNodeUrl: 'string',
   workdir: 'string',
   checkInterval: 'number',
-  readyTimeout: 'number',
   devMode: 'boolean',
-  loggingProvider: 'boolean',
+  loggingProvider: 'number',
   logLevel: 'string',
 
   loggerUrl: 'string',
@@ -177,6 +191,7 @@ const ConfigParamsTypes = {
   managerMinStake: 'string',
   managerTargetBalance: 'number',
   minHubWithdrawalBalance: 'number',
+  withdrawToOwnerOnBalance: 'number',
   defaultGasLimit: 'number',
   requestMinValidBlocks: 'number',
 
@@ -192,17 +207,19 @@ const ConfigParamsTypes = {
   initialReputation: 'number',
 
   requiredVersionRange: 'string',
+  dbAutoCompactionInterval: 'number',
   retryGasPriceFactor: 'number',
   runPaymasterReputations: 'boolean',
-  successfulRoundsForReady: 'number',
   refreshStateTimeoutBlocks: 'number',
   pendingTransactionTimeoutBlocks: 'number',
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
   maxGasPrice: 'string',
+  defaultPriorityFee: 'string',
   coldRestartLogsFromBlock: 'number',
   pastEventsQueryMaxPageSize: 'number',
-  confirmationsNeeded: 'number'
+  confirmationsNeeded: 'number',
+  environmentName: 'string'
 } as any
 
 // by default: no waiting period - use VersionRegistry entries immediately.
@@ -286,20 +303,8 @@ export function parseServerConfig (args: string[], env: any): any {
   return entriesToObj(Object.entries(config).map(explicitType))
 }
 
-// resolve params, and validate the resulting struct
-export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<Partial<ServerConfigParams>> {
-  // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
-  const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
-  const contractInteractor = new ContractInteractor({
-    maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
-    provider: web3provider,
-    logger,
-    deployment: {
-      relayHubAddress: config.relayHubAddress,
-      versionRegistryAddress: config.versionRegistryAddress
-    }
-  })
-  await contractInteractor._initializeContracts()
+export async function resolveConfigRelayHubAddress (config: Partial<ServerConfigParams>, contractInteractor: ContractInteractor): Promise<string> {
+  let relayHubAddress: string
   if (config.versionRegistryAddress != null) {
     if (config.relayHubAddress != null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')
@@ -313,13 +318,48 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
     contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
     console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
-    config.relayHubAddress = value
+    relayHubAddress = value
   } else {
     if (config.relayHubAddress == null) {
       error('missing param: must have either relayHubAddress or versionRegistryAddress')
     }
     contractInteractor.validateAddress(config.relayHubAddress, 'invalid param: "relayHubAddress" is not a valid address:')
+    relayHubAddress = config.relayHubAddress
   }
+  return relayHubAddress
+}
+
+// resolve params, and validate the resulting struct
+export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<{
+  config: ServerConfigParams
+  environment: Environment
+}> {
+  let environment: Environment
+  if (config.environmentName != null) {
+    environment = environments[config.environmentName as EnvironmentsKeys]
+    if (environment == null) {
+      throw new Error(`Unknown named environment: ${config.environmentName}`)
+    }
+  } else {
+    environment = defaultEnvironment
+    console.error(`Must provide one of the supported values for environmentName: ${Object.keys(EnvironmentsKeys).toString()}`)
+  }
+
+  // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
+  const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
+  const contractInteractor = new ContractInteractor({
+    maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
+    provider: web3provider,
+    logger,
+    deployment: {
+      relayHubAddress: config.relayHubAddress,
+      versionRegistryAddress: config.versionRegistryAddress
+    },
+    environment
+  })
+  await contractInteractor._initializeContracts()
+  await contractInteractor._initializeNetworkParams()
+  config.relayHubAddress = await resolveConfigRelayHubAddress(config, contractInteractor)
 
   if (config.relayHubAddress == null) {
     error('relayHubAddress is still null')
@@ -330,7 +370,36 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
   if (config.ownerAddress == null || config.ownerAddress === constants.ZERO_ADDRESS) error('missing param: ownerAddress')
-  return { ...serverDefaultConfiguration, ...config }
+  const finalConfig = { ...serverDefaultConfiguration, ...config }
+  validateBalanceParams(finalConfig)
+  return {
+    config: finalConfig,
+    environment
+  }
+}
+
+export function validateBalanceParams (config: ServerConfigParams): void {
+  const workerTargetBalance = toBN(config.workerTargetBalance)
+  const managerTargetBalance = toBN(config.managerTargetBalance)
+  const managerMinBalance = toBN(config.managerMinBalance)
+  const workerMinBalance = toBN(config.workerMinBalance)
+  const minHubWithdrawalBalance = toBN(config.minHubWithdrawalBalance)
+  if (managerTargetBalance.lt(managerMinBalance)) {
+    throw new Error('managerTargetBalance must be at least managerMinBalance')
+  }
+  if (workerTargetBalance.lt(workerMinBalance)) {
+    throw new Error('workerTargetBalance must be at least workerMinBalance')
+  }
+  if (config.withdrawToOwnerOnBalance == null) {
+    return
+  }
+  const withdrawToOwnerOnBalance = toBN(config.withdrawToOwnerOnBalance)
+  if (minHubWithdrawalBalance.gt(withdrawToOwnerOnBalance)) {
+    throw new Error('withdrawToOwnerOnBalance must be at least minHubWithdrawalBalance')
+  }
+  if (managerTargetBalance.add(workerTargetBalance).gte(withdrawToOwnerOnBalance)) {
+    throw new Error('withdrawToOwnerOnBalance must be larger than managerTargetBalance + workerTargetBalance')
+  }
 }
 
 export function resolveReputationManagerConfig (config: any): Partial<ReputationManagerConfiguration> {

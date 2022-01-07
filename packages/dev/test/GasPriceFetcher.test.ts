@@ -8,7 +8,9 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { Server } from 'net'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 
+import { defaultEnvironment } from '@opengsn/common'
 import express = require('express')
+
 const { expect } = chai.use(chaiAsPromised)
 
 context('GasPriceFetcher', function () {
@@ -30,6 +32,7 @@ context('GasPriceFetcher', function () {
 
   before(async () => {
     contractInteractor = new ContractInteractor({
+      environment: defaultEnvironment,
       maxPageSize: Number.MAX_SAFE_INTEGER,
       provider: web3.currentProvider as HttpProvider,
       logger

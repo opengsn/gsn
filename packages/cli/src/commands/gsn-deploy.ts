@@ -8,9 +8,9 @@ import {
   saveDeployment,
   showDeployment
 } from '../utils'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { toWei } from 'web3-utils'
+import { toHex, toWei } from 'web3-utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
 
 gsnCommander(['n', 'f', 'm', 'g'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
@@ -20,6 +20,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
   .option('--penalizer <address>', 'penalizer')
   .option('--registry <address>', 'versionRegistry')
   .option('--registryHubId <string>', 'save the address of the relayHub to the registry, with this hub-id')
+  .option('--environmentName <string>', `name of one of the GSN supported environments: (${Object.keys(EnvironmentsKeys).toString()}; default: ethereumMainnet)`, EnvironmentsKeys.ethereumMainnet)
   .option('--yes, --skipConfirmation', 'skip con')
   .option('--testPaymaster', 'deploy test paymaster (accepts everything, avoid on main-nets)', false)
   .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
@@ -29,11 +30,16 @@ gsnCommander(['n', 'f', 'm', 'g'])
 (async () => {
   const network: string = commander.network
   const nodeURL = getNetworkUrl(network)
+  const environment: Environment = environments[commander.environmentName as EnvironmentsKeys]
+  if (environment == null) {
+    throw new Error(`Unknown named environment: ${commander.environmentName as string}`)
+  }
+  console.log('Using environment: ', JSON.stringify(environment))
 
   const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
-  const relayHubConfiguration = getRelayHubConfiguration(commander.config) ?? defaultEnvironment.relayHubConfiguration
-  const penalizerConfiguration = defaultEnvironment.penalizerConfiguration
+  const relayHubConfiguration = getRelayHubConfiguration(commander.config) ?? environment.relayHubConfiguration
+  const penalizerConfiguration = environment.penalizerConfiguration
   const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()
 
@@ -43,8 +49,8 @@ gsnCommander(['n', 'f', 'm', 'g'])
     return gasPrice
   }
 
-  const gasPrice = toWei(commander.gasPrice, 'gwei').toString() ?? await getGasPrice()
-  const gasLimit = parseInt(commander.gasLimit)
+  const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await getGasPrice())
+  const gasLimit = commander.gasLimit
 
   const deploymentResult = await logic.deployGsnContracts({
     from,

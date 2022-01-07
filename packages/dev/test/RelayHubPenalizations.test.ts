@@ -3,7 +3,7 @@
 import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
-import { Transaction, AccessListEIP2930Transaction } from '@ethereumjs/tx'
+import { Transaction, AccessListEIP2930Transaction, FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
 import Common from '@ethereumjs/common'
 import { TxOptions } from '@ethereumjs/tx/dist/types'
 import { encode } from 'rlp'
@@ -26,7 +26,6 @@ import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { StakeUnlocked } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { getDataAndSignature } from '@opengsn/common/dist'
-import { TransactionReceipt } from 'web3-core'
 import { toBN } from 'web3-utils'
 
 const RelayHub = artifacts.require('RelayHub')
@@ -62,7 +61,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
     data: '0x1234',
     baseFee: 1000,
     fee: 10,
-    gasPrice: 50,
+    maxFeePerGas: 50,
+    maxPriorityFeePerGas: 50,
     gasLimit: 1e6,
     nonce: 0,
     paymaster: ''
@@ -112,65 +112,19 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
     transactionOptions = getRawTxOptions(chainId, networkId, chain)
   })
 
-  async function prepareRelayCall (): Promise<{
-    gasPrice: BN
-    gasLimit: BN
-    relayRequest: RelayRequest
-    signature: string
-  }> {
-    const gasPrice = new BN(1e9)
-    const gasLimit = new BN('5000000')
-    const txData = recipient.contract.methods.emitMessage('').encodeABI()
-    const relayRequest: RelayRequest = {
-      request: {
-        to: recipient.address,
-        data: txData,
-        from: sender,
-        nonce: '0',
-        value: '0',
-        gas: gasLimit.toString(),
-        validUntil: '0'
-      },
-      relayData: {
-        gasPrice: gasPrice.toString(),
-        baseRelayFee: '300',
-        pctRelayFee: '10',
-        relayWorker,
-        forwarder,
-        paymaster: paymaster.address,
-        paymasterData,
-        clientId
-      }
-    }
-    const dataToSign = new TypedRequestData(
-      chainId,
-      forwarder,
-      relayRequest
-    )
-    const signature = await getEip712Signature(
-      web3,
-      dataToSign
-    )
-    return {
-      gasPrice,
-      gasLimit,
-      relayRequest,
-      signature
-    }
-  }
-
   describe('penalizations', function () {
     const stake = ether('1')
 
-    describe('TransactionType1 penalization', function () {
+    describe('TransactionType penalization', function () {
       let relayRequest: RelayRequest
       let encodedCall: string
       let common: Common
       let legacyTx: Transaction
       let eip2930Transaction: AccessListEIP2930Transaction
+      let eip1559Transaction: FeeMarketEIP1559Transaction
       let describeSnapshotId: string
       before(async function () {
-        common = new Common({ chain: 'mainnet', hardfork: 'berlin' })
+        common = new Common({ chain: 'mainnet', hardfork: 'london' })
         // TODO: 'encodedCallArgs' is no longer needed. just keep the RelayRequest in test
         relayRequest =
           {
@@ -186,7 +140,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             relayData: {
               baseRelayFee: encodedCallArgs.baseFee.toString(),
               pctRelayFee: encodedCallArgs.fee.toString(),
-              gasPrice: encodedCallArgs.gasPrice.toString(),
+              maxFeePerGas: encodedCallArgs.maxFeePerGas.toString(),
+              maxPriorityFeePerGas: encodedCallArgs.maxPriorityFeePerGas.toString(),
+              transactionCalldataGasUsed: '0',
               relayWorker: relayWorker,
               forwarder,
               paymaster: encodedCallArgs.paymaster,
@@ -194,7 +150,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               clientId
             }
           }
-        encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x', 1e6).encodeABI()
+        encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
 
         legacyTx = new Transaction({
           nonce: relayCallArgs.nonce,
@@ -206,6 +162,13 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         }, { common })
 
         eip2930Transaction = AccessListEIP2930Transaction.fromTxData(legacyTx, { common })
+        eip1559Transaction = FeeMarketEIP1559Transaction.fromTxData({
+          nonce: relayCallArgs.nonce,
+          gasLimit: relayCallArgs.gasLimit,
+          to: relayHub.address,
+          value: relayCallArgs.value,
+          data: encodedCall
+        }, { common })
       })
 
       beforeEach(async function () {
@@ -216,12 +179,19 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       })
 
       describe('#decodeTransaction', function () {
-        it('should decode new TransactionType1 tx', async function () {
+        it('should decode TransactionType1 tx', async function () {
           const input = [bnToRlp(eip2930Transaction.chainId), bnToRlp(eip2930Transaction.nonce), bnToRlp(eip2930Transaction.gasPrice), bnToRlp(eip2930Transaction.gasLimit), eip2930Transaction.to!.toBuffer(), bnToRlp(eip2930Transaction.value), eip2930Transaction.data, eip2930Transaction.accessList]
           const penalizableTxData = `0x01${encode(input).toString('hex')}`
           const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
           // @ts-ignore
           validateDecodedTx(decodedTx, eip2930Transaction)
+        })
+        it('should decode new TransactionType2 tx', async function () {
+          const input = [bnToRlp(eip1559Transaction.chainId), bnToRlp(eip1559Transaction.nonce), bnToRlp(eip1559Transaction.maxPriorityFeePerGas), bnToRlp(eip1559Transaction.maxFeePerGas), bnToRlp(eip1559Transaction.gasLimit), eip1559Transaction.to!.toBuffer(), bnToRlp(eip1559Transaction.value), eip1559Transaction.data, eip1559Transaction.accessList]
+          const penalizableTxData = `0x02${encode(input).toString('hex')}`
+          const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
+          // @ts-ignore
+          validateDecodedTx(decodedTx, eip1559Transaction)
         })
         it('should decode legacy tx', async function () {
           const input = [bnToRlp(legacyTx.nonce), bnToRlp(legacyTx.gasPrice), bnToRlp(legacyTx.gasLimit), legacyTx.to!.toBuffer(), bnToRlp(legacyTx.value), legacyTx.data]
@@ -232,7 +202,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         })
       })
 
-      it('should penalize new TransactionType1 tx', async function () {
+      it('should not penalize TransactionType1 tx', async function () {
         const signedTx = eip2930Transaction.sign(relayCallArgs.privateKey)
         const input = [bnToRlp(eip2930Transaction.chainId), bnToRlp(eip2930Transaction.nonce), bnToRlp(eip2930Transaction.gasPrice), bnToRlp(eip2930Transaction.gasLimit), eip2930Transaction.to!.toBuffer(), bnToRlp(eip2930Transaction.value), eip2930Transaction.data, eip2930Transaction.accessList]
         const penalizableTxData = `0x01${encode(input).toString('hex')}`
@@ -246,8 +216,30 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
         await penalizer.commit(commitHash, { from: committer })
         await evmMineMany(10)
-        const res = await penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer })
-        expectEvent(res, 'StakePenalized', { relayManager: relayManager, beneficiary: committer, reward: stake.divn(2) })
+        await expectRevert(
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
+          'Legal relay transaction'
+        )
+      })
+
+      it('should not penalize TransactionType2 tx', async function () {
+        const signedTx = eip1559Transaction.sign(relayCallArgs.privateKey)
+        const input = [bnToRlp(eip1559Transaction.chainId), bnToRlp(eip1559Transaction.nonce), bnToRlp(eip1559Transaction.maxPriorityFeePerGas), bnToRlp(eip1559Transaction.maxFeePerGas), bnToRlp(eip1559Transaction.gasLimit), eip1559Transaction.to!.toBuffer(), bnToRlp(eip1559Transaction.value), eip1559Transaction.data, eip1559Transaction.accessList]
+        const penalizableTxData = `0x02${encode(input).toString('hex')}`
+
+        const newV = (signedTx.v!.toNumber() + 27)
+        const penalizableTxSignature = signatureRSV2Hex(signedTx.r!, signedTx.s!, newV)
+
+        const request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x').encodeABI()
+
+        // eslint-disable-next-line
+        const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
+        await penalizer.commit(commitHash, { from: committer })
+        await evmMineMany(10)
+        await expectRevert(
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
+          'Legal relay transaction'
+        )
       });
 
       // legacy tx first byte is in [0xc0, 0xfe]
@@ -263,7 +255,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           await penalizer.commit(commitHash, { from: committer })
           await evmMineMany(10)
           const res = await penalizer.penalizeIllegalTransaction(bufferToHex(bufferToSign), penalizableTxSignature, relayHub.address, '0x', { from: committer })
-          expectEvent(res, 'StakePenalized', { relayManager: relayManager, beneficiary: committer, reward: stake.divn(2) })
+          expectEvent(res, 'StakePenalized', {
+            relayManager: relayManager,
+            beneficiary: committer,
+            reward: stake.divn(2)
+          })
         })
       })
     })
@@ -293,6 +289,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       await evmMineMany(6)
       return methodInvoked
     }
+
     // Receives a function that will penalize the relay and tests that call for a penalization, including checking the
     // emitted event and penalization reward transfer. Returns the transaction receipt.
     async function expectPenalization (methodInvoked: any, overrideOptions: Truffle.TransactionDetails = {}): Promise<any> {
@@ -344,7 +341,12 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       let penalizableTxData: string
       let penalizableTxSignature: string
       before(async function () {
-        const receipt = await web3.eth.sendTransaction({ from: anotherRelayWorker, to: other, value: ether('0.5'), gasPrice: 1e9 }) as TransactionReceipt;
+        const receipt = await web3.eth.sendTransaction({
+          from: anotherRelayWorker,
+          to: other,
+          value: ether('0.5'),
+          gasPrice: 1e9
+        });
         ({
           data: penalizableTxData,
           signature: penalizableTxSignature
@@ -524,7 +526,12 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         // TODO: this tests are excessive, and have a lot of tedious build-up
         it('penalizes relay transactions to addresses other than RelayHub', async function () {
           // Relay sending ether to another account
-          const receipt = await web3.eth.sendTransaction({ from: relayWorker, to: other, value: ether('0.5'), gasPrice: 1e9 }) as TransactionReceipt
+          const receipt = await web3.eth.sendTransaction({
+            from: relayWorker,
+            to: other,
+            value: ether('0.5'),
+            gasPrice: 1e9
+          })
           const { data, signature } = await getDataAndSignatureFromHash(receipt.transactionHash, chainId)
 
           const method = await commitPenalizationAndReturnMethod(
@@ -548,37 +555,18 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           await expectPenalization(method)
         })
 
-        it('should penalize relays for lying about transaction gas limit RelayHub', async function () {
-          const { gasPrice, gasLimit, relayRequest, signature } = await prepareRelayCall()
-          await relayHub.depositFor(paymaster.address, {
-            from: other,
-            value: ether('1'),
-            gasPrice: 1e9
-          })
-          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gasLimit.add(new BN(1e6 - 1)), {
-            from: relayWorker,
-            gas: gasLimit.add(new BN(1e6)),
-            gasPrice
-          })
-
-          const relayCallTxDataSig = await getDataAndSignatureFromHash(relayCallTx.tx, chainId)
-
-          const method = await commitPenalizationAndReturnMethod(
-            penalizer.contract.methods.penalizeIllegalTransaction, relayCallTxDataSig.data, relayCallTxDataSig.signature, relayHub.address)
-
-          await expectPenalization(method)
-        })
-
         it('should penalize even after the relayer unlocked stake', async function () {
           const id = (await snapshot()).result
-          const { gasPrice, gasLimit, relayRequest, signature } = await prepareRelayCall()
           await relayHub.depositFor(paymaster.address, {
             from: other,
             value: ether('1')
           })
-          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', gasLimit.add(new BN(1e6 - 1)), {
+          // Relay sending ether to another account
+          const gasPrice = 1e9
+          const receipt = await web3.eth.sendTransaction({
             from: relayWorker,
-            gas: gasLimit.add(new BN(1e6)),
+            to: other,
+            value: ether('0.5'),
             gasPrice
           })
 
@@ -587,7 +575,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             relayManager,
             owner: relayOwner
           })
-          const relayCallTxDataSig = await getDataAndSignatureFromHash(relayCallTx.tx, chainId)
+          const relayCallTxDataSig = await getDataAndSignatureFromHash(receipt.transactionHash, chainId)
 
           const method = await commitPenalizationAndReturnMethod(
             penalizer.contract.methods.penalizeIllegalTransaction, relayCallTxDataSig.data, relayCallTxDataSig.signature, relayHub.address)
@@ -601,6 +589,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           const baseFee = new BN('300')
           const fee = new BN('10')
           const gasPrice = new BN(1e9)
+          const maxFeePerGas = new BN(1e9)
+          const maxPriorityFeePerGas = new BN(1e9)
           const gasLimit = new BN('1000000')
           const senderNonce = new BN('0')
           const txData = recipient.contract.methods.emitMessage('').encodeABI()
@@ -615,9 +605,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               validUntil: '0'
             },
             relayData: {
-              gasPrice: gasPrice.toString(),
+              maxFeePerGas: maxFeePerGas.toString(),
+              maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
               baseRelayFee: baseFee.toString(),
               pctRelayFee: fee.toString(),
+              transactionCalldataGasUsed: '0',
               relayWorker,
               forwarder,
               paymaster: paymaster.address,
@@ -639,7 +631,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             value: ether('1')
           })
           const externalGasLimit = gasLimit.add(new BN(1e6))
-          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', externalGasLimit, {
+          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
             from: relayWorker,
             gas: externalGasLimit,
             gasPrice
@@ -663,7 +655,12 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
 
         beforeEach(async function () {
           // Relays are not allowed to transfer Ether
-          const receipt = await web3.eth.sendTransaction({ from: anotherRelayWorker, to: other, value: ether('0.5'), gasPrice: 1e9 }) as TransactionReceipt;
+          const receipt = await web3.eth.sendTransaction({
+            from: anotherRelayWorker,
+            to: other,
+            value: ether('0.5'),
+            gasPrice: 1e9
+          });
           ({
             data: penalizableTxData,
             signature: penalizableTxSignature
@@ -725,7 +722,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           relayData: {
             baseRelayFee: encodedCallArgs.baseFee.toString(),
             pctRelayFee: encodedCallArgs.fee.toString(),
-            gasPrice: encodedCallArgs.gasPrice.toString(),
+            maxFeePerGas: encodedCallArgs.maxFeePerGas.toString(),
+            maxPriorityFeePerGas: encodedCallArgs.maxPriorityFeePerGas.toString(),
+            transactionCalldataGasUsed: '0',
             relayWorker,
             forwarder,
             paymaster: encodedCallArgs.paymaster,
@@ -733,7 +732,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             clientId
           }
         }
-      const encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x', 4e6).encodeABI()
+      const encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
 
       const transaction = Transaction.fromTxData({
         nonce: relayCallArgs.nonce,
@@ -772,9 +771,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       return getDataAndSignature(tx, chainId)
     }
 
-    function validateDecodedTx (decodedTx: { nonce: string, gasPrice: string, gasLimit: string, to: string, value: string, data: string}, originalTx: AccessListEIP2930Transaction | Transaction): void {
+    function validateDecodedTx (decodedTx: { nonce: string, gasPrice: string, gasLimit: string, to: string, value: string, data: string }, originalTx: AccessListEIP2930Transaction | Transaction): void {
       assert.equal(decodedTx.nonce, originalTx.nonce.toString())
-      assert.equal(decodedTx.gasPrice, originalTx.gasPrice.toString())
       assert.equal(decodedTx.gasLimit, originalTx.gasLimit.toString())
       assert.equal(removeHexPrefix(decodedTx.data), originalTx.data.toString('hex'))
       assert.equal(decodedTx.to.toLowerCase(), originalTx.to!.toString().toLowerCase())

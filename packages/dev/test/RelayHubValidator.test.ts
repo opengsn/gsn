@@ -1,5 +1,7 @@
 import { expectRevert } from '@openzeppelin/test-helpers'
 
+import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+
 require('source-map-support').install({ errorFormatterForce: true })
 
 const TestRelayHubValidator = artifacts.require('TestRelayHubValidator')
@@ -35,30 +37,33 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
     it(`should verify correct length with "${JSON.stringify(appended)}" `, async () => {
       const suffix = appended.suffix ?? ''
 
-      const verifyTransactionPacking = await validator.contract.methods.dummyRelayCall(0,
-        {
-          request: {
-            from: senderAddress,
-            to: target,
-            value: 0,
-            gas: 1,
-            nonce: 2,
-            data: appended.data ?? '0x',
-            validUntil: 0
-          },
-          relayData: {
-            gasPrice: 0,
-            pctRelayFee: 1,
-            baseRelayFee: 2,
-            relayWorker,
-            paymaster: paymaster,
-            paymasterData: appended.paymasterData ?? '0x',
-            clientId: 3,
-            forwarder
-          }
+      const relayRequest: RelayRequest = {
+        request: {
+          from: senderAddress,
+          to: target,
+          value: '0',
+          gas: '1',
+          nonce: '2',
+          data: appended.data ?? '0x',
+          validUntil: '0'
         },
+        relayData: {
+          maxFeePerGas: '0',
+          maxPriorityFeePerGas: '0',
+          pctRelayFee: '1',
+          baseRelayFee: '2',
+          relayWorker,
+          paymaster: paymaster,
+          paymasterData: appended.paymasterData ?? '0x',
+          clientId: '3',
+          transactionCalldataGasUsed: '4',
+          forwarder
+        }
+      }
+      const verifyTransactionPacking = await validator.contract.methods.dummyRelayCall(0,
+        relayRequest,
         appended.signature ?? '0x',
-        appended.approvalData ?? '0x', 0)
+        appended.approvalData ?? '0x')
 
       const encoded = verifyTransactionPacking.encodeABI()
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -71,30 +76,34 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
       }
     })
   })
+
   it('should reject signature too long', async () => {
-    await expectRevert(validator.dummyRelayCall(0,
-      {
-        request: {
-          from: senderAddress,
-          to: target,
-          value: 0,
-          gas: 1,
-          nonce: 2,
-          data: '0x',
-          validUntil: 0
-        },
-        relayData: {
-          gasPrice: 0,
-          pctRelayFee: 1,
-          baseRelayFee: 2,
-          relayWorker,
-          paymaster: paymaster,
-          paymasterData: '0x',
-          clientId: 3,
-          forwarder
-        }
+    const relayRequest: RelayRequest = {
+      request: {
+        from: senderAddress,
+        to: target,
+        value: '0',
+        gas: '1',
+        nonce: '2',
+        data: '0x',
+        validUntil: '0'
       },
+      relayData: {
+        maxFeePerGas: '0',
+        maxPriorityFeePerGas: '0',
+        pctRelayFee: '1',
+        baseRelayFee: '2',
+        relayWorker,
+        paymaster: paymaster,
+        paymasterData: '0x',
+        clientId: '3',
+        transactionCalldataGasUsed: '4',
+        forwarder
+      }
+    }
+    await expectRevert(validator.dummyRelayCall(0,
+      relayRequest,
       '0x' + '11'.repeat(66),
-      '0x', 0), 'invalid signature length')
+      '0x'), 'invalid signature length')
   })
 })

@@ -241,7 +241,7 @@ export class RegistrationManager {
 
   async _queryLatestRegistrationEvent (): Promise<EventData | undefined> {
     const topics = address2topic(this.managerAddress)
-    const registerEvents = await this.contractInteractor.getPastEventsForHub([topics],
+    const registerEvents = await this.contractInteractor.getPastEventsForRegistrar([topics],
       {
         fromBlock: this.config.coldRestartLogsFromBlock
       },
@@ -380,7 +380,7 @@ export class RegistrationManager {
       gasLimit,
       signer: this.managerAddress,
       method: registerMethod,
-      destination: this.hubAddress,
+      destination: this.contractInteractor.relayRegistrar.address,
       creationBlockNumber: currentBlock
     }
     const { transactionHash } = await this.transactionManager.sendTransaction(details)
@@ -390,6 +390,7 @@ export class RegistrationManager {
   }
 
   async _sendManagerEthBalanceToOwner (currentBlock: number): Promise<PrefixedHexString[]> {
+    // todo add better maxFeePerGas, maxPriorityFeePerGas
     const gasPrice = await this.contractInteractor.getGasPrice()
     const transactionHashes: PrefixedHexString[] = []
     const gasLimit = mintxgascost
@@ -404,7 +405,8 @@ export class RegistrationManager {
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
         gasLimit,
-        gasPrice,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         value: toHex(managerBalance.sub(txCost)),
         creationBlockNumber: currentBlock
       }
@@ -419,18 +421,20 @@ export class RegistrationManager {
   async _sendWorkersEthBalancesToOwner (currentBlock: number): Promise<PrefixedHexString[]> {
     // sending workers' balance to owner (currently one worker, todo: extend to multiple)
     const transactionHashes: PrefixedHexString[] = []
+    // todo add better maxFeePerGas, maxPriorityFeePerGas
     const gasPrice = await this.contractInteractor.getGasPrice()
     const gasLimit = mintxgascost
     const txCost = toBN(gasLimit * parseInt(gasPrice))
     const workerBalance = toBN(await this.contractInteractor.getBalance(this.workerAddress))
     if (workerBalance.gte(txCost)) {
       this.logger.info(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
-      const details = {
+      const details: SendTransactionDetails = {
         signer: this.workerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
         gasLimit,
-        gasPrice,
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         value: toHex(workerBalance.sub(txCost)),
         creationBlockNumber: currentBlock
       }
@@ -442,20 +446,25 @@ export class RegistrationManager {
     return transactionHashes
   }
 
-  async _sendManagerHubBalanceToOwner (currentBlock: number): Promise<PrefixedHexString[]> {
+  async _sendManagerHubBalanceToOwner (currentBlock: number, amount?: BN): Promise<PrefixedHexString[]> {
     if (this.ownerAddress == null) {
       throw new Error('Owner address not initialized')
     }
     const transactionHashes: PrefixedHexString[] = []
     const gasPrice = await this.contractInteractor.getGasPrice()
     const managerHubBalance = await this.contractInteractor.hubBalanceOf(this.managerAddress)
+    if (amount == null) {
+      amount = managerHubBalance
+    } else if (amount.gt(managerHubBalance)) {
+      throw new Error(`Withdrawal amount ${amount.toString()} larger than manager hub balance ${managerHubBalance.toString()}`)
+    }
     const {
       gasLimit,
       gasCost,
       method
-    } = await this.contractInteractor.withdrawHubBalanceEstimateGas(managerHubBalance, this.ownerAddress, this.managerAddress, gasPrice)
-    if (managerHubBalance.gte(gasCost)) {
-      this.logger.info(`Sending manager hub balance ${managerHubBalance.toString()} to owner`)
+    } = await this.contractInteractor.withdrawHubBalanceEstimateGas(amount, this.ownerAddress, this.managerAddress, gasPrice)
+    if (amount.gte(gasCost)) {
+      this.logger.info(`Sending manager hub balance ${amount.toString()} to owner`)
       const details: SendTransactionDetails = {
         gasLimit,
         signer: this.managerAddress,

@@ -9,7 +9,7 @@ import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import { HttpProvider } from 'web3-core'
 import { GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClient'
-import { HttpServer } from '@opengsn/relay/dist/HttpServer'
+import { disableTruffleAutoEstimateGas } from '@opengsn/dev/dist/test/TestUtils'
 
 const HashcashPaymaster = artifacts.require('HashcashPaymaster')
 const SampleRecipient = artifacts.require('SampleRecipient')
@@ -21,23 +21,19 @@ contract('HashcashPaymaster', ([from]) => {
   let gsnConfig: Partial<GSNConfig>
   let relayHubAddress: string | undefined
   let forwarderAddress: string | undefined
-  let httpServer: HttpServer
 
   before(async () => {
     const host = (web3.currentProvider as HttpProvider).host;
     ({
-      httpServer,
       contractsDeployment: {
         relayHubAddress,
         forwarderAddress
       }
     } = await GsnTestEnvironment.startGsn(host))
 
-    // TODO: fix
-    // @ts-ignore
-    httpServer.relayService?.config.checkInterval = 1000
-
+    disableTruffleAutoEstimateGas(SampleRecipient)
     s = await SampleRecipient.new()
+
     await s.setForwarder(forwarderAddress!)
 
     pm = await HashcashPaymaster.new(10)
@@ -51,8 +47,13 @@ contract('HashcashPaymaster', ([from]) => {
       loggerConfiguration: {
         logLevel: 'error'
       },
+      maxApprovalDataLength: 65,
       paymasterAddress: pm.address
     }
+  })
+
+  after(async function () {
+    await GsnTestEnvironment.stopGsn()
   })
 
   it('should fail to send without approvalData', async () => {

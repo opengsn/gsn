@@ -12,7 +12,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         bytes encodedFunction,
         uint256 baseRelayFee,
         uint256 pctRelayFee,
-        uint256 gasPrice,
+        uint256 maxFeePerGas,
         uint256 gasLimit,
         bytes approvalData,
         uint256 maxPossibleGas
@@ -43,7 +43,7 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
             relayRequest.request.data,
             relayRequest.relayData.baseRelayFee,
             relayRequest.relayData.pctRelayFee,
-            relayRequest.relayData.gasPrice,
+            relayRequest.relayData.maxFeePerGas,
             relayRequest.request.gas,
             approvalData,
             maxPossibleGas);

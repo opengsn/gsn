@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/cli",
-  "version": "2.2.2",
+  "version": "2.2.4",
   "license": "GPL-3.0-only",
   "main": "dist/commands/gsn.js",
   "bin": {
@@ -8,9 +8,11 @@
   },
   "scripts": {
     "tsc": "tsc",
+    "watch-tsc": "tsc -w",
     "lint": "eslint -f unix .",
+    "lint-fix": "yarn lint --fix",
     "chmod-commands": "chmod a+rx ./dist/commands/*.js",
-    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist src/cli/compiled"
+    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist src/compiled"
   },
   "files": [
     "dist/*",
@@ -20,9 +22,10 @@
     "access": "public"
   },
   "dependencies": {
-    "@opengsn/common": "^2.2.2",
-    "@opengsn/provider": "^2.2.2",
-    "@opengsn/relay": "^2.2.2",
+    "@ethereumjs/tx": "^3.2.0",
+    "@opengsn/common": "^2.2.4",
+    "@opengsn/provider": "^2.2.4",
+    "@opengsn/relay": "^2.2.4",
     "@truffle/hdwallet-provider": "1.0.34",
     "@types/asciichart": "^1.5.4",
     "@types/clear": "^0.1.1",
@@ -37,7 +40,6 @@
     "commander": "^6.1.0",
     "console-read-write": "^0.1.1",
     "date-format": "^3.0.0",
-    "@ethereumjs/tx": "^3.2.0",
     "ethereumjs-util": "^7.1.0",
     "moment": "^2.29.1",
     "terminal-link": "^2.1.1",
@@ -45,11 +47,11 @@
     "winston": "^3.3.3"
   },
   "devDependencies": {
-    "web3-core": "1.2.6",
-    "web3-core-helpers": "1.2.6",
-    "web3-eth": "1.2.6",
-    "web3-eth-abi": "1.2.6",
-    "web3-eth-contract": "1.2.6",
-    "web3-utils": "1.2.6"
+    "web3-core": "1.6.1",
+    "web3-core-helpers": "1.6.1",
+    "web3-eth": "1.6.1",
+    "web3-eth-abi": "1.6.1",
+    "web3-eth-contract": "1.6.1",
+    "web3-utils": "1.6.1"
   }
 }

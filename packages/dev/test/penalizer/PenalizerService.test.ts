@@ -12,7 +12,7 @@ import { Address } from '@opengsn/common/dist/types/Aliases'
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { MockTxByNonceService } from './MockTxByNonceService'
 import { evmMineMany, revert, snapshot } from '../TestUtils'
-import { resolveServerConfig, ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { resolveServerConfig } from '@opengsn/relay/dist/ServerConfigParams'
 
 contract('PenalizerService', function (accounts) {
   let id: string
@@ -35,13 +35,13 @@ contract('PenalizerService', function (accounts) {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    const serverConfigParams: ServerConfigParams = await resolveServerConfig({
+    const { config: serverConfigParams } = await resolveServerConfig({
       url: '',
       workdir: '',
       etherscanApiUrl: 'etherscanApiUrl',
       relayHubAddress: env.relayHub.address,
       ownerAddress: env.relayServer.config.ownerAddress
-    }, web3.currentProvider) as ServerConfigParams
+    }, web3.currentProvider)
     penalizerService = new PenalizerService(penalizerParams, logger, serverConfigParams)
     await penalizerService.init(false)
 
@@ -80,7 +80,7 @@ contract('PenalizerService', function (accounts) {
       const signedTxToMine = env.relayServer.transactionManager.workersKeyManager.signTransaction(relayWorker, txToMine)
       const signedTxToPenalize = env.relayServer.transactionManager.workersKeyManager.signTransaction(relayWorker, penalizableTx)
       await env.relayServer.transactionManager.contractInteractor.sendSignedTransaction(signedTxToMine.rawTx)
-      await txByNonceService.setTransactionByNonce(signedTxToMine.signedEthJsTx, relayWorker)
+      await txByNonceService.setTransactionByNonce(signedTxToMine.signedEthJsTx as Transaction, relayWorker)
       auditRequest = { signedTx: signedTxToPenalize.rawTx }
     })
 

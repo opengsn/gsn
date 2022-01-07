@@ -14,12 +14,14 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { Environment } from '@opengsn/common'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
 const RelayHub = artifacts.require('RelayHub')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const localhostOne = 'http://localhost:8090'
 
@@ -52,6 +54,12 @@ export async function startRelay (
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
   args.push('--ownerAddress', options.relayOwner)
+  if (options.loggingProvider) {
+    args.push('--loggingProvider', options.loggingProvider)
+  }
+  if (options.confirmationsNeeded) {
+    args.push('--confirmationsNeeded', options.confirmationsNeeded)
+  }
 
   if (options.ethereumNodeUrl) {
     args.push('--ethereumNodeUrl', options.ethereumNodeUrl)
@@ -73,6 +81,12 @@ export async function startRelay (
   }
   if (options.workerTargetBalance) {
     args.push('--workerTargetBalance', options.workerTargetBalance)
+  }
+  if (options.environmentName) {
+    args.push('--environmentName', options.environmentName)
+  }
+  if (options.refreshStateTimeoutBlocks) {
+    args.push('--refreshStateTimeoutBlocks', options.refreshStateTimeoutBlocks)
   }
   const runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
@@ -261,23 +275,20 @@ export function encodeRevertReason (reason: string): PrefixedHexString {
 export async function deployHub (
   stakeManager: string,
   penalizer: string,
-  configOverride: Partial<RelayHubConfiguration> = {}): Promise<RelayHubInstance> {
+  configOverride: Partial<RelayHubConfiguration> = {},
+  environment: Environment = defaultEnvironment): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
-    ...defaultEnvironment.relayHubConfiguration,
+    ...environment.relayHubConfiguration,
     ...configOverride
   }
   const hub: RelayHubInstance = await RelayHub.new(
     stakeManager,
     penalizer,
-    relayHubConfiguration.maxWorkerCount,
-    relayHubConfiguration.gasReserve,
-    relayHubConfiguration.postOverhead,
-    relayHubConfiguration.gasOverhead,
-    relayHubConfiguration.maximumRecipientDeposit,
-    relayHubConfiguration.minimumUnstakeDelay,
-    relayHubConfiguration.minimumStake,
-    relayHubConfiguration.dataGasCostPerByte,
-    relayHubConfiguration.externalCallDataCostOverhead)
+    relayHubConfiguration)
+
+  const relayRegistrar = await RelayRegistrar.new(hub.address, true)
+  await hub.setRegistrar(relayRegistrar.address)
+
   return hub
 }
 
@@ -289,9 +300,21 @@ export async function emptyBalance (source: Address, target: Address): Promise<v
   const gasPrice = toBN(1e9)
   const txCost = toBN(defaultEnvironment.mintxgascost).mul(gasPrice)
   let balance = toBN(await web3.eth.getBalance(source))
-  await web3.eth.sendTransaction({ from: source, to: target, value: balance.sub(txCost), gasPrice, gas: defaultEnvironment.mintxgascost })
+  const transferValue = balance.sub(txCost)
+  console.log('bal=', balance.toString(), 'xfer=', transferValue.toString())
+  if (transferValue.gtn(0)) {
+    await web3.eth.sendTransaction({ from: source, to: target, value: transferValue, gasPrice, gas: defaultEnvironment.mintxgascost })
+  }
   balance = toBN(await web3.eth.getBalance(source))
   assert.isTrue(balance.eqn(0))
+}
+
+export function disableTruffleAutoEstimateGas (truffleContract: any): void {
+  if (truffleContract.autoGas) {
+    truffleContract.autoGas = false
+  }
+  truffleContract.defaults
+  delete truffleContract.class_defaults.gas
 }
 
 /**

@@ -22,22 +22,9 @@ interface IRelayHub {
         uint256 minimumUnstakeDelay;
         // Minimum stake a relay can have. An attack on the network will never cost less than half this value.
         uint256 minimumStake;
-        // relayCall()'s msg.data upper bound gas cost per byte
-        uint256 dataGasCostPerByte;
-        // relayCalls() minimal gas overhead when calculating cost of putting tx on chain.
-        uint256 externalCallDataCostOverhead;
     }
 
     event RelayHubConfigured(RelayHubConfig config);
-
-    /// Emitted when a relay server registers or updates its details
-    /// Looking at these events lets a client discover relay servers
-    event RelayServerRegistered(
-        address indexed relayManager,
-        uint256 baseRelayFee,
-        uint256 pctRelayFee,
-        string relayUrl
-    );
 
     /// Emitted when relays are added by a relayManager
     event RelayWorkersAdded(
@@ -118,7 +105,7 @@ interface IRelayHub {
     /// This function can be called multiple times, emitting new events
     function addRelayWorkers(address[] calldata newRelayWorkers) external;
 
-    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external;
+    function verifyCanRegister(address relayManager) external;
 
     // Balance management
 
@@ -150,15 +137,13 @@ interface IRelayHub {
     /// @param signature - client's EIP-712 signature over the relayRequest struct
     /// @param approvalData: dapp-specific data forwarded to preRelayedCall.
     ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the Paymaster
-    /// @param externalGasLimit - the value passed as gasLimit to the transaction.
     ///
     /// Emits a TransactionRelayed event.
     function relayCall(
         uint maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
-        bytes calldata approvalData,
-        uint externalGasLimit
+        bytes calldata approvalData
     )
     external
     returns (bool paymasterAccepted, bytes memory returnValue);
@@ -181,8 +166,6 @@ interface IRelayHub {
     /// Returns the whole hub configuration
     function getConfiguration() external view returns (RelayHubConfig memory config);
 
-    function calldataGasCost(uint256 length) external view returns (uint256);
-
     function workerToManager(address worker) external view returns(address);
 
     function workerCount(address manager) external view returns(uint256);
@@ -193,6 +176,8 @@ interface IRelayHub {
     function stakeManager() external view returns (IStakeManager);
 
     function penalizer() external view returns (address);
+
+    function relayRegistrar() external view returns (address);
 
     /// Uses StakeManager info to decide if the Relay Manager can be considered staked
     /// @return true if stake size and delay satisfy all requirements
@@ -206,5 +191,8 @@ interface IRelayHub {
 
     /// @return a SemVer-compliant version of the hub contract
     function versionHub() external view returns (string memory);
+
+    /// @return a total measurable amount of gas left to current execution; same as 'gasleft()' for pure EVMs
+    function aggregateGasleft() external view returns (uint256);
 }
 

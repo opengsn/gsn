@@ -1,12 +1,13 @@
 {
   "name": "@opengsn/contracts",
   "license": "GPL-3.0-only",
-  "version": "2.2.2",
+  "version": "2.2.4",
   "main": "types/truffle-contracts/index.d.ts",
   "scripts": {
-    "truffle-compile": "truffle compile --compile-all",
+    "truffle-compile": "truffle compile",
     "typechain-generate": "yarn truffle-compile && typechain --target truffle-v5 '../cli/src/compiled/*.json'",
-    "lint": "solhint -f unix \"src/**/*.sol\" --max-warnings 0"
+    "lint": "solhint -f unix \"src/**/*.sol\" --max-warnings 0",
+    "rm-dist": "rm -rf types"
   },
   "files": [
     "src/*",
@@ -21,13 +22,5 @@
   },
   "devDependencies": {
     "solhint": "^3.3.2"
-  },
-  "peerDependencies": {
-    "@types/bn.js": "^5.1.0",
-    "bn.js": "^5.2.0",
-    "web3": "^1.2.6",
-    "web3-core": "^1.2.6",
-    "web3-eth-contract": "^1.2.6",
-    "web3-utils": "^1.2.6"
   }
 }

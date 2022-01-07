@@ -7,7 +7,7 @@ import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { RelaySelectionManager } from '@opengsn/provider/dist/RelaySelectionManager'
-import { EmptyFilter, KnownRelaysManager } from '@opengsn/provider/dist/KnownRelaysManager'
+import { DefaultRelayFilter, KnownRelaysManager } from '@opengsn/provider/dist/KnownRelaysManager'
 import { GasPricePingFilter } from '@opengsn/provider/dist/RelayClient'
 import { PartialRelayInfo, RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { PingFilter } from '@opengsn/common/dist/types/Aliases'
@@ -44,7 +44,7 @@ contract('RelaySelectionManager', function (accounts) {
     relayWorkerAddress: '',
     relayManagerAddress: '',
     relayHubAddress: '',
-    minGasPrice: '1',
+    minMaxPriorityFeePerGas: '1',
     maxAcceptanceBudget: 1e10.toString(),
     ready: true,
     version: '1'
@@ -58,7 +58,9 @@ contract('RelaySelectionManager', function (accounts) {
     data: '',
     to: '',
     forwarder: '',
-    paymaster: ''
+    paymaster: '',
+    maxFeePerGas: '',
+    maxPriorityFeePerGas: ''
   }
 
   let stubPingResponse: SinonStub
@@ -70,12 +72,13 @@ contract('RelaySelectionManager', function (accounts) {
     before(async function () {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = await new ContractInteractor({
+        environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
         maxPageSize,
         logger
       }).init()
       httpClient = new HttpClient(new HttpWrapper(), this.logger)
-      knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), EmptyFilter)
+      knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), DefaultRelayFilter)
       stubGetRelaysSorted = sinon.stub(knownRelaysManager, 'getRelaysSortedForTransaction')
       stubGetRelaysSorted.returns(Promise.resolve([[eventInfo]]))
       relaySelectionManager = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
@@ -120,10 +123,11 @@ contract('RelaySelectionManager', function (accounts) {
         const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
         relayHub = await deployHub(stakeManager.address, penalizer.address)
         await stake(stakeManager, relayHub, relayManager, accounts[0])
-        await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '777')
+        await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '77')
 
         await contractInteractor.initDeployment({
           relayHubAddress: relayHub.address,
+          relayRegistrarAddress: await relayHub.relayRegistrar(),
           stakeManagerAddress: stakeManager.address,
           penalizerAddress: penalizer.address
         })
@@ -133,6 +137,8 @@ contract('RelaySelectionManager', function (accounts) {
             transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
         stubRaceToSuccess = sinon.stub(relaySelectionManager, '_raceToSuccess')
         stubGetNextSlice = sinon.stub(relaySelectionManager, '_getNextSlice')
+
+        await knownRelaysManager.refresh()
       })
 
       it('should fill in the details if the relay was known only by URL', async function () {
@@ -141,7 +147,7 @@ contract('RelaySelectionManager', function (accounts) {
           relayWorkerAddress: relayManager,
           relayManagerAddress: relayManager,
           relayHubAddress: relayManager,
-          minGasPrice: '1',
+          minMaxPriorityFeePerGas: '1',
           ownerAddress: accounts[0],
           maxAcceptanceBudget: 1e10.toString(),
           ready: true,
@@ -162,7 +168,7 @@ contract('RelaySelectionManager', function (accounts) {
         assert.equal(nextRelay.relayInfo.relayUrl, preferredRelayUrl)
         assert.equal(nextRelay.relayInfo.relayManager, relayManager)
         assert.equal(nextRelay.relayInfo.baseRelayFee, '666')
-        assert.equal(nextRelay.relayInfo.pctRelayFee, '777')
+        assert.equal(nextRelay.relayInfo.pctRelayFee, '77')
       })
     })
 

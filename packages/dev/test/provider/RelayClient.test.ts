@@ -19,7 +19,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient } from '@opengsn/provider/dist/RelayClient'
+import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, EmptyDataCallback } from '@opengsn/provider/dist/RelayClient'
 import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 import { defaultGsnConfig, GSNConfig, LoggerConfiguration } from '@opengsn/provider/dist/GSNConfigurator'
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
@@ -43,17 +43,20 @@ import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { RelayRegistrarInstance } from '@opengsn/contracts'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const Forwarder = artifacts.require('Forwarder')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const { expect, assert } = chai.use(chaiAsPromised)
 chai.use(sinonChai)
 
 const localhostOne = 'http://localhost:8090'
+const localhost127One = 'http://127.0.0.1:8090'
 const underlyingProvider = web3.currentProvider as HttpProvider
 
 class MockHttpClient extends HttpClient {
@@ -75,6 +78,7 @@ class MockHttpClient extends HttpClient {
 contract('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
+  let relayRegistrar: RelayRegistrarInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
@@ -106,7 +110,7 @@ contract('RelayClient', function (accounts) {
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
 
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayHub.registerRelayServer(1, 1, cheapRelayerUrl, { from: relayManager })
+    await relayRegistrar.registerRelayServer(1, 1, cheapRelayerUrl, { from: relayManager })
   }
 
   before(async function () {
@@ -114,6 +118,7 @@ contract('RelayClient', function (accounts) {
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address)
+    relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)
@@ -148,10 +153,16 @@ contract('RelayClient', function (accounts) {
       to,
       data,
       paymasterData: '0x',
-      clientId: '1'
+      clientId: '1',
+      maxFeePerGas: '0',
+      maxPriorityFeePerGas: '0'
     }
   })
 
+  beforeEach(async function () {
+    const { maxFeePerGas, maxPriorityFeePerGas } = await relayClient.calculateGasFees()
+    options = { ...options, maxFeePerGas, maxPriorityFeePerGas }
+  })
   after(function () {
     stopRelay(relayProcess)
   })
@@ -177,7 +188,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should allow to override metamask defaults', async () => {
-      const minGasPrice = 777
+      const minMaxPriorityFeePerGas = 777
       const suffix = 'suffix'
       const metamaskProvider = {
         isMetaMask: true,
@@ -188,7 +199,7 @@ contract('RelayClient', function (accounts) {
       const constructorInput: GSNUnresolvedConstructorInput = {
         provider: metamaskProvider,
         config: {
-          minGasPrice,
+          minMaxPriorityFeePerGas: minMaxPriorityFeePerGas,
           paymasterAddress: paymaster.address,
           methodSuffix: suffix,
           jsonStringifyRequest: 5 as any
@@ -201,7 +212,7 @@ contract('RelayClient', function (accounts) {
       await anotherRelayClient._initInternal()
       assert.equal(anotherRelayClient.config.methodSuffix, suffix)
       assert.equal(anotherRelayClient.config.jsonStringifyRequest as any, 5)
-      assert.equal(anotherRelayClient.config.minGasPrice, minGasPrice)
+      assert.equal(anotherRelayClient.config.minMaxPriorityFeePerGas, minMaxPriorityFeePerGas)
       assert.equal(anotherRelayClient.config.sliceSize, defaultGsnConfig.sliceSize, 'default value expected for a skipped field')
     })
   })
@@ -293,16 +304,6 @@ contract('RelayClient', function (accounts) {
       }
     })
 
-    it('should use forceGasPrice if provided', async function () {
-      const forceGasPrice = '0x777777777'
-      const optionsForceGas = Object.assign({}, options, { forceGasPrice })
-      const { transaction, pingErrors, relayingErrors } = await relayClient.relayTransaction(optionsForceGas)
-      assert.equal(pingErrors.size, 0)
-      assert.equal(relayingErrors.size, 0)
-      // @ts-ignore
-      assert.equal(parseInt(transaction.gasPrice.toString('hex'), 16), parseInt(forceGasPrice))
-    })
-
     it('should return errors encountered in ping', async function () {
       const badHttpClient = new BadHttpClient(logger, true, false, false)
       const relayClient =
@@ -332,6 +333,79 @@ contract('RelayClient', function (accounts) {
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.get(localhostOne)!.message, BadHttpClient.message)
+    })
+
+    it('should abort scanning if user cancels signature request', async () => {
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: gsnConfig
+        })
+      await relayClient.init()
+      // @ts-ignore
+      const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
+      const mockRelays = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
+      ]
+
+      getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
+      sinon.stub(relayClient.dependencies.accountManager, 'sign').onCall(0).throws(new Error('client sig failure'))
+
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.get(localhost127One)!.message, 'client sig failure')
+    })
+
+    it('should continue scanning if returned relayer TX is malformed', async () => {
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: gsnConfig
+        })
+      await relayClient.init()
+      // @ts-ignore
+      const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
+      const mockRelays = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '70', pctRelayFee: '70' },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '70', pctRelayFee: '70' }
+      ]
+
+      getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
+      sinon.stub(relayClient.dependencies.transactionValidator, 'validateRelayResponse').throws(new Error('fail returned tx'))
+
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 2)
+      assert.equal(relayingErrors.get(localhostOne)!.message, 'fail returned tx')
+    })
+
+    it('should continue looking up relayers after relayer error', async function () {
+      const badHttpClient = new BadHttpClient(logger, false, true, false)
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: gsnConfig,
+          overrideDependencies: { httpClient: badHttpClient }
+        })
+      await relayClient.init()
+      // @ts-ignore
+      const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
+      const mockRelays = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
+      ]
+
+      getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
+
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 2)
       assert.equal(relayingErrors.get(localhostOne)!.message, BadHttpClient.message)
     })
 
@@ -417,18 +491,18 @@ contract('RelayClient', function (accounts) {
   })
 
   describe('#_calculateDefaultGasPrice()', function () {
-    it('should use minimum gas price if calculated is to low', async function () {
-      const minGasPrice = 1e18
+    it('should use minimum gas price if calculated is too low', async function () {
+      const minMaxPriorityFeePerGas = 1e18
       const gsnConfig: Partial<GSNConfig> = {
         loggerConfiguration: { logLevel: 'error' },
         paymasterAddress: paymaster.address,
-        minGasPrice
+        minMaxPriorityFeePerGas: minMaxPriorityFeePerGas
       }
       const relayClient = new RelayClient({ provider: underlyingProvider, config: gsnConfig })
       await relayClient.init()
 
-      const calculatedGasPrice = await relayClient._calculateGasPrice()
-      assert.equal(calculatedGasPrice, `0x${minGasPrice.toString(16)}`)
+      const calculatedGasPrice = await relayClient.calculateGasFees()
+      assert.equal(calculatedGasPrice.maxPriorityFeePerGas, `0x${minMaxPriorityFeePerGas.toString(16)}`)
     })
   })
 
@@ -449,14 +523,14 @@ contract('RelayClient', function (accounts) {
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorkerAddress], { from: relayManager })
-      await relayHub.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
+      await relayRegistrar.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
         ownerAddress: relayOwner,
         relayWorkerAddress: relayWorkerAddress,
         relayManagerAddress: relayManager,
         relayHubAddress: relayManager,
-        minGasPrice: '',
+        minMaxPriorityFeePerGas: '',
         maxAcceptanceBudget: 1e10.toString(),
         ready: true,
         version: ''
@@ -465,20 +539,22 @@ contract('RelayClient', function (accounts) {
         relayInfo: {
           relayManager,
           relayUrl,
-          baseRelayFee: '',
-          pctRelayFee: ''
+          baseRelayFee: '0',
+          pctRelayFee: '0'
         },
         pingResponse
       }
       optionsWithGas = Object.assign({}, options, {
         gas: '0xf4240',
-        gasPrice: '0x51f4d5c00'
+        maxFeePerGas: '0x51f4d5c00',
+        maxPriorityFeePerGas: '0x51f4d5c00'
       })
     })
 
     it('should return error if view call to \'relayCall()\' fails', async function () {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const badContractInteractor = new BadContractInteractor({
+        environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
         logger,
         maxPageSize,
@@ -492,8 +568,9 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { contractInteractor: badContractInteractor }
         })
       await relayClient.init()
-      const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
+      assert.isUndefined(isRelayError)
       // @ts-ignore
       assert.equal(error.message, `local view call to 'relayCall()' reverted: ${BadContractInteractor.message}`)
     })
@@ -510,6 +587,7 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const attempt = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      assert.equal(attempt.isRelayError, true, 'timeout should not abort relay search')
       assert.equal(attempt.error?.message, 'some error describing how timeout occurred somewhere')
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
     })
@@ -532,6 +610,7 @@ contract('RelayClient', function (accounts) {
     it('should return error if transaction returned by a relay does not pass validation', async function () {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = await new ContractInteractor({
+        environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
         logger,
         maxPageSize,
@@ -553,8 +632,9 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
-      const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
+      assert.equal(isRelayError, true)
       // @ts-ignore
       assert.equal(error.message, 'Returned transaction did not pass validation')
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
@@ -572,7 +652,10 @@ contract('RelayClient', function (accounts) {
         const relayClient =
           new RelayClient({
             provider: underlyingProvider,
-            config: gsnConfig,
+            config: Object.assign({}, gsnConfig, {
+              maxApprovalDataLength: 5,
+              maxPaymasterDataLength: 2
+            }),
             overrideDependencies: {
               asyncApprovalData,
               asyncPaymasterData
@@ -584,6 +667,23 @@ contract('RelayClient', function (accounts) {
         assert.equal(httpRequest.relayRequest.relayData.paymasterData, '0xabcd')
       })
     })
+    it('should throw if variable length parameters are bigger than reported', async function () {
+      try {
+        const getLongData = async function (_: RelayRequest): Promise<PrefixedHexString> {
+          return '0x' + 'ff'.repeat(101)
+        }
+        relayClient.dependencies.asyncApprovalData = getLongData
+        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+          .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
+
+        relayClient.dependencies.asyncPaymasterData = getLongData
+        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+          .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
+      } finally {
+        relayClient.dependencies.asyncApprovalData = EmptyDataCallback
+        relayClient.dependencies.asyncPaymasterData = EmptyDataCallback
+      }
+    })
   })
 
   describe('#_broadcastRawTx()', function () {
@@ -591,6 +691,7 @@ contract('RelayClient', function (accounts) {
     it('should return \'wrongNonce\' if broadcast fails with nonce error', async function () {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const badContractInteractor = new BadContractInteractor({
+        environment: defaultEnvironment,
         provider: underlyingProvider,
         logger,
         maxPageSize,
@@ -623,23 +724,23 @@ contract('RelayClient', function (accounts) {
 
     it('should succeed to relay, but report ping error', async () => {
       const relayingResult = await relayClient.relayTransaction(options)
-      assert.isNotNull(relayingResult.transaction)
       assert.match(relayingResult.pingErrors.get(cheapRelayerUrl)?.message as string, /ECONNREFUSED/,
         `relayResult: ${_dumpRelayingResult(relayingResult)}`)
+      assert.exists(relayingResult.transaction)
     })
 
-    it('use preferred relay if one is set', async () => {
+    it('should use preferred relay if one is set', async () => {
       relayClient = new RelayClient({
         provider: underlyingProvider,
         config: {
-          preferredRelays: ['http://localhost:8090'],
-          ...gsnConfig
+          ...gsnConfig,
+          preferredRelays: ['http://localhost:8090']
         }
       })
       await relayClient.init()
       const relayingResult = await relayClient.relayTransaction(options)
-      assert.isNotNull(relayingResult.transaction)
       assert.equal(relayingResult.pingErrors.size, 0)
+      assert.exists(relayingResult.transaction)
     })
   })
 })

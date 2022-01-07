@@ -75,7 +75,7 @@ class GsnTestEnvironmentClass {
       sleepMs: 100,
       sleepCount: 5,
       stake: ether('1'),
-      funds: ether('1'),
+      funds: ether('5'),
       relayUrl: relayUrl,
       gasPrice: 1e9.toString(),
       unstakeDelay: '2000'
@@ -153,11 +153,13 @@ class GsnTestEnvironmentClass {
     const workersKeyManager = new KeyManager(1)
     const txStoreManager = new TxStoreManager({ inMemory: true }, logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
+    const environment = defaultEnvironment
     const contractInteractor = new ContractInteractor(
       {
         provider: new Web3.providers.HttpProvider(host),
         logger,
         maxPageSize,
+        environment,
         deployment: deploymentResult
       })
     await contractInteractor.init()
@@ -183,9 +185,11 @@ class GsnTestEnvironmentClass {
       gasPriceFactor: 1,
       baseRelayFee: '0',
       pctRelayFee: 0,
-      checkInterval: 100,
+      checkInterval: 50,
+      refreshStateTimeoutBlocks: 1,
       runPaymasterReputations: true,
-      logLevel: 'error'
+      logLevel: 'error',
+      workerTargetBalance: 1e18
     }
     const transactionManager = new TransactionManager(relayServerDependencies, configureServer(relayServerParams))
     const backend = new RelayServer(relayServerParams, transactionManager, relayServerDependencies)

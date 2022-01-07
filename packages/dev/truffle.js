@@ -16,6 +16,9 @@ if (fs.existsSync(secretMnemonicFile)) {
 }
 
 module.exports = {
+  contracts_build_directory: '../cli/src/compiled',
+  contracts_directory: './src',
+
   networks: {
 
     development: {
@@ -41,6 +44,12 @@ module.exports = {
         return new HDWalletProvider(mnemonic, 'https://mainnet.infura.io/v3/f40be2b1a3914db682491dc62a19ad43')
       },
       network_id: 1
+    },
+    goerli: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://goerli.infura.io/v3/f40be2b1a3914db682491dc62a19ad43')
+      },
+      network_id: 5
     },
     kovan: {
       provider: function () {
@@ -83,6 +92,19 @@ module.exports = {
         return new HDWalletProvider(mnemonic, 'https://kotti.connect.bloq.cloud/v1/roast-blossom-sentence')
       },
       network_id: '6'
+    },
+    matic: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://rpc-mainnet.maticvigil.com/')
+      },
+      skipDryRun: true,
+      network_id: 137
+    },
+    arbitrum_rinkeby: {
+      provider: function () {
+        return new HDWalletProvider(mnemonic, 'https://rinkeby.arbitrum.io/rpc')
+      },
+      network_id: '421611'
     }
   },
   mocha: {
@@ -92,7 +114,7 @@ module.exports = {
     solc: {
       version: '0.8.7',
       settings: {
-        evmVersion: 'istanbul',
+        evmVersion: 'london',
         optimizer: {
           enabled: true,
           runs: 200 // Optimize for how many times you intend to run the code

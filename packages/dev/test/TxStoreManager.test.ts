@@ -3,6 +3,16 @@ import fs from 'fs'
 import { ServerAction, StoredTransaction } from '@opengsn/relay/dist/StoredTransaction'
 import { TXSTORE_FILENAME, TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { toHex } from 'web3-utils'
+import { Logger } from 'winston'
+import sinon from 'sinon'
+import { serverDefaultConfiguration } from '@opengsn/relay/dist/ServerConfigParams'
+import chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+import sinonChai from 'sinon-chai'
+import { sleep } from '@opengsn/common/dist'
+
+const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
 // NOTICE: this dir is removed in 'after', do not use this in any other test
 const workdir = '/tmp/gsn/test/txstore_manager'
@@ -25,9 +35,10 @@ contract('TxStoreManager', function (accounts) {
   let tx: StoredTransaction
   let tx2: StoredTransaction
   let tx3: StoredTransaction
+  let logger: Logger
 
   before('create txstore', async function () {
-    const logger = createServerLogger('error', '', '')
+    logger = createServerLogger('error', '', '')
     cleanFolder()
     txmanager = new TxStoreManager({ workdir }, logger)
     await txmanager.clearAll()
@@ -38,9 +49,11 @@ contract('TxStoreManager', function (accounts) {
       from: '',
       to: '',
       gas: 0,
-      gasPrice: 0,
+      maxFeePerGas: 0,
+      maxPriorityFeePerGas: 0,
       data: '',
       nonce: 111,
+      value: toHex(1e18),
       txId: '123456',
       serverAction: ServerAction.VALUE_TRANSFER,
       creationBlockNumber: 0,
@@ -51,9 +64,11 @@ contract('TxStoreManager', function (accounts) {
       from: '',
       to: '',
       gas: 0,
-      gasPrice: 0,
+      maxFeePerGas: 0,
+      maxPriorityFeePerGas: 0,
       data: '',
       nonce: 112,
+      value: toHex(1e18),
       txId: '1234567',
       serverAction: ServerAction.VALUE_TRANSFER,
       creationBlockNumber: 0,
@@ -65,9 +80,11 @@ contract('TxStoreManager', function (accounts) {
         from: '',
         to: '',
         gas: 0,
-        gasPrice: 0,
+        maxFeePerGas: 0,
+        maxPriorityFeePerGas: 0,
         data: '',
         nonce: 113,
+        value: toHex(1e18),
         txId: '12345678',
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
@@ -130,6 +147,35 @@ contract('TxStoreManager', function (accounts) {
       assert.include(e.message, 'violates the unique constraint')
     }
     assert.deepEqual(1, (await txmanager.getAll()).length)
+  })
+
+  it('should compact txstore file', async function () {
+    const txStoreStringFile = '{"$$indexCreated":{"fieldName":"txId","unique":true,"sparse":false}}\n' +
+      '{"$$indexCreated":{"fieldName":"nonceSigner","unique":true,"sparse":false}}\n' +
+      '{"from":"","to":"","gas":0,"gasPrice":0,"data":"","nonce":111,"value":"0xde0b6b3a7640000","txId":"123456","serverAction":3,"creationBlockNumber":0,"minedBlockNumber":0,"attempts":1,"nonceSigner":{"nonce":111,"signer":""},"_id":"jY4JcN9yBl9iQnTd","createdAt":{"$$date":1634512480542},"updatedAt":{"$$date":1634512480542}}\n' +
+      '{"from":"","to":"","gas":0,"gasPrice":0,"data":"","nonce":112,"value":"0xde0b6b3a7640000","txId":"1234567","serverAction":3,"creationBlockNumber":0,"minedBlockNumber":0,"attempts":1,"nonceSigner":{"nonce":112,"signer":""},"_id":"OUgaFNbNrbpQdefG","createdAt":{"$$date":1634512480543},"updatedAt":{"$$date":1634512480543}}\n' +
+      '{"from":"","to":"","gas":0,"gasPrice":0,"data":"","nonce":113,"value":"0xde0b6b3a7640000","txId":"12345678","serverAction":3,"creationBlockNumber":0,"minedBlockNumber":0,"attempts":1,"nonceSigner":{"nonce":113,"signer":""},"_id":"93HrwOrI27LxKMO4","createdAt":{"$$date":1634512480543},"updatedAt":{"$$date":1634512480543}}\n' +
+      '{"$$deleted":true,"_id":"93HrwOrI27LxKMO4"}\n' +
+      '{"$$deleted":true,"_id":"OUgaFNbNrbpQdefG"}\n' +
+      '{"$$deleted":true,"_id":"jY4JcN9yBl9iQnTd"}\n'
+    fs.writeFileSync(txStoreFilePath, txStoreStringFile)
+    let linesCount = (fs.readFileSync(txStoreFilePath, 'utf8')).split('\n').length
+    assert.equal(9, linesCount)
+    const clock = sinon.useFakeTimers(Date.now())
+    try {
+      txmanager = new TxStoreManager({ workdir, autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval }, logger)
+      // @ts-ignore
+      sinon.spy(txmanager.txstore.persistence, 'compactDatafile')
+      await clock.tickAsync(serverDefaultConfiguration.dbAutoCompactionInterval)
+      // @ts-ignore
+      expect(txmanager.txstore.persistence.compactDatafile).to.have.been.calledOnce
+      clock.restore()
+      await sleep(500)
+      linesCount = (fs.readFileSync(txStoreFilePath, 'utf8')).split('\n').length
+      assert.equal(3, linesCount)
+    } finally {
+      clock.restore()
+    }
   })
 
   after('remove txstore', cleanFolder)

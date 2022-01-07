@@ -3,22 +3,13 @@ import abi from 'web3-eth-abi'
 import web3Utils, { toWei } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
-import { Transaction, TxOptions } from '@ethereumjs/tx'
-import {
-  PrefixedHexString,
-  bufferToHex,
-  ecrecover,
-  pubToAddress,
-  toBuffer,
-  unpadBuffer,
-  bnToUnpaddedBuffer
-} from 'ethereumjs-util'
+import { Capability, FeeMarketEIP1559Transaction, Transaction, TransactionFactory, TxOptions, TypedTransaction } from '@ethereumjs/tx'
+import { bnToUnpaddedBuffer, bufferToHex, ecrecover, PrefixedHexString, pubToAddress, toBuffer, unpadBuffer } from 'ethereumjs-util'
 
 import { Address } from './types/Aliases'
 
 import chalk from 'chalk'
 import { encode, List } from 'rlp'
-import { defaultEnvironment } from './Environments'
 import { EIP712TypedData } from 'eth-sig-util'
 
 export function removeHexPrefix (hex: string): string {
@@ -57,6 +48,11 @@ export function addresses2topics (addresses: string[]): string[] {
 
 export function address2topic (address: string): string {
   return '0x' + '0'.repeat(24) + address.toLowerCase().slice(2)
+}
+
+// This conversion is needed since WS provider returns error as false instead of null/undefined in (error,result)
+export function errorAsBoolean (err: any): boolean {
+  return err as boolean
 }
 
 // extract revert reason from a revert bytes array.
@@ -112,11 +108,11 @@ export async function getEip712Signature (
       jsonrpc: '2.0',
       id: Date.now()
     }
-    method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null, result?: JsonRpcResponse) => {
+    method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null | boolean, result?: JsonRpcResponse) => {
       if (result?.error != null) {
         error = result.error
       }
-      if (error != null || result == null) {
+      if ((errorAsBoolean(error)) || result == null) {
         reject((error as any).message ?? error)
       } else {
         resolve(correctV(result.result))
@@ -137,33 +133,19 @@ function correctV (result: PrefixedHexString): PrefixedHexString {
 }
 
 /**
- * @returns the actual cost of putting this transaction on chain.
+ * @param calldata the hex string of data to be sent to the blockchain
+ * @returns { calldataZeroBytes, calldataNonzeroBytes } - number of zero and nonzero bytes in the given calldata input
  */
-export function calculateCalldataCost (calldata: string): number {
+export function calculateCalldataBytesZeroNonzero (
+  calldata: PrefixedHexString
+): { calldataZeroBytes: number, calldataNonzeroBytes: number } {
   const calldataBuf = Buffer.from(calldata.replace('0x', ''), 'hex')
-  let sum = 0
-  calldataBuf.forEach(ch => { sum += (ch === 0 ? defaultEnvironment.gtxdatazero : defaultEnvironment.gtxdatanonzero) })
-  return sum
-}
-
-/**
- * @returns maximum possible gas consumption by this relayed call
- * (calculated on chain by RelayHub.verifyGasAndDataLimits)
- */
-export function calculateTransactionMaxPossibleGas (
-  {
-    gasAndDataLimits,
-    hubOverhead,
-    relayCallGasLimit,
-    msgData,
-    msgDataGasCostInsideTransaction
-  }: TransactionGasCostComponents): number {
-  return hubOverhead +
-    msgDataGasCostInsideTransaction +
-    calculateCalldataCost(msgData) +
-    parseInt(relayCallGasLimit) +
-    parseInt(gasAndDataLimits.preRelayedCallGasLimit.toString()) +
-    parseInt(gasAndDataLimits.postRelayedCallGasLimit.toString())
+  let calldataZeroBytes = 0
+  let calldataNonzeroBytes = 0
+  calldataBuf.forEach(ch => {
+    ch === 0 ? calldataZeroBytes++ : calldataNonzeroBytes++
+  })
+  return { calldataZeroBytes, calldataNonzeroBytes }
 }
 
 export function getEcRecoverMeta (message: PrefixedHexString, signature: string | Signature): PrefixedHexString {
@@ -234,21 +216,6 @@ export function getLatestEventData (events: EventData[]): EventData | undefined 
   return eventDataSorted[0]
 }
 
-/**
- * @param gasLimits
- * @param hubOverhead
- * @param relayCallGasLimit
- * @param calldataSize
- * @param gtxdatanonzero
- */
-interface TransactionGasCostComponents {
-  gasAndDataLimits: PaymasterGasAndDataLimits
-  hubOverhead: number
-  relayCallGasLimit: string
-  msgData: string
-  msgDataGasCostInsideTransaction: number
-}
-
 export interface PaymasterGasAndDataLimits {
   acceptanceBudget: BN
   preRelayedCallGasLimit: BN
@@ -266,15 +233,29 @@ export function boolString (bool: boolean): string {
   return bool ? chalk.green('good'.padEnd(14)) : chalk.red('wrong'.padEnd(14))
 }
 
-export function getDataAndSignature (tx: Transaction, chainId: number): { data: string, signature: string } {
+export function getDataAndSignature (tx: TypedTransaction, chainId: number): { data: string, signature: string } {
   if (tx.to == null) {
     throw new Error('tx.to must be defined')
   }
   if (tx.s == null || tx.r == null || tx.v == null) {
     throw new Error('tx signature must be defined')
   }
-  const input: List = [bnToUnpaddedBuffer(tx.nonce), bnToUnpaddedBuffer(tx.gasPrice), bnToUnpaddedBuffer(tx.gasLimit), tx.to.toBuffer(), bnToUnpaddedBuffer(tx.value), tx.data]
+  const input: List = [bnToUnpaddedBuffer(tx.nonce)]
+  if (!tx.supports(Capability.EIP1559FeeMarket)) {
+    input.push(
+      bnToUnpaddedBuffer((tx as Transaction).gasPrice)
+    )
+  } else {
+    input.push(
+      bnToUnpaddedBuffer((tx as FeeMarketEIP1559Transaction).maxPriorityFeePerGas),
+      bnToUnpaddedBuffer((tx as FeeMarketEIP1559Transaction).maxFeePerGas)
+    )
+  }
   input.push(
+    bnToUnpaddedBuffer(tx.gasLimit),
+    tx.to.toBuffer(),
+    bnToUnpaddedBuffer(tx.value),
+    tx.data,
     toBuffer(chainId),
     unpadBuffer(toBuffer(0)),
     unpadBuffer(toBuffer(0))
@@ -292,5 +273,30 @@ export function getDataAndSignature (tx: Transaction, chainId: number): { data: 
 }
 
 export function signedTransactionToHash (signedTransaction: PrefixedHexString, transactionOptions: TxOptions): PrefixedHexString {
-  return bufferToHex(Transaction.fromSerializedTx(toBuffer(signedTransaction), transactionOptions).hash())
+  return bufferToHex(TransactionFactory.fromSerializedData(toBuffer(signedTransaction), transactionOptions).hash())
+}
+
+/**
+ * remove properties with null (or undefined) value
+ * (does NOT handle inner arrays)
+ * @param obj - object to clean
+ * @param recursive - descend into inner objects
+ */
+export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
+  const c: any = {}
+  Object.assign(c, obj)
+
+  for (const k of Object.keys(c)) {
+    if (c[k] == null) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete c[k]
+    } else if (recursive) {
+      let val = c[k]
+      if (typeof val === 'object' && !Array.isArray(val) && !BN.isBN(val)) {
+        val = removeNullValues(val, recursive)
+      }
+      c[k] = val
+    }
+  }
+  return c
 }

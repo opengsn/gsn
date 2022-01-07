@@ -9,6 +9,7 @@ export interface RelayMetadata {
   relayHubAddress: Address
   relayMaxNonce: number
   signature: PrefixedHexString
+  maxAcceptanceBudget: PrefixedHexString
 }
 
 export interface RelayTransactionRequest {
@@ -28,9 +29,11 @@ export const RelayTransactionRequestShape = {
       validUntil: ow.string
     },
     relayData: {
-      gasPrice: ow.string,
+      maxPriorityFeePerGas: ow.string,
+      maxFeePerGas: ow.string,
       pctRelayFee: ow.string,
       baseRelayFee: ow.string,
+      transactionCalldataGasUsed: ow.string,
       relayWorker: ow.string,
       paymaster: ow.string,
       paymasterData: ow.string,
@@ -42,6 +45,7 @@ export const RelayTransactionRequestShape = {
     approvalData: ow.string,
     relayHubAddress: ow.string,
     relayMaxNonce: ow.number,
-    signature: ow.string
+    signature: ow.string,
+    maxAcceptanceBudget: ow.string
   }
 }

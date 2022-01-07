@@ -3,7 +3,7 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
 
-import { KnownRelaysManager, DefaultRelayScore } from '@opengsn/provider/dist/KnownRelaysManager'
+import { KnownRelaysManager, DefaultRelayScore, DefaultRelayFilter } from '@opengsn/provider/dist/KnownRelaysManager'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
@@ -21,12 +21,14 @@ import { RelayInfoUrl, RelayRegisteredEventInfo } from '@opengsn/common/dist/typ
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { toBN } from 'web3-utils'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const Forwarder = artifacts.require('Forwarder')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 export async function stake (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, owner: string): Promise<void> {
   await stakeManager.setRelayManagerOwner(owner, { from: manager })
@@ -39,7 +41,8 @@ export async function stake (stakeManager: StakeManagerInstance, relayHub: Relay
 
 export async function register (relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
   await relayHub.addRelayWorkers([worker], { from: manager })
-  await relayHub.registerRelayServer(baseRelayFee ?? '0', pctRelayFee ?? '0', url, { from: manager })
+  const relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
+  await relayRegistrar.registerRelayServer(baseRelayFee ?? '0', pctRelayFee ?? '0', url, { from: manager })
 }
 
 contract('KnownRelaysManager', function (
@@ -54,6 +57,7 @@ contract('KnownRelaysManager', function (
     owner,
     other,
     workerRelayWorkersAdded,
+    workerRelayWorkersAdded2,
     workerRelayServerRegistered,
     workerNotActive
   ]) {
@@ -83,6 +87,7 @@ contract('KnownRelaysManager', function (
       logger = createClientLogger(config.loggerConfiguration)
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = new ContractInteractor({
+        environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
         maxPageSize,
         logger,
@@ -106,10 +111,14 @@ contract('KnownRelaysManager', function (
       await stake(stakeManager, relayHub, notActiveRelay, owner)
       const txPaymasterRejected = await prepareTransaction(testRecipient, other, workerPaymasterRejected, paymaster.address, web3)
       const txTransactionRelayed = await prepareTransaction(testRecipient, other, workerTransactionRelayed, paymaster.address, web3)
+      const relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
 
       /** events that are not supposed to be visible to the manager */
       await relayHub.addRelayWorkers([workerRelayServerRegistered], {
         from: activeRelayServerRegistered
+      })
+      await relayHub.addRelayWorkers([workerRelayWorkersAdded], {
+        from: activeRelayWorkersAdded
       })
       await relayHub.addRelayWorkers([workerNotActive], {
         from: notActiveRelay
@@ -120,38 +129,39 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerPaymasterRejected], {
         from: activePaymasterRejected
       })
-      await relayHub.registerRelayServer('0', '0', '', { from: activeTransactionRelayed })
-      await relayHub.registerRelayServer('0', '0', '', { from: activePaymasterRejected })
+      await relayRegistrar.registerRelayServer('0', '0', '', { from: activeTransactionRelayed })
+      await relayRegistrar.registerRelayServer('0', '0', '', { from: activePaymasterRejected })
+      await relayRegistrar.registerRelayServer('0', '0', '', { from: activeRelayWorkersAdded })
 
       await evmMineMany(relayLookupWindowBlocks)
       /** events that are supposed to be visible to the manager */
-      await relayHub.registerRelayServer('0', '0', '', { from: activeRelayServerRegistered })
-      await relayHub.addRelayWorkers([workerRelayWorkersAdded], {
+      await relayRegistrar.registerRelayServer('0', '0', '', { from: activeRelayServerRegistered })
+      await relayHub.addRelayWorkers([workerRelayWorkersAdded2], {
         from: activeRelayWorkersAdded
       })
-      await relayHub.relayCall(10e6, txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', gas, {
+      await relayHub.relayCall(10e6, txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', {
         from: workerTransactionRelayed,
         gas,
-        gasPrice: txTransactionRelayed.relayRequest.relayData.gasPrice
+        gasPrice: txTransactionRelayed.relayRequest.relayData.maxFeePerGas
       })
       await paymaster.setReturnInvalidErrorCode(true)
-      await relayHub.relayCall(10e6, txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', gas, {
+      await relayHub.relayCall(10e6, txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', {
         from: workerPaymasterRejected,
         gas,
-        gasPrice: txPaymasterRejected.relayRequest.relayData.gasPrice
+        gasPrice: txPaymasterRejected.relayRequest.relayData.maxFeePerGas
       })
     })
 
     it('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks',
       async function () {
         const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
-        const res = await knownRelaysManager._fetchRecentlyActiveRelayManagers()
-        const actual = Array.from(res.values())
+        const infos = await knownRelaysManager.getRelayInfoForManagers()
+        const actual = infos.map(info => info.relayManager)
         assert.equal(actual.length, 4)
-        assert.equal(actual[0], activeRelayServerRegistered)
-        assert.equal(actual[1], activeRelayWorkersAdded)
-        assert.equal(actual[2], activeTransactionRelayed)
-        assert.equal(actual[3], activePaymasterRejected)
+        assert.equal(actual[0], activeTransactionRelayed)
+        assert.equal(actual[1], activePaymasterRejected)
+        assert.equal(actual[2], activeRelayWorkersAdded)
+        assert.equal(actual[3], activeRelayServerRegistered)
       })
   })
 })
@@ -161,8 +171,9 @@ contract('KnownRelaysManager 2', function (accounts) {
   let logger: LoggerInterface
 
   const transactionDetails = {
-    gas: '0x10000',
-    gasPrice: '0x300000',
+    gas: '0x10000000',
+    maxFeePerGas: '0x300000',
+    maxPriorityFeePerGas: '0x300000',
     from: '',
     data: '',
     to: '',
@@ -174,6 +185,7 @@ contract('KnownRelaysManager 2', function (accounts) {
     logger = createClientLogger({ logLevel: 'error' })
     const maxPageSize = Number.MAX_SAFE_INTEGER
     contractInteractor = new ContractInteractor({
+      environment: defaultEnvironment,
       provider: web3.currentProvider as HttpProvider,
       maxPageSize,
       logger
@@ -201,11 +213,14 @@ contract('KnownRelaysManager 2', function (accounts) {
       relayProcess = await startRelay(relayHub.address, stakeManager, {
         stake: 1e18,
         url: 'asd',
+        confirmationsNeeded: 1,
         relayOwner: accounts[1],
+        relaylog: process.env.relaylog,
         ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
       })
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = new ContractInteractor({
+        environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
         logger,
         maxPageSize,
@@ -236,10 +251,12 @@ contract('KnownRelaysManager 2', function (accounts) {
       const activeRelays = knownRelaysManager.allRelayers
       assert.equal(preferredRelays.length, 1)
       assert.equal(preferredRelays[0].relayUrl, 'http://localhost:8090')
-      assert.equal(activeRelays.length, 3)
-      assert.equal(activeRelays[0].relayUrl, 'http://localhost:8090')
-      assert.equal(activeRelays[1].relayUrl, 'stakeAndAuthorization1')
-      assert.equal(activeRelays[2].relayUrl, 'stakeAndAuthorization2')
+      assert.deepEqual(activeRelays.map((r: any) => r.relayUrl),
+        [
+          'http://localhost:8090',
+          'stakeAndAuthorization1',
+          'stakeAndAuthorization2'
+        ])
     })
 
     it('should use \'relayFilter\' to remove unsuitable relays', async function () {
@@ -251,6 +268,23 @@ contract('KnownRelaysManager 2', function (accounts) {
       const relays = knownRelaysManagerWithFilter.allRelayers
       assert.equal(relays.length, 1)
       assert.equal(relays[0].relayUrl, 'stakeAndAuthorization2')
+    })
+
+    it('should use DefaultRelayFilter to remove unsuitable relays when none was provided', async function () {
+      const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, logger, config)
+      // @ts-ignore
+      assert.equal(knownRelaysManagerWithFilter.relayFilter.toString(), DefaultRelayFilter.toString())
+    })
+
+    describe('DefaultRelayFilter', function () {
+      it('should filter expensive relayers', function () {
+        const eventInfo = { relayUrl: 'url', relayManager: accounts[0] }
+        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '101', baseRelayFee: 1e16.toString() }))
+        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '99', baseRelayFee: 2e17.toString() }))
+        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '101', baseRelayFee: 2e17.toString() }))
+        assert.isTrue(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '100', baseRelayFee: 1e17.toString() }))
+        assert.isTrue(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '50', baseRelayFee: '0' }))
+      })
     })
   })
 
@@ -309,19 +343,24 @@ contract('KnownRelaysManager 2', function (accounts) {
         const relayScoreOneFailure = await DefaultRelayScore(relayInfoHighFee, transactionDetails, [failure])
         const relayScoreTenFailures = await DefaultRelayScore(relayInfoHighFee, transactionDetails, Array(10).fill(failure))
         const relayScoreLowFees = await DefaultRelayScore(relayInfoLowFee, transactionDetails, [])
-        assert.isAbove(relayScoreNoFailures, relayScoreOneFailure)
-        assert.isAbove(relayScoreOneFailure, relayScoreTenFailures)
-        assert.isAbove(relayScoreLowFees, relayScoreNoFailures)
+        assert.isTrue(relayScoreNoFailures.gt(relayScoreOneFailure))
+        assert.isTrue(relayScoreOneFailure.gt(relayScoreTenFailures))
+        assert.isTrue(relayScoreLowFees.gt(relayScoreNoFailures))
+      })
+      it('should use DefaultRelayScore to remove unsuitable relays when none was provided', async function () {
+        const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, logger, configureGSN({}))
+        // @ts-ignore
+        assert.equal(knownRelaysManagerWithFilter.scoreCalculator.toString(), DefaultRelayScore.toString())
       })
     })
   })
 
   describe('getRelaysSortedForTransaction', function () {
-    const biasedRelayScore = async function (relay: RelayRegisteredEventInfo): Promise<number> {
+    const biasedRelayScore = async function (relay: RelayRegisteredEventInfo): Promise<BN> {
       if (relay.relayUrl === 'alex') {
-        return await Promise.resolve(1000)
+        return await Promise.resolve(toBN(1000))
       } else {
-        return await Promise.resolve(100)
+        return await Promise.resolve(toBN(100))
       }
     }
     const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), undefined, biasedRelayScore)

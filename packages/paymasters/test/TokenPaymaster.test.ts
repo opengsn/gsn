@@ -85,6 +85,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
 
     const paymasterData = web3.eth.abi.encodeParameter('address', nonUniswap)
 
+    const gasPrice = await web3.eth.getGasPrice()
     relayRequest = {
       relayData: {
         relayWorker: relay,
@@ -92,7 +93,9 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
         forwarder: forwarder.address,
         pctRelayFee: '1',
         baseRelayFee: '0',
-        gasPrice: await web3.eth.getGasPrice(),
+        transactionCalldataGasUsed: '0',
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
         paymasterData,
         clientId: '1'
       },
@@ -207,7 +210,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       const gas = 5000000
 
       const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
-      const relayCall: any = await hub.relayCall.call(1e06, req, wrongSignature, '0x', gas, {
+      const relayCall: any = await hub.relayCall.call(1e06, req, wrongSignature, '0x', {
         from: relay,
         gas
       })
@@ -222,7 +225,8 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       const _relayRequest = cloneRelayRequest(relayRequest)
       _relayRequest.request.from = from
       _relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
-      _relayRequest.relayData.gasPrice = 1e9.toString()
+      _relayRequest.relayData.maxFeePerGas = 1e9.toString()
+      _relayRequest.relayData.maxPriorityFeePerGas = 1e9.toString()
       _relayRequest.relayData.pctRelayFee = '0'
       _relayRequest.relayData.baseRelayFee = '0'
       _relayRequest.relayData.paymasterData = web3.eth.abi.encodeParameter('address', uniswap.address)
@@ -244,7 +248,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       const preBalance = await hub.balanceOf(paymaster.address)
 
       const externalGasLimit = 5e6.toString()
-      const ret = await hub.relayCall(10e6, _relayRequest, signature, '0x', externalGasLimit, {
+      const ret = await hub.relayCall(10e6, _relayRequest, signature, '0x', {
         from: relay,
         gasPrice: 1e9,
         gas: externalGasLimit

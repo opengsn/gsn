@@ -8,28 +8,83 @@ jobs: # a collection of steps
     steps: # a collection of executable commands
       - checkout # special step to check out source code to working directory
 
+      - run:
+          name: package-json-all-deps
+          command: yarn create-all-deps
+
       - restore_cache: # special step to restore the dependency cache
-          key: dependency-cache-{{ checksum "package.json" }}-yarn2
+          key: dependency-cache-{{ checksum "yarn.lock" }}-{{ checksum "all.deps" }}
 
       - run:
-          name: yarn-install
-          command: yarn
+          name: yarn-install-if-no-cache
+          command:  test -d node_modules/truffle || yarn
 
       - save_cache: # special step to save the dependency cache
-          key: dependency-cache-{{ checksum "package.json" }}-yarn2
+          key: dependency-cache-{{ checksum "yarn.lock" }}-{{ checksum "all.deps" }}
           paths:
             - ./node_modules
-            - ./packages/*/node_modules
+            - ./packages/cli/node_modules
+            - ./packages/common/node_modules
+            - ./packages/contracts/node_modules
+            - ./packages/dev/node_modules
+            - ./packages/paymasters/node_modules
+            - ./packages/provider/node_modules
+            - ./packages/relay/node_modules
 
+      - run:
+          name: yarn-preprocess
+          command: yarn preprocess
+
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+  test_dev:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
       - run: # run tests
           name: test
-          command: yarn test | tee /tmp/test-results.log
+          command: yarn lerna-run-test-only-with-hardhat | tee /tmp/test-dev-results.log
+      - store_test_results: # special step to upload test results for display in Test Summary
+          path: /tmp/test-dev-results.log
+#  test_paymasters:
+#    working_directory: ~/gls # directory where steps will run
+#    docker: # run the steps with Docker
+#      - image: cimg/node:16.6.2
+#    steps: # a collection of executable commands
+#      - attach_workspace:
+#          at: .
+#      - run: # run tests
+#          name: test
+#          command: yarn lerna-run-test-only-with-hardhat | tee /tmp/test-paymasters-results.log
+#      - store_test_results: # special step to upload test results for display in Test Summary
+#          path: /tmp/test-paymasters-results.log
+  lint:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
+      - run: # run tests
+          name: lint
+          command: yarn lerna-lint
 
+  test_fork:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
       - run: # run ganache mainnet fork
           name: ganache-fork-mainnet
           command: yarn ganache-fork-mainnet
           background: true
-
       # https://discuss.circleci.com/t/run-http-server-in-background-during-tests/3177
       # wait for the server to start responding. We expect Bad Request 400 once it starts listening.
       # so override the shell and have the last command be the : { null } command to force exit code 0.
@@ -39,36 +94,32 @@ jobs: # a collection of steps
           command: |
             wget --post-data="{\"method\": \"eth_blockNumber\"}" --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:8544/
             :
-
       - run: # run tests with fork
           name: test-fork
-          command: yarn lerna-run-test-fork | tee /tmp/test-results.log
-
-#coverage is broken (doesn't cover all contracts). disabled for now..
-#      - restore_cache: # special cache for coverage test
-#          key: last-coverage
-#          paths:
-#            - ./coverage
-
-#      - run: # run coverage. update "coverage/covsig.txt" if successful run.
-#          # use last coverage report if no test/contract was changed.
-#          name: coverage
-#          command: yarn run coverage-if-changed
-
-#      - save_cache: # special cache for coverage test
-#          key: last-coverage
-#          paths:
-#            - ./coverage
-
-#      - store_artifacts: # special step to save test results as as artifact
-#          path: ./coverage
-#      - store_artifacts:
-#          path: ./coverage.html
-
+          command: yarn lerna-run-test-fork | tee /tmp/test-fork-results.log
       - store_test_results: # special step to upload test results for display in Test Summary
-          path: /tmp/test-results.log
+          path: /tmp/test-fork-results.log
 
 #too much noise..
 #notify:
 #  webhooks:
 #    - url: https://twist.com/integrations/circleci/from_circleci?install_id=85424&post_data_url=https%3A%2F%2Ftwist.com%2Fapi%2Fv3%2Fintegration_incoming%2Fpost_data%3Finstall_id%3D85424%26install_token%3D85424_0aad1ece9d2470896c9142aae3440b5b
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
+      - test_dev:
+          requires:
+            - build
+#      - test_paymasters:
+#          requires:
+#            - build
+      - lint:
+          requires:
+            - build
+      - test_fork:
+          requires:
+            - build
+

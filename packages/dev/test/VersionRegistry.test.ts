@@ -6,7 +6,7 @@ import { increaseTime } from './TestUtils'
 import { VersionRegistry, string32 } from '@opengsn/common/dist/VersionRegistry'
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
+import { ContractInteractor, defaultEnvironment, GSNContractsDeployment } from '@opengsn/common'
 import { HttpProvider } from 'web3-core'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 
@@ -30,7 +30,7 @@ contract('VersionRegistry', ([account]) => {
     deployment = {
       versionRegistryAddress: registryContract.address
     }
-    contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+    contractInteractor = new ContractInteractor({ environment: defaultEnvironment, provider, logger, deployment, maxPageSize })
     await contractInteractor.init()
     jsRegistry = new VersionRegistry(1, contractInteractor)
     await jsRegistry.addVersion('id', 'ver', 'value', { from: account })
@@ -89,9 +89,9 @@ contract('VersionRegistry', ([account]) => {
         assert.deepInclude(versions[1], { version: 'ver2', value: 'value2', canceled: false })
         assert.deepInclude(versions[2], { version: 'ver', value: 'value', canceled: false })
 
-        assert.closeTo(now - versions[0].time, 100, 5)
-        assert.closeTo(now - versions[1].time, 200, 5)
-        assert.closeTo(now - versions[2].time, 300, 5)
+        assert.closeTo(now - versions[0].time, 100, 10)
+        assert.closeTo(now - versions[1].time, 200, 10)
+        assert.closeTo(now - versions[2].time, 300, 10)
       })
 
       it('should ignore repeated added version (can\'t modify history: only adding to it)', async () => {

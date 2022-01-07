@@ -1,13 +1,8 @@
-/**
- * We will need some mechanism to support different constants and algorithms for different networks.
- * So far the only conflict we will have is migration to Istanbul, as ETC does not integrate it as of this writing.
- * TODO: see the differences between networks we want to support and make project structure multi-chain
- */
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { PaymasterConfiguration } from './types/PaymasterConfiguration'
 import { PenalizerConfiguration } from './types/PenalizerConfiguration'
 
-interface Environment {
+export interface Environment {
   readonly chainId: number
   readonly mintxgascost: number
   readonly relayHubConfiguration: RelayHubConfiguration
@@ -16,6 +11,8 @@ interface Environment {
   readonly maxUnstakeDelay: number
   readonly gtxdatanonzero: number
   readonly gtxdatazero: number
+  readonly dataOnChainHandlingGasCostPerByte: number
+  readonly getGasPriceFactor: number
 }
 
 /**
@@ -30,15 +27,13 @@ const defaultPenalizerConfiguration: PenalizerConfiguration = {
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 31907,
-  postOverhead: 11890,
+  gasOverhead: 54771,
+  postOverhead: 19073,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
   minimumUnstakeDelay: 1000,
-  maximumRecipientDeposit: 2e18.toString(),
-  dataGasCostPerByte: 13,
-  externalCallDataCostOverhead: 22402
+  maximumRecipientDeposit: 2e18.toString()
 }
 
 // TODO add as constructor params to paymaster instead of constants
@@ -52,37 +47,72 @@ const defaultPaymasterConfiguration: PaymasterConfiguration = {
   calldataSizeLimit: 10404
 }
 
-export const environments: { [key: string]: Environment } = {
-  istanbul: {
-    chainId: 1,
-    relayHubConfiguration: defaultRelayHubConfiguration,
-    penalizerConfiguration: defaultPenalizerConfiguration,
-    paymasterConfiguration: defaultPaymasterConfiguration,
-    maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
-    mintxgascost: 21000,
-    gtxdatanonzero: 16,
-    gtxdatazero: 4
-  },
-  constantinople: {
-    chainId: 1,
-    relayHubConfiguration: defaultRelayHubConfiguration,
-    penalizerConfiguration: defaultPenalizerConfiguration,
-    paymasterConfiguration: defaultPaymasterConfiguration,
-    maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
-    mintxgascost: 21000,
-    gtxdatanonzero: 16,
-    gtxdatazero: 4
-  },
-  ganacheLocal: {
-    chainId: 1337,
-    relayHubConfiguration: defaultRelayHubConfiguration,
-    penalizerConfiguration: defaultPenalizerConfiguration,
-    paymasterConfiguration: defaultPaymasterConfiguration,
-    maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
-    mintxgascost: 21000,
-    gtxdatanonzero: 16,
-    gtxdatazero: 4
-  }
+const ethereumMainnet: Environment = {
+  dataOnChainHandlingGasCostPerByte: 13,
+  chainId: 1,
+  relayHubConfiguration: defaultRelayHubConfiguration,
+  penalizerConfiguration: defaultPenalizerConfiguration,
+  paymasterConfiguration: defaultPaymasterConfiguration,
+  maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
+  mintxgascost: 21000,
+  gtxdatanonzero: 16,
+  gtxdatazero: 4,
+  getGasPriceFactor: 1
+}
+
+const ganacheLocal: Environment = {
+  dataOnChainHandlingGasCostPerByte: 13,
+  chainId: 1337,
+  relayHubConfiguration: defaultRelayHubConfiguration,
+  penalizerConfiguration: defaultPenalizerConfiguration,
+  paymasterConfiguration: defaultPaymasterConfiguration,
+  maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
+  mintxgascost: 21000,
+  gtxdatanonzero: 16,
+  gtxdatazero: 4,
+  getGasPriceFactor: 1
+}
+
+/* begin Arbitrum-specific Environment */
+const arbitrumRelayHubConfigurationOverride: Partial<RelayHubConfiguration> = {
+  gasOverhead: 1000000,
+  postOverhead: 0,
+  minimumStake: 1e16.toString()
+}
+
+const arbitrumRelayHubConfiguration: RelayHubConfiguration =
+  Object.assign({},
+    defaultRelayHubConfiguration,
+    arbitrumRelayHubConfigurationOverride)
+
+const arbitrum: Environment = {
+  dataOnChainHandlingGasCostPerByte: 13, // TODO: check if memory allocation costs in Arbitrum are unchanged!
+  relayHubConfiguration: arbitrumRelayHubConfiguration,
+  penalizerConfiguration: defaultPenalizerConfiguration,
+  paymasterConfiguration: defaultPaymasterConfiguration,
+  maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
+  chainId: 421611,
+  mintxgascost: 700000,
+  gtxdatanonzero: 2024,
+  gtxdatazero: 506,
+  // there is currently a hard-coded to be 2 at arbitrum:eth.go:43 (commit: 12483cfa17a29e7d68c354c456ebc371b05a6ea2)
+  // setting factor to 0.6 instead of 0.5 to allow the transaction to pass in case of moderate gas price increase
+  // note that excess will be collected by the Relay Server as an extra profit
+  getGasPriceFactor: 0.6
+}
+
+/* end Arbitrum-specific Environment */
+
+export enum EnvironmentsKeys {
+  ganacheLocal = 'ganacheLocal',
+  ethereumMainnet = 'ethereumMainnet',
+  arbitrum = 'arbitrum'
+}
+
+export const environments: { [key in EnvironmentsKeys]: Environment } = {
+  ethereumMainnet,
+  ganacheLocal,
+  arbitrum
 }
 
 export const defaultEnvironment = environments.ganacheLocal

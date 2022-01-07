@@ -46,6 +46,7 @@ const ProxyFactory = artifacts.require('ProxyFactory')
 const ProxyIdentity = artifacts.require('ProxyIdentity')
 const StakeManager = artifacts.require('StakeManager')
 const ProxyDeployingPaymaster = artifacts.require('ProxyDeployingPaymaster')
+const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 // these are no longer exported
 export async function snapshot (): Promise<{ id: number, jsonrpc: string, result: string }> {
@@ -87,18 +88,14 @@ export async function deployHub (
   }
 
   // eslint-disable-next-line @typescript-eslint/return-await
-  return await RelayHub.new(
+  const hub = await RelayHub.new(
     stakeManager,
     penalizer,
-    relayHubConfiguration.maxWorkerCount,
-    relayHubConfiguration.gasReserve,
-    relayHubConfiguration.postOverhead,
-    relayHubConfiguration.gasOverhead,
-    relayHubConfiguration.maximumRecipientDeposit,
-    relayHubConfiguration.minimumUnstakeDelay,
-    relayHubConfiguration.minimumStake,
-    relayHubConfiguration.dataGasCostPerByte,
-    relayHubConfiguration.externalCallDataCostOverhead)
+    relayHubConfiguration)
+
+  const relayRegistrar = await RelayRegistrar.new(hub.address, true)
+  await hub.setRegistrar(relayRegistrar.address)
+  return hub
 }
 
 contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
@@ -127,7 +124,8 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
   const gasData = {
     pctRelayFee: '0',
     baseRelayFee: '0',
-    gasPrice: '1',
+    maxFeePerGas: '1',
+    maxPriorityFeePerGas: '1',
     gasLimit: 1e6.toString()
   }
 
@@ -145,15 +143,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     testHub = await TestHub.new(
       stakeManager.address,
       constants.ZERO_ADDRESS,
-      defaultEnvironment.relayHubConfiguration.maxWorkerCount,
-      defaultEnvironment.relayHubConfiguration.gasReserve,
-      defaultEnvironment.relayHubConfiguration.postOverhead,
-      defaultEnvironment.relayHubConfiguration.gasOverhead,
-      defaultEnvironment.relayHubConfiguration.maximumRecipientDeposit,
-      defaultEnvironment.relayHubConfiguration.minimumUnstakeDelay,
-      defaultEnvironment.relayHubConfiguration.minimumStake,
-      defaultEnvironment.relayHubConfiguration.dataGasCostPerByte,
-      defaultEnvironment.relayHubConfiguration.externalCallDataCostOverhead,
+      defaultEnvironment.relayHubConfiguration,
       { gas: 10000000 })
     relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS)
     await paymaster.setRelayHub(relayHub.address)
@@ -175,6 +165,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
       },
       relayData: {
         ...gasData,
+        transactionCalldataGasUsed: '0',
         relayWorker,
         paymaster: paymaster.address,
         paymasterData,
@@ -255,7 +246,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
             )
           )
           const gas = 5000000
-          const relayCall: any = await relayHub.relayCall.call(10e6, relayRequest, wrongSignature, '0x', gas, {
+          const relayCall: any = await relayHub.relayCall.call(10e6, relayRequest, wrongSignature, '0x', {
             from: relayWorker,
             gas
           })
@@ -372,6 +363,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     let counter: TestCounterInstance
     let proxy: any
     let encodedCall: string
+    let relayProvider: RelayProvider
 
     before(async function () {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -404,6 +396,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
         },
         relayData: {
           ...gasData,
+          transactionCalldataGasUsed: '0',
           relayWorker,
           paymaster: paymaster.address,
           paymasterData: '0x',
@@ -423,10 +416,11 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
         loggerConfiguration: {
           logLevel: 'error'
         },
+        maxPaymasterDataLength: 32,
         paymasterAddress: paymaster.address
       }
       encodedCall = counter.contract.methods.increment().encodeABI()
-      const relayProvider = await RelayProvider.newProvider({
+      relayProvider = await RelayProvider.newProvider({
         provider: web3.currentProvider as HttpProvider,
         overrideDependencies: {
           asyncPaymasterData: async () => {
@@ -444,9 +438,12 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
       assert.equal(counter1.toString(), '0')
 
       // Call counter.increment from identity
+      const { maxFeePerGas, maxPriorityFeePerGas } = await relayProvider.calculateGasFees()
       const tx = await proxy.methods.execute(0, counter.address, 0, encodedCall).send({
         from: senderAddress,
-        gas: 5000000
+        gas: 5000000,
+        maxFeePerGas,
+        maxPriorityFeePerGas
       })
 
       // Check that increment was called
@@ -458,10 +455,12 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     it('should pay with token to make a call if proxy is deployed', async function () {
       const counter1 = await counter.get()
       assert.equal(counter1.toString(), '1')
-
+      const { maxFeePerGas, maxPriorityFeePerGas } = await relayProvider.calculateGasFees()
       const tx = await proxy.methods.execute(0, counter.address, 0, encodedCall).send({
         from: senderAddress,
-        gas: 5000000
+        gas: 5000000,
+        maxFeePerGas,
+        maxPriorityFeePerGas
       })
 
       const counter2 = await counter.get()
@@ -477,10 +476,12 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
       assert.strictEqual(balance1, '0')
 
       const value = 1e16
+      const { maxFeePerGas } = await relayProvider.calculateGasFees()
       await proxy.methods.execute(0, counter.address, value.toString(), encodedCall).send({
         from: senderAddress,
         gas: 5000000,
-        value
+        value,
+        gasPrice: maxFeePerGas
       })
 
       const counter2 = await counter.get()

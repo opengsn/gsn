@@ -3,21 +3,22 @@ import io from 'console-read-write'
 import BN from 'bn.js'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
-import { Contract, SendOptions } from 'web3-eth-contract'
-import { HttpProvider, TransactionReceipt } from 'web3-core'
-import { fromWei, toBN } from 'web3-utils'
+import { Contract } from 'web3-eth-contract'
+import { HttpProvider } from 'web3-core'
+import { fromWei, toBN, toHex } from 'web3-utils'
 import ow from 'ow'
 
 import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 
-// compiled folder populated by "prepublish"
+// compiled folder populated by "preprocess"
 import StakeManager from './compiled/StakeManager.json'
 import RelayHub from './compiled/RelayHub.json'
+import RelayRegistrar from './compiled/RelayRegistrar.json'
 import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import VersionRegistryAbi from './compiled/VersionRegistry.json'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -29,6 +30,9 @@ import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
+import { KeyManager } from '@opengsn/relay/dist/KeyManager'
+import { resolveConfigRelayHubAddress, ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { Transaction, TypedTransaction } from '@ethereumjs/tx'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -36,20 +40,30 @@ export interface RegisterOptions {
   /** number of times to sleep before timeout */
   sleepCount: number
   from: Address
-  gasPrice: string | BN
+  gasPrice?: string | BN
   stake: string | BN
   funds: string | BN
   relayUrl: string
   unstakeDelay: string
 }
 
+export interface WithdrawOptions {
+  withdrawAmount: BN
+  keyManager: KeyManager
+  config: ServerConfigParams
+  broadcast: boolean
+  gasPrice?: BN
+  useAccountBalance: boolean
+}
+
 interface DeployOptions {
   from: Address
   gasPrice: string
-  gasLimit: number
+  gasLimit: number | IntString
   deployPaymaster?: boolean
   forwarderAddress?: string
   relayHubAddress?: string
+  relayRegistryAddress?: string
   stakeManagerAddress?: string
   penalizerAddress?: string
   registryAddress?: string
@@ -65,14 +79,22 @@ interface DeployOptions {
  */
 const DeployOptionsPartialShape = {
   from: ow.string,
-  gasPrice: ow.string,
-  gasLimit: ow.number
+  gasPrice: ow.string
 }
 
 interface RegistrationResult {
   success: boolean
   transactions?: string[]
   error?: string
+}
+
+type WithdrawalResult = RegistrationResult
+
+export interface SendOptions {
+  from: string
+  gasPrice: number | string | BN
+  gas: number | string | BN
+  value: number | string | BN
 }
 
 export class CommandsLogic {
@@ -98,7 +120,8 @@ export class CommandsLogic {
     }
     this.httpClient = new HttpClient(new HttpWrapper(), logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
-    this.contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize })
+    const environment = defaultEnvironment
+    this.contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
     this.deployment = deployment
     this.web3 = new Web3(provider)
   }
@@ -189,6 +212,7 @@ export class CommandsLogic {
     try {
       console.log(`Registering GSN relayer at ${options.relayUrl}`)
 
+      const gasPrice = toHex(options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice()))
       const response = await this.httpClient.getPingResponse(options.relayUrl)
         .catch((error: any) => {
           console.error(error)
@@ -225,18 +249,17 @@ export class CommandsLogic {
       } else {
         console.log('Funding relayer')
 
-        const _fundTx = await this.web3.eth.sendTransaction({
+        const fundTx = await this.web3.eth.sendTransaction({
           from: options.from,
           to: relayAddress,
           value: options.funds,
           gas: 1e6,
-          gasPrice: options.gasPrice
+          gasPrice
         })
-        const fundTx = _fundTx as TransactionReceipt
         if (fundTx.transactionHash == null) {
           return {
             success: false,
-            error: `Fund transaction reverted: ${JSON.stringify(_fundTx)}`
+            error: `Fund transaction reverted: ${JSON.stringify(fundTx)}`
           }
         }
         transactions.push(fundTx.transactionHash)
@@ -277,8 +300,7 @@ export class CommandsLogic {
           .stakeForRelayManager(relayAddress, options.unstakeDelay.toString(), {
             value: stakeValue,
             from: options.from,
-            gas: 1e6,
-            gasPrice: options.gasPrice
+            gasPrice
           })
         // @ts-ignore
         transactions.push(stakeTx.transactionHash)
@@ -292,7 +314,7 @@ export class CommandsLogic {
           .authorizeHubByOwner(relayAddress, relayHubAddress, {
             from: options.from,
             gas: 1e6,
-            gasPrice: options.gasPrice
+            gasPrice
           })
         // @ts-ignore
         transactions.push(authorizeTx.transactionHash)
@@ -309,6 +331,101 @@ export class CommandsLogic {
         transactions,
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         error: error.message
+      }
+    }
+  }
+
+  async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
+    const relayManager = keyManager.getAddress(0)
+    console.log('relayManager is', relayManager)
+    const relayHubAddress = await resolveConfigRelayHubAddress(config, this.contractInteractor)
+    const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+    const accountBalance = toBN(await this.contractInteractor.getBalance(relayManager))
+    console.log(`Relay manager account balance is ${fromWei(accountBalance)}eth`)
+    const hubBalance = await relayHub.balanceOf(relayManager)
+    console.log(`Relay manager hub balance is ${fromWei(hubBalance)}eth`)
+  }
+
+  async withdrawToOwner (options: WithdrawOptions): Promise<WithdrawalResult> {
+    const transactions: string[] = []
+    try {
+      console.log('Withdrawing from GSN relayer to owner')
+      const relayManager = options.keyManager.getAddress(0)
+      console.log('relayManager is', relayManager)
+      const relayHubAddress = await resolveConfigRelayHubAddress(options.config, this.contractInteractor)
+      const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+      const stakeManagerAddress = await relayHub.stakeManager()
+      const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
+      const { owner } = await stakeManager.getStakeInfo(relayManager)
+      if (owner.toLowerCase() !== options.config.ownerAddress.toLowerCase()) {
+        throw new Error(`Owner in relayHub ${owner} is different than in server config ${options.config.ownerAddress}`)
+      }
+
+      const nonce = await this.contractInteractor.getTransactionCount(relayManager)
+      const gasPrice = toHex(options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice()))
+      const gasLimit = 1e5
+      let txToSign: TypedTransaction
+      if (options.useAccountBalance) {
+        const balance = toBN(await this.contractInteractor.getBalance(relayManager))
+        console.log(`Relay manager account balance is ${fromWei(balance)}eth`)
+        if (balance.lt(options.withdrawAmount)) {
+          throw new Error('Relay manager account balance lower than withdrawal amount')
+        }
+        const web3TxData = {
+          to: options.config.ownerAddress,
+          value: options.withdrawAmount,
+          gas: gasLimit,
+          gasPrice,
+          nonce
+        }
+        console.log('Calling in view mode')
+        await this.contractInteractor.web3.eth.call({ ...web3TxData })
+        const txData = { ...web3TxData, gasLimit: web3TxData.gas }
+        delete txData.gas
+        txToSign = new Transaction(txData, this.contractInteractor.getRawTxOptions())
+      } else {
+        const balance = await relayHub.balanceOf(relayManager)
+        console.log(`Relay manager hub balance is ${fromWei(balance)}eth`)
+        if (balance.lt(options.withdrawAmount)) {
+          throw new Error('Relay manager hub balance lower than withdrawal amount')
+        }
+        const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
+        const encodedCall = method.encodeABI()
+        txToSign = new Transaction({
+          to: relayHubAddress,
+          value: 0,
+          gasLimit,
+          gasPrice,
+          data: Buffer.from(encodedCall.slice(2), 'hex'),
+          nonce
+        }, this.contractInteractor.getRawTxOptions())
+        console.log('Calling in view mode')
+        await method.call({
+          from: relayManager,
+          to: relayHubAddress,
+          value: 0,
+          gas: gasLimit,
+          gasPrice
+        })
+      }
+      console.log('Signing tx', txToSign.toJSON())
+      const signedTx = options.keyManager.signTransaction(relayManager, txToSign)
+      console.log(`signed withdrawal hex tx: ${signedTx.rawTx}`)
+      if (options.broadcast) {
+        console.log('broadcasting tx')
+        const txHash = await this.contractInteractor.broadcastTransaction(signedTx.rawTx)
+        transactions.push(txHash)
+      }
+      return {
+        success: true,
+        transactions
+      }
+    } catch (e) {
+      return {
+        success: false,
+        transactions,
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        error: e.message
       }
     }
   }
@@ -340,16 +457,17 @@ export class CommandsLogic {
       arguments: [
         sInstance.options.address,
         pInstance.options.address,
-        deployOptions.relayHubConfiguration.maxWorkerCount,
-        deployOptions.relayHubConfiguration.gasReserve,
-        deployOptions.relayHubConfiguration.postOverhead,
-        deployOptions.relayHubConfiguration.gasOverhead,
-        deployOptions.relayHubConfiguration.maximumRecipientDeposit,
-        deployOptions.relayHubConfiguration.minimumUnstakeDelay,
-        deployOptions.relayHubConfiguration.minimumStake,
-        deployOptions.relayHubConfiguration.dataGasCostPerByte,
-        deployOptions.relayHubConfiguration.externalCallDataCostOverhead]
+        deployOptions.relayHubConfiguration
+      ]
     }, deployOptions.relayHubAddress, { ...options }, deployOptions.skipConfirmation)
+
+    const rrInstance = await this.getContractInstance(RelayRegistrar, {
+      arguments: [rInstance.options.address, true]
+    }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
+
+    if (!isSameAddress(await rInstance.methods.relayRegistrar().call(), rrInstance.options.address)) {
+      await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
+    }
 
     const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, { ...options }, deployOptions.skipConfirmation)
     if (deployOptions.registryHubId != null) {
@@ -367,6 +485,7 @@ export class CommandsLogic {
       relayHubAddress: rInstance.options.address,
       stakeManagerAddress: sInstance.options.address,
       penalizerAddress: pInstance.options.address,
+      relayRegistrarAddress: rrInstance.options.address,
       forwarderAddress: fInstance.options.address,
       versionRegistryAddress: regInstance.options.address,
       paymasterAddress: pmInstance?.options.address ?? constants.ZERO_ADDRESS
@@ -384,11 +503,12 @@ export class CommandsLogic {
         .contract(json)
         .deploy(constructorArgs)
       const estimatedGasCost = await sendMethod.estimateGas()
-      const maxCost = new BN(options.gasPrice).muln(options.gas)
-      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice, 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
+      const maxCost = toBN(options.gasPrice.toString()).mul(toBN(options.gas.toString()))
+      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice.toString(), 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
       if (!skipConfirmation) {
         await this.confirm()
       }
+      // @ts-ignore - web3 refuses to accept string as gas limit, and max for a number in BN is 0x4000000 (~67M)
       const deployPromise = sendMethod.send({ ...options })
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       deployPromise.on('transactionHash', function (hash) {

@@ -37,7 +37,7 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     from: commander.from ?? await logic.findWealthyAccount(),
     stake: ether(commander.stake),
     funds: ether(commander.funds),
-    gasPrice: toWei(commander.gasPrice, 'gwei'),
+    gasPrice: commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : undefined,
     relayUrl: commander.relayUrl,
     unstakeDelay: commander.unstakeDelay
   }
