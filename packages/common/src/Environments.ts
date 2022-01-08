@@ -13,7 +13,7 @@ export interface Environment {
   readonly gtxdatazero: number
   readonly dataOnChainHandlingGasCostPerByte: number
   readonly getGasPriceFactor: number
-  readonly nonZeroDevOverhead: number
+  readonly nonZeroDevFeeGasOverhead: number
 }
 
 /**
@@ -61,7 +61,7 @@ const ethereumMainnet: Environment = {
   gtxdatanonzero: 16,
   gtxdatazero: 4,
   getGasPriceFactor: 1,
-  nonZeroDevOverhead: 5638
+  nonZeroDevFeeGasOverhead: 5638
 }
 
 const ganacheLocal: Environment = {
@@ -75,7 +75,7 @@ const ganacheLocal: Environment = {
   gtxdatanonzero: 16,
   gtxdatazero: 4,
   getGasPriceFactor: 1,
-  nonZeroDevOverhead: 5638
+  nonZeroDevFeeGasOverhead: 5638
 }
 
 /* begin Arbitrum-specific Environment */
@@ -104,7 +104,7 @@ const arbitrum: Environment = {
   // setting factor to 0.6 instead of 0.5 to allow the transaction to pass in case of moderate gas price increase
   // note that excess will be collected by the Relay Server as an extra profit
   getGasPriceFactor: 0.6,
-  nonZeroDevOverhead: 5638
+  nonZeroDevFeeGasOverhead: 5638
 }
 
 /* end Arbitrum-specific Environment */

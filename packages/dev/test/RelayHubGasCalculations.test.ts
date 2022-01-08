@@ -486,7 +486,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                 async function () {
                   let gasOverhead = parseInt(defaultEnvironment.relayHubConfiguration.gasOverhead.toString())
                   if (devFee !== 0) {
-                    gasOverhead += defaultEnvironment.nonZeroDevOverhead
+                    gasOverhead += defaultEnvironment.nonZeroDevFeeGasOverhead
                   }
                   await prepareForHub({ gasOverhead, devAddress, devFee })
                   // Avoid zero to non-zero storage gas costs when calculating fees.
@@ -574,8 +574,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     toBN(requestedFee).add(toBN(100))).div(toBN(100)).add(toBN(baseRelayFee))
                   const gasDiff = actualCharge.sub(expectedCharge).div(gasPrice).mul(toBN(-1)).toString()
                   assert.equal(actualCharge.toNumber(), expectedCharge.toNumber(),
-                    `actual charge from paymaster different than expected. diff = ${gasDiff}. new nonZeroDevOverhead = 
-                    ${parseInt(defaultEnvironment.nonZeroDevOverhead.toString()) + parseInt(gasDiff)}`)
+                    `actual charge from paymaster different than expected. diff = ${gasDiff}. new nonZeroDevFeeGasOverhead = 
+                    ${parseInt(defaultEnvironment.nonZeroDevFeeGasOverhead.toString()) + parseInt(gasDiff)}`)
 
                   // Validate actual profit is with high precision $(requestedFee) percent higher then ether spent relaying
                   const devExpectedCharge = expectedCharge.mul(toBN(devFee)).div(toBN(100))
