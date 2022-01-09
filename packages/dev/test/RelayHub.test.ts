@@ -783,7 +783,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           let recipientContract: TestRecipientInstance
           let relayRequest: RelayRequest
 
-          beforeEach(async function () {
+          before(async function () {
             relayRequest = cloneRelayRequest(sharedRelayRequestData)
             gatewayForwarder = await GatewayForwarder.new()
             await registerForwarderForGsn(gatewayForwarder)
@@ -864,9 +864,20 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           })
 
           it('should accept relayCall with empty signature coming from the BatchGateway', async function () {
+            const relayRequestWithNonce = cloneRelayRequest(relayRequest)
+            relayRequestWithNonce.request.nonce = (await gatewayForwarder.getNonce(relayRequest.request.from)).toNumber()
+            const dataToSign = new TypedRequestData(
+              chainId,
+              gatewayForwarder.address,
+              relayRequestWithNonce
+            )
+            signatureWithPermissivePaymaster = await getEip712Signature(
+              web3,
+              dataToSign
+            )
             const {
-              tx
-            } = await relayHubInstance.relayCall(10e6, relayRequest, '0x', '0x', {
+              tx,
+            } = await relayHubInstance.relayCall(10e6, relayRequestWithNonce, '0x', '0x', {
               from: batchGateway,
               gas
             })
