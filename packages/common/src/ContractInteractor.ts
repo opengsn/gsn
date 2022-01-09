@@ -584,8 +584,12 @@ export class ContractInteractor {
     extraTopics: string[],
     options: PastEventOptions
   ): Promise<EventData[]> {
-    let delay = 1000
-    while (true) {
+    const MAX_RETRY_COUNT = 10
+    const INITIAL_DELAY = 1000
+    const MAXIMUM_DELAY = 500000
+    const STEP = 2
+    let delay = INITIAL_DELAY
+    for (let i = 0; i < MAX_RETRY_COUNT; i++) {
       try {
         return await this._getPastEventsPaginatedInternal(contract, names, extraTopics, options)
       } catch (error) {
@@ -594,10 +598,11 @@ export class ContractInteractor {
           throw error
         }
         // exponential backoff up to 1000 sec = 16 minutes
-        await sleep(delay)
-        delay = Math.min(delay * 2, 500000)
+        await this.sleep(delay)
+        delay = Math.min(delay * STEP, MAXIMUM_DELAY)
       }
     }
+    throw new Error(`_getPastEventsPaginated failed after ${MAX_RETRY_COUNT} attempts`)
   }
 
   /**
@@ -659,7 +664,7 @@ export class ContractInteractor {
                 this.logger.error('Too many attempts. throwing ')
                 throw e
               }
-              await sleep(delay)
+              await this.sleep(delay)
             }
           }
         }
@@ -711,7 +716,7 @@ export class ContractInteractor {
       if (blockNumber >= this.lastBlockNumber) {
         break
       }
-      await sleep(delay)
+      await this.sleep(delay)
       attempts++
     }
     if (blockNumber < this.lastBlockNumber) {
@@ -1131,6 +1136,11 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   async cancelVersionInVersionRegistry (id: string, version: string, cancelReason: string, transactionDetails: TransactionDetails): Promise<void> {
     await this.versionRegistry.cancelVersion(id, version, cancelReason, transactionDetails)
+  }
+
+  // allow tests to stub the 'sleep' method
+  async sleep (ms: number): Promise<void> {
+    return await sleep(ms)
   }
 }
 
