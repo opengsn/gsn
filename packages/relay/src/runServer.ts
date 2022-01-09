@@ -143,6 +143,7 @@ async function run (): Promise<void> {
   const txStoreManager = new TxStoreManager({ workdir, autoCompactionInterval: config.dbAutoCompactionInterval }, logger)
   console.log('Creating interactor...\n')
   const contractInteractor = new ContractInteractor({
+    getPastEventsExponentialBackoff: true,
     provider: web3provider,
     logger,
     environment,

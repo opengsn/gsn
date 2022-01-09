@@ -73,6 +73,7 @@ export interface ConstructorParams {
   deployment?: GSNContractsDeployment
   maxPageSize: number
   environment: Environment
+  getPastEventsExponentialBackoff?: boolean
 }
 
 export interface RelayCallABI {
@@ -118,6 +119,7 @@ export class ContractInteractor {
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
   private readonly maxPageSize: number
+  private readonly getPastEventsExponentialBackoff: boolean
   private lastBlockNumber: number
 
   private rawTxOptions?: TxOptions
@@ -130,6 +132,7 @@ export class ContractInteractor {
 
   constructor (
     {
+      getPastEventsExponentialBackoff,
       maxPageSize,
       provider,
       versionManager,
@@ -139,6 +142,7 @@ export class ContractInteractor {
     }: ConstructorParams) {
     this.maxPageSize = maxPageSize
     this.logger = logger
+    this.getPastEventsExponentialBackoff = getPastEventsExponentialBackoff ?? false
     this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.web3 = new Web3(provider as any)
     this.deployment = deployment
@@ -574,11 +578,33 @@ export class ContractInteractor {
     return ret
   }
 
+  async _getPastEventsPaginated (
+    contract: any,
+    names: EventName[],
+    extraTopics: string[],
+    options: PastEventOptions
+  ): Promise<EventData[]> {
+    let delay = 1000
+    while (true) {
+      try {
+        return await this._getPastEventsPaginatedInternal(contract, names, extraTopics, options)
+      } catch (error) {
+        console.error('_getPastEventsPaginated failed', error)
+        if (!this.getPastEventsExponentialBackoff) {
+          throw error
+        }
+        // exponential backoff up to 1000 sec = 16 minutes
+        await sleep(delay)
+        delay = Math.min(delay * 2, 500000)
+      }
+    }
+  }
+
   /**
    * Splits requested range into pages to avoid fetching too many blocks at once.
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
-  async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
+  private async _getPastEventsPaginatedInternal (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     const delay = this.getNetworkType() === 'private' ? 0 : 300
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
