@@ -589,13 +589,14 @@ export class ContractInteractor {
     const MAXIMUM_DELAY = 500000
     const STEP = 2
     let delay = INITIAL_DELAY
-    for (let i = 0; i < MAX_RETRY_COUNT; i++) {
+    let i = 0
+    while (true) {
       try {
         return await this._getPastEventsPaginatedInternal(contract, names, extraTopics, options)
       } catch (error) {
         this.logger.error('_getPastEventsPaginated failed')
         this.logger.error(error)
-        if (!this.getPastEventsExponentialBackoff) {
+        if (!this.getPastEventsExponentialBackoff || i++ > MAX_RETRY_COUNT) {
           throw error
         }
         // exponential backoff up to 1000 sec = 16 minutes
@@ -603,7 +604,6 @@ export class ContractInteractor {
         delay = Math.min(delay * STEP, MAXIMUM_DELAY)
       }
     }
-    throw new Error(`_getPastEventsPaginated failed after ${MAX_RETRY_COUNT} attempts`)
   }
 
   /**
