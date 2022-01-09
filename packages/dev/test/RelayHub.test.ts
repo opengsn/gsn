@@ -865,7 +865,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
           it('should accept relayCall with empty signature coming from the BatchGateway', async function () {
             const relayRequestWithNonce = cloneRelayRequest(relayRequest)
-            relayRequestWithNonce.request.nonce = (await gatewayForwarder.getNonce(relayRequest.request.from)).toNumber()
+            relayRequestWithNonce.request.nonce = (await gatewayForwarder.getNonce(relayRequest.request.from)).toString()
             const dataToSign = new TypedRequestData(
               chainId,
               gatewayForwarder.address,

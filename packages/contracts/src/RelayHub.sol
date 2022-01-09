@@ -269,16 +269,21 @@ contract RelayHub is IRelayHub, Ownable {
             balances[config.devAddress] = balances[config.devAddress].add(devCharge);
         }
 
-        emit TransactionRelayed(
-            vars.relayManager,
-            msg.sender,
-            vars.relayRequestId,
-            relayRequest.request.from,
-            relayRequest.request.to,
-            relayRequest.relayData.paymaster,
-            vars.functionSelector,
-            vars.status,
-            charge);
+        {
+            address from = relayRequest.request.from;
+            address to = relayRequest.request.to;
+            address paymaster = relayRequest.relayData.paymaster;
+            emit TransactionRelayed(
+                vars.relayManager,
+                msg.sender,
+                vars.relayRequestId,
+                from,
+                to,
+                paymaster,
+                vars.functionSelector,
+                vars.status,
+                charge);
+        }
         return (true, "");
     }
     }
