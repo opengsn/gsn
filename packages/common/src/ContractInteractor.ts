@@ -593,7 +593,8 @@ export class ContractInteractor {
       try {
         return await this._getPastEventsPaginatedInternal(contract, names, extraTopics, options)
       } catch (error) {
-        console.error('_getPastEventsPaginated failed', error)
+        this.logger.error('_getPastEventsPaginated failed')
+        this.logger.error(error)
         if (!this.getPastEventsExponentialBackoff) {
           throw error
         }
