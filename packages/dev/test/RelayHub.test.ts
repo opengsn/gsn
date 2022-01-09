@@ -876,7 +876,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
               dataToSign
             )
             const {
-              tx,
+              tx
             } = await relayHubInstance.relayCall(10e6, relayRequestWithNonce, '0x', '0x', {
               from: batchGateway,
               gas
