@@ -116,7 +116,7 @@ export class TxStoreManager {
   /**
    * The server is originally written to fully rely on blockchain events to determine its state.
    * However, on real networks the server's actions propagate slowly and server considers its state did not change.
-   * To mitigate this, server should not repeat its actions for at least RECENT_ACTION_BLOCK_DISTANCE blocks.
+   * To mitigate this, server should not repeat its actions for at least {@link recencyBlockCount} blocks.
    */
   async isActionPendingOrRecentlyMined (serverAction: ServerAction, currentBlock: number, recencyBlockCount: number, destination: Address | undefined = undefined): Promise<boolean> {
     const allTransactions = await this.getAll()
