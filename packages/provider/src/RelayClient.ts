@@ -490,7 +490,7 @@ export class RelayClient {
         }
       })
     })
-    const useGsnDocsConfig = config.useGsnDocsConfig != null ? config.useGsnDocsConfig : defaultGsnConfig.useGsnDocsConfig
+    const useGsnDocsConfig = config.useGsnDocsConfig ?? defaultGsnConfig.useGsnDocsConfig
     if (useGsnDocsConfig) {
       this.logger.debug('Reading config from docs')
       configFromServer = await this._resolveConfigurationFromServer(chainId)
