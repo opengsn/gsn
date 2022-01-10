@@ -115,10 +115,21 @@ export async function getEip712Signature (
       if ((errorAsBoolean(error)) || result == null) {
         reject((error as any).message ?? error)
       } else {
-        resolve(result.result)
+        resolve(correctV(result.result))
       }
     })
   })
+}
+
+function correctV (result: PrefixedHexString): PrefixedHexString {
+  const buffer = toBuffer(result)
+  const last = buffer.length - 1
+  const oldV = buffer[last]
+  if (oldV < 2) {
+    buffer[last] += 27
+    console.warn(`signature V adjusted from ${oldV} to ${buffer[last]}`)
+  }
+  return bufferToHex(buffer)
 }
 
 /**
