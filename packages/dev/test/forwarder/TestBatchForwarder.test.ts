@@ -15,6 +15,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason } from '../TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { constants } from '@opengsn/common'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const StakeManager = artifacts.require('StakeManager')
@@ -36,7 +37,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
 
     const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    hub = await deployHub(stakeManager.address, penalizer.address)
+    hub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
     const relayRegistrar = await RelayRegistrar.at(await hub.relayRegistrar())
     const relayHub = hub
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })

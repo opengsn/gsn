@@ -44,6 +44,7 @@ import { BadContractInteractor } from '../dummies/BadContractInteractor'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { constants } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -117,7 +118,7 @@ contract('RelayClient', function (accounts) {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHub = await deployHub(stakeManager.address, penalizer.address)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
     relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address

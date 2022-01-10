@@ -19,7 +19,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
+import { constants, ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
@@ -70,7 +70,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHub = await deployHub(stakeManager.address, penalizer.address, config)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, config)
     relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
 
     await paymaster.setTrustedForwarder(forwarder)

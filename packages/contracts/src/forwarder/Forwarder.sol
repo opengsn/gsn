@@ -128,6 +128,7 @@ contract Forwarder is IForwarder {
         bytes calldata suffixData,
         bytes calldata sig)
     internal
+    virtual
     view
     {
         require(domains[domainSeparator], "FWD: unregistered domain sep.");
