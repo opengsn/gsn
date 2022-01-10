@@ -116,17 +116,6 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       await testDeposit(other, target, ether('1'))
     })
 
-    it('cannot deposit amounts larger than the limit', async function () {
-      await expectRevert(
-        relayHubInstance.depositFor(target, {
-          from: other,
-          value: ether('3'),
-          gasPrice: 1e9
-        }),
-        'deposit too big'
-      )
-    })
-
     it('can deposit multiple times and have a total deposit larger than the limit', async function () {
       await relayHubInstance.depositFor(target, {
         from: other,

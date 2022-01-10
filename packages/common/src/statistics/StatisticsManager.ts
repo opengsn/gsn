@@ -380,7 +380,6 @@ export class StatisticsManager {
       gasReserve: hubConfig.gasReserve.toString(),
       postOverhead: hubConfig.postOverhead.toString(),
       gasOverhead: hubConfig.gasOverhead.toString(),
-      maximumRecipientDeposit: hubConfig.maximumRecipientDeposit.toString(),
       minimumUnstakeDelay: hubConfig.minimumUnstakeDelay.toString(),
       minimumStake: hubConfig.minimumStake.toString()
     }

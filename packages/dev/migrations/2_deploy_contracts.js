@@ -12,7 +12,7 @@ module.exports = async function (deployer) {
     StakeManager.address,
     Penalizer.address,
     '0x0000000000000000000000000000000000000000',
-    [0, 0, 0, 0, 0, 0, 0, '0x0000000000000000000000000000000000000000', 0
+    [0, 0, 0, 0, 0, 0, '0x0000000000000000000000000000000000000000', 0
     ])
   await deployer.deploy(Forwarder)
   await deployer.deploy(SampleRecipient, Forwarder.address)

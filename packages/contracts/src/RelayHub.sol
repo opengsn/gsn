@@ -104,7 +104,6 @@ contract RelayHub is IRelayHub, Ownable {
 
     function depositFor(address target) public override payable {
         uint256 amount = msg.value;
-        require(amount <= config.maximumRecipientDeposit, "deposit too big");
 
         balances[target] = balances[target].add(amount);
 
