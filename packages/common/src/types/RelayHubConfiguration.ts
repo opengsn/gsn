@@ -7,4 +7,6 @@ export interface RelayHubConfiguration {
   gasOverhead: number | BN
   minimumUnstakeDelay: number | BN
   minimumStake: IntString | BN
+  devAddress: string
+  devFee: number | BN | string
 }
