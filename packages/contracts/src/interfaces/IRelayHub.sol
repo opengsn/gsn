@@ -16,8 +16,6 @@ interface IRelayHub {
         // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
         // Assume that relay has non-zero balance (costs 15'000 more otherwise).
         uint256 gasOverhead;
-        // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
-        uint256 maximumRecipientDeposit;
         // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
         uint256 minimumUnstakeDelay;
         // Minimum stake a relay can have. An attack on the network will never cost less than half this value.
