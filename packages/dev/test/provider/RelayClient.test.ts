@@ -799,7 +799,6 @@ contract('RelayClient', function (accounts) {
         for (const network of supportedNetworks) {
           console.log(`Network ${jsonConfig.networks[network].name}`)
           const config = await relayClient._resolveConfigurationFromServer(network)
-          console.log('config', config)
           const GSNConfigKeys = Object.keys(defaultGsnConfig)
           Object.keys(config).forEach(key => assert.isTrue(GSNConfigKeys.includes(key), `key ${key} not found in GSConfig`))
         }
