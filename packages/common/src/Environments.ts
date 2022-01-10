@@ -13,6 +13,7 @@ export interface Environment {
   readonly gtxdatazero: number
   readonly dataOnChainHandlingGasCostPerByte: number
   readonly getGasPriceFactor: number
+  readonly nonZeroDevFeeGasOverhead: number
 }
 
 /**
@@ -27,13 +28,15 @@ const defaultPenalizerConfiguration: PenalizerConfiguration = {
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 54771,
-  postOverhead: 19073,
+  gasOverhead: 57435,
+  postOverhead: 19040,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
   minimumUnstakeDelay: 1000,
-  maximumRecipientDeposit: 2e18.toString()
+  maximumRecipientDeposit: 2e18.toString(),
+  devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
+  devFee: 0
 }
 
 // TODO add as constructor params to paymaster instead of constants
@@ -57,7 +60,8 @@ const ethereumMainnet: Environment = {
   mintxgascost: 21000,
   gtxdatanonzero: 16,
   gtxdatazero: 4,
-  getGasPriceFactor: 1
+  getGasPriceFactor: 1,
+  nonZeroDevFeeGasOverhead: 5638
 }
 
 const ganacheLocal: Environment = {
@@ -70,7 +74,8 @@ const ganacheLocal: Environment = {
   mintxgascost: 21000,
   gtxdatanonzero: 16,
   gtxdatazero: 4,
-  getGasPriceFactor: 1
+  getGasPriceFactor: 1,
+  nonZeroDevFeeGasOverhead: 5638
 }
 
 /* begin Arbitrum-specific Environment */
@@ -98,7 +103,8 @@ const arbitrum: Environment = {
   // there is currently a hard-coded to be 2 at arbitrum:eth.go:43 (commit: 12483cfa17a29e7d68c354c456ebc371b05a6ea2)
   // setting factor to 0.6 instead of 0.5 to allow the transaction to pass in case of moderate gas price increase
   // note that excess will be collected by the Relay Server as an extra profit
-  getGasPriceFactor: 0.6
+  getGasPriceFactor: 0.6,
+  nonZeroDevFeeGasOverhead: 5638
 }
 
 /* end Arbitrum-specific Environment */

@@ -20,13 +20,13 @@ import {
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { calculatePostGas, deployTestHub, mergeRelayRequest, registerAsRelayServer, revertReason } from './TestUtils'
-import { defaultEnvironment, decodeRevertReason, getEip712Signature } from '@opengsn/common'
+import { defaultEnvironment, decodeRevertReason, getEip712Signature, constants } from '@opengsn/common'
 
 import Web3 from 'web3'
 import { toWei } from 'web3-utils'
 import { PrefixedHexString, MAX_INTEGER } from 'ethereumjs-util'
 
-import { deployHub } from './ProxyDeployingPaymaster.test'
+import { deployHub } from '@opengsn/dev/dist/test/TestUtils'
 
 const TokenPaymaster = artifacts.require('TokenPaymaster')
 const TestUniswap = artifacts.require('TestUniswap')
@@ -59,7 +59,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
     })
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    hub = await deployHub(stakeManager.address, penalizer.address)
+    hub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
     token = await TestToken.at(await uniswap.tokenAddress())
 
     paymaster = await TokenPaymaster.new([uniswap.address], { gas: 1e7 })

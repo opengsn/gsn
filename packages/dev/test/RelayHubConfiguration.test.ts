@@ -5,7 +5,7 @@ import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { deployHub, evmMine, evmMineMany } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
-import { defaultEnvironment, getEip712Signature } from '@opengsn/common/dist'
+import { defaultEnvironment, getEip712Signature, constants } from '@opengsn/common/dist'
 import {
   ForwarderInstance,
   PenalizerInstance,
@@ -17,6 +17,7 @@ import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { cleanValue } from './utils/chaiHelper'
 
 const { assert } = chai.use(chaiAsPromised)
 
@@ -68,7 +69,7 @@ contract('RelayHub Configuration',
       penalizer = await Penalizer.new(
         defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
         defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-      relayHub = await deployHub(stakeManager.address, penalizer.address)
+      relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
       relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
@@ -250,15 +251,33 @@ contract('RelayHub Configuration',
             maxWorkerCount: 0xef.toString(),
             minimumStake: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
-            maximumRecipientDeposit: 0xef.toString()
+            maximumRecipientDeposit: 0xef.toString(),
+            devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
+            devFee: 0x11.toString()
           }
           let configFromHub = await relayHub.getConfiguration()
           // relayHub.getConfiguration() returns an array, so we need to construct an object with its fields to compare to config.
           expect({ ...configFromHub }).to.not.include(config)
           const res = await relayHub.setConfiguration(config, { from: relayHubOwner })
           expectEvent(res, 'RelayHubConfigured')
-          configFromHub = await relayHub.getConfiguration()
-          expect({ ...configFromHub }).to.include(config)
+          configFromHub = cleanValue(await relayHub.getConfiguration())
+          expect(configFromHub).to.deep.include(config)
+        })
+        it('should not set dev fee to over 100% of charge', async function () {
+          const config = {
+            gasOverhead: 0xef.toString(),
+            postOverhead: 0xef.toString(),
+            gasReserve: 0xef.toString(),
+            maxWorkerCount: 0xef.toString(),
+            minimumStake: 0xef.toString(),
+            minimumUnstakeDelay: 0xef.toString(),
+            maximumRecipientDeposit: 0xef.toString(),
+            devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
+            devFee: '101'
+          }
+          await expectRevert(
+            relayHub.setConfiguration(config, { from: relayHubOwner }),
+            'dev fee too high')
         })
       })
     })

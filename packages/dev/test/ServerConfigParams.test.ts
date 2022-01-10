@@ -260,7 +260,7 @@ context('#ServerConfigParams', () => {
     contract('Mandatory parameters', () => {
       let hub: RelayHubInstance
       before(async () => {
-        hub = await deployHub(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)
+        hub = await deployHub(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)
       })
 
       it('should fail on missing url', async () => {

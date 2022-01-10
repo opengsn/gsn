@@ -27,6 +27,7 @@ import { getEip712Signature } from '@opengsn/common/dist/Utils'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { constants } from '@opengsn/common'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -103,7 +104,7 @@ contract('RelayProvider', function (accounts) {
     web3 = new Web3(underlyingProvider)
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHub = await deployHub(stakeManager.address, penalizer.address)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     await registerForwarderForGsn(forwarderInstance)

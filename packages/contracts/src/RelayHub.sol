@@ -31,6 +31,7 @@ contract RelayHub is IRelayHub, Ownable {
 
     IStakeManager public immutable override stakeManager;
     address public immutable override penalizer;
+    address public immutable override batchGateway;
 
     //TODO: make immutable (currently has a setter. deployment requires future address, since there is cross-references between RH and RR
     address public override relayRegistrar;
@@ -42,6 +43,7 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function setConfiguration(RelayHubConfig memory _config) public override onlyOwner {
+        require(_config.devFee < 100, "dev fee too high");
         config = _config;
         emit RelayHubConfigured(config);
     }
@@ -59,10 +61,12 @@ contract RelayHub is IRelayHub, Ownable {
     constructor (
         IStakeManager _stakeManager,
         address _penalizer,
+        address _batchGateway,
         RelayHubConfig memory _config
     ) {
         stakeManager = _stakeManager;
         penalizer = _penalizer;
+        batchGateway = _batchGateway;
         setConfiguration(_config);
     }
 
@@ -162,6 +166,7 @@ contract RelayHub is IRelayHub, Ownable {
         uint256 gasBeforeInner;
         bytes retData;
         address relayManager;
+        bytes32 relayRequestId;
     }
 
     function relayCall(
@@ -176,12 +181,16 @@ contract RelayHub is IRelayHub, Ownable {
     {
         RelayCallData memory vars;
         vars.initialGasLeft = aggregateGasleft();
+        vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
         require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
-        require(msg.sender == tx.origin, "relay worker must be EOA");
-        vars.relayManager = workerToManager[msg.sender];
+        if (msg.sender != batchGateway){
+            require(signature.length != 0, "missing signature or bad gateway");
+            require(msg.sender == tx.origin, "relay worker must be EOA");
+            require(msg.sender == relayRequest.relayData.relayWorker, "Not a right worker");
+        }
+        vars.relayManager = workerToManager[relayRequest.relayData.relayWorker];
         require(vars.relayManager != address(0), "Unknown relay worker");
-        require(relayRequest.relayData.relayWorker == msg.sender, "Not a right worker");
         require(
             isRelayManagerStaked(vars.relayManager),
             "relay manager not staked"
@@ -238,6 +247,7 @@ contract RelayHub is IRelayHub, Ownable {
                 emit TransactionRejectedByPaymaster(
                     vars.relayManager,
                     relayRequest.relayData.paymaster,
+                    vars.relayRequestId,
                     relayRequest.request.from,
                     relayRequest.request.to,
                     msg.sender,
@@ -251,19 +261,29 @@ contract RelayHub is IRelayHub, Ownable {
         // We now perform the actual charge calculation, based on the measured gas used
         uint256 gasUsed = relayRequest.relayData.transactionCalldataGasUsed + (vars.initialGasLeft - aggregateGasleft()) + config.gasOverhead;
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
+        uint256 devCharge = calculateDevCharge(charge);
 
         balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
-        balances[vars.relayManager] = balances[vars.relayManager].add(charge);
+        balances[vars.relayManager] = balances[vars.relayManager].add(charge.sub(devCharge));
+        if (devCharge > 0) { // save some gas in case of zero dev charge
+            balances[config.devAddress] = balances[config.devAddress].add(devCharge);
+        }
 
-        emit TransactionRelayed(
-            vars.relayManager,
-            msg.sender,
-            relayRequest.request.from,
-            relayRequest.request.to,
-            relayRequest.relayData.paymaster,
-            vars.functionSelector,
-            vars.status,
-            charge);
+        {
+            address from = relayRequest.request.from;
+            address to = relayRequest.request.to;
+            address paymaster = relayRequest.relayData.paymaster;
+            emit TransactionRelayed(
+                vars.relayManager,
+                msg.sender,
+                vars.relayRequestId,
+                from,
+                to,
+                paymaster,
+                vars.functionSelector,
+                vars.status,
+                charge);
+        }
         return (true, "");
     }
     }
@@ -378,6 +398,15 @@ contract RelayHub is IRelayHub, Ownable {
             let dataPtr := add(data, 32)
 
             revert(dataPtr, dataSize)
+        }
+    }
+
+    function calculateDevCharge(uint256 charge) public view returns (uint256){
+        if (config.devFee == 0){ // save some gas in case of zero dev charge
+            return 0;
+        }
+        unchecked {
+        return charge * config.devFee / 100;
         }
     }
 

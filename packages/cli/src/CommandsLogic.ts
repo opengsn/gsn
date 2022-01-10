@@ -453,10 +453,13 @@ export class CommandsLogic {
       ]
     }, deployOptions.penalizerAddress, { ...options }, deployOptions.skipConfirmation)
     const fInstance = await this.getContractInstance(Forwarder, {}, deployOptions.forwarderAddress, { ...options }, deployOptions.skipConfirmation)
+    // TODO: add support to passing '--batchGatewayAddress'
+    const batchGatewayAddress = constants.ZERO_ADDRESS
     const rInstance = await this.getContractInstance(RelayHub, {
       arguments: [
         sInstance.options.address,
         pInstance.options.address,
+        batchGatewayAddress,
         deployOptions.relayHubConfiguration
       ]
     }, deployOptions.relayHubAddress, { ...options }, deployOptions.skipConfirmation)
