@@ -251,7 +251,6 @@ contract('RelayHub Configuration',
             maxWorkerCount: 0xef.toString(),
             minimumStake: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
-            maximumRecipientDeposit: 0xef.toString(),
             devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
             devFee: 0x11.toString()
           }
@@ -271,7 +270,6 @@ contract('RelayHub Configuration',
             maxWorkerCount: 0xef.toString(),
             minimumStake: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
-            maximumRecipientDeposit: 0xef.toString(),
             devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
             devFee: '101'
           }
