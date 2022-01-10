@@ -6,6 +6,8 @@ import { LoggerInterface } from './LoggerInterface'
 import { HttpWrapper } from './HttpWrapper'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { AuditRequest, AuditResponse } from './types/AuditRequest'
+import { ConfigResponse } from './ConfigResponse'
+import { gsnRuntimeVersion } from './Version'
 
 export class HttpClient {
   private readonly httpWrapper: HttpWrapper
@@ -43,5 +45,12 @@ export class HttpClient {
     const auditResponse: AuditResponse = await this.httpWrapper.sendPromise(relayUrl + '/audit', auditRequest)
     this.logger.info(`auditTransaction response: ${JSON.stringify(auditResponse)}`)
     return auditResponse
+  }
+
+  async getNetworkConfiguration (): Promise<ConfigResponse> {
+    const gsnUrl = `https://raw.githubusercontent.com/opengsn/gsn-networks/${gsnRuntimeVersion}/client-config.json`
+    const configResponse: ConfigResponse = await this.httpWrapper.sendPromise(gsnUrl)
+    this.logger.info(`Config response: ${JSON.stringify(configResponse)}`)
+    return configResponse
   }
 }

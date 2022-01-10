@@ -45,6 +45,7 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { constants } from '@opengsn/common'
+import { ConfigResponse } from '@opengsn/common/dist/ConfigResponse'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -742,6 +743,67 @@ contract('RelayClient', function (accounts) {
       const relayingResult = await relayClient.relayTransaction(options)
       assert.equal(relayingResult.pingErrors.size, 0)
       assert.exists(relayingResult.transaction)
+    })
+  })
+
+  describe('_resolveConfiguration()', function () {
+    it('should prioritize client config in that order: config function argument, website-supplied config, default config', async function () {
+      sinon.stub(relayClient, '_resolveConfigurationFromServer').returns(Promise.resolve({
+        methodSuffix: 'test suffix from _resolveConfigurationFromServer'
+      }))
+      const config: Partial<GSNConfig> = {
+        methodSuffix: 'test suffix from arg'
+      }
+      let resolvedConfig = await relayClient._resolveConfiguration({
+        provider: relayClient.getUnderlyingProvider(),
+        config
+      })
+      assert.equal(resolvedConfig.methodSuffix, 'test suffix from arg')
+
+      resolvedConfig = await relayClient._resolveConfiguration({
+        provider: relayClient.getUnderlyingProvider(),
+        config: {}
+      })
+      assert.equal(resolvedConfig.methodSuffix, 'test suffix from _resolveConfigurationFromServer')
+
+      sinon.restore()
+      sinon.stub(relayClient, '_resolveConfigurationFromServer').returns(Promise.resolve({}))
+      resolvedConfig = await relayClient._resolveConfiguration({
+        provider: relayClient.getUnderlyingProvider(),
+        config: {}
+      })
+      assert.equal(resolvedConfig.methodSuffix, defaultGsnConfig.methodSuffix)
+      sinon.restore()
+    })
+    it('should not use website configuration if useGsnDocsConfig is false', async function () {
+      const spy = sinon.spy(relayClient, '_resolveConfigurationFromServer')
+      const config: Partial<GSNConfig> = {
+        useGsnDocsConfig: false
+      }
+      const resolvedConfig = await relayClient._resolveConfiguration({
+        provider: relayClient.getUnderlyingProvider(),
+        config
+      })
+      assert.equal(resolvedConfig.methodSuffix, defaultGsnConfig.methodSuffix)
+      sinon.assert.notCalled(spy)
+      sinon.restore()
+    })
+    describe('_resolveConfigurationFromServer()', function () {
+      let supportedNetworks: number[]
+      let jsonConfig: ConfigResponse
+      before('get all supported networks', async function () {
+        jsonConfig = await relayClient.dependencies.httpClient.getNetworkConfiguration()
+        supportedNetworks = Object.keys(jsonConfig.networks).map(k => parseInt(k))
+      })
+      it('should get configuration from opengsn for all supported networks', async function () {
+        for (const network of supportedNetworks) {
+          console.log(`Network ${jsonConfig.networks[network].name}`)
+          const config = await relayClient._resolveConfigurationFromServer(network)
+          console.log('config', config)
+          const GSNConfigKeys = Object.keys(defaultGsnConfig)
+          Object.keys(config).forEach(key => assert.isTrue(GSNConfigKeys.includes(key), `key ${key} not found in GSConfig`))
+        }
+      })
     })
   })
 })

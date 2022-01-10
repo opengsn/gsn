@@ -35,6 +35,7 @@ import {
   GsnValidateRequestEvent
 } from './GsnEvents'
 import { toBN, toHex } from 'web3-utils'
+import { errorAsBoolean } from '@opengsn/common/dist'
 
 // forwarder requests are signed with expiration time.
 
@@ -469,10 +470,45 @@ export class RelayClient {
     provider,
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
+    let configFromServer = {}
+    // todo fix contractInteractor
+    let chainId = 0
+    await new Promise((resolve, reject) => {
+      provider.send({
+        jsonrpc: '2.0',
+        method: 'eth_chainId',
+        params: [],
+        id: Date.now()
+      }, (e: Error | null, r: any) => {
+        if (errorAsBoolean(e)) {
+          reject(e)
+        } else if (errorAsBoolean(r.error)) {
+          reject(r.error)
+        } else {
+          chainId = parseInt(r.result)
+          resolve(r.result)
+        }
+      })
+    })
+    const useGsnDocsConfig = config.useGsnDocsConfig != null ? config.useGsnDocsConfig : defaultGsnConfig.useGsnDocsConfig
+    if (useGsnDocsConfig) {
+      this.logger.debug('Reading config from docs')
+      configFromServer = await this._resolveConfigurationFromServer(chainId)
+    }
     return {
       ...defaultGsnConfig,
+      ...configFromServer,
       ...removeNullValues(config)
     }
+  }
+
+  async _resolveConfigurationFromServer (chainId: number): Promise<Partial<GSNConfig>> {
+    const httpClient = new HttpClient(new HttpWrapper(), this.logger)
+    const jsonConfig = await httpClient.getNetworkConfiguration()
+    if (jsonConfig.networks[chainId] == null) {
+      return {}
+    }
+    return jsonConfig.networks[chainId].gsnConfig
   }
 
   async _resolveDependencies ({
