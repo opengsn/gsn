@@ -33,6 +33,7 @@ const defaultRelayHubConfiguration: RelayHubConfiguration = {
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumStake: 1e18.toString(),
+  minimumUnstakeDelay: 1000,
   devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
   devFee: 0
 }
