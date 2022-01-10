@@ -112,7 +112,7 @@ export class ServerTestEnvironment {
     this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     this.penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     // @ts-ignore - IRelayHub and RelayHub types are similar enough for tests to work
-    this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, relayHubConfig)
+    this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, constants.ZERO_ADDRESS, relayHubConfig)
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
     this.paymaster = await TestPaymasterEverythingAccepted.new()

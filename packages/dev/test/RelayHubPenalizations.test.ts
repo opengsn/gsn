@@ -25,7 +25,7 @@ import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
 import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { StakeUnlocked } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-import { getDataAndSignature } from '@opengsn/common/dist'
+import { getDataAndSignature, constants } from '@opengsn/common/dist'
 import { toBN } from 'web3-utils'
 
 const RelayHub = artifacts.require('RelayHub')
@@ -79,7 +79,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
   before(async function () {
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, 40)
-    relayHub = await deployHub(stakeManager.address, penalizer.address)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
     const forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)

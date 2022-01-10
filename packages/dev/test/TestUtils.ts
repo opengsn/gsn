@@ -275,6 +275,7 @@ export function encodeRevertReason (reason: string): PrefixedHexString {
 export async function deployHub (
   stakeManager: string,
   penalizer: string,
+  batchGateway: string,
   configOverride: Partial<RelayHubConfiguration> = {},
   environment: Environment = defaultEnvironment): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
@@ -284,6 +285,7 @@ export async function deployHub (
   const hub: RelayHubInstance = await RelayHub.new(
     stakeManager,
     penalizer,
+    batchGateway,
     relayHubConfiguration)
 
   const relayRegistrar = await RelayRegistrar.new(hub.address, true)
