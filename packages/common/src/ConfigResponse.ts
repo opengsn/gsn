@@ -13,7 +13,7 @@ export interface LoggerConfiguration {
 }
 
 export interface ConfigResponse {
-  networks: Record<number|string, ConfigEntry>
+  networks: Record<number, ConfigEntry>
 }
 
 export interface ConfigEntry {
@@ -21,10 +21,6 @@ export interface ConfigEntry {
   gsnConfig: Partial<GSNConfig>
 }
 
-/**
- * @field methodSuffix - allows use of versioned methods, i.e. 'eth_signTypedData_v4'. Should be '_v4' for Metamask
- * @field jsonStringifyRequest - should be 'true' for Metamask, false for ganache
- */
 export interface GSNConfig {
   preferredRelays: string[]
   // number of blocks back the relay will be considered 'active'
@@ -35,8 +31,9 @@ export interface GSNConfig {
   relayRegistrationLookupBlocks: number
   // in case querying large block ranges is restricted, set limit and use pagination
   pastEventsQueryMaxPageSize: number
-
+  // allows use of versioned methods, i.e. 'eth_signTypedData_v4'. Should be '_v4' for Metamask
   methodSuffix: string
+  // should be 'true' for Metamask, false for ganache
   jsonStringifyRequest: boolean
   requiredVersionRange?: string
   relayTimeoutGrace: number
