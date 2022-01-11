@@ -493,7 +493,7 @@ export class RelayClient {
     const useGsnDocsConfig = config.useGsnDocsConfig ?? defaultGsnConfig.useGsnDocsConfig
     if (useGsnDocsConfig) {
       this.logger.debug('Reading config from docs')
-      configFromServer = await this._resolveConfigurationFromServer(chainId)
+      configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.gsnUrl)
     }
     return {
       ...defaultGsnConfig,
@@ -502,13 +502,18 @@ export class RelayClient {
     }
   }
 
-  async _resolveConfigurationFromServer (chainId: number): Promise<Partial<GSNConfig>> {
-    const httpClient = new HttpClient(new HttpWrapper(), this.logger)
-    const jsonConfig = await httpClient.getNetworkConfiguration()
-    if (jsonConfig.networks[chainId] == null) {
+  async _resolveConfigurationFromServer (chainId: number, gsnUrl: string): Promise<Partial<GSNConfig>> {
+    try {
+      const httpClient = new HttpClient(new HttpWrapper(), this.logger)
+      const jsonConfig = await httpClient.getNetworkConfiguration(gsnUrl)
+      if (jsonConfig.networks[chainId] == null) {
+        return {}
+      }
+      return jsonConfig.networks[chainId].gsnConfig
+    } catch (e) {
+      this.logger.debug('Could not fetch configuration from docs')
       return {}
     }
-    return jsonConfig.networks[chainId].gsnConfig
   }
 
   async _resolveDependencies ({

@@ -792,16 +792,19 @@ contract('RelayClient', function (accounts) {
       let supportedNetworks: number[]
       let jsonConfig: ConfigResponse
       before('get all supported networks', async function () {
-        jsonConfig = await relayClient.dependencies.httpClient.getNetworkConfiguration()
+        jsonConfig = await relayClient.dependencies.httpClient.getNetworkConfiguration(defaultGsnConfig.gsnUrl)
         supportedNetworks = Object.keys(jsonConfig.networks).map(k => parseInt(k))
       })
       it('should get configuration from opengsn for all supported networks', async function () {
         for (const network of supportedNetworks) {
           console.log(`Network ${jsonConfig.networks[network].name}`)
-          const config = await relayClient._resolveConfigurationFromServer(network)
+          const config = await relayClient._resolveConfigurationFromServer(network, defaultGsnConfig.gsnUrl)
           const GSNConfigKeys = Object.keys(defaultGsnConfig)
           Object.keys(config).forEach(key => assert.isTrue(GSNConfigKeys.includes(key), `key ${key} not found in GSConfig`))
         }
+      })
+      it('should not throw if docs website doesn\'t respond', async function () {
+
       })
     })
   })

@@ -15,6 +15,7 @@ import {
 import { gsnRequiredVersion } from '@opengsn/common/dist/Version'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { GSNConfig } from '@opengsn/common/dist/ConfigResponse'
+import { gsnRuntimeVersion } from '@opengsn/common/dist'
 export type { GSNConfig } from '@opengsn/common/dist/ConfigResponse'
 
 const GAS_PRICE_PERCENT = 20
@@ -48,6 +49,7 @@ export const defaultGsnConfig: GSNConfig = {
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,
   maxPaymasterDataLength: 0,
+  gsnUrl: `https://raw.githubusercontent.com/opengsn/gsn-networks/${gsnRuntimeVersion}/client-config.json`,
   useGsnDocsConfig: true
 }
 
