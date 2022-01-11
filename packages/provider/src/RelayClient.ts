@@ -2,7 +2,7 @@ import { EventEmitter } from 'events'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
-import { ContractInteractor, asRelayCallAbi } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, asRelayCallAbi, getChainId } from '@opengsn/common/dist/ContractInteractor'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
@@ -35,7 +35,6 @@ import {
   GsnValidateRequestEvent
 } from './GsnEvents'
 import { toBN, toHex } from 'web3-utils'
-import { errorAsBoolean } from '@opengsn/common/dist'
 
 // forwarder requests are signed with expiration time.
 
@@ -471,25 +470,7 @@ export class RelayClient {
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     let configFromServer = {}
-    // todo fix contractInteractor
-    let chainId = 0
-    await new Promise((resolve, reject) => {
-      provider.send({
-        jsonrpc: '2.0',
-        method: 'eth_chainId',
-        params: [],
-        id: Date.now()
-      }, (e: Error | null, r: any) => {
-        if (errorAsBoolean(e)) {
-          reject(e)
-        } else if (errorAsBoolean(r.error)) {
-          reject(r.error)
-        } else {
-          chainId = parseInt(r.result)
-          resolve(r.result)
-        }
-      })
-    })
+    const chainId = await getChainId(provider)
     const useGsnDocsConfig = config.useGsnDocsConfig ?? defaultGsnConfig.useGsnDocsConfig
     if (useGsnDocsConfig) {
       this.logger.debug('Reading config from docs')

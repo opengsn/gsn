@@ -1129,3 +1129,22 @@ export function getRawTxOptions (chainId: number, networkId: number, chain?: str
       }, 'london')
   }
 }
+
+export async function getChainId (provider: Web3ProviderBaseInterface): Promise<number> {
+  return await new Promise((resolve, reject) => {
+    provider.send({
+      jsonrpc: '2.0',
+      method: 'eth_chainId',
+      params: [],
+      id: Date.now()
+    }, (e: Error | null, r: any) => {
+      if (errorAsBoolean(e)) {
+        reject(e)
+      } else if (errorAsBoolean(r.error)) {
+        reject(r.error)
+      } else {
+        resolve(r.result)
+      }
+    })
+  })
+}
