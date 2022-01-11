@@ -7,7 +7,6 @@ import { HttpWrapper } from './HttpWrapper'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { AuditRequest, AuditResponse } from './types/AuditRequest'
 import { ConfigResponse } from './ConfigResponse'
-import { gsnRuntimeVersion } from './Version'
 
 export class HttpClient {
   private readonly httpWrapper: HttpWrapper
