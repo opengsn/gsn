@@ -36,7 +36,6 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const contractOrig = contract
-
 if (process.env.GAS_CALCULATIONS == null) {
   // @ts-ignore
   contract = contract.skip

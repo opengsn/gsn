@@ -34,6 +34,12 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
+const contractOrig = contract
+if (process.env.GAS_CALCULATIONS == null) {
+  // @ts-ignore
+  contract = contract.skip
+}
+
 interface PartialRelayRequest {
   request?: Partial<ForwardRequest>
   relayData?: Partial<RelayData>
@@ -84,11 +90,6 @@ async function makeRequest (
     req: filledRequest,
     sig
   }
-}
-
-if (process.env.GAS_CALCULATIONS == null) {
-  // @ts-ignore
-  contract = contract.skip
 }
 
 // verify the paymaster's commitment:
