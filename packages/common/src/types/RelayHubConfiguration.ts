@@ -5,7 +5,8 @@ export interface RelayHubConfiguration {
   gasReserve: number | BN
   postOverhead: number | BN
   gasOverhead: number | BN
-  maximumRecipientDeposit: IntString | BN
   minimumUnstakeDelay: number | BN
   minimumStake: IntString | BN
+  devAddress: string
+  devFee: number | BN | string
 }

@@ -22,6 +22,7 @@ import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { toBN } from 'web3-utils'
+import { constants } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -78,7 +79,7 @@ contract('KnownRelaysManager', function (
     before(async function () {
       stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
       penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-      relayHub = await deployHub(stakeManager.address, penalizer.address)
+      relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
       config = configureGSN({
         loggerConfiguration: { logLevel: 'error' },
         pastEventsQueryMaxPageSize,
@@ -205,7 +206,7 @@ contract('KnownRelaysManager 2', function (accounts) {
     before(async function () {
       stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
       penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-      relayHub = await deployHub(stakeManager.address, penalizer.address)
+      relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
       config = configureGSN({
         preferredRelays: ['http://localhost:8090']
       })

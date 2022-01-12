@@ -9,6 +9,7 @@ import { deployHub } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { TestForwarderMessage } from '@opengsn/contracts/types/truffle-contracts/TestForwarderTarget'
+import { constants } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -47,7 +48,7 @@ contract('SampleRecipient', function (accounts) {
     const deposit = new BN('100000000000000000')
     const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    const rhub = await deployHub(stakeManager.address, penalizer.address)
+    const rhub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(rhub.address)
     await registerForwarderForGsn(forwarderInstance)

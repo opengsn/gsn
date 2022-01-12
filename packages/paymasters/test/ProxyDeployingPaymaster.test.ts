@@ -11,6 +11,8 @@ import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/Rel
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 
+import { deployHub } from '@opengsn/dev/dist/test/TestUtils'
+
 import { constants, expectEvent } from '@openzeppelin/test-helpers'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { HttpProvider } from 'web3-core'
@@ -33,8 +35,6 @@ import {
 
 import { transferErc20Error } from './TokenPaymaster.test'
 
-import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-
 const RelayHub = artifacts.require('RelayHub')
 const TestHub = artifacts.require('TestHub')
 const Forwarder = artifacts.require('Forwarder')
@@ -46,7 +46,6 @@ const ProxyFactory = artifacts.require('ProxyFactory')
 const ProxyIdentity = artifacts.require('ProxyIdentity')
 const StakeManager = artifacts.require('StakeManager')
 const ProxyDeployingPaymaster = artifacts.require('ProxyDeployingPaymaster')
-const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 // these are no longer exported
 export async function snapshot (): Promise<{ id: number, jsonrpc: string, result: string }> {
@@ -76,26 +75,6 @@ export async function revert (id: string): Promise<void> {
       return resolve(result)
     })
   })
-}
-
-export async function deployHub (
-  stakeManager: string,
-  penalizer: string,
-  configOverride: Partial<RelayHubConfiguration> = {}): Promise<RelayHubInstance> {
-  const relayHubConfiguration: RelayHubConfiguration = {
-    ...defaultEnvironment.relayHubConfiguration,
-    ...configOverride
-  }
-
-  // eslint-disable-next-line @typescript-eslint/return-await
-  const hub = await RelayHub.new(
-    stakeManager,
-    penalizer,
-    relayHubConfiguration)
-
-  const relayRegistrar = await RelayRegistrar.new(hub.address, true)
-  await hub.setRegistrar(relayRegistrar.address)
-  return hub
 }
 
 contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
@@ -143,9 +122,10 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     testHub = await TestHub.new(
       stakeManager.address,
       constants.ZERO_ADDRESS,
+      constants.ZERO_ADDRESS,
       defaultEnvironment.relayHubConfiguration,
       { gas: 10000000 })
-    relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS)
+    relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)
     await paymaster.setRelayHub(relayHub.address)
     await forwarder.registerRequestType(GsnRequestType.typeName, GsnRequestType.typeSuffix)
     await forwarder.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)

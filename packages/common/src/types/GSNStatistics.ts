@@ -83,7 +83,6 @@ export interface RelayHubConstructorParams {
   gasReserve: IntString
   postOverhead: IntString
   gasOverhead: IntString
-  maximumRecipientDeposit: IntString
   minimumUnstakeDelay: IntString
   minimumStake: IntString
 }

@@ -19,9 +19,10 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
+import { constants, ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
+import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -44,6 +45,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const externalGasLimit = 5e6.toString()
   const paymasterData = '0x'
   const clientId = '1'
+  const devAddress = '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf'
 
   const senderNonce = new BN('0')
 
@@ -61,14 +63,14 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   let forwarder: string
   let contractInteractor: ContractInteractor
 
-  async function prepareForHub (): Promise<void> {
+  async function prepareForHub (config: Partial<RelayHubConfiguration> = {}): Promise<void> {
     forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHub = await deployHub(stakeManager.address, penalizer.address)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, config)
     relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
 
     await paymaster.setTrustedForwarder(forwarder)
@@ -79,6 +81,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),
       from: other
+    })
+    await relayHub.depositFor(devAddress, {
+      value: (1).toString()
     })
 
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
@@ -253,15 +258,18 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     paymasters: BN
     relayWorkers: BN
     relayManagers: BN
+    devs: BN
   }> {
     const paymasters = await relayHub.balanceOf(paymaster.address)
     // @ts-ignore
     const relayWorkers = new BN(await web3.eth.getBalance(relayWorker))
     const relayManagers = await relayHub.balanceOf(relayManager)
+    const devs = await relayHub.balanceOf(devAddress)
     return {
       paymasters,
       relayWorkers,
-      relayManagers
+      relayManagers,
+      devs
     }
   }
 
@@ -464,114 +472,129 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   })
 
   describe('check calculation does not break for different fees', function () {
-    before(async function () {
-      await relayHub.depositFor(relayOwner, { value: (1).toString() })
-    });
-
     [0, 1000]
       .forEach(messageLength =>
-        [0, 1, 100]
-          .forEach(requestedFee => {
-            // avoid duplicate coverage checks. they do the same, and take a lot of time:
-            if (requestedFee !== 0 && messageLength !== 0 && process.env.MODE === 'coverage') return
-            // 50k tests take more than 10 seconds to complete so will run once for sanity
-            if (messageLength === 50000 && requestedFee !== 10) return
-            it(`should compensate relay with requested fee of ${requestedFee.toString()}% with ${messageLength.toString()} calldata size`,
-              async function () {
-                const beforeBalances = await getBalances()
-                const pctRelayFee = requestedFee.toString()
-                const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
-                const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
-                const baseRelayFee = '0'
-                const relayRequest: RelayRequest = {
-                  request: {
-                    to: recipient.address,
-                    data: encodedFunction,
-                    from: senderAddress,
-                    nonce: senderNonce,
-                    value: '0',
-                    gas: gasLimit.toString(),
-                    validUntil: '0'
-                  },
-                  relayData: {
-                    baseRelayFee,
-                    pctRelayFee,
-                    transactionCalldataGasUsed: '',
-                    maxFeePerGas: maxFeePerGas.toString(),
-                    maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
-                    relayWorker,
-                    forwarder,
-                    paymaster: paymaster.address,
-                    paymasterData,
-                    clientId
+        [0, 10, 100]
+          .forEach(requestedFee =>
+            [0, 20].forEach(devFee => {
+              // avoid duplicate coverage checks. they do the same, and take a lot of time:
+              if (requestedFee !== 0 && messageLength !== 0 && process.env.MODE === 'coverage') return
+              // 50k tests take more than 10 seconds to complete so will run once for sanity
+              if (messageLength === 50000 && requestedFee !== 10) return
+              it(
+                `should compensate relay with requested fee of ${requestedFee.toString()}%, dev fee of ${devFee.toString()}% and ${messageLength.toString()} calldata size`,
+                async function () {
+                  let gasOverhead = parseInt(defaultEnvironment.relayHubConfiguration.gasOverhead.toString())
+                  if (devFee !== 0) {
+                    gasOverhead += defaultEnvironment.nonZeroDevFeeGasOverhead
                   }
-                }
-                relayRequest.relayData.transactionCalldataGasUsed = contractInteractor.estimateCalldataCostForRequest(relayRequest, {
-                  maxPaymasterDataLength: 0,
-                  maxApprovalDataLength: 0
+                  await prepareForHub({ gasOverhead, devAddress, devFee })
+                  // Avoid zero to non-zero storage gas costs when calculating fees.
+                  await relayHub.depositFor(relayOwner, { value: (1).toString() })
+
+                  const beforeBalances = await getBalances()
+                  const pctRelayFee = requestedFee.toString()
+                  const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
+                  const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
+                  const baseRelayFee = '0'
+                  const relayRequest: RelayRequest = {
+                    request: {
+                      to: recipient.address,
+                      data: encodedFunction,
+                      from: senderAddress,
+                      nonce: senderNonce,
+                      value: '0',
+                      gas: gasLimit.toString(),
+                      validUntil: '0'
+                    },
+                    relayData: {
+                      baseRelayFee,
+                      pctRelayFee,
+                      transactionCalldataGasUsed: '',
+                      maxFeePerGas: maxFeePerGas.toString(),
+                      maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
+                      relayWorker,
+                      forwarder,
+                      paymaster: paymaster.address,
+                      paymasterData,
+                      clientId
+                    }
+                  }
+                  relayRequest.relayData.transactionCalldataGasUsed = contractInteractor.estimateCalldataCostForRequest(relayRequest, {
+                    maxPaymasterDataLength: 0,
+                    maxApprovalDataLength: 0
+                  })
+                  const dataToSign = new TypedRequestData(
+                    chainId,
+                    forwarder,
+                    relayRequest
+                  )
+                  const signature = await getEip712Signature(
+                    web3,
+                    dataToSign
+                  )
+                  const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+                    from: relayWorker,
+                    gas: externalGasLimit,
+                    gasPrice: gasPrice
+                  })
+
+                  const afterBalances = await getBalances()
+                  assert.notEqual(beforeBalances.relayManagers.toString(), afterBalances.relayManagers.toString(),
+                    'manager not compensated. transaction must have failed')
+
+                  // how much the relay manager got compensated for this tx from the paymaster
+                  const relayerActualCharge = afterBalances.relayManagers.sub(beforeBalances.relayManagers)
+                  // how much the dev address got compensated for this tx from the paymaster
+                  const devActualCharge = afterBalances.devs.sub(beforeBalances.devs)
+                  // how much the paymaster was charged in total
+                  const actualCharge = relayerActualCharge.add(devActualCharge)
+
+                  // how much gas we actually spent on this tx
+                  const workerWeiGasUsed = beforeBalances.relayWorkers.sub(afterBalances.relayWorkers)
+                  const encodedData = contractInteractor.encodeABI({
+                    maxAcceptanceBudget: 10e6.toString(),
+                    relayRequest,
+                    signature,
+                    approvalData: '0x'
+                  })
+
+                  const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataCost(encodedData)
+                  const calldataOverchargeGas =
+                    (parseInt(relayRequest.relayData.transactionCalldataGasUsed) - actualTransactionCalldataGasUsed)
+                  const calldataOverchargeWei = gasPrice.muln(calldataOverchargeGas)
+                  if (requestedFee === 0 && devFee === 0) {
+                    logOverhead(relayerActualCharge, workerWeiGasUsed, calldataOverchargeWei)
+                  }
+
+                  // sanity: worker executed and paid this tx
+                  assert.equal((gasPrice.muln(res.receipt.gasUsed)).toString(), workerWeiGasUsed.toString(), 'where else did the money go?')
+
+                  const expectedCharge = workerWeiGasUsed.add(calldataOverchargeWei).mul(
+                    toBN(requestedFee).add(toBN(100))).div(toBN(100)).add(toBN(baseRelayFee))
+                  const gasDiff = actualCharge.sub(expectedCharge).div(gasPrice).mul(toBN(-1)).toString()
+                  assert.equal(actualCharge.toNumber(), expectedCharge.toNumber(),
+                    `actual charge from paymaster different than expected. diff = ${gasDiff}. new nonZeroDevFeeGasOverhead = 
+                    ${parseInt(defaultEnvironment.nonZeroDevFeeGasOverhead.toString()) + parseInt(gasDiff)}`)
+
+                  // Validate actual profit is with high precision $(requestedFee) percent higher then ether spent relaying
+                  const devExpectedCharge = expectedCharge.mul(toBN(devFee)).div(toBN(100))
+                  const relayerExpectedCharge = expectedCharge.sub(devExpectedCharge)
+                  assert.equal(relayerActualCharge.toNumber(), relayerExpectedCharge.toNumber(),
+                    'unexpected over-paying to relayer by ' + (relayerActualCharge.sub(relayerExpectedCharge)).toString())
+                  assert.equal(devActualCharge.toNumber(), devExpectedCharge.toNumber(),
+                    'unexpected over-paying to dev by ' + (devActualCharge.sub(devExpectedCharge)).toString())
+                  // Check that relay did pay it's gas fee by himself.
+                  // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
+                  const expectedBalanceAfter = beforeBalances.relayWorkers.sub(toBN(res.receipt.gasUsed).mul(toBN(gasPrice)))
+                  assert.equal(expectedBalanceAfter.cmp(afterBalances.relayWorkers), 0, 'relay did not pay the expected gas fees')
+
+                  // Check that relay's weiActualCharge is deducted from paymaster's stake.
+                  const expectedPaymasterBalance = beforeBalances.paymasters.sub(actualCharge)
+                  assert.equal(expectedPaymasterBalance.toString(), afterBalances.paymasters.toString())
                 })
-                const dataToSign = new TypedRequestData(
-                  chainId,
-                  forwarder,
-                  relayRequest
-                )
-                const signature = await getEip712Signature(
-                  web3,
-                  dataToSign
-                )
-                const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
-                  from: relayWorker,
-                  gas: externalGasLimit,
-                  gasPrice: gasPrice
-                })
-
-                const afterBalances = await getBalances()
-                assert.notEqual(beforeBalances.relayManagers.toString(), afterBalances.relayManagers.toString(),
-                  'manager not compensated. transaction must have failed')
-
-                // how much we got compensated for this tx from the paymaster
-                const weiActualCharge = afterBalances.relayManagers.sub(beforeBalances.relayManagers)
-
-                // how much gas we actually spent on this tx
-                const workerWeiGasUsed = beforeBalances.relayWorkers.sub(afterBalances.relayWorkers)
-                const encodedData = contractInteractor.encodeABI({
-                  maxAcceptanceBudget: 10e6.toString(),
-                  relayRequest,
-                  signature,
-                  approvalData: '0x'
-                })
-
-                const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataCost(encodedData)
-                const calldataOverchargeGas =
-                  (parseInt(relayRequest.relayData.transactionCalldataGasUsed) - actualTransactionCalldataGasUsed)
-                const calldataOverchargeWei = gasPrice.muln(calldataOverchargeGas)
-                if (requestedFee === 0) {
-                  logOverhead(weiActualCharge, workerWeiGasUsed, calldataOverchargeWei)
-                }
-
-                // sanity: worker executed and paid this tx
-                assert.equal((gasPrice.muln(res.receipt.gasUsed)).toString(), workerWeiGasUsed.toString(), 'where else did the money go?')
-
-                const expectedCharge = workerWeiGasUsed.add(calldataOverchargeWei).muln(100 + requestedFee).divn(100).add(toBN(baseRelayFee))
-                assert.equal(weiActualCharge.toNumber(), expectedCharge.toNumber(),
-                  'actual charge from paymaster higher than expected. diff= ' + weiActualCharge.sub(expectedCharge).div(gasPrice).toString())
-
-                // Validate actual profit is with high precision $(requestedFee) percent higher then ether spent relaying
-                // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
-                const expectedActualCharge = workerWeiGasUsed.add(toBN(calldataOverchargeGas).mul(gasPrice)).mul(new BN(requestedFee).add(new BN(100))).div(new BN(100))
-                assert.equal(weiActualCharge.toNumber(), expectedActualCharge.toNumber(),
-                  'unexpected over-paying by ' + (weiActualCharge.sub(expectedActualCharge)).toString())
-                // Check that relay did pay it's gas fee by himself.
-                // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
-                const expectedBalanceAfter = beforeBalances.relayWorkers.sub(toBN(res.receipt.gasUsed).mul(toBN(gasPrice)))
-                assert.equal(expectedBalanceAfter.cmp(afterBalances.relayWorkers), 0, 'relay did not pay the expected gas fees')
-
-                // Check that relay's weiActualCharge is deducted from paymaster's stake.
-                // @ts-ignore (this types will be implicitly cast to correct ones in JavaScript)
-                const expectedPaymasterBalance = beforeBalances.paymasters.sub(weiActualCharge)
-                assert.equal(expectedPaymasterBalance.toString(), afterBalances.paymasters.toString())
-              })
-          })
+            })
+          )
       )
   })
 })

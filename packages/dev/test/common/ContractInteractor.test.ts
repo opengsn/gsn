@@ -55,7 +55,7 @@ contract('ContractInteractor', function (accounts) {
     pen = await Penalizer.new(
       defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
       defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    rh = await deployHub(sm.address, pen.address)
+    rh = await deployHub(sm.address, pen.address, constants.ZERO_ADDRESS)
     pm = await TestPaymasterConfigurableMisbehavior.new()
     await pm.setRelayHub(rh.address)
     const mgrAddress = accounts[1]
@@ -153,7 +153,7 @@ contract('ContractInteractor', function (accounts) {
       encodedData = {
         maxAcceptanceBudget: '200000',
         relayRequest,
-        signature: '0x',
+        signature: '0xdeadbeef',
         approvalData: '0x'
       }
     })
@@ -220,7 +220,7 @@ contract('ContractInteractor', function (accounts) {
       const encodedData: RelayCallABI = {
         maxAcceptanceBudget: '200000',
         relayRequest,
-        signature: '0x',
+        signature: '0xdeadbeef',
         approvalData: '0x'
       }
       const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))

@@ -16,12 +16,15 @@ interface IRelayHub {
         // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
         // Assume that relay has non-zero balance (costs 15'000 more otherwise).
         uint256 gasOverhead;
-        // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.
-        uint256 maximumRecipientDeposit;
         // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
         uint256 minimumUnstakeDelay;
         // Minimum stake a relay can have. An attack on the network will never cost less than half this value.
         uint256 minimumStake;
+        // Developers address
+        address devAddress;
+        // 0 < fee < 100, as percentage of total charge from paymaster to relayer
+        uint8 devFee;
+
     }
 
     event RelayHubConfigured(RelayHubConfig config);
@@ -53,7 +56,8 @@ interface IRelayHub {
     event TransactionRejectedByPaymaster(
         address indexed relayManager,
         address indexed paymaster,
-        address indexed from,
+        bytes32 indexed relayRequestID,
+        address from,
         address to,
         address relayWorker,
         bytes4 selector,
@@ -68,7 +72,8 @@ interface IRelayHub {
     event TransactionRelayed(
         address indexed relayManager,
         address indexed relayWorker,
-        address indexed from,
+        bytes32 indexed relayRequestID,
+        address from,
         address to,
         address paymaster,
         bytes4 selector,
@@ -178,6 +183,8 @@ interface IRelayHub {
     function penalizer() external view returns (address);
 
     function relayRegistrar() external view returns (address);
+
+    function batchGateway() external view returns (address);
 
     /// Uses StakeManager info to decide if the Relay Manager can be considered staked
     /// @return true if stake size and delay satisfy all requirements

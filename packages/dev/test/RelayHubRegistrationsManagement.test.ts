@@ -9,6 +9,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub } from './TestUtils'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { constants } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -29,7 +30,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
   beforeEach(async function () {
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHub = await deployHub(stakeManager.address, penalizer.address)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
     relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setRelayHub(relayHub.address)
