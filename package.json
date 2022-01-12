@@ -59,6 +59,7 @@
     "lerna-lint-fix": "lerna run lint-fix --stream --parallel",
     "lerna-rm-dist": "lerna run rm-dist",
     "lerna-run-test": "yarn lerna-tsc && lerna run test --stream --no-prefix",
+    "lerna-run-gas-calculations": "lerna run gas-calculations --stream --no-prefix",
     "lerna-run-test-fork": "lerna run test-fork --stream --no-prefix",
     "lerna-run-test-only": "lerna run test-only --stream",
     "lerna-run-test-with-testrpc": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 12000000 --defaultBalanceEther 1000 --deterministic 'yarn lerna-run-test'",

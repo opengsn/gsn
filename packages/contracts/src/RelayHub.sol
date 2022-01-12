@@ -181,6 +181,31 @@ contract RelayHub is IRelayHub, Ownable {
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
         // #if ENABLE_CONSOLE_LOG
+        console.log("relayCall relayRequest.request.from", relayRequest.request.from);
+        console.log("relayCall relayRequest.request.to", relayRequest.request.to);
+        console.log("relayCall relayRequest.request.value", relayRequest.request.value);
+        console.log("relayCall relayRequest.request.gas", relayRequest.request.gas);
+        console.log("relayCall relayRequest.request.nonce", relayRequest.request.nonce);
+        console.log("relayCall relayRequest.request.validUntil", relayRequest.request.validUntil);
+
+        console.log("relayCall relayRequest.relayData.maxFeePerGas", relayRequest.relayData.maxFeePerGas);
+        console.log("relayCall relayRequest.relayData.maxPriorityFeePerGas", relayRequest.relayData.maxPriorityFeePerGas);
+        console.log("relayCall relayRequest.relayData.pctRelayFee", relayRequest.relayData.pctRelayFee);
+        console.log("relayCall relayRequest.relayData.baseRelayFee", relayRequest.relayData.baseRelayFee);
+        console.log("relayCall relayRequest.relayData.transactionCalldataGasUsed", relayRequest.relayData.transactionCalldataGasUsed);
+        console.log("relayCall relayRequest.relayData.relayWorker", relayRequest.relayData.relayWorker);
+        console.log("relayCall relayRequest.relayData.paymaster", relayRequest.relayData.paymaster);
+        console.log("relayCall relayRequest.relayData.forwarder", relayRequest.relayData.forwarder);
+        console.log("relayCall relayRequest.relayData.clientId", relayRequest.relayData.clientId);
+
+        console.log("relayCall signature");
+        console.logBytes(signature);
+        console.log("relayCall approvalData");
+        console.logBytes(approvalData);
+        console.log("relayCall relayRequest.request.data");
+        console.logBytes(relayRequest.request.data);
+        console.log("relayCall relayRequest.relayData.paymasterData");
+        console.logBytes(relayRequest.relayData.paymasterData);
         console.log("relayCall maxAcceptanceBudget", maxAcceptanceBudget);
         // #endif
         RelayCallData memory vars;
