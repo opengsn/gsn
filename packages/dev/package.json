@@ -18,7 +18,7 @@
     "solpp": "yarn --cwd=\"../..\" solpp",
     "truffle-console": "truffle console",
     "test-local": "ENABLE_CONSOLE_LOG=1 yarn solpp && truffle test --compile-all",
-    "gas-calculations": "ENABLE_CONSOLE_LOG=0 yarn solpp && GAS_CALCULATIONS=1 truffle test test/RelayHubGasCalculations.test.ts --compile-all --network npmtest",
+    "gas-calculations": "ENABLE_CONSOLE_LOG=0 yarn solpp && GAS_CALCULATIONS=1 truffle test test/RelayHubGasCalculations.test.ts test/PaymasterCommitment.test.ts --compile-all --network npmtest",
     "test-only": "truffle --network npmtest test",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },

@@ -609,6 +609,5 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   })
 })
 
-// eslint-disable-next-line no-global-assign
 // @ts-ignore
 contract = contractOrig

@@ -1,3 +1,5 @@
+/* eslint-disable no-global-assign */
+
 import BN from 'bn.js'
 import { HttpProvider } from 'web3-core'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
@@ -82,6 +84,11 @@ async function makeRequest (
     req: filledRequest,
     sig
   }
+}
+
+if (process.env.GAS_CALCULATIONS == null) {
+  // @ts-ignore
+  contract = contract.skip
 }
 
 // verify the paymaster's commitment:
@@ -504,3 +511,6 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     })
   })
 })
+
+// @ts-ignore
+contract = contractOrig
