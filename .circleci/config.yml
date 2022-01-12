@@ -61,7 +61,7 @@ jobs: # a collection of steps
           at: .
       - run: # run tests
           name: gas-calculations
-          command: yarn lerna-run-gas-calculations | tee /tmp/gas-calculations-results.log
+          command: yarn lerna-run-gas-calculations-with-hardhat | tee /tmp/gas-calculations-results.log
       - store_test_results: # special step to upload test results for display in Test Summary
           path: /tmp/gas-calculations-results.log
 #  test_paymasters:
