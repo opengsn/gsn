@@ -1,3 +1,5 @@
+/* eslint-disable no-global-assign */
+
 import BN from 'bn.js'
 import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
@@ -36,7 +38,6 @@ const RelayRegistrar = artifacts.require('RelayRegistrar')
 const contractOrig = contract
 
 if (process.env.GAS_CALCULATIONS == null) {
-  // eslint-disable-next-line no-global-assign
   // @ts-ignore
   contract = contract.skip
 }

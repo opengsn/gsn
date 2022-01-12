@@ -135,4 +135,7 @@ workflows:
       - test_fork:
           requires:
             - build
+      - gas_calculations:
+          requires:
+            - build
 
