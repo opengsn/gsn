@@ -809,11 +809,15 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   async getMaxPriorityFee (): Promise<string> {
-    const networkHistoryFees = await this.getFeeHistory('0x1', 'latest', [0.5])
-    return networkHistoryFees.reward[0][0]
+    const gasFees = await this.getGasFees()
+    return gasFees.priorityFeePerGas
   }
 
   async getGasFees (): Promise<{ baseFeePerGas: string, priorityFeePerGas: string }> {
+    if (this.transactionType === TransactionType.LEGACY) {
+      const gasPrice = await this.getGasPrice()
+      return { baseFeePerGas: gasPrice, priorityFeePerGas: gasPrice }
+    }
     const networkHistoryFees = await this.getFeeHistory('0x1', 'latest', [0.5])
     const baseFeePerGas = networkHistoryFees.baseFeePerGas[0]
     const priorityFeePerGas = networkHistoryFees.reward[0][0]
