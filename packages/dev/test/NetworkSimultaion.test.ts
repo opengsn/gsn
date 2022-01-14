@@ -15,6 +15,7 @@ import { evmMine, evmMineMany, revert, snapshot } from './TestUtils'
 import { signedTransactionToHash } from '@opengsn/common/dist/Utils'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common'
+import sinon from 'sinon'
 
 contract('Network Simulation for Relay Server', function (accounts) {
   const pendingTransactionTimeoutBlocks = 5
@@ -89,7 +90,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
 
     before(async function () {
       await env.relayServer.txStoreManager.clearAll()
-      await sendMultipleRelayedTransactions()
+      await sendMultipleRelayedTransactions(stuckTransactionsCount)
     })
 
     describe('first time boosting stuck transactions', function () {
@@ -135,15 +136,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
     describe('repeated boosting', function () {
       const expectedGasPriceAfterSecondBoost = toBN(expectedGasPriceAfterBoost).muln(12).divn(10).toString()
 
-      before('boosting transaction', async function () {
-        await env.relayServer.txStoreManager.clearAll()
-        await env.relayServer.transactionManager._initNonces()
-        await sendMultipleRelayedTransactions()
-        await evmMineMany(pendingTransactionTimeoutBlocks)
-        const latestBlock = await env.web3.eth.getBlock('latest')
-        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
-        assert.equal(allBoostedTransactions.size, stuckTransactionsCount - 1)
-      })
+      before('boosting transaction', assertBoostAndRebroadcast)
 
       it('should not resend the transaction if not enough blocks passed since it was boosted', async function () {
         await evmMineMany(pendingTransactionTimeoutBlocks - 1)
@@ -161,7 +154,48 @@ contract('Network Simulation for Relay Server', function (accounts) {
       })
     })
 
-    async function sendMultipleRelayedTransactions (): Promise<void> {
+    describe('boosting & rebroadcasting all transactions', function () {
+      let id: string
+      before(async () => {
+        id = (await snapshot()).result
+      })
+      after(async () => {
+        await revert(id)
+      })
+      it('should boost underpriced transactions and only rebroadcast fairly priced transactions', assertBoostAndRebroadcast)
+      it('should not boost any transactions if latest on-chain nonce is lower than oldest pending tx nonce', async function () {
+        const storedTxs = await env.relayServer.txStoreManager.getAll()
+        const latestNonce = await env.web3.eth.getTransactionCount(storedTxs[0].from)
+        assert.equal(storedTxs[0].nonce, latestNonce)
+        await env.relayServer.txStoreManager.removeTxsUntilNonce(storedTxs[0].from, latestNonce)
+        await evmMineMany(pendingTransactionTimeoutBlocks)
+        try {
+          await env.relayServer._boostStuckPendingTransactions(await env.web3.eth.getBlockNumber())
+          assert.fail()
+        } catch (e) {
+          assert.equal(e.message, `Boosting: missing nonce ${latestNonce}. Lowest stored tx nonce: ${storedTxs[1].nonce}`)
+        }
+      })
+      it('should not boost any transactions if config.pendingTransactionTimeoutBlocks did not pass yet', async function () {
+        await env.relayServer.txStoreManager.clearAll()
+        await env.relayServer.transactionManager._initNonces()
+        await sendMultipleRelayedTransactions(stuckTransactionsCount)
+
+        const storedTxs = await env.relayServer.txStoreManager.getAll()
+        const latestNonce = await env.web3.eth.getTransactionCount(storedTxs[0].from)
+        assert.equal(storedTxs[0].nonce, latestNonce)
+        const spy = sinon.spy(env.relayServer.logger, 'debug')
+        const message = `${storedTxs[0].from} : awaiting transaction with ID: ${storedTxs[0].txId} to be mined. creationBlockNumber: ${storedTxs[0].creationBlockNumber} nonce: ${storedTxs[0].nonce}`
+        await env.relayServer._boostStuckPendingTransactions(await env.web3.eth.getBlockNumber())
+        spy.calledWith(message)
+        await evmMineMany(pendingTransactionTimeoutBlocks - 1)
+        await env.relayServer._boostStuckPendingTransactions(await env.web3.eth.getBlockNumber())
+        spy.calledWith(message)
+        sinon.restore()
+      })
+    })
+
+    async function sendMultipleRelayedTransactions (stuckTransactionsCount: number): Promise<void> {
       for (let i = 0; i < stuckTransactionsCount; i++) {
         // Transaction #3 will have a sufficient gas price and shall not be boosted
         // All transaction must come from different senders or else will be rejected on 'nonce mismatch'
@@ -192,6 +226,30 @@ contract('Network Simulation for Relay Server', function (accounts) {
         await env.assertTransactionRelayed(signedTransactionDetails.transactionHash, overrideDetails)
         i++
       }
+    }
+
+    async function assertBoostAndRebroadcast (): Promise<void> {
+      await env.relayServer.txStoreManager.clearAll()
+      await env.relayServer.transactionManager._initNonces()
+      const spy = sinon.spy(env.relayServer.transactionManager, 'resendTransaction')
+      await sendMultipleRelayedTransactions(stuckTransactionsCount)
+      const storedTxsBefore = await env.relayServer.txStoreManager.getAll()
+      await evmMineMany(pendingTransactionTimeoutBlocks)
+      const latestBlock = await env.web3.eth.getBlock('latest')
+      const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
+      assert.equal(allBoostedTransactions.size, stuckTransactionsCount - 1)
+      const storedTxsAfter = await env.relayServer.txStoreManager.getAll()
+      assert.equal(storedTxsBefore.length, stuckTransactionsCount)
+      const spyCalls = spy.getCalls()
+      for (let i = 0; i < storedTxsBefore.length; i++) {
+        assert.equal(storedTxsBefore[i].attempts + 1, storedTxsAfter[i].attempts)
+        if (i === fairlyPricedTransactionIndex) {
+          spyCalls[i].calledWith(storedTxsBefore[i], sinon.match.any, storedTxsBefore[i].maxFeePerGas, storedTxsBefore[i].maxPriorityFeePerGas, sinon.match.any)
+        } else {
+          spyCalls[i].calledWith(storedTxsBefore[i], sinon.match.any, parseInt(expectedGasPriceAfterBoost), parseInt(expectedGasPriceAfterBoost), sinon.match.any)
+        }
+      }
+      sinon.restore()
     }
   })
 })
