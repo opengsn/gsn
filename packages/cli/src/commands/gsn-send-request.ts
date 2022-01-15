@@ -10,7 +10,7 @@ import {
 import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput, RelayProvider } from '@opengsn/provider'
 
-import { getMnemonic, getNetworkUrl, getPaymasterAddress, gsnCommander } from '../utils'
+import { getMnemonic, getNetworkUrl, gsnCommander } from '../utils'
 import { CommandsLogic } from '../CommandsLogic'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 import { PrefixedHexString } from 'ethereumjs-util'
