@@ -30,6 +30,8 @@ async function preprocess (input, output) {
   fs.utimesSync(output, srcStats.atime, srcStats.mtime)
 }
 
+let filesCount = 0
+
 const recursiveSolidityPreprocess = async function (dirPath) {
   const files = fs.readdirSync(dirPath)
 
@@ -39,7 +41,7 @@ const recursiveSolidityPreprocess = async function (dirPath) {
     } else {
       const orig = path.join(dirPath, '/', file)
       const dest = orig.replace(contractsFolder, outAbiFolder)
-      console.log(dest)
+      filesCount++
       await preprocess(orig, dest)
     }
   }
@@ -47,5 +49,6 @@ const recursiveSolidityPreprocess = async function (dirPath) {
 console.time('solpp finished')
 console.log('solpp started')
 recursiveSolidityPreprocess(contractsFolder).then(function () {
+  console.log(`processed ${filesCount} files`)
   console.timeEnd('solpp finished')
 })
