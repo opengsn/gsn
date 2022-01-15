@@ -10,7 +10,7 @@ import {
 import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput, RelayProvider } from '@opengsn/provider'
 
-import { getMnemonic, getNetworkUrl, gsnCommander } from '../utils'
+import { getMnemonic, getNetworkUrl, getPaymasterAddress, gsnCommander } from '../utils'
 import { CommandsLogic } from '../CommandsLogic'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 import { PrefixedHexString } from 'ethereumjs-util'
@@ -20,7 +20,7 @@ function commaSeparatedList (value: string, _dummyPrevious: string[]): string[] 
 }
 
 gsnCommander(['n', 'f', 'm', 'g'])
-  .option('--relay', 'whether to run transaction with relay or directly', false)
+  .option('--directCall', 'whether to run transaction with relay or directly', false)
   .option('--abiFile <string>', 'path to an ABI truffle artifact JSON file')
   .option('--method <string>', 'method name to execute')
   .option('--methodParams <items>', 'comma separated args list', commaSeparatedList)
@@ -61,9 +61,12 @@ async function getProvider (
   } else {
     throw new Error('must specify either "--mnemonic" or pass "--from" account')
   }
-  if (commander.relay !== true) {
+  if (commander.directCall === true) {
     return { provider, from }
   } else {
+    if (paymaster == null) {
+      throw new Error('--paymaster: address not specified')
+    }
     const overrideDependencies: Partial<GSNDependencies> = {
       logger
     }
@@ -98,9 +101,12 @@ async function getProvider (
   )
   if (commander.abiFile == null || !fs.existsSync(commander.abiFile)) {
     const file: string = commander.abiFile
-    throw new Error(`ABI file ${file} does not exist`)
+    throw new Error(`--abiFile: ABI file ${file} does not exist`)
   }
   const abiJson = JSON.parse(fs.readFileSync(commander.abiFile, 'utf8'))
+  if (commander.to == null) {
+    throw new Error('--to: target address is missing')
+  }
   const web3Contract = logic.contract(abiJson, commander.to)
   // @ts-ignore
   web3Contract.setProvider(provider, undefined)
@@ -108,10 +114,10 @@ async function getProvider (
   const calldata = commander.calldata
   const methodName: string = commander.method
   if (calldata != null && methodName != null) {
-    throw new Error('Cannot pass both calldata and method')
+    throw new Error('Cannot pass both --calldata and --method')
   }
   if (calldata == null && methodName == null) {
-    throw new Error('Must pass either calldata or method')
+    throw new Error('Must pass either --calldata or --method')
   }
 
   const method = web3Contract.methods[methodName]
