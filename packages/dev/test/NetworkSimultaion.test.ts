@@ -16,6 +16,9 @@ import { signedTransactionToHash } from '@opengsn/common/dist/Utils'
 import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
 import { defaultEnvironment } from '@opengsn/common'
 import sinon from 'sinon'
+import chaiAsPromised from 'chai-as-promised'
+
+const { expect, assert } = require('chai').use(chaiAsPromised)
 
 contract('Network Simulation for Relay Server', function (accounts) {
   const pendingTransactionTimeoutBlocks = 5
@@ -169,12 +172,8 @@ contract('Network Simulation for Relay Server', function (accounts) {
         assert.equal(storedTxs[0].nonce, latestNonce)
         await env.relayServer.txStoreManager.removeTxsUntilNonce(storedTxs[0].from, latestNonce)
         await evmMineMany(pendingTransactionTimeoutBlocks)
-        try {
-          await env.relayServer._boostStuckPendingTransactions(await env.web3.eth.getBlockNumber())
-          assert.fail()
-        } catch (e) {
-          assert.equal(e.message, `Boosting: missing nonce ${latestNonce}. Lowest stored tx nonce: ${storedTxs[1].nonce}`)
-        }
+        await expect(env.relayServer._boostStuckPendingTransactions(await env.web3.eth.getBlockNumber())).to.be.eventually.rejectedWith(
+          `Boosting: missing nonce ${latestNonce}. Lowest stored tx nonce: ${storedTxs[1].nonce}`)
       })
       it('should not boost any transactions if config.pendingTransactionTimeoutBlocks did not pass yet', async function () {
         await env.relayServer.txStoreManager.clearAll()
@@ -187,16 +186,16 @@ contract('Network Simulation for Relay Server', function (accounts) {
         const spy = sinon.spy(env.relayServer.logger, 'debug')
         const message = `${storedTxs[0].from} : awaiting transaction with ID: ${storedTxs[0].txId} to be mined. creationBlockNumber: ${storedTxs[0].creationBlockNumber} nonce: ${storedTxs[0].nonce}`
         await env.relayServer._boostStuckPendingTransactions(await env.web3.eth.getBlockNumber())
-        spy.calledWith(message)
+        sinon.assert.calledWith(spy, message)
         await evmMineMany(pendingTransactionTimeoutBlocks - 1)
         await env.relayServer._boostStuckPendingTransactions(await env.web3.eth.getBlockNumber())
-        spy.calledWith(message)
+        sinon.assert.calledWith(spy, message)
         sinon.restore()
       })
     })
 
-    async function sendMultipleRelayedTransactions (stuckTransactionsCount: number): Promise<void> {
-      for (let i = 0; i < stuckTransactionsCount; i++) {
+    async function sendMultipleRelayedTransactions (_stuckTransactionsCount: number): Promise<void> {
+      for (let i = 0; i < _stuckTransactionsCount; i++) {
         // Transaction #3 will have a sufficient gas price and shall not be boosted
         // All transaction must come from different senders or else will be rejected on 'nonce mismatch'
         const overrideTxParams: Partial<GsnTransactionDetails> = {
@@ -244,9 +243,9 @@ contract('Network Simulation for Relay Server', function (accounts) {
       for (let i = 0; i < storedTxsBefore.length; i++) {
         assert.equal(storedTxsBefore[i].attempts + 1, storedTxsAfter[i].attempts)
         if (i === fairlyPricedTransactionIndex) {
-          spyCalls[i].calledWith(storedTxsBefore[i], sinon.match.any, storedTxsBefore[i].maxFeePerGas, storedTxsBefore[i].maxPriorityFeePerGas, sinon.match.any)
+          sinon.assert.calledWith(spyCalls[i], storedTxsBefore[i], sinon.match.any, storedTxsBefore[i].maxFeePerGas, storedTxsBefore[i].maxPriorityFeePerGas, sinon.match.any)
         } else {
-          spyCalls[i].calledWith(storedTxsBefore[i], sinon.match.any, parseInt(expectedGasPriceAfterBoost), parseInt(expectedGasPriceAfterBoost), sinon.match.any)
+          sinon.assert.calledWith(spyCalls[i], storedTxsBefore[i], sinon.match.any, parseInt(expectedGasPriceAfterBoost), parseInt(expectedGasPriceAfterBoost), sinon.match.any)
         }
       }
       sinon.restore()
