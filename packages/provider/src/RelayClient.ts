@@ -144,12 +144,13 @@ export class RelayClient {
   async _broadcastRawTx (transaction: TypedTransaction): Promise<{ hasReceipt: boolean, broadcastError?: Error, wrongNonce?: boolean }> {
     const rawTx = '0x' + transaction.serialize().toString('hex')
     const txHash = '0x' + transaction.hash().toString('hex')
-    this.logger.info(`Broadcasting raw transaction signed by relay. TxHash: ${txHash}`)
     try {
       if (await this._isAlreadySubmitted(txHash)) {
+        this.logger.debug('Not broadcasting raw transaction as our RPC endpoint already sees it')
         return { hasReceipt: true }
       }
 
+      this.logger.info(`Broadcasting raw transaction signed by relay. TxHash: ${txHash}\nNote: this may cause a "transaction already known" error to appear in the logs. It is not a problem, please ignore that error.`)
       // can't find the TX in the mempool. broadcast it ourselves.
       await this.dependencies.contractInteractor.sendSignedTransaction(rawTx)
       return { hasReceipt: true }
