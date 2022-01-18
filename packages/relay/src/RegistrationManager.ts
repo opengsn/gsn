@@ -137,11 +137,13 @@ export class RegistrationManager {
       switch (eventData.event) {
         case RelayServerRegistered:
           if (this.lastMinedRegisterTransaction == null || isSecondEventLater(this.lastMinedRegisterTransaction, eventData)) {
+            this.logger.debug('New lastMinedRegisterTransaction: ' + JSON.stringify(eventData))
             this.lastMinedRegisterTransaction = eventData
           }
           break
         case RelayWorkersAdded:
           if (this.lastWorkerAddedTransaction == null || isSecondEventLater(this.lastWorkerAddedTransaction, eventData)) {
+            this.logger.debug('New lastWorkerAddedTransaction: ' + JSON.stringify(eventData))
             this.lastWorkerAddedTransaction = eventData
           }
           break
@@ -221,7 +223,7 @@ export class RegistrationManager {
       }
     }
     const isRegistrationCorrect = await this._isRegistrationCorrect()
-    const isRegistrationPending = await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER)
+    const isRegistrationPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
     if (!(isRegistrationPending || isRegistrationCorrect) || forceRegistration) {
       this.logger.debug(`will attempt registration: isRegistrationPending=${isRegistrationPending} isRegistrationCorrect=${isRegistrationCorrect} forceRegistration=${forceRegistration}`)
       transactionHashes = transactionHashes.concat(await this.attemptRegistration(currentBlock))
@@ -368,7 +370,7 @@ export class RegistrationManager {
     let transactions: PrefixedHexString[] = []
     // add worker only if not already added
     const workersAdded = await this._isWorkerValid()
-    const addWorkersPending = await this.txStoreManager.isActionPending(ServerAction.ADD_WORKER)
+    const addWorkersPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.ADD_WORKER, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
     if (!(workersAdded || addWorkersPending)) {
       const txHash = await this.addRelayWorker(currentBlock)
       transactions = transactions.concat(txHash)
