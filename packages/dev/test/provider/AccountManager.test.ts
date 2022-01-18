@@ -20,12 +20,15 @@ chai.use(sinonChai)
 contract('AccountManager', function (accounts) {
   const address = '0x982a8CbE734cb8c29A6a7E02a3B0e4512148F6F9'
   const privateKey = '0xd353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c'
+  let accountManager: AccountManager
+  before(function () {
+    accountManager = new AccountManager(web3.currentProvider as HttpProvider, defaultEnvironment.chainId, config)
+    sinon.spy(accountManager)
+  })
   const config = configureGSN({
     methodSuffix: '_v4'
   })
-  const accountManager = new AccountManager(web3.currentProvider as HttpProvider, defaultEnvironment.chainId, config)
-  // @ts-ignore
-  sinon.spy(accountManager)
+
   describe('#addAccount()', function () {
     it('should save the provided keypair internally', function () {
       accountManager.addAccount(privateKey)
@@ -55,7 +58,9 @@ contract('AccountManager', function (accounts) {
   })
 
   describe('#sign()', function () {
-    accountManager.addAccount(privateKey)
+    before(function () {
+      accountManager.addAccount(privateKey)
+    })
     const relayRequest: RelayRequest = {
       request: {
         to: constants.ZERO_ADDRESS,
