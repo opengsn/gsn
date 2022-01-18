@@ -85,6 +85,8 @@ export interface ServerConfigParams {
   pastEventsQueryMaxPageSize: number
 
   environmentName?: string
+  // number of blocks the server will not repeat a ServerAction for regardless of blockchain state to avoid duplicates
+  recentActionAvoidRepeatDistanceBlocks: number
 }
 
 export interface ServerDependencies {
@@ -150,7 +152,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true,
   coldRestartLogsFromBlock: 1,
-  pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER
+  pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
+  recentActionAvoidRepeatDistanceBlocks: 10
 }
 
 const ConfigParamsTypes = {
@@ -219,7 +222,8 @@ const ConfigParamsTypes = {
   coldRestartLogsFromBlock: 'number',
   pastEventsQueryMaxPageSize: 'number',
   confirmationsNeeded: 'number',
-  environmentName: 'string'
+  environmentName: 'string',
+  recentActionAvoidRepeatDistanceBlocks: 'number'
 } as any
 
 // by default: no waiting period - use VersionRegistry entries immediately.
