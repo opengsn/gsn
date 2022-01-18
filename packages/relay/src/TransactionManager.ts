@@ -403,7 +403,7 @@ data                     | ${transaction.data}
         try {
           await this.resendTransaction(transaction, currentBlockHeight, transaction.maxFeePerGas, transaction.maxPriorityFeePerGas, transaction.maxFeePerGas > parseInt(this.config.maxGasPrice))
         } catch (e) {
-          this.logger.error(`Rebroadcasting existing transaction: ${e.message}`)
+          this.logger.error(`Rebroadcasting existing transaction: ${(e as Error).message}`)
         }
       }
       if (transaction.attempts > 2) {
