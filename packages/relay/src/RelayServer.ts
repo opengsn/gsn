@@ -546,7 +546,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
     const mustWithdrawHubDeposit = managerEthBalance.lt(toBN(this.config.managerTargetBalance.toString())) && managerHubBalance.gte(
       toBN(this.config.minHubWithdrawalBalance))
-    const isWithdrawalPending = await this.txStoreManager.isActionPending(ServerAction.DEPOSIT_WITHDRAWAL)
+    const isWithdrawalPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.DEPOSIT_WITHDRAWAL, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
     if (mustWithdrawHubDeposit && !isWithdrawalPending) {
       this.logger.info(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
       // Refill manager eth balance from hub balance
@@ -565,7 +565,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
     managerEthBalance = await this.getManagerBalance()
     const mustReplenishWorker = !this.workerBalanceRequired.isSatisfied
-    const isReplenishPendingForWorker = await this.txStoreManager.isActionPending(ServerAction.VALUE_TRANSFER, this.workerAddress)
+    const isReplenishPendingForWorker = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.VALUE_TRANSFER, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks, this.workerAddress)
     if (mustReplenishWorker && !isReplenishPendingForWorker) {
       const refill = toBN(this.config.workerTargetBalance.toString()).sub(this.workerBalanceRequired.currentValue)
       this.logger.debug(
@@ -705,8 +705,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
     const latestTxBlockNumber = this._getLatestTxBlockNumber()
     const latestRegisterTxBlockNumber = this._getLatestRegisterTxBlockNumber()
-    const isPendingRegistration = await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER)
-    const isPendingActivity = isPendingRegistration || await this.txStoreManager.isActionPending(ServerAction.RELAY_CALL)
+    const isPendingRegistration = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
+    const isPendingActivity = isPendingRegistration || await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.RELAY_CALL, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
     const registrationExpired =
       this.config.registrationBlockRate !== 0 &&
       (currentBlock - latestRegisterTxBlockNumber >= this.config.registrationBlockRate) &&
