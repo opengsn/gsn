@@ -161,7 +161,7 @@ export function loadDeployment (workdir: string): GSNContractsDeployment {
   }
 }
 
-type GsnOption = 'n' | 'f' | 'h' | 'm' | 'g'
+type GsnOption = 'n' | 'f' | 'h' | 'm' | 'g' | 'l'
 
 export function gsnCommander (options: GsnOption[]): CommanderStatic {
   options.forEach(option => {
@@ -181,8 +181,11 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
       case 'g':
         commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.')
         break
+      case 'l':
+        commander.option('-l, --gasLimit <number>', 'gas limit to give to all transactions', '5000000')
+        break
     }
   })
-  commander.option('-l, --loglevel <string>', 'error | warn | info | debug', 'debug')
+  commander.option('--loglevel <string>', 'error | warn | info | debug', 'debug')
   return commander
 }
