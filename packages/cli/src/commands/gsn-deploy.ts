@@ -12,7 +12,7 @@ import { toHex, toWei } from 'web3-utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
 
-gsnCommander(['n', 'f', 'm', 'g'])
+gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
   .option('--forwarder <address>', 'address of forwarder deployed to the current network (optional; deploys new one by default)')
   .option('--stakeManager <address>', 'stakeManager')
@@ -25,7 +25,6 @@ gsnCommander(['n', 'f', 'm', 'g'])
   .option('--yes, --skipConfirmation', 'skip con')
   .option('--testPaymaster', 'deploy test paymaster (accepts everything, avoid on main-nets)', false)
   .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
-  .option('-l, --gasLimit <number>', 'gas limit to give to all transactions', '5000000')
   .parse(process.argv);
 
 (async () => {

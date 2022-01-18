@@ -431,7 +431,8 @@ export class CommandsLogic {
   }
 
   contract (file: any, address?: string): Contract {
-    return new this.web3.eth.Contract(file.abi, address, { data: file.bytecode })
+    const abi = file.abi ?? file
+    return new this.web3.eth.Contract(abi, address, { data: file.bytecode })
   }
 
   async deployGsnContracts (deployOptions: DeployOptions): Promise<GSNContractsDeployment> {
@@ -548,7 +549,7 @@ export class CommandsLogic {
 
   async getGasPrice (): Promise<string> {
     const gasPrice = await this.contractInteractor.getGasPrice()
-    console.log(`Using network gas price of ${gasPrice}`)
+    console.log(`Using network gas price of ${fromWei(gasPrice, 'gwei')}`)
     return gasPrice
   }
 }

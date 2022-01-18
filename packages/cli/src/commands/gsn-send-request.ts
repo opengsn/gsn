@@ -3,6 +3,7 @@ import commander from 'commander'
 import fs from 'fs'
 import Web3 from 'web3'
 import { hdkey as EthereumHDKey } from 'ethereumjs-wallet'
+import { toHex, toWei } from 'web3-utils'
 
 import {
   LoggerInterface
@@ -19,7 +20,7 @@ function commaSeparatedList (value: string, _dummyPrevious: string[]): string[] 
   return value.split(',')
 }
 
-gsnCommander(['n', 'f', 'm', 'g'])
+gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('--directCall', 'whether to run transaction with relay or directly', false)
   .option('--abiFile <string>', 'path to an ABI truffle artifact JSON file')
   .option('--method <string>', 'method name to execute')
@@ -77,7 +78,7 @@ async function getProvider (
     }
     const relayProvider = await RelayProvider.newProvider(input).init()
     if (privateKey != null) {
-      relayProvider.relayClient.dependencies.accountManager.addAccount(privateKey)
+      relayProvider.addAccount(privateKey)
     }
     return {
       provider: relayProvider,
@@ -126,10 +127,13 @@ async function getProvider (
   }
   const methodParams = commander.methodParams
 
+  const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await logic.getGasPrice())
+  const gas = commander.gasLimit
+
   const receipt = await method(...methodParams).send({
     from,
-    gas: 100000,
-    forceGasPrice: 8000000000
+    gas,
+    gasPrice
   })
   console.log(receipt)
 
