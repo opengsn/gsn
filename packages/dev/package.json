@@ -2,7 +2,7 @@
   "name": "@opengsn/dev",
   "version": "2.2.5",
   "license": "GPL-3.0-only",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "files": [
     "dist/src/*",
     "README.md"
