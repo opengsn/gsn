@@ -166,7 +166,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
         await revert(id)
       })
       it('should boost underpriced transactions and only rebroadcast fairly priced transactions', assertBoostAndRebroadcast)
-      it('should not boost any transactions if latest on-chain nonce is lower than oldest pending tx nonce', async function () {
+      it('should throw when trying to boost a transaction with nonce higher than latest on-chain nonce', async function () {
         const storedTxs = await env.relayServer.txStoreManager.getAll()
         const latestNonce = await env.web3.eth.getTransactionCount(storedTxs[0].from)
         assert.equal(storedTxs[0].nonce, latestNonce)

@@ -129,7 +129,7 @@ data                     | ${transaction.data}
     }
   }
 
-  async tryBroadcastTransaction (signedTx: string, verifiedTxId: string): Promise<SignedTransactionDetails> {
+  async broadcastTransaction (signedTx: string, verifiedTxId: string): Promise<SignedTransactionDetails> {
     try {
       const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
       if (transactionHash.toLowerCase() !== verifiedTxId.toLowerCase()) {
@@ -208,7 +208,7 @@ data                     | ${transaction.data}
     } finally {
       releaseMutex()
     }
-    return await this.tryBroadcastTransaction(signedTransaction.rawTx, storedTx.txId)
+    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId)
   }
 
   async updateTransactionWithMinedBlock (tx: StoredTransaction, minedBlockNumber: number): Promise<void> {
@@ -268,7 +268,7 @@ data                     | ${transaction.data}
     const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
     this.logger.debug(`Current account nonce for ${tx.from} is ${currentNonce}`)
 
-    return await this.tryBroadcastTransaction(signedTransaction.rawTx, storedTx.txId)
+    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId)
   }
 
   _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number, minMaxPriorityFee: number, minMaxFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {
@@ -400,7 +400,11 @@ data                     | ${transaction.data}
         boostedTransactions.set(transaction.txId, boostedTransactionDetails)
         this.logger.debug(`Replaced transaction: nonce: ${transaction.nonce} sender: ${signer} | ${transaction.txId} => ${boostedTransactionDetails.transactionHash}`)
       } else { // The tx is ok, just rebroadcast it
-        await this.resendTransaction(transaction, currentBlockHeight, transaction.maxFeePerGas, transaction.maxPriorityFeePerGas, transaction.maxFeePerGas > parseInt(this.config.maxGasPrice))
+        try {
+          await this.resendTransaction(transaction, currentBlockHeight, transaction.maxFeePerGas, transaction.maxPriorityFeePerGas, transaction.maxFeePerGas > parseInt(this.config.maxGasPrice))
+        } catch (e) {
+          this.logger.error(`Rebroadcasting existing transaction: ${e.message}`)
+        }
       }
       if (transaction.attempts > 2) {
         this.logger.debug(`resend ${signer}: Sent tx ${transaction.attempts} times already`)
