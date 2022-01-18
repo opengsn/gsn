@@ -804,7 +804,11 @@ contract('RelayClient', function (accounts) {
         }
       })
       it('should not throw if docs website doesn\'t respond', async function () {
-
+        const spy = sinon.spy(relayClient.logger, 'error')
+        const config = await relayClient._resolveConfigurationFromServer(supportedNetworks[0], 'https://opengsn.org/badurl')
+        assert.deepEqual(config, {})
+        sinon.assert.calledWithMatch(spy, 'Could not fetch configuration from docs:')
+        sinon.restore()
       })
     })
   })
