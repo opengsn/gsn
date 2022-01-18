@@ -66,7 +66,7 @@ interface DeployOptions {
   relayRegistryAddress?: string
   stakeManagerAddress?: string
   penalizerAddress?: string
-  registryAddress?: string
+  versionRegistryAddress?: string
   registryHubId?: string
   verbose?: boolean
   skipConfirmation?: boolean
@@ -212,7 +212,7 @@ export class CommandsLogic {
     try {
       console.log(`Registering GSN relayer at ${options.relayUrl}`)
 
-      const gasPrice = toHex(options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice()))
+      const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
       const response = await this.httpClient.getPingResponse(options.relayUrl)
         .catch((error: any) => {
           console.error(error)
@@ -362,7 +362,7 @@ export class CommandsLogic {
       }
 
       const nonce = await this.contractInteractor.getTransactionCount(relayManager)
-      const gasPrice = toHex(options.gasPrice ?? toBN(await this.contractInteractor.getGasPrice()))
+      const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
       const gasLimit = 1e5
       let txToSign: TypedTransaction
       if (options.useAccountBalance) {
@@ -431,7 +431,8 @@ export class CommandsLogic {
   }
 
   contract (file: any, address?: string): Contract {
-    return new this.web3.eth.Contract(file.abi, address, { data: file.bytecode })
+    const abi = file.abi ?? file
+    return new this.web3.eth.Contract(abi, address, { data: file.bytecode })
   }
 
   async deployGsnContracts (deployOptions: DeployOptions): Promise<GSNContractsDeployment> {
@@ -472,7 +473,7 @@ export class CommandsLogic {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
     }
 
-    const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.registryAddress, { ...options }, deployOptions.skipConfirmation)
+    const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.versionRegistryAddress, { ...options }, deployOptions.skipConfirmation)
     if (deployOptions.registryHubId != null) {
       await regInstance.methods.addVersion(string32(deployOptions.registryHubId), string32('1'), rInstance.options.address).send({ ...options })
       console.log(`== Saved RelayHub address at HubId:"${deployOptions.registryHubId}" to VersionRegistry`)
@@ -544,5 +545,11 @@ export class CommandsLogic {
         throw new Error('User rejected')
       }
     }
+  }
+
+  async getGasPrice (): Promise<string> {
+    const gasPrice = await this.contractInteractor.getGasPrice()
+    console.log(`Using network gas price of ${fromWei(gasPrice, 'gwei')}`)
+    return gasPrice
   }
 }

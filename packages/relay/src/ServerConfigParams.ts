@@ -137,7 +137,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   pctRelayFee: 0,
   url: 'http://localhost:8090',
   ethereumNodeUrl: '',
-  port: 0,
+  port: 8090,
   versionRegistryAddress: constants.ZERO_ADDRESS,
   workdir: '',
   refreshStateTimeoutBlocks: 5,
