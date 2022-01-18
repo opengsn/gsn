@@ -112,6 +112,10 @@ export class KnownRelaysManager {
   }
 
   getAuditors (excludeUrls: string[]): string[] {
+    if (this.config.auditorsCount === 0) {
+      this.logger.debug('skipping audit step as "auditorsCount" config parameter is set to 0')
+      return []
+    }
     const indexes: number[] = []
     const auditors: string[] = []
     const flatRelayers =

@@ -546,7 +546,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
     const mustWithdrawHubDeposit = managerEthBalance.lt(toBN(this.config.managerTargetBalance.toString())) && managerHubBalance.gte(
       toBN(this.config.minHubWithdrawalBalance))
-    const isWithdrawalPending = await this.txStoreManager.isActionPending(ServerAction.DEPOSIT_WITHDRAWAL)
+    const isWithdrawalPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.DEPOSIT_WITHDRAWAL, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
     if (mustWithdrawHubDeposit && !isWithdrawalPending) {
       this.logger.info(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
       // Refill manager eth balance from hub balance
@@ -565,7 +565,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
     managerEthBalance = await this.getManagerBalance()
     const mustReplenishWorker = !this.workerBalanceRequired.isSatisfied
-    const isReplenishPendingForWorker = await this.txStoreManager.isActionPending(ServerAction.VALUE_TRANSFER, this.workerAddress)
+    const isReplenishPendingForWorker = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.VALUE_TRANSFER, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks, this.workerAddress)
     if (mustReplenishWorker && !isReplenishPendingForWorker) {
       const refill = toBN(this.config.workerTargetBalance.toString()).sub(this.workerBalanceRequired.currentValue)
       this.logger.debug(
@@ -639,12 +639,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _refreshPriorityFee (): Promise<void> {
-    let minMaxPriorityFeePerGas: number
-    if (this.transactionType === TransactionType.TYPE_TWO) {
-      minMaxPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
-    } else {
-      minMaxPriorityFeePerGas = parseInt(await this.contractInteractor.getGasPrice())
-    }
+    const minMaxPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
     this.minMaxPriorityFeePerGas = Math.floor(minMaxPriorityFeePerGas * this.config.gasPriceFactor)
     if (this.minMaxPriorityFeePerGas === 0) {
       this.logger.debug(`Priority fee received from node is 0. Setting priority fee to ${this.config.defaultPriorityFee}`)
@@ -705,8 +700,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
     const latestTxBlockNumber = this._getLatestTxBlockNumber()
     const latestRegisterTxBlockNumber = this._getLatestRegisterTxBlockNumber()
-    const isPendingRegistration = await this.txStoreManager.isActionPending(ServerAction.REGISTER_SERVER)
-    const isPendingActivity = isPendingRegistration || await this.txStoreManager.isActionPending(ServerAction.RELAY_CALL)
+    const isPendingRegistration = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
+    const isPendingActivity = isPendingRegistration || await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.RELAY_CALL, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
     const registrationExpired =
       this.config.registrationBlockRate !== 0 &&
       (currentBlock - latestRegisterTxBlockNumber >= this.config.registrationBlockRate) &&
