@@ -14,7 +14,7 @@ export class TxStoreManager {
   private readonly txstore: AsyncNedb<any>
   private readonly logger: LoggerInterface
 
-  constructor ({ workdir = '/tmp/test/', inMemory = false, autoCompactionInterval = 0 }, logger: LoggerInterface) {
+  constructor ({ workdir = '/tmp/test/', inMemory = false, autoCompactionInterval = 0, recentActionAvoidRepeatDistanceBlocks = 0 }, logger: LoggerInterface) {
     this.logger = logger
     this.txstore = new AsyncNedb({
       filename: inMemory ? undefined : `${workdir}/${TXSTORE_FILENAME}`,
@@ -113,8 +113,27 @@ export class TxStoreManager {
     })
   }
 
-  async isActionPending (serverAction: ServerAction, destination: Address | undefined = undefined): Promise<boolean> {
+  /**
+   * The server is originally written to fully rely on blockchain events to determine its state.
+   * However, on real networks the server's actions propagate slowly and server considers its state did not change.
+   * To mitigate this, server should not repeat its actions for at least {@link recencyBlockCount} blocks.
+   */
+  async isActionPendingOrRecentlyMined (serverAction: ServerAction, currentBlock: number, recencyBlockCount: number, destination: Address | undefined = undefined): Promise<boolean> {
     const allTransactions = await this.getAll()
-    return allTransactions.find(it => it.minedBlockNumber == null && it.serverAction === serverAction && (destination == null || isSameAddress(it.to, destination))) != null
+    const storedMatchingTxs = allTransactions.filter(it => it.serverAction === serverAction && (destination == null || isSameAddress(it.to, destination)))
+    const pendingTxs = storedMatchingTxs.filter(it => it.minedBlockNumber == null)
+    if (pendingTxs.length !== 0) {
+      this.logger.info(`Found ${pendingTxs.length} pending transactions that match a query: ${JSON.stringify(pendingTxs)}`)
+      return true
+    }
+    const recentlyMinedTxs = storedMatchingTxs.filter(it => {
+      const minedBlockNumber = it.minedBlockNumber ?? 0
+      return currentBlock - minedBlockNumber <= recencyBlockCount
+    })
+    if (recentlyMinedTxs.length !== 0) {
+      this.logger.info(`Found ${recentlyMinedTxs.length} recently mined transactions that match a query: ${JSON.stringify(recentlyMinedTxs)}`)
+      return true
+    }
+    return false
   }
 }
