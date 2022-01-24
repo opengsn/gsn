@@ -16,7 +16,7 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientContract,
-  TestRecipientInstance
+  TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
@@ -35,6 +35,7 @@ const IForwarder = artifacts.require('IForwarder')
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
+const TestToken = artifacts.require('TestToken')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
@@ -89,11 +90,14 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
 }
 
 contract('RelayProvider', function (accounts) {
+  const stake = ether('1')
+
   let web3: Web3
   let gasLess: Address
   let relayHub: RelayHubInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
+  let testToken: TestTokenInstance
   let paymasterInstance: TestPaymasterEverythingAcceptedInstance
   let paymaster: Address
   let relayProcess: ChildProcessWithoutNullStreams
@@ -102,9 +106,10 @@ contract('RelayProvider', function (accounts) {
 
   before(async function () {
     web3 = new Web3(underlyingProvider)
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    testToken = await TestToken.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     await registerForwarderForGsn(forwarderInstance)
@@ -114,10 +119,10 @@ contract('RelayProvider', function (accounts) {
     await paymasterInstance.setTrustedForwarder(forwarderAddress)
     await paymasterInstance.setRelayHub(relayHub.address)
     await paymasterInstance.deposit({ value: web3.utils.toWei('2', 'ether') })
-    relayProcess = await startRelay(relayHub.address, stakeManager, {
+    relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
       relaylog: process.env.relaylog,
       initialReputation: 100,
-      stake: 1e18,
+      stake: 1e18.toString(),
       url: 'asd',
       relayOwner: accounts[1],
       ethereumNodeUrl: underlyingProvider.host
@@ -329,8 +334,7 @@ contract('RelayProvider', function (accounts) {
       await stakeManager.setRelayManagerOwner(accounts[2], { from: accounts[1] })
 
       // add accounts[0], accounts[1] and accounts[2] as worker, manager and owner
-      await stakeManager.stakeForRelayManager(accounts[1], 1000, {
-        value: ether('1'),
+      await stakeManager.stakeForRelayManager(testToken.address, accounts[1], 1000, stake, {
         from: accounts[2]
       })
       await stakeManager.authorizeHubByOwner(accounts[1], relayHub.address, { from: accounts[2] })
@@ -343,7 +347,10 @@ contract('RelayProvider', function (accounts) {
       await misbehavingPaymaster.setTrustedForwarder(forwarderAddress)
       await misbehavingPaymaster.setRelayHub(relayHub.address)
       await misbehavingPaymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
-      const { relayRequest, signature } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
+      const {
+        relayRequest,
+        signature
+      } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
       await misbehavingPaymaster.setReturnInvalidErrorCode(true)
       const paymasterRejectedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
         from: accounts[0],

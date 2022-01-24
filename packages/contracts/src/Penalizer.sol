@@ -83,7 +83,7 @@ contract Penalizer is IPenalizer {
         uint256 readyBlockNumber = commits[commitHash];
         delete commits[commitHash];
         // msg.sender can only be fake during off-chain view call, allowing Penalizer process to check transactions
-        if(msg.sender != address(0)) {
+        if(msg.sender != address(type(uint160).max)) {
             require(readyBlockNumber != 0, "no commit");
             require(readyBlockNumber < block.number, "reveal penalize too soon");
             require(readyBlockNumber + penalizeBlockExpiration > block.number, "reveal penalize too late");

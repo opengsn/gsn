@@ -15,7 +15,7 @@ import {
   ForwarderInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
-  GatewayForwarderInstance
+  GatewayForwarderInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
@@ -31,11 +31,14 @@ const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const GatewayForwarder = artifacts.require('GatewayForwarder')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const TestToken = artifacts.require('TestToken')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
+// ++ setStakeToken - relay declares what token it uses as a stake on this hub
+// ++ setMinimumStakes - owner configurable param
 contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
     OK: new BN('0'),
@@ -48,8 +51,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   }
 
   const chainId = defaultEnvironment.chainId
+  const oneEther = ether('1')
 
   let relayHub: string
+  let testToken: TestTokenInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let relayHubInstance: RelayHubInstance
@@ -62,9 +67,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let forwarder: string
 
   beforeEach(async function () {
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    testToken = await TestToken.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
+    relayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, oneEther.toString())
     relayRegistrar = await RelayRegistrar.at(await relayHubInstance.relayRegistrar())
 
     paymasterContract = await TestPaymasterEverythingAccepted.new()
@@ -232,9 +238,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
       context('with manager stake unlocked', function () {
         beforeEach(async function () {
+          await testToken.mint(oneEther, { from: relayOwner })
+          await testToken.approve(stakeManager.address, oneEther, { from: relayOwner })
           await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-          await stakeManager.stakeForRelayManager(relayManager, 1000, {
-            value: ether('1'),
+          await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, oneEther, {
             from: relayOwner
           })
           await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
@@ -264,9 +271,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       let signatureWithPermissivePaymaster: string
 
       beforeEach(async function () {
+        await testToken.mint(ether('2'), { from: relayOwner })
+        await testToken.approve(stakeManager.address, ether('2'), { from: relayOwner })
         await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-        await stakeManager.stakeForRelayManager(relayManager, 1000, {
-          value: ether('2'),
+        await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, ether('2'), {
           from: relayOwner
         })
         await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
@@ -776,7 +784,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             relayRequest = cloneRelayRequest(sharedRelayRequestData)
             gatewayForwarder = await GatewayForwarder.new()
             await registerForwarderForGsn(gatewayForwarder)
-            relayHubInstance = await deployHub(stakeManager.address, penalizer.address, batchGateway)
+            relayHubInstance = await deployHub(stakeManager.address, penalizer.address, batchGateway, testToken.address, oneEther.toString())
             recipientContract = await TestRecipient.new(gatewayForwarder.address)
             await gatewayForwarder.setTrustedRelayHub(relayHubInstance.address)
             await paymasterContract.setTrustedForwarder(gatewayForwarder.address)

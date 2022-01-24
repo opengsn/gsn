@@ -40,7 +40,11 @@ function retype (outputs?: AbiOutput[], ret?: any): any {
   if (outputs?.length === 1) {
     return retypeItem(outputs[0], ret)
   } else {
-    return ret
+    const response: { [key in number]: Object } = {}
+    outputs?.forEach((value, index) => {
+      response[index] = retypeItem(value, ret[index])
+    })
+    return response
   }
 }
 

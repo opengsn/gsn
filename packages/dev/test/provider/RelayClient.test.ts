@@ -15,11 +15,16 @@ import {
   PenalizerInstance,
   StakeManagerInstance,
   TestRecipientInstance,
-  TestPaymasterEverythingAcceptedInstance
+  TestPaymasterEverythingAcceptedInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, EmptyDataCallback } from '@opengsn/provider/dist/RelayClient'
+import {
+  _dumpRelayingResult,
+  GSNUnresolvedConstructorInput,
+  RelayClient,
+  EmptyDataCallback
+} from '@opengsn/provider/dist/RelayClient'
 import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
 import { defaultGsnConfig, GSNConfig, LoggerConfiguration } from '@opengsn/provider/dist/GSNConfigurator'
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
@@ -49,6 +54,7 @@ import { constants } from '@opengsn/common'
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
+const TestToken = artifacts.require('TestToken')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const Forwarder = artifacts.require('Forwarder')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
@@ -76,13 +82,14 @@ class MockHttpClient extends HttpClient {
   }
 }
 
-contract('RelayClient', function (accounts) {
+contract.only('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let relayRegistrar: RelayRegistrarInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
+  let testToken: TestTokenInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   const gasLess = accounts[10]
   let relayProcess: ChildProcessWithoutNullStreams
@@ -96,16 +103,20 @@ contract('RelayClient', function (accounts) {
   let from: Address
   let data: PrefixedHexString
   let gsnEvents: GsnEvent[] = []
+
+  const stake = ether('1')
   const cheapRelayerUrl = 'http://localhost:54321'
 
   // register a very cheap relayer, so client will attempt to use it first.
-  async function registerCheapRelayer (relayHub: RelayHubInstance): Promise<void> {
+  async function registerCheapRelayer (testToken: TestTokenInstance, relayHub: RelayHubInstance): Promise<void> {
     const relayWorker = '0x'.padEnd(42, '2')
     const relayOwner = accounts[3]
     const relayManager = accounts[4]
+
+    await testToken.mint(stake, { from: relayOwner })
+    await testToken.approve(stakeManager.address, stake, { from: relayOwner })
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForRelayManager(relayManager, 1000, {
-      value: ether('2'),
+    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, stake, {
       from: relayOwner
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
@@ -116,9 +127,10 @@ contract('RelayClient', function (accounts) {
 
   before(async function () {
     web3 = new Web3(underlyingProvider)
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    testToken = await TestToken.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
@@ -130,9 +142,12 @@ contract('RelayClient', function (accounts) {
     await paymaster.setRelayHub(relayHub.address)
     await paymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
 
-    relayProcess = await startRelay(relayHub.address, stakeManager, {
+    await testToken.mint(stake, { from: accounts[1] })
+    await testToken.approve(stakeManager.address, stake, { from: accounts[1] })
+
+    relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
       initialReputation: 100,
-      stake: 1e18,
+      stake: 1e18.toString(),
       relayOwner: accounts[1],
       ethereumNodeUrl: underlyingProvider.host
     })
@@ -517,10 +532,11 @@ contract('RelayClient', function (accounts) {
     let optionsWithGas: GsnTransactionDetails
 
     before(async function () {
+      await testToken.mint(stake, { from: relayOwner })
+      await testToken.approve(stakeManager.address, stake, { from: relayOwner })
       await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-      await stakeManager.stakeForRelayManager(relayManager, 7 * 24 * 3600, {
-        from: relayOwner,
-        value: (2e18).toString()
+      await stakeManager.stakeForRelayManager(testToken.address, relayManager, 7 * 24 * 3600, stake, {
+        from: relayOwner
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorkerAddress], { from: relayManager })
@@ -717,7 +733,7 @@ contract('RelayClient', function (accounts) {
     let id: string
     before(async () => {
       id = (await snapshot()).result
-      await registerCheapRelayer(relayHub)
+      await registerCheapRelayer(testToken, relayHub)
     })
     after(async () => {
       await revert(id)

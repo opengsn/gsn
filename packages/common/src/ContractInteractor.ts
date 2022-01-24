@@ -17,6 +17,7 @@ import penalizerAbi from './interfaces/IPenalizer.json'
 import gsnRecipientAbi from './interfaces/IRelayRecipient.json'
 import versionRegistryAbi from './interfaces/IVersionRegistry.json'
 import relayRegistrarAbi from './interfaces/IRelayRegistrar.json'
+import iErc20TokenAbi from './interfaces/IERC20Token.json'
 
 import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
@@ -31,6 +32,7 @@ import {
 } from './Utils'
 import {
   BaseRelayRecipientInstance,
+  IERC20TokenInstance,
   IForwarderInstance,
   IPaymasterInstance,
   IPenalizerInstance,
@@ -100,6 +102,7 @@ export class ContractInteractor {
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
   private readonly IVersionRegistry: Contract<IVersionRegistryInstance>
   private readonly IRelayRegistrar: Contract<IRelayRegistrarInstance>
+  private readonly IERC20Token: Contract<IERC20TokenInstance>
 
   private paymasterInstance!: IPaymasterInstance
   relayHubInstance!: IRelayHubInstance
@@ -110,6 +113,7 @@ export class ContractInteractor {
   versionRegistry!: IVersionRegistryInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
   relayRegistrar!: IRelayRegistrarInstance
+  erc20Token!: IERC20TokenInstance
   private readonly relayCallMethod: any
 
   readonly web3: Web3
@@ -184,6 +188,10 @@ export class ContractInteractor {
       contractName: 'IRelayRegistrar',
       abi: relayRegistrarAbi
     })
+    this.IERC20Token = TruffleContract({
+      contractName: 'IERC20Token',
+      abi: iErc20TokenAbi
+    })
     this.IStakeManager.setProvider(this.provider, undefined)
     this.IRelayHubContract.setProvider(this.provider, undefined)
     this.IPaymasterContract.setProvider(this.provider, undefined)
@@ -192,6 +200,7 @@ export class ContractInteractor {
     this.IRelayRecipient.setProvider(this.provider, undefined)
     this.IVersionRegistry.setProvider(this.provider, undefined)
     this.IRelayRegistrar.setProvider(this.provider, undefined)
+    this.IERC20Token.setProvider(this.provider, undefined)
 
     this.relayCallMethod = this.IRelayHubContract.createContract('').methods.relayCall
   }
@@ -315,6 +324,9 @@ export class ContractInteractor {
     if (this.deployment.versionRegistryAddress != null) {
       this.versionRegistry = await this._createVersionRegistry(this.deployment.versionRegistryAddress)
     }
+    if (this.deployment.testTokenAddress != null) {
+      this.erc20Token = await this._createERC20(this.deployment.testTokenAddress)
+    }
   }
 
   // must use these options when creating Transaction object
@@ -359,6 +371,10 @@ export class ContractInteractor {
 
   async _createRelayRegistrar (address: Address): Promise<IRelayRegistrarInstance> {
     return await this.IRelayRegistrar.at(address)
+  }
+
+  async _createERC20 (address: Address): Promise<IERC20TokenInstance> {
+    return await this.IERC20Token.at(address)
   }
 
   async isTrustedForwarder (recipientAddress: Address, forwarder: Address): Promise<boolean> {
@@ -864,16 +880,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return code !== '0x'
   }
 
-  async getStakeInfo (managerAddress: Address): Promise<{
-    stake: BN
-    unstakeDelay: BN
-    withdrawBlock: BN
-    owner: string
-  }> {
-    const stakeManager = await this.stakeManagerInstance
-    return await stakeManager.getStakeInfo(managerAddress)
-  }
-
   async workerToManager (worker: Address): Promise<string> {
     return await this.relayHubInstance.workerToManager(worker)
   }
@@ -888,18 +894,16 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   /**
    * Gets stake of an address on the current StakeManager.
-   * @param address - must be a Relay Manger
+   * @param managerAddress
    */
-  async stakeManagerStakeInfo (address: Address): Promise<StakeInfo> {
-    return await this.stakeManagerInstance.getStakeInfo(address)
+  async getStakeInfo (managerAddress: Address): Promise<StakeInfo> {
+    const getStakeInfoResult = await this.stakeManagerInstance.getStakeInfo(managerAddress)
+    // @ts-ignore - TypeChain generates incorrect type declarations for tuples
+    return getStakeInfoResult[0]
   }
 
   async isRelayManagerStakedOnHub (relayManager: Address): Promise<boolean> {
     return await this.relayHubInstance.isRelayManagerStaked(relayManager)
-  }
-
-  async isRelayManagerStakedOnSM (relayManager: Address, minAmount: number, minUnstakeDelay: number): Promise<boolean> {
-    return await this.stakeManagerInstance.isRelayManagerStaked(relayManager, this.relayHubInstance.address, minAmount, minUnstakeDelay)
   }
 
   async initDeployment (deployment: GSNContractsDeployment): Promise<void> {

@@ -11,6 +11,7 @@ import "./utils/MinLibBytes.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./utils/GsnUtils.sol";
 import "./utils/GsnEip712Library.sol";
@@ -21,6 +22,7 @@ import "./interfaces/IPaymaster.sol";
 import "./forwarder/IForwarder.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IRelayRegistrar.sol";
+import "./interfaces/IStakeManager.sol";
 
 contract RelayHub is IRelayHub, Ownable {
     using SafeMath for uint256;
@@ -46,6 +48,16 @@ contract RelayHub is IRelayHub, Ownable {
         require(_config.devFee < 100, "dev fee too high");
         config = _config;
         emit RelayHubConfigured(config);
+    }
+
+    // maps ERC-20 token address to a minimum stake for it
+    mapping(IERC20 => uint256) public override minimumStakePerToken;
+
+    function setMinimumStakes(IERC20[] memory token, uint256[] memory minimumStake) public override onlyOwner {
+        require(token.length == minimumStake.length, "setMinimumStakes: wrong length");
+        for (uint256 i = 0; i < token.length; i++) {
+            minimumStakePerToken[token[i]] = minimumStake[i];
+        }
     }
 
     // maps relay worker's address to its manager's address
@@ -421,7 +433,19 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function isRelayManagerStaked(address relayManager) public override view returns (bool) {
-        return stakeManager.isRelayManagerStaked(relayManager, address(this), config.minimumStake, config.minimumUnstakeDelay);
+        (IStakeManager.StakeInfo memory info, bool isHubAuthorized) = stakeManager.getStakeInfo(relayManager);
+        uint256 minimumStake = minimumStakePerToken[info.token];
+        if (minimumStake == 0) {
+            return false;
+        }
+        bool isAmountSufficient = info.stake >= minimumStake;
+        bool isDelaySufficient = info.unstakeDelay >= config.minimumUnstakeDelay;
+        bool isStakeLocked = info.withdrawBlock == 0;
+        return
+        isAmountSufficient &&
+        isDelaySufficient &&
+        isStakeLocked &&
+        isHubAuthorized;
     }
 
     function deprecateHub(uint256 fromBlock) public override onlyOwner {
@@ -443,7 +467,7 @@ contract RelayHub is IRelayHub, Ownable {
         address relayManager = workerToManager[relayWorker];
         // The worker must be controlled by a manager with a locked stake
         require(relayManager != address(0), "Unknown relay worker");
-        IStakeManager.StakeInfo memory stakeInfo = stakeManager.getStakeInfo(relayManager);
+        (IStakeManager.StakeInfo memory stakeInfo,) = stakeManager.getStakeInfo(relayManager);
         require(stakeInfo.stake > 0, "relay manager not staked");
         stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
     }

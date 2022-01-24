@@ -3,44 +3,66 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./interfaces/IStakeManager.sol";
+import "./interfaces/IRelayHub.sol";
 
+/**
+ * An IStakeManager instance that accepts stakes in any ERC-20 token.
+ * Single StakeInfo of a single RelayManager can only have one token address assigned to it.
+ * It cannot be changed after the first time 'stakeForRelayManager' is called as it is equivalent to withdrawal.
+ */
 contract StakeManager is IStakeManager {
+    using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     string public override versionSM = "2.2.3+opengsn.stakemanager.istakemanager";
     uint256 public immutable override maxUnstakeDelay;
 
+    address public burnAddress;
+
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
-    function getStakeInfo(address relayManager) external override view returns (StakeInfo memory stakeInfo) {
-        return stakes[relayManager];
+
+    function getStakeInfo(address relayManager) external override view returns (StakeInfo memory stakeInfo, bool isSenderAuthorizedHub) {
+        bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalBlock == type(uint).max;
+        return (stakes[relayManager], isHubAuthorized);
     }
 
     /// maps relay managers to a map of addressed of their authorized hubs to the information on that hub
     mapping(address => mapping(address => RelayHubInfo)) public authorizedHubs;
 
-    constructor(uint256 _maxUnstakeDelay) {
+    constructor(
+        uint256 _maxUnstakeDelay,
+        address _burnAddress
+    ) {
         maxUnstakeDelay = _maxUnstakeDelay;
+        burnAddress = _burnAddress;
+        require(burnAddress != address(0), "transfers to address(0) may fail");
     }
 
-    function setRelayManagerOwner(address payable owner) external override {
+    function setRelayManagerOwner(address owner) external override {
         require(owner != address(0), "invalid owner");
         require(stakes[msg.sender].owner == address(0), "already owned");
         stakes[msg.sender].owner = owner;
         emit OwnerSet(msg.sender, owner);
     }
 
-    /// Put a stake for a relayManager and set its unstake delay. Only the owner can call this function.
-    /// @param relayManager - address that represents a stake entry and controls relay registrations on relay hubs
-    /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
-    function stakeForRelayManager(address relayManager, uint256 unstakeDelay) external override payable ownerOnly(relayManager) {
+    /// @inheritdoc IStakeManager
+    function stakeForRelayManager(IERC20 token, address relayManager, uint256 unstakeDelay, uint256 amount) external override ownerOnly(relayManager) {
         require(unstakeDelay >= stakes[relayManager].unstakeDelay, "unstakeDelay cannot be decreased");
         require(unstakeDelay <= maxUnstakeDelay, "unstakeDelay too big");
-        stakes[relayManager].stake += msg.value;
+        require(token != IERC20(address(0)), "must specify stake token address");
+        require(
+            stakes[relayManager].token == IERC20(address(0)) ||
+            stakes[relayManager].token == token,
+            "stake token address is incorrect");
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        stakes[relayManager].token = token;
+        stakes[relayManager].stake += amount;
         stakes[relayManager].unstakeDelay = unstakeDelay;
-        emit StakeAdded(relayManager, stakes[relayManager].owner, stakes[relayManager].stake, stakes[relayManager].unstakeDelay);
+        emit StakeAdded(relayManager, stakes[relayManager].owner, stakes[relayManager].token, stakes[relayManager].stake, stakes[relayManager].unstakeDelay);
     }
 
     function unlockStake(address relayManager) external override ownerOnly(relayManager) {
@@ -58,8 +80,8 @@ contract StakeManager is IStakeManager {
         uint256 amount = info.stake;
         info.stake = 0;
         info.withdrawBlock = 0;
-        payable(msg.sender).transfer(amount);
-        emit StakeWithdrawn(relayManager, msg.sender, amount);
+        info.token.safeTransfer(msg.sender, amount);
+        emit StakeWithdrawn(relayManager, msg.sender, info.token, amount);
     }
 
     modifier ownerOnly (address relayManager) {
@@ -103,28 +125,11 @@ contract StakeManager is IStakeManager {
         emit HubUnauthorized(relayManager, relayHub, removalBlock);
     }
 
-    function isRelayManagerStaked(address relayManager, address relayHub, uint256 minAmount, uint256 minUnstakeDelay)
-    external
-    override
-    view
-    returns (bool) {
-        StakeInfo storage info = stakes[relayManager];
-        bool isAmountSufficient = info.stake >= minAmount;
-        bool isDelaySufficient = info.unstakeDelay >= minUnstakeDelay;
-        bool isStakeLocked = info.withdrawBlock == 0;
-        bool isHubAuthorized = authorizedHubs[relayManager][relayHub].removalBlock == type(uint).max;
-        return
-        isAmountSufficient &&
-        isDelaySufficient &&
-        isStakeLocked &&
-        isHubAuthorized;
-    }
-
     /// Slash the stake of the relay relayManager. In order to prevent stake kidnapping, burns half of stake on the way.
     /// @param relayManager - entry to penalize
     /// @param beneficiary - address that receives half of the penalty amount
     /// @param amount - amount to withdraw from stake
-    function penalizeRelayManager(address relayManager, address payable beneficiary, uint256 amount) external override {
+    function penalizeRelayManager(address relayManager, address beneficiary, uint256 amount) external override {
         uint256 removalBlock =  authorizedHubs[relayManager][msg.sender].removalBlock;
         require(removalBlock != 0, "hub not authorized");
         require(removalBlock > block.number, "hub authorization expired");
@@ -136,9 +141,9 @@ contract StakeManager is IStakeManager {
         uint256 toBurn = SafeMath.div(amount, 2);
         uint256 reward = SafeMath.sub(amount, toBurn);
 
-        // Ether is burned and transferred
-        payable(address(0)).transfer(toBurn);
-        beneficiary.transfer(reward);
-        emit StakePenalized(relayManager, beneficiary, reward);
+        // Stake ERC-20 token is burned and transferred
+        stakes[relayManager].token.safeTransfer(burnAddress, toBurn);
+        stakes[relayManager].token.safeTransfer(beneficiary, reward);
+        emit StakePenalized(relayManager, beneficiary, stakes[relayManager].token, reward);
     }
 }

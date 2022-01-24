@@ -267,7 +267,6 @@ export class CommandLineStatisticsPresenter {
     table.push(
       ['Max worker count', params.maxWorkerCount],
       ['Minimum unstake delay', `${params.minimumUnstakeDelay} blocks`],
-      ['Minimum stake', this.ethValueStr(params.minimumStake)],
       ['Gas Reserve', params.gasReserve],
       ['Post Overhead', params.postOverhead],
       ['Gas Overhead', params.gasOverhead]

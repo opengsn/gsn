@@ -11,7 +11,7 @@ import {
   RelayHubInstance,
   StakeManagerInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
-  TestRecipientInstance
+  TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { configureGSN, deployHub, evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
@@ -27,14 +27,17 @@ import { constants } from '@opengsn/common'
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
+const TestToken = artifacts.require('TestToken')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const Forwarder = artifacts.require('Forwarder')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
-export async function stake (stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, owner: string): Promise<void> {
+export async function stake (testToken: TestTokenInstance, stakeManager: StakeManagerInstance, relayHub: RelayHubInstance, manager: string, owner: string): Promise<void> {
+  const stake = ether('1')
+  await testToken.mint(stake, { from: owner })
+  await testToken.approve(stakeManager.address, stake, { from: owner })
   await stakeManager.setRelayManagerOwner(owner, { from: manager })
-  await stakeManager.stakeForRelayManager(manager, 1000, {
-    value: ether('1'),
+  await stakeManager.stakeForRelayManager(testToken.address, manager, 1000, stake, {
     from: owner
   })
   await stakeManager.authorizeHubByOwner(manager, relayHub.address, { from: owner })
@@ -73,13 +76,15 @@ contract('KnownRelaysManager', function (
     let penalizer: PenalizerInstance
     let relayHub: RelayHubInstance
     let testRecipient: TestRecipientInstance
+    let testToken: TestTokenInstance
     let paymaster: TestPaymasterConfigurableMisbehaviorInstance
     const gas = 4e6
 
     before(async function () {
-      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+      testToken = await TestToken.new()
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
       penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-      relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
+      relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, ether('1').toString())
       config = configureGSN({
         loggerConfiguration: { logLevel: 'error' },
         pastEventsQueryMaxPageSize,
@@ -105,11 +110,11 @@ contract('KnownRelaysManager', function (
       await paymaster.setTrustedForwarder(forwarderAddress)
       await paymaster.setRelayHub(relayHub.address)
       await paymaster.deposit({ value: ether('1') })
-      await stake(stakeManager, relayHub, activeRelayWorkersAdded, owner)
-      await stake(stakeManager, relayHub, activeRelayServerRegistered, owner)
-      await stake(stakeManager, relayHub, activePaymasterRejected, owner)
-      await stake(stakeManager, relayHub, activeTransactionRelayed, owner)
-      await stake(stakeManager, relayHub, notActiveRelay, owner)
+      await stake(testToken, stakeManager, relayHub, activeRelayWorkersAdded, owner)
+      await stake(testToken, stakeManager, relayHub, activeRelayServerRegistered, owner)
+      await stake(testToken, stakeManager, relayHub, activePaymasterRejected, owner)
+      await stake(testToken, stakeManager, relayHub, activeTransactionRelayed, owner)
+      await stake(testToken, stakeManager, relayHub, notActiveRelay, owner)
       const txPaymasterRejected = await prepareTransaction(testRecipient, other, workerPaymasterRejected, paymaster.address, web3)
       const txTransactionRelayed = await prepareTransaction(testRecipient, other, workerTransactionRelayed, paymaster.address, web3)
       const relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
@@ -167,7 +172,7 @@ contract('KnownRelaysManager', function (
   })
 })
 
-contract('KnownRelaysManager 2', function (accounts) {
+contract.only('KnownRelaysManager 2', function (accounts) {
   let contractInteractor: ContractInteractor
   let logger: LoggerInterface
 
@@ -200,19 +205,24 @@ contract('KnownRelaysManager 2', function (accounts) {
     let contractInteractor: ContractInteractor
     let stakeManager: StakeManagerInstance
     let penalizer: PenalizerInstance
+    let testToken: TestTokenInstance
     let relayHub: RelayHubInstance
     let config: GSNConfig
 
     before(async function () {
-      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+      testToken = await TestToken.new()
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
       penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-      relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
+      relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, ether('1').toString())
       config = configureGSN({
         preferredRelays: ['http://localhost:8090']
       })
       const deployment = { relayHubAddress: relayHub.address }
-      relayProcess = await startRelay(relayHub.address, stakeManager, {
-        stake: 1e18,
+
+      await testToken.mint(ether('1'), { from: accounts[1] })
+      await testToken.approve(stakeManager.address, ether('1'), { from: accounts[1] })
+      relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
+        stake: 1e18.toString(),
         url: 'asd',
         confirmationsNeeded: 1,
         relayOwner: accounts[1],
@@ -229,10 +239,10 @@ contract('KnownRelaysManager 2', function (accounts) {
       })
       await contractInteractor.init()
       knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
-      await stake(stakeManager, relayHub, accounts[1], accounts[0])
-      await stake(stakeManager, relayHub, accounts[2], accounts[0])
-      await stake(stakeManager, relayHub, accounts[3], accounts[0])
-      await stake(stakeManager, relayHub, accounts[4], accounts[0])
+      await stake(testToken, stakeManager, relayHub, accounts[1], accounts[0])
+      await stake(testToken, stakeManager, relayHub, accounts[2], accounts[0])
+      await stake(testToken, stakeManager, relayHub, accounts[3], accounts[0])
+      await stake(testToken, stakeManager, relayHub, accounts[4], accounts[0])
       await register(relayHub, accounts[1], accounts[6], 'stakeAndAuthorization1')
       await register(relayHub, accounts[2], accounts[7], 'stakeAndAuthorization2')
       await register(relayHub, accounts[3], accounts[8], 'stakeUnlocked')

@@ -18,8 +18,6 @@ interface IRelayHub {
         uint256 gasOverhead;
         // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
         uint256 minimumUnstakeDelay;
-        // Minimum stake a relay can have. An attack on the network will never cost less than half this value.
-        uint256 minimumStake;
         // Developers address
         address devAddress;
         // 0 < fee < 100, as percentage of total charge from paymaster to relayer
@@ -157,6 +155,8 @@ interface IRelayHub {
 
     function setConfiguration(RelayHubConfig memory _config) external;
 
+    function setMinimumStakes(IERC20[] memory token, uint256[] memory minimumStake) external;
+
     // Deprecate hub (reverting relayCall()) from block number 'fromBlock'
     // Can only be called by owner
     function deprecateHub(uint256 fromBlock) external;
@@ -170,6 +170,8 @@ interface IRelayHub {
 
     /// Returns the whole hub configuration
     function getConfiguration() external view returns (RelayHubConfig memory config);
+
+    function minimumStakePerToken(IERC20 token) external view returns (uint256);
 
     function workerToManager(address worker) external view returns(address);
 

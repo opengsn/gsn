@@ -77,7 +77,7 @@ export async function revert (id: string): Promise<void> {
   })
 }
 
-contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
+contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) => {
   const tokensPerEther = 2
 
   let paymaster: ProxyDeployingPaymasterInstance
@@ -118,14 +118,14 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker]) => {
     paymaster = await ProxyDeployingPaymaster.new([uniswap.address], proxyFactory.address)
     forwarder = await Forwarder.new({ gas: 1e7 })
     recipient = await TestProxy.new(forwarder.address, { gas: 1e7 })
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, burnAddress)
     testHub = await TestHub.new(
       stakeManager.address,
       constants.ZERO_ADDRESS,
       constants.ZERO_ADDRESS,
       defaultEnvironment.relayHubConfiguration,
       { gas: 10000000 })
-    relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)
+    relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')
     await paymaster.setRelayHub(relayHub.address)
     await forwarder.registerRequestType(GsnRequestType.typeName, GsnRequestType.typeSuffix)
     await forwarder.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)

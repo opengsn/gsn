@@ -17,6 +17,7 @@ import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { register, stake } from './KnownRelaysManager.test'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { constants } from '@opengsn/common'
+import { ether } from '@openzeppelin/test-helpers'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -118,12 +119,14 @@ contract('RelaySelectionManager', function (accounts) {
       let relayHub: any
 
       before(async function () {
+        const TestToken = artifacts.require('TestToken')
         const StakeManager = artifacts.require('StakeManager')
         const Penalizer = artifacts.require('Penalizer')
-        const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+        const testToken = await TestToken.new()
+        const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
         const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-        relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
-        await stake(stakeManager, relayHub, relayManager, accounts[0])
+        relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, ether('1').toString())
+        await stake(testToken, stakeManager, relayHub, relayManager, accounts[0])
         await register(relayHub, relayManager, accounts[2], preferredRelayUrl, '666', '77')
 
         await contractInteractor.initDeployment({

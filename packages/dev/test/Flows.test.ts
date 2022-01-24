@@ -10,7 +10,7 @@ import { Address, AsyncDataCallback } from '@opengsn/common/dist/types/Aliases'
 import {
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance, TestPaymasterPreconfiguredApprovalInstance,
-  TestRecipientInstance
+  TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, emptyBalance, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
@@ -27,6 +27,7 @@ const TestPaymasterPreconfiguredApproval = artifacts.require('TestPaymasterPreco
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const Forwarder = artifacts.require('Forwarder')
+const TestToken = artifacts.require('TestToken')
 
 const options = [
   {
@@ -52,6 +53,7 @@ options.forEach(params => {
     let paymaster: TestPaymasterEverythingAcceptedInstance
     let rhub: RelayHubInstance
     let sm: StakeManagerInstance
+    let testToken: TestTokenInstance
     const gasless = accounts[10]
     let relayproc: ChildProcessWithoutNullStreams
     let relayClientConfig: Partial<GSNConfig>
@@ -62,12 +64,18 @@ options.forEach(params => {
 
       const gasPriceFactor = 1.2
 
-      sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+      testToken = await TestToken.new()
+      sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+      const stake = 1e18.toString()
+      await testToken.mint(stake)
+      await testToken.approve(sm.address, stake)
       const p = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-      rhub = await deployHub(sm.address, p.address, constants.ZERO_ADDRESS)
+      rhub = await deployHub(sm.address, p.address, testToken.address, constants.ZERO_ADDRESS, stake)
+      await rhub.setMinimumStakes([testToken.address], [stake])
       if (params.relay) {
-        relayproc = await startRelay(rhub.address, sm, {
-          stake: 1e18,
+        relayproc = await startRelay(rhub.address, testToken, sm, {
+          stake,
+          stakeTokenAddress: testToken.address,
           delay: 3600 * 24 * 7,
           pctRelayFee: 12,
           url: 'asd',

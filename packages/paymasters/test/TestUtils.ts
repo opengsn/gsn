@@ -27,9 +27,8 @@ export async function revertReason (func: Promise<any>): Promise<string> {
 
 export async function registerAsRelayServer (stakeManager: IStakeManagerInstance, relay: string, relayOwner: string, hub: RelayHubInstance): Promise<void> {
   await stakeManager.setRelayManagerOwner(relayOwner, { from: relay })
-  await stakeManager.stakeForRelayManager(relay, 7 * 24 * 3600, {
-    from: relayOwner,
-    value: (2e18).toString()
+  await stakeManager.stakeForRelayManager('', relay, 7 * 24 * 3600, (2e18).toString(), {
+    from: relayOwner
   })
   await stakeManager.authorizeHubByOwner(relay, hub.address, { from: relayOwner })
   await hub.addRelayWorkers([relay], { from: relay })

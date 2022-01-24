@@ -39,6 +39,7 @@ contract('PenalizerService', function (accounts) {
       url: '',
       workdir: '',
       etherscanApiUrl: 'etherscanApiUrl',
+      managerStakeTokenAddress: '',
       relayHubAddress: env.relayHub.address,
       ownerAddress: env.relayServer.config.ownerAddress
     }, web3.currentProvider)

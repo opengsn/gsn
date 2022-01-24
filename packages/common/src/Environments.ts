@@ -28,11 +28,10 @@ const defaultPenalizerConfiguration: PenalizerConfiguration = {
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 57501,
+  gasOverhead: 57457,
   postOverhead: 19040,
   gasReserve: 100000,
   maxWorkerCount: 10,
-  minimumStake: 1e18.toString(),
   minimumUnstakeDelay: 1000,
   devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
   devFee: 0
@@ -80,8 +79,7 @@ const ganacheLocal: Environment = {
 /* begin Arbitrum-specific Environment */
 const arbitrumRelayHubConfigurationOverride: Partial<RelayHubConfiguration> = {
   gasOverhead: 1000000,
-  postOverhead: 0,
-  minimumStake: 1e16.toString()
+  postOverhead: 0
 }
 
 const arbitrumRelayHubConfiguration: RelayHubConfiguration =

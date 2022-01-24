@@ -260,7 +260,7 @@ context('#ServerConfigParams', () => {
     contract('Mandatory parameters', () => {
       let hub: RelayHubInstance
       before(async () => {
-        hub = await deployHub(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)
+        hub = await deployHub(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')
       })
 
       it('should fail on missing url', async () => {
@@ -290,6 +290,7 @@ context('#ServerConfigParams', () => {
 
       it('should succeed on valid config', async () => {
         const config = {
+          managerStakeTokenAddress: '0x1111111111111111111111111111111111111111',
           relayHubAddress: hub.address,
           url: 'fake.url.com',
           workdir: '/path/to/somewhere/',

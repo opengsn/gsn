@@ -7,7 +7,7 @@ import {
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
-  TestPaymasterConfigurableMisbehaviorInstance
+  TestPaymasterConfigurableMisbehaviorInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
@@ -29,10 +29,12 @@ import { toHex } from 'web3-utils'
 import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contracts'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
+import { ether } from '@openzeppelin/test-helpers'
 
 const { expect } = chai.use(chaiAsPromised)
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+const TestToken = artifacts.require('TestToken')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
@@ -44,23 +46,29 @@ contract('ContractInteractor', function (accounts) {
   const logger = createClientLogger({ logLevel: 'error' })
   const workerAddress = accounts[2]
   const maxPageSize = Number.MAX_SAFE_INTEGER
+  const stake = ether('1')
 
   let rh: RelayHubInstance
   let sm: StakeManagerInstance
   let pen: PenalizerInstance
+  let tt: TestTokenInstance
   let pm: TestPaymasterConfigurableMisbehaviorInstance
 
   before(async () => {
-    sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    tt = await TestToken.new()
+    sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     pen = await Penalizer.new(
       defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
       defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    rh = await deployHub(sm.address, pen.address, constants.ZERO_ADDRESS)
+    rh = await deployHub(sm.address, pen.address, constants.ZERO_ADDRESS, tt.address, stake.toString())
     pm = await TestPaymasterConfigurableMisbehavior.new()
     await pm.setRelayHub(rh.address)
     const mgrAddress = accounts[1]
+
+    await tt.mint(stake)
+    await tt.approve(sm.address, stake)
     await sm.setRelayManagerOwner(accounts[0], { from: mgrAddress })
-    await sm.stakeForRelayManager(mgrAddress, 1000, { value: 1e18.toString() })
+    await sm.stakeForRelayManager(tt.address, mgrAddress, 1000, stake)
     await sm.authorizeHubByOwner(mgrAddress, rh.address)
     await rh.addRelayWorkers([workerAddress], { from: mgrAddress })
   })
@@ -537,7 +545,8 @@ contract('ContractInteractor', function (accounts) {
       expect(await lightreg.getRelayInfo(accounts[1]))
         .to.eql(await relayReg.getRelayInfo(accounts[1]))
     })
-    it('should get matching mixed return values', async () => {
+    // note: this is no longer true - we retype tuples to BN in LightTruffleContracts while actual Truffle doesn't do so
+    it.skip('should get matching mixed return values', async () => {
       expect(await lightreg.readRelayInfos(0, 100))
         .to.eql(await relayReg.readRelayInfos(0, 100))
     })

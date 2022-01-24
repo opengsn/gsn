@@ -3,8 +3,8 @@ import { IForwarderInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { Contract } from 'web3-eth-contract'
 
 // register a forwarder for use with GSN: the request-type and domain separator we're using.
-export async function registerForwarderForGsn (forwarderTruffleOrWeb3: IForwarderInstance|Contract, sendOptions: any = undefined): Promise<void> {
-  let options = sendOptions
+export async function registerForwarderForGsn (forwarderTruffleOrWeb3: IForwarderInstance | Contract, sendOptions: any = undefined): Promise<void> {
+  let options
   let forwarder: Contract
   if ((forwarderTruffleOrWeb3 as any).contract != null) {
     forwarder = (forwarderTruffleOrWeb3 as any).contract
@@ -12,7 +12,7 @@ export async function registerForwarderForGsn (forwarderTruffleOrWeb3: IForwarde
     // @ts-ignore
     options = { ...forwarderTruffleOrWeb3.constructor.defaults(), ...sendOptions }
   } else {
-    options = sendOptions
+    options = { ...sendOptions }
     forwarder = forwarderTruffleOrWeb3 as any
   }
 
@@ -25,10 +25,13 @@ export async function registerForwarderForGsn (forwarderTruffleOrWeb3: IForwarde
     })
     return p
   }
+
+  console.log(`Registering request type ${GsnRequestType.typeName} with suffix: ${GsnRequestType.typeSuffix}`)
   await logTx(forwarder.methods.registerRequestType(
     GsnRequestType.typeName,
     GsnRequestType.typeSuffix
   ).send(options))
 
+  console.log(`Registering domain separator ${GsnDomainSeparatorType.name} with version: ${GsnDomainSeparatorType.version}`)
   await logTx(forwarder.methods.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version).send(options))
 }

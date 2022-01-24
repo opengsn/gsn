@@ -87,9 +87,10 @@ contract('RegistrationManager', function (accounts) {
       const transactionHashes = await relayServer._worker(latestBlock.number)
       assert.equal(transactionHashes.length, 0)
       assert.equal(relayServer.isReady(), false, 'relay should not be ready yet')
-      const res = await env.stakeManager.stakeForRelayManager(relayServer.managerAddress, unstakeDelay, {
-        from: relayOwner,
-        value: oneEther
+      await env.testToken.mint(oneEther, { from: relayOwner })
+      await env.testToken.approve(env.stakeManager.address, oneEther, { from: relayOwner })
+      const res = await env.stakeManager.stakeForRelayManager(env.testToken.address, relayServer.managerAddress, unstakeDelay, oneEther, {
+        from: relayOwner
       })
       const res2 = await env.stakeManager.authorizeHubByOwner(relayServer.managerAddress, env.relayHub.address, { from: relayOwner })
       assert.ok(res.receipt.status, 'stake failed')
@@ -376,7 +377,7 @@ contract('RegistrationManager', function (accounts) {
 
       it('should ignore unauthorizeHub of another hub', async function () {
         await env.stakeManager.setRelayManagerOwner(env.relayOwner, { from: anotherRelayer })
-        await env.stakeManager.stakeForRelayManager(anotherRelayer, 1000, { from: env.relayOwner })
+        await env.stakeManager.stakeForRelayManager(env.testToken.address, anotherRelayer, 1000, 0, { from: env.relayOwner })
         await env.stakeManager.authorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
         await env.stakeManager.unauthorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
         const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
@@ -502,8 +503,8 @@ contract('RegistrationManager', function (accounts) {
       })
     })
     describe('RelayHub/StakeManager misconfiguration', function () {
-      const errorMessage = 'Relay manager is staked on StakeManager but not on RelayHub.\n' +
-        'Minimum stake/minimum unstake delay misconfigured?'
+      const errorMessage1 = 'Relay manager is staked on StakeManager but not on RelayHub.'
+      const errorMessage2 = 'Minimum stake/minimum unstake delay/stake token misconfigured?'
       beforeEach(async function () {
         id = (await snapshot()).result
         // await env.newServerInstance({}, undefined, unstakeDelay)
@@ -529,7 +530,8 @@ contract('RegistrationManager', function (accounts) {
         await newServer.registrationManager.refreshStake()
         const receipts = await newServer.registrationManager.attemptRegistration(0)
         assert.equal(receipts.length, 0)
-        expect(newServer.logger.error).to.have.been.calledWith(errorMessage)
+        expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
+        expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
       })
 
       it('should not attempt registration if stake amount is too low on hub', async function () {
@@ -537,8 +539,11 @@ contract('RegistrationManager', function (accounts) {
         await newServer.registrationManager.refreshStake()
         const receipts = await newServer.registrationManager.attemptRegistration(0)
         assert.equal(receipts.length, 0)
-        expect(newServer.logger.error).to.have.been.calledWith(errorMessage)
+        expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
+        expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
       })
+
+      it('should not attempt registration incorrect token is staked on hub', async function () {})
     })
   })
 

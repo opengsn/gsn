@@ -353,8 +353,8 @@ export class RegistrationManager {
   async attemptRegistration (currentBlock: number): Promise<PrefixedHexString[]> {
     const isStakedOnHub = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
     if (!isStakedOnHub && this.ownerAddress != null) {
-      this.logger.error('Relay manager is staked on StakeManager but not on RelayHub.\n' +
-        'Minimum stake/minimum unstake delay misconfigured?')
+      this.logger.error('Relay manager is staked on StakeManager but not on RelayHub.')
+      this.logger.error('Minimum stake/minimum unstake delay/stake token misconfigured?')
     }
     const allPrerequisitesOk =
       this.isHubAuthorized &&

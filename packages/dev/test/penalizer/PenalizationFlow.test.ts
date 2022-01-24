@@ -37,8 +37,11 @@ contract('PenalizationFlow', function (accounts) {
       value: ether('1')
     })
 
-    penalizingRelayProcess = await startRelay(env.relayHub.address, env.stakeManager, {
-      stake: 1e18,
+    // note that ServerTestEnvironment uses account[4] as Relay Manager, and 'startRelay' uses account[0]
+    await env.testToken.mint(ether('1'), { from: accounts[0] })
+    await env.testToken.approve(env.stakeManager.address, ether('1'), { from: accounts[0] })
+    penalizingRelayProcess = await startRelay(env.relayHub.address, env.testToken, env.stakeManager, {
+      stake: ether('1'),
       // TODO: adding 'intervalHandler' to the PenalizationService made tests crash/hang with 10ms interval...
       checkInterval: 100,
       delay: 3600 * 24 * 7,
