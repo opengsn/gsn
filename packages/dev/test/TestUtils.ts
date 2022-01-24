@@ -166,7 +166,7 @@ export async function startRelay (
   }
 
   const amount = options.stake || ether('1')
-  await stakeManager.stakeForRelayManager(testToken.address, relayManagerAddress, options.delay || 2000, amount,{
+  await stakeManager.stakeForRelayManager(testToken.address, relayManagerAddress, options.delay || 2000, amount, {
     from: options.relayOwner
   })
   await sleep(500)

@@ -26,7 +26,6 @@ import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { StakeUnlocked } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { getDataAndSignature, constants } from '@opengsn/common/dist'
-import { toBN } from 'web3-utils'
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 
 const RelayHub = artifacts.require('RelayHub')

@@ -5,7 +5,7 @@ import BN from 'bn.js'
 
 import { StakeManagerInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { TestHubInstance, TestTokenInstance } from '@opengsn/paymasters/types/truffle-contracts'
+import { TestTokenInstance } from '@opengsn/paymasters/types/truffle-contracts'
 import { constants } from '@opengsn/common'
 
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
@@ -22,7 +22,6 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
   const initialUnstakeDelay = new BN(4)
   const initialStake = ether('1')
   let stakeManager: StakeManagerInstance
-  let testHub: TestHubInstance
   let testToken: TestTokenInstance
 
   function testNotOwnerCannotStake (): void {
