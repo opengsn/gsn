@@ -27,8 +27,8 @@ export async function revertReason (func: Promise<any>): Promise<string> {
 
 export async function registerAsRelayServer (testToken: TestTokenInstance, stakeManager: IStakeManagerInstance, relay: string, relayOwner: string, hub: RelayHubInstance): Promise<void> {
   const stake = ether('2')
-  await testToken.mint(stake)
-  await testToken.approve(stakeManager.address, stake)
+  await testToken.mint(stake, { from: relayOwner })
+  await testToken.approve(stakeManager.address, stake, { from: relayOwner })
   await stakeManager.setRelayManagerOwner(relayOwner, { from: relay })
   await stakeManager.stakeForRelayManager(testToken.address, relay, 7 * 24 * 3600, stake.toString(), {
     from: relayOwner
