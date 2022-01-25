@@ -20,7 +20,7 @@ contract StakeManager is IStakeManager {
     string public override versionSM = "2.2.3+opengsn.stakemanager.istakemanager";
     uint256 public immutable override maxUnstakeDelay;
 
-    address public burnAddress;
+    address public immutable override burnAddress;
 
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
@@ -37,9 +37,9 @@ contract StakeManager is IStakeManager {
         uint256 _maxUnstakeDelay,
         address _burnAddress
     ) {
+        require(_burnAddress != address(0), "transfers to address(0) may fail");
         maxUnstakeDelay = _maxUnstakeDelay;
         burnAddress = _burnAddress;
-        require(burnAddress != address(0), "transfers to address(0) may fail");
     }
 
     function setRelayManagerOwner(address owner) external override {

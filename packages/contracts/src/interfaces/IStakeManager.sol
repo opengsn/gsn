@@ -77,8 +77,12 @@ interface IStakeManager {
 
     /// Put a stake for a relayManager and set its unstake delay.
     /// Only the owner can call this function. If the entry does not exist, reverts.
+    /// The owner must give allowance of the ERC-20 token to the StakeManager before calling this method.
+    /// It is the RelayHub who has a configurable list of minimum stakes per token. StakeManager accepts all tokens.
+    /// @param token - address of an ERC-20 token that is used by the relayManager as a stake
     /// @param relayManager - address that represents a stake entry and controls relay registrations on relay hubs
     /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'
+    /// @param amount - amount of tokens to be taken from the relayOwner and locked in the StakeManager as a stake
     function stakeForRelayManager(IERC20 token, address relayManager, uint256 unstakeDelay, uint256 amount) external;
 
     function unlockStake(address relayManager) external;
@@ -102,6 +106,8 @@ interface IStakeManager {
     function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo, bool isSenderAuthorizedHub);
 
     function maxUnstakeDelay() external view returns (uint256);
+
+    function burnAddress() external view returns (address);
 
     function versionSM() external view returns (string memory);
 }

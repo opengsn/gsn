@@ -119,10 +119,12 @@ contract('RelayProvider', function (accounts) {
     await paymasterInstance.setTrustedForwarder(forwarderAddress)
     await paymasterInstance.setRelayHub(relayHub.address)
     await paymasterInstance.deposit({ value: web3.utils.toWei('2', 'ether') })
+    await testToken.mint(stake, { from: accounts[1] })
+    await testToken.approve(stakeManager.address, stake, { from: accounts[1] })
     relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
       relaylog: process.env.relaylog,
       initialReputation: 100,
-      stake: 1e18.toString(),
+      stake: stake.toString(),
       url: 'asd',
       relayOwner: accounts[1],
       ethereumNodeUrl: underlyingProvider.host
@@ -333,6 +335,8 @@ contract('RelayProvider', function (accounts) {
 
       await stakeManager.setRelayManagerOwner(accounts[2], { from: accounts[1] })
 
+      await testToken.mint(stake, { from: accounts[1] })
+      await testToken.approve(stakeManager.address, stake, { from: accounts[1] })
       // add accounts[0], accounts[1] and accounts[2] as worker, manager and owner
       await stakeManager.stakeForRelayManager(testToken.address, accounts[1], 1000, stake, {
         from: accounts[2]
