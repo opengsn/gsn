@@ -172,7 +172,7 @@ contract('KnownRelaysManager', function (
   })
 })
 
-contract.only('KnownRelaysManager 2', function (accounts) {
+contract('KnownRelaysManager 2', function (accounts) {
   let contractInteractor: ContractInteractor
   let logger: LoggerInterface
 

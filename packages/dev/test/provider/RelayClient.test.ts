@@ -82,7 +82,7 @@ class MockHttpClient extends HttpClient {
   }
 }
 
-contract.only('RelayClient', function (accounts) {
+contract('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let relayRegistrar: RelayRegistrarInstance

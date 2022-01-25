@@ -193,7 +193,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
 
     before(async () => {
       // TODO: not needed. use startGsn instead
-      await registerAsRelayServer(stakeManager, relay, relayOwner, hub)
+      await registerAsRelayServer(token, stakeManager, relay, relayOwner, hub)
       await hub.depositFor(paymaster.address, { value: paymasterDeposit })
       await paymaster.setRelayHub(hub.address)
     })

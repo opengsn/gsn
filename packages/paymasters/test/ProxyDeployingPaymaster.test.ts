@@ -203,7 +203,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
         before(async function () {
           id = (await snapshot()).result
           await paymaster.deployProxy(senderAddress)
-          await registerAsRelayServer(stakeManager, relayWorker, senderAddress, relayHub)
+          await registerAsRelayServer(token, stakeManager, relayWorker, senderAddress, relayHub)
           await relayHub.depositFor(paymaster.address, { value: 1e18.toString() })
         })
 
