@@ -102,7 +102,7 @@ export class RelayServer extends EventEmitter {
     this.transactionManager = transactionManager
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
-    this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance), this.logger)
+    this.workerBalanceRequired = new AmountRequired('Worker Balance', 'ETH', toBN(this.config.workerMinBalance), this.logger)
     if (this.config.runPaymasterReputations) {
       if (dependencies.reputationManager == null) {
         throw new Error('ReputationManager is not initialized')
@@ -618,7 +618,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _worker (blockNumber: number): Promise<PrefixedHexString[]> {
-    if (!this.initialized) {
+    if (!this.initialized || this.registrationManager.balanceRequired == null) {
       throw new Error('Please run init() first')
     }
     if (blockNumber <= this.lastScannedBlock) {

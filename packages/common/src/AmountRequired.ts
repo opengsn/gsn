@@ -9,13 +9,15 @@ import { LoggerInterface } from './LoggerInterface'
 export class AmountRequired {
   logger: LoggerInterface
   _name: string
+  _symbol: string
   _currentValue = toBN(0)
   _requiredValue = toBN(0)
   _listener?: () => void
 
-  constructor (name: string, requiredValue: BN, logger: LoggerInterface, listener?: () => void) {
+  constructor (name: string, symbol: string, requiredValue: BN, logger: LoggerInterface, listener?: () => void) {
     this.logger = logger
     this._name = name
+    this._symbol = symbol
     this._requiredValue = requiredValue
     this._listener = listener
   }
@@ -70,6 +72,6 @@ export class AmountRequired {
     const status = boolString(this.isSatisfied)
     const actual: string = new EthVal(this._currentValue).toEth().toFixed(4)
     const required: string = new EthVal(this._requiredValue).toEth().toFixed(4)
-    return `${this._name.padEnd(14)} | ${status.padEnd(14)} | actual: ${actual.padStart(12)} ETH | required: ${required.padStart(12)} ETH`
+    return `${this._name.padEnd(14)} | ${status.padEnd(14)} | actual: ${actual.padStart(12)} ${this._symbol} | required: ${required.padStart(12)} ${this._symbol}`
   }
 }

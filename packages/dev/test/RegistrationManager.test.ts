@@ -102,7 +102,7 @@ contract('RegistrationManager', function (accounts) {
       await relayServer._worker(latestBlock.number + 1)
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.equal(relayServer.lastScannedBlock, latestBlock.number + 1)
-      assert.deepEqual(relayServer.registrationManager.stakeRequired.currentValue, oneEther)
+      assert.deepEqual(relayServer.registrationManager.stakeRequired!.currentValue, oneEther)
       assert.equal(relayServer.registrationManager.ownerAddress, relayOwner)
       assert.equal(workerBalanceAfter.toString(), relayServer.config.workerTargetBalance.toString())
       assert.equal(relayServer.isReady(), true, 'relay not ready?')
@@ -172,7 +172,7 @@ contract('RegistrationManager', function (accounts) {
       await newServer.init()
       assert.equal(newServer.registrationManager.ownerAddress, undefined)
       await newServer.registrationManager.refreshStake()
-      assert.deepEqual(newServer.registrationManager.stakeRequired.currentValue, oneEther)
+      assert.deepEqual(newServer.registrationManager.stakeRequired!.currentValue, oneEther)
       assert.equal(newServer.registrationManager.ownerAddress, relayOwner, 'owner should be set after refreshing stake')
 
       const expectedGasPrice = parseInt(await env.web3.eth.getGasPrice()) * newServer.config.gasPriceFactor
@@ -187,7 +187,7 @@ contract('RegistrationManager', function (accounts) {
       assert.equal(newServer.minMaxPriorityFeePerGas, expectedGasPrice)
       assert.equal(newServer.isReady(), true, 'relay no ready?')
       const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
-      assert.deepEqual(newServer.registrationManager.stakeRequired.currentValue, oneEther)
+      assert.deepEqual(newServer.registrationManager.stakeRequired!.currentValue, oneEther)
       assert.equal(newServer.registrationManager.ownerAddress, relayOwner)
       assert.equal(workerBalanceAfter.toString(), newServer.config.workerTargetBalance.toString())
       await assertRelayAdded(receipts, newServer)
@@ -248,7 +248,7 @@ contract('RegistrationManager', function (accounts) {
         workerBalanceBefore: BN): Promise<void> {
         const gasPrice = await env.web3.eth.getGasPrice()
         const ownerBalanceBefore = toBN(await env.web3.eth.getBalance(server.registrationManager.ownerAddress!))
-        assert.equal(server.registrationManager.stakeRequired.currentValue.toString(), oneEther.toString())
+        assert.equal(server.registrationManager.stakeRequired!.currentValue.toString(), oneEther.toString())
         // TODO: assert on withdrawal block?
         // assert.equal(server.config.withdrawBlock?.toString(), '0')
         const latestBlock = await env.web3.eth.getBlock('latest')
@@ -477,10 +477,10 @@ contract('RegistrationManager', function (accounts) {
         // TODO: this is horrible!!!
         newServer.registrationManager.isStakeLocked = true
         newServer.registrationManager.isHubAuthorized = true
-        newServer.registrationManager.stakeRequired.requiredValue = toBN(0)
-        newServer.registrationManager.balanceRequired.requiredValue = toBN(0)
+        newServer.registrationManager.stakeRequired!.requiredValue = toBN(0)
+        newServer.registrationManager.balanceRequired!.requiredValue = toBN(0)
         await newServer.registrationManager.refreshStake()
-        assert.deepEqual(newServer.registrationManager.stakeRequired.currentValue, oneEther)
+        assert.deepEqual(newServer.registrationManager.stakeRequired!.currentValue, oneEther)
         assert.equal(newServer.registrationManager.ownerAddress, relayOwner, 'owner should be set after refreshing stake')
         assert.equal(newServer.config.registrationBlockRate, 0)
       })
@@ -517,8 +517,8 @@ contract('RegistrationManager', function (accounts) {
         await newServer._worker(latestBlock.number)
         newServer.registrationManager.isStakeLocked = true
         newServer.registrationManager.isHubAuthorized = true
-        newServer.registrationManager.stakeRequired.requiredValue = toBN(0)
-        newServer.registrationManager.balanceRequired.requiredValue = toBN(0)
+        newServer.registrationManager.stakeRequired!.requiredValue = toBN(0)
+        newServer.registrationManager.balanceRequired!.requiredValue = toBN(0)
       })
 
       afterEach(async function () {
@@ -550,7 +550,7 @@ contract('RegistrationManager', function (accounts) {
   // note: relies on first 'before' to initialize server
   describe('#assertRegistered()', function () {
     before(function () {
-      relayServer.registrationManager.stakeRequired._requiredValue = toBN(1e20)
+      relayServer.registrationManager.stakeRequired!._requiredValue = toBN(1e20)
     })
 
     it('should return false if the stake requirement is not satisfied', async function () {
