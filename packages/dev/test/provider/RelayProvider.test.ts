@@ -335,8 +335,8 @@ contract('RelayProvider', function (accounts) {
 
       await stakeManager.setRelayManagerOwner(accounts[2], { from: accounts[1] })
 
-      await testToken.mint(stake, { from: accounts[1] })
-      await testToken.approve(stakeManager.address, stake, { from: accounts[1] })
+      await testToken.mint(stake, { from: accounts[2] })
+      await testToken.approve(stakeManager.address, stake, { from: accounts[2] })
       // add accounts[0], accounts[1] and accounts[2] as worker, manager and owner
       await stakeManager.stakeForRelayManager(testToken.address, accounts[1], 1000, stake, {
         from: accounts[2]
