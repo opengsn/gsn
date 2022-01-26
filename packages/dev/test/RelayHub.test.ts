@@ -17,7 +17,7 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   GatewayForwarderInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { deployHub, encodeRevertReason } from './TestUtils'
+import { deployHub, encodeRevertReason, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 import chaiAsPromised from 'chai-as-promised'
@@ -236,27 +236,93 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           'Unknown relay worker')
       })
 
-      context('with manager stake unlocked', function () {
-        beforeEach(async function () {
-          await testToken.mint(oneEther, { from: relayOwner })
-          await testToken.approve(stakeManager.address, oneEther, { from: relayOwner })
+
+      context('#verifyRelayManagerStaked()', function () {
+        let id: string
+
+        async function mintApproveSetOwnerStake (token: TestTokenInstance = testToken, stake: BN = oneEther, unstakeDelay: number = 1000): Promise<void> {
+          await token.mint(stake, { from: relayOwner })
+          await token.approve(stakeManager.address, stake, { from: relayOwner })
           await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-          await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, oneEther, {
+          await stakeManager.stakeForRelayManager(token.address, relayManager, unstakeDelay, stake, {
             from: relayOwner
           })
-          await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
-          await relayHubInstance.addRelayWorkers([relayWorker], {
-            from: relayManager
+        }
+
+        function testRejectsAddRelayWorkers (expectedError: string): void {
+          it('should not accept a relay call', async function () {
+            await expectRevert(
+              relayHubInstance.addRelayWorkers([relayWorker], {
+                from: relayManager
+              }),
+              expectedError
+            )
           })
-          await stakeManager.unauthorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
+        }
+
+        afterEach(async function () {
+          await revert(id)
         })
-        it('should not accept a relay call', async function () {
-          await expectRevert(
-            relayHubInstance.relayCall(10e6, relayRequest, signature, approvalData, {
-              from: relayWorker,
-              gas
-            }),
-            'relay manager not staked')
+
+        context('with no stake at all', function () {
+          testRejectsAddRelayWorkers('relay manager not staked')
+        })
+
+        context('with manager stake in forbidden token', function () {
+          beforeEach(async function () {
+            id = (await snapshot()).result
+            const forbiddenToken = await TestToken.new()
+            await mintApproveSetOwnerStake(forbiddenToken)
+          })
+          testRejectsAddRelayWorkers('staking this token is forbidden')
+        })
+
+        context('with manager stake that is too small', function () {
+          beforeEach(async function () {
+            id = (await snapshot()).result
+            await mintApproveSetOwnerStake(testToken, ether('0.001'))
+            await relayHubInstance.setMinimumStakes([testToken.address], [oneEther])
+          })
+          testRejectsAddRelayWorkers('stake amount is too small')
+        })
+
+        context('with manager stake that unlocks too soon', function () {
+          beforeEach(async function () {
+            id = (await snapshot()).result
+            await mintApproveSetOwnerStake(testToken, ether('1'), 10)
+            await relayHubInstance.setMinimumStakes([testToken.address], [oneEther])
+          })
+          testRejectsAddRelayWorkers('unstake delay is too small')
+        })
+
+        context('with manager stake with authorized hub', function () {
+          let unauthorizedHub: RelayHubInstance
+          beforeEach(async function () {
+            id = (await snapshot()).result
+            unauthorizedHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, oneEther.toString())
+            await mintApproveSetOwnerStake()
+            await relayHubInstance.setMinimumStakes([testToken.address], [oneEther])
+          })
+
+          it('should not accept a relay call', async function () {
+            await expectRevert(
+              unauthorizedHub.addRelayWorkers([relayWorker], {
+                from: relayManager
+              }),
+              'this hub is not authorized by SM'
+            )
+          })
+        })
+
+        context('with manager stake unlocked', function () {
+          beforeEach(async function () {
+            id = (await snapshot()).result
+            await mintApproveSetOwnerStake()
+            await relayHubInstance.setMinimumStakes([testToken.address], [oneEther])
+            await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
+            await stakeManager.unlockStake(relayManager, { from: relayOwner })
+          })
+          testRejectsAddRelayWorkers('stake has been withdrawn')
         })
       })
     })

@@ -189,8 +189,8 @@ interface IRelayHub {
     function batchGateway() external view returns (address);
 
     /// Uses StakeManager info to decide if the Relay Manager can be considered staked
-    /// @return true if stake size and delay satisfy all requirements
-    function isRelayManagerStaked(address relayManager) external view returns(bool);
+    /// returns if stake size and delay satisfy all requirements, reverts otherwise
+    function verifyRelayManagerStaked(address relayManager) external view;
 
     // Checks hubs' deprecation status
     function isDeprecated() external view returns (bool);

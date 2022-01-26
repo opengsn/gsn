@@ -88,10 +88,7 @@ contract RelayHub is IRelayHub, Ownable {
     }
 
     function verifyCanRegister(address relayManager) external view override {
-        require(
-            isRelayManagerStaked(relayManager),
-            "relay manager not staked"
-        );
+        verifyRelayManagerStaked(relayManager);
         require(workerCount[relayManager] > 0, "no relay workers");
     }
 
@@ -101,10 +98,7 @@ contract RelayHub is IRelayHub, Ownable {
         workerCount[relayManager] = newWorkerCount;
         require(newWorkerCount <= config.maxWorkerCount, "too many workers");
 
-        require(
-            isRelayManagerStaked(relayManager),
-            "relay manager not staked"
-        );
+        verifyRelayManagerStaked(relayManager);
 
         for (uint256 i = 0; i < newRelayWorkers.length; i++) {
             require(workerToManager[newRelayWorkers[i]] == address(0), "this worker has a manager");
@@ -202,10 +196,7 @@ contract RelayHub is IRelayHub, Ownable {
         }
         vars.relayManager = workerToManager[relayRequest.relayData.relayWorker];
         require(vars.relayManager != address(0), "Unknown relay worker");
-        require(
-            isRelayManagerStaked(vars.relayManager),
-            "relay manager not staked"
-        );
+        verifyRelayManagerStaked(vars.relayManager);
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft);
@@ -432,20 +423,15 @@ contract RelayHub is IRelayHub, Ownable {
         return relayData.baseRelayFee.add((gasUsed.mul(chargeableGasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
     }
 
-    function isRelayManagerStaked(address relayManager) public override view returns (bool) {
+    function verifyRelayManagerStaked(address relayManager) public override view {
         (IStakeManager.StakeInfo memory info, bool isHubAuthorized) = stakeManager.getStakeInfo(relayManager);
         uint256 minimumStake = minimumStakePerToken[info.token];
-        if (minimumStake == 0) {
-            return false;
-        }
-        bool isAmountSufficient = info.stake >= minimumStake;
-        bool isDelaySufficient = info.unstakeDelay >= config.minimumUnstakeDelay;
-        bool isStakeLocked = info.withdrawBlock == 0;
-        return
-        isAmountSufficient &&
-        isDelaySufficient &&
-        isStakeLocked &&
-        isHubAuthorized;
+        require(info.token != address(0), "relay manager not staked");
+        require(info.stake >= minimumStake, "stake amount is too small");
+        require(minimumStake != 0, "staking this token is forbidden");
+        require(info.unstakeDelay >= config.minimumUnstakeDelay, "unstake delay is too small");
+        require(info.withdrawBlock == 0, "stake has been withdrawn");
+        require(isHubAuthorized, "this hub is not authorized by SM");
     }
 
     function deprecateHub(uint256 fromBlock) public override onlyOwner {

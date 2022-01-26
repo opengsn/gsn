@@ -344,9 +344,11 @@ export class CommandsLogic {
         transactions.push(stakeTx.transactionHash)
       }
 
-      if (await relayHub.isRelayManagerStaked(relayAddress)) {
+      try {
+        await relayHub.verifyRelayManagerStaked(relayAddress)
         console.log('Relayer already authorized')
-      } else {
+      } catch (e) {
+        console.log('verifyRelayManagerStaked reverted with:', e.message)
         console.log('Authorizing relayer for hub')
         const authorizeTx = await stakeManager
           .authorizeHubByOwner(relayAddress, relayHubAddress, {

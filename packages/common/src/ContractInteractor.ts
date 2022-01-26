@@ -93,6 +93,11 @@ export function asRelayCallAbi (r: RelayTransactionRequest): RelayCallABI {
   }
 }
 
+type ManagerStakeStatus = {
+  isStaked: boolean
+  errorMessage: string | null
+}
+
 export class ContractInteractor {
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
@@ -511,7 +516,8 @@ export class ContractInteractor {
       matchGanache = res?.error?.message?.toString().match(/: revert(?:ed)? (.*)/)
     }
     if (matchGanache != null) {
-      return matchGanache[1]
+      // also cleaning up Hardhat Node's verbose revert errors
+      return matchGanache[1].replace('with reason string ', '').replace(/^'|'$/g, '')
     }
     const errorData = err?.data ?? res?.error?.data
     const m = errorData?.toString().match(/(0x08c379a0\S*)/)
@@ -902,8 +908,33 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return getStakeInfoResult[0]
   }
 
-  async isRelayManagerStakedOnHub (relayManager: Address): Promise<boolean> {
-    return await this.relayHubInstance.isRelayManagerStaked(relayManager)
+  async isRelayManagerStakedOnHub (relayManager: Address): Promise<ManagerStakeStatus> {
+    const res: ManagerStakeStatus = await new Promise((resolve) => {
+      const rpcPayload = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_call',
+        params: [
+          {
+            to: this.relayHubInstance.address,
+            data: this.relayHubInstance.contract.methods.verifyRelayManagerStaked(relayManager).encodeABI(),
+          },
+          'latest'
+        ]
+      }
+      // @ts-ignore
+      this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string, error: any }) => {
+        if (res.error != null) {
+          err = res.error
+        }
+        const errorMessage = this._decodeRevertFromResponse(err, res)
+        resolve({
+          isStaked: res.result === '0x',
+          errorMessage
+        })
+      })
+    })
+    return res
   }
 
   async initDeployment (deployment: GSNContractsDeployment): Promise<void> {

@@ -289,30 +289,6 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
       expect(notAuthorizedHubWithdrawal).to.be.bignumber.equal(new BN(0))
     })
 
-    // it('should report relayManager stake as valid for the authorized hub', async function () {
-    //   const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(testToken.address, relayManager, anyRelayHub, 0, 0)
-    //   expect(isRelayManagerStaked).to.be.true
-    // })
-    //
-    // describe('should report relayManager stake as not valid for', function () {
-    //   it('not authorized hub', async function () {
-    //     const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(testToken.address, relayManager, nonOwner, 0, 0)
-    //     expect(isRelayManagerStaked).to.be.false
-    //   })
-    //   it('not staked relayManager', async function () {
-    //     const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(testToken.address, nonOwner, anyRelayHub, 0, 0)
-    //     expect(isRelayManagerStaked).to.be.false
-    //   })
-    //   it('minimum stake amount above actual', async function () {
-    //     const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(testToken.address, relayManager, anyRelayHub, (1e20).toString(), 0)
-    //     expect(isRelayManagerStaked).to.be.false
-    //   })
-    //   it('minimum unstake delay above actual', async function () {
-    //     const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(testToken.address, relayManager, anyRelayHub, 0, 1e10)
-    //     expect(isRelayManagerStaked).to.be.false
-    //   })
-    // })
-
     it('should not allow to penalize for more than the relayManager stake', async function () {
       await expectRevert(
         stakeManager.penalizeRelayManager(relayManager, nonOwner, initialStake.muln(2), { from: anyRelayHub }),

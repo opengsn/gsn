@@ -321,8 +321,8 @@ export class RegistrationManager {
       throw new Error('not initialized')
     }
     const stakeInfo = await this.contractInteractor.getStakeInfo(this.managerAddress)
-    const isStakedOnHub = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
-    if (isStakedOnHub) {
+    const stakedOnHubStatus = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
+    if (stakedOnHubStatus.isStaked) {
       this.isHubAuthorized = true
     }
     const stake = stakeInfo.stake
@@ -368,8 +368,8 @@ export class RegistrationManager {
     if (this.balanceRequired == null || this.stakeRequired == null) {
       throw new Error('not initialized')
     }
-    const isStakedOnHub = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
-    if (!isStakedOnHub && this.ownerAddress != null) {
+    const stakeOnHubStatus = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
+    if (!stakeOnHubStatus.isStaked && this.ownerAddress != null) {
       this.logger.error('Relay manager is staked on StakeManager but not on RelayHub.')
       this.logger.error('Minimum stake/minimum unstake delay/stake token misconfigured?')
     }
@@ -378,7 +378,7 @@ export class RegistrationManager {
       this.isStakeLocked &&
       this.stakeRequired.isSatisfied &&
       this.balanceRequired.isSatisfied &&
-      isStakedOnHub
+      stakeOnHubStatus.isStaked
     if (!allPrerequisitesOk) {
       this.logger.debug('will not actually attempt registration - prerequisites not satisfied')
       return []

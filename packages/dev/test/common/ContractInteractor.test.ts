@@ -181,7 +181,7 @@ contract('ContractInteractor', function (accounts) {
       const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
       assert.deepEqual(ret, {
         paymasterAccepted: false,
-        returnValue: 'view call to \'relayCall\' reverted in client: with reason string \'Paymaster balance too low\'',
+        returnValue: 'view call to \'relayCall\' reverted in client: Paymaster balance too low',
         reverted: true
       })
     })
@@ -419,6 +419,25 @@ contract('ContractInteractor', function (accounts) {
       const splitRange = contractInteractor.splitRange(100, 200, 21)
       assert.equal(splitRange.length, 21)
       assert.deepEqual(splitRange[20], { fromBlock: 200, toBlock: 200 })
+    })
+  })
+
+  context('#isRelayManagerStakedOnHub()', function () {
+    let contractInteractor: ContractInteractor
+    before(async function () {
+      const deployment: GSNContractsDeployment = { paymasterAddress: pm.address }
+      contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+      await contractInteractor.init()
+    })
+
+    it('should return false and an error message if not staked', async function () {
+      const res = await contractInteractor.isRelayManagerStakedOnHub(accounts[0])
+      assert.deepEqual(res, { isStaked: false, errorMessage: 'staking this token is forbidden' })
+    })
+
+    it('should return true and no error message if staked', async function () {
+      const res = await contractInteractor.isRelayManagerStakedOnHub(accounts[1])
+      assert.deepEqual(res, { isStaked: true, errorMessage: null })
     })
   })
 
