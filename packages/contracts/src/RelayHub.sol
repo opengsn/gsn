@@ -426,7 +426,7 @@ contract RelayHub is IRelayHub, Ownable {
     function verifyRelayManagerStaked(address relayManager) public override view {
         (IStakeManager.StakeInfo memory info, bool isHubAuthorized) = stakeManager.getStakeInfo(relayManager);
         uint256 minimumStake = minimumStakePerToken[info.token];
-        require(info.token != address(0), "relay manager not staked");
+        require(info.token != IERC20(address(0)), "relay manager not staked");
         require(info.stake >= minimumStake, "stake amount is too small");
         require(minimumStake != 0, "staking this token is forbidden");
         require(info.unstakeDelay >= config.minimumUnstakeDelay, "unstake delay is too small");
