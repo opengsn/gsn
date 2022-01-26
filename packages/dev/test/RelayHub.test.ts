@@ -236,7 +236,6 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           'Unknown relay worker')
       })
 
-
       context('#verifyRelayManagerStaked()', function () {
         let id: string
 

@@ -48,6 +48,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
         }),
         'relay manager not staked')
     })
+
     context('after stake unlocked for relayManager', function () {
       beforeEach(async function () {
         await testToken.mint(stake, { from: relayOwner })
@@ -64,7 +65,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
       it('should not allow relayManager to register a relay server', async function () {
         await expectRevert(
           relayRegistrar.registerRelayServer(baseRelayFee, pctRelayFee, relayUrl, { from: relayManager }),
-          'relay manager not staked')
+          'this hub is not authorized by SM')
       })
     })
   })

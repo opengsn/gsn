@@ -432,7 +432,7 @@ contract('ContractInteractor', function (accounts) {
 
     it('should return false and an error message if not staked', async function () {
       const res = await contractInteractor.isRelayManagerStakedOnHub(accounts[0])
-      assert.deepEqual(res, { isStaked: false, errorMessage: 'staking this token is forbidden' })
+      assert.deepEqual(res, { isStaked: false, errorMessage: 'relay manager not staked' })
     })
 
     it('should return true and no error message if staked', async function () {
