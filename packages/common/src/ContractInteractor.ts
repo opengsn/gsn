@@ -93,7 +93,7 @@ export function asRelayCallAbi (r: RelayTransactionRequest): RelayCallABI {
   }
 }
 
-type ManagerStakeStatus = {
+interface ManagerStakeStatus {
   isStaked: boolean
   errorMessage: string | null
 }
@@ -917,7 +917,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
         params: [
           {
             to: this.relayHubInstance.address,
-            data: this.relayHubInstance.contract.methods.verifyRelayManagerStaked(relayManager).encodeABI(),
+            data: this.relayHubInstance.contract.methods.verifyRelayManagerStaked(relayManager).encodeABI()
           },
           'latest'
         ]
