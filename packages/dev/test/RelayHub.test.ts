@@ -37,8 +37,6 @@ const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
-// ++ setStakeToken - relay declares what token it uses as a stake on this hub
-// ++ setMinimumStakes - owner configurable param
 contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
     OK: new BN('0'),
@@ -236,6 +234,35 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           'Unknown relay worker')
       })
 
+      context('#setMinimumStakes()', function () {
+        it('should assign values correctly with arrays of any size', async function () {
+          const tokens = [
+            '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+            '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+            '0xc944e90c64b2c07662a292be6244bdf05cda44a7',
+            '0x6b175474e89094c44da98b954eedeac495271d0f',
+            '0xeb4c2781e4eba804ce9a9803c67d0893436bb27d',
+            '0x8dae6cb04688c62d939ed9b68d32bc62e49970b1',
+            '0xba100000625a3754423978a60c9317c58a424e3d',
+            '0x111111111117dc0aa78b770fa6a738034120c302'
+          ]
+          const minimums = [100, 200, 300, 400, 500, 600, 700, 8000]
+          assert.equal(tokens.length, minimums.length)
+          await relayHubInstance.setMinimumStakes(tokens, minimums)
+          for (let i = 0; i < tokens.length; i++) {
+            const min = await relayHubInstance.minimumStakePerToken(tokens[i])
+            assert.equal(min.toNumber(), minimums[i])
+          }
+        })
+
+        it('should revert if array lengths do not match', async function () {
+          await expectRevert(
+            relayHubInstance.setMinimumStakes([relayOwner], [0, 0]),
+            'setMinimumStakes: wrong length'
+          )
+        })
+      })
+
       context('#verifyRelayManagerStaked()', function () {
         let id: string
 
@@ -249,7 +276,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
         }
 
         function testRejectsAddRelayWorkers (expectedError: string): void {
-          it('should not accept a relay call', async function () {
+          it('should not accept a relay call with error: ' + expectedError, async function () {
             await expectRevert(
               relayHubInstance.addRelayWorkers([relayWorker], {
                 from: relayManager

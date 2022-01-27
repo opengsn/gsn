@@ -315,12 +315,11 @@ export class CommandsLogic {
           throw new Error(`Given minimum unstake delay ${options.unstakeDelay.toString()} too low for the given hub ${config.minimumUnstakeDelay.toString()}`)
         }
         const stakeValue = toBN(options.stake.toString()).sub(stake)
-        // TODO: do not approve PR if this line is here - test this change manually!
-        console.log(`Staking relayer ${fromWei(stakeValue, 'ether')} eth`,
-          stake.toString() === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} eth)`)
+        console.log(`Staking relayer ${fromWei(stakeValue, 'ether')} ${tokenSymbol}`,
+          stake.toString() === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} ${tokenSymbol})`)
 
         if (options.mintToken) {
-          console.log('Minting 100 TestTokens')
+          console.log(`Minting 100 ${tokenSymbol}`)
           const mintTx = await tokenInstance.mint(100e18.toString(), {
             from: options.from
           })

@@ -1,6 +1,6 @@
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { expect } from 'chai'
-import { evmMineMany } from './TestUtils'
+import { evmMineMany, revert, snapshot } from './TestUtils'
 import BN from 'bn.js'
 
 import { StakeManagerInstance } from '@opengsn/contracts/types/truffle-contracts'
@@ -12,11 +12,6 @@ import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 
 const StakeManager = artifacts.require('StakeManager')
 const TestToken = artifacts.require('TestToken')
-
-// ++ fail to stake if no approval
-// ++ fail if sends value to stakeForRM
-// ++ keep token in tombstone
-// ++ fail to change token
 
 contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owner, nonOwner, secondRelayManager]) {
   const initialUnstakeDelay = new BN(4)
@@ -35,23 +30,30 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
 
   function testOwnerCanStake (): void {
     it('should allow owner to stake for unowned addresses', async function () {
-      const { logs } = await stakeManager.stakeForRelayManager(testToken.address, relayManager, initialUnstakeDelay, initialStake, {
+      const ownerStakeBalanceBefore = await testToken.balanceOf(owner)
+      const stakeManagerStakeBalanceBefore = await testToken.balanceOf(stakeManager.address)
+      const { tx } = await stakeManager.stakeForRelayManager(testToken.address, relayManager, initialUnstakeDelay, initialStake, {
         from: owner
       })
-      expectEvent.inLogs(logs, 'StakeAdded', {
+
+      expectEvent.inTransaction(tx, StakeManager, 'StakeAdded', {
         relayManager,
         owner,
         stake: initialStake,
         unstakeDelay: initialUnstakeDelay
       })
-    })
-  }
 
-  function testStakeNotValid (): void {
-    // it('should report relayManager stake as not valid', async function () {
-    //   const isRelayManagerStaked = await stakeManager.isRelayManagerStaked(testToken.address, relayManager, anyRelayHub, 0, 0)
-    //   expect(isRelayManagerStaked).to.be.false
-    // })
+      await expectEvent.inTransaction(tx, TestToken, 'Transfer', {
+        from: owner,
+        to: stakeManager.address,
+        value: initialStake
+      })
+
+      const ownerStakeBalanceAfter = await testToken.balanceOf(owner)
+      const stakeManagerStakeBalanceAfter = await testToken.balanceOf(stakeManager.address)
+      assert.equal(stakeManagerStakeBalanceAfter.sub(stakeManagerStakeBalanceBefore).toString(), initialStake.toString())
+      assert.equal(ownerStakeBalanceBefore.sub(ownerStakeBalanceAfter).toString(), initialStake.toString())
+    })
   }
 
   function testCanPenalize (): void {
@@ -90,8 +92,6 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
       await testToken.mint(constants.MAX_INT256, { from: owner })
       await testToken.approve(stakeManager.address, constants.MAX_INT256, { from: owner })
     })
-
-    testStakeNotValid()
 
     it('should not allow anyone to stake before owner is set', async function () {
       await expectRevert(
@@ -137,6 +137,41 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
             from: owner
           }),
           'unstakeDelay too big'
+        )
+      })
+
+      it('should not allow owner to stake without token specified', async function () {
+        await expectRevert(
+          stakeManager.stakeForRelayManager(constants.ZERO_ADDRESS, relayManager, defaultEnvironment.maxUnstakeDelay, initialStake, {
+            from: owner
+          }),
+          'must specify stake token address'
+        )
+      })
+
+      it('should not allow owner to stake with token that does not match the previously used', async function () {
+        const id = (await snapshot()).result
+        // set the stake token for the first time
+        await stakeManager.stakeForRelayManager(testToken.address, relayManager, defaultEnvironment.maxUnstakeDelay, initialStake, {
+          from: owner
+        })
+        await expectRevert(
+          stakeManager.stakeForRelayManager(constants.BURN_ADDRESS, relayManager, defaultEnvironment.maxUnstakeDelay, initialStake, {
+            from: owner
+          }),
+          'stake token address is incorrect'
+        )
+        await revert(id)
+      })
+
+      it('should not allow owner to stake with msg.value passed', async function () {
+        await expectRevert(
+          stakeManager.stakeForRelayManager(testToken.address, relayManager, defaultEnvironment.maxUnstakeDelay, initialStake, {
+            from: owner,
+            value: '1'
+          }),
+          // the method is no longer 'payable'; test is here to prevent regression on merge, etc.
+          'Transaction reverted without a reason string'
         )
       })
 
@@ -377,7 +412,6 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
       await stakeManager.unlockStake(relayManager, { from: owner })
     })
 
-    testStakeNotValid()
     it('should not allow owner to schedule unlock again', async function () {
       await expectRevert(
         stakeManager.unlockStake(relayManager, { from: owner }),
@@ -420,7 +454,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
         // @ts-ignore (typechain does not declare names or iterator for return types)
         const { stake: actualStake, unstakeDelay: actualUnstakeDelay, withdrawBlock: actualBlock, owner: actualOwner, token: actualToken } =
           await stakeManager.stakes(relayManager)
-        // relay owner and unstake delay are kept
+        // stake token, relay owner and unstake delay are kept
         expect(actualToken).to.equal(testToken.address)
         expect(actualOwner).to.equal(owner)
         expect(actualUnstakeDelay).to.be.bignumber.equal(initialUnstakeDelay)
