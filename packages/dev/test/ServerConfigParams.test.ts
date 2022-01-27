@@ -121,6 +121,12 @@ context('#ServerConfigParams', () => {
         { baseRelayFee: 222, config: tmpConfigfile, pctRelayFee: 123, port: 111 })
     })
 
+    it('should parse numeric params', async function () {
+      fs.writeFileSync(tmpConfigfile, JSON.stringify({ gasPriceFactor: 1.2 }))
+      assert.deepEqual(
+        parseServerConfig(['--config', tmpConfigfile], {}),
+        { config: tmpConfigfile, gasPriceFactor: 1.2 })
+    })
     it('should accept all known params in config file', async function () {
       fs.writeFileSync(tmpConfigfile, JSON.stringify(serverDefaultConfiguration))
       try {
