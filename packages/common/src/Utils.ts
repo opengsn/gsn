@@ -1,6 +1,6 @@
 import BN from 'bn.js'
 import abi from 'web3-eth-abi'
-import web3Utils, { toWei } from 'web3-utils'
+import web3Utils, { toWei, toBN } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
 import { Capability, FeeMarketEIP1559Transaction, Transaction, TransactionFactory, TxOptions, TypedTransaction } from '@ethereumjs/tx'
@@ -299,4 +299,22 @@ export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
     }
   }
   return c
+}
+
+/**
+ * 'BN.js' does not support a decimal point
+ * 'decimal.js' is a bit heavy for a purpose
+ * 'ethval.js' has values of 18 and 9 for ether and gwei hard-coded
+ * if there is a generic library please let me know
+ * @param balance
+ * @param tokenDecimals
+ * @param tokenSymbol
+ */
+export function formatTokenAmount (balance: BN, tokenDecimals: BN, tokenSymbol: string): string {
+  const integer = balance.div(toBN(10).pow(tokenDecimals))
+  const fractionDecimals = BN.max(toBN(0), tokenDecimals.subn(4))
+  const shift = tokenDecimals.sub(fractionDecimals)
+  const fraction = balance.div(toBN(10).pow(fractionDecimals)).sub(integer.mul(toBN(10).pow(shift)))
+  const fractionString = fraction.eqn(0) ? '' : '.' + fraction.toString().padStart(shift.toNumber(), '0')
+  return `${integer.toString()}${fractionString} ${tokenSymbol}`
 }

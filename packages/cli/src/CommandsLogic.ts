@@ -246,18 +246,10 @@ export class CommandsLogic {
         throw new Error(`Cannot use specified token for staking. Specified token address: ${options.token} Currently used token: ${token}`)
       }
 
-      const tokenInstance = await this.contractInteractor._createERC20(options.token)
-      let tokenSymbol: string
-      try {
-        tokenSymbol = await tokenInstance.symbol()
-      } catch (_) {
-        tokenSymbol = `ERC-20 token ${token}`
-      }
-
-      console.log('current stake=', fromWei(stake, 'ether'), `in ${tokenSymbol}`)
+      const currentStakeFormatted = await this.contractInteractor.formatTokenAmount(stake)
+      console.log('current stake= ', currentStakeFormatted)
 
       if (owner !== constants.ZERO_ADDRESS && !isSameAddress(owner, options.from)) {
-        // throw new Error(`Already owned by ${owner}, our account=${options.from}`)
         throw new Error(`Already owned by ${owner}, our account=${options.from}`)
       }
 
@@ -315,20 +307,21 @@ export class CommandsLogic {
           throw new Error(`Given minimum unstake delay ${options.unstakeDelay.toString()} too low for the given hub ${config.minimumUnstakeDelay.toString()}`)
         }
         const stakeValue = toBN(options.stake.toString()).sub(stake)
-        console.log(`Staking relayer ${fromWei(stakeValue, 'ether')} ${tokenSymbol}`,
-          stake.toString() === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} ${tokenSymbol})`)
+        const stakeValueFormatted = await this.contractInteractor.formatTokenAmount(stakeValue)
+        console.log(`Staking relayer ${stakeValueFormatted}`,
+          stake.toString() === '0' ? '' : ` (already has ${currentStakeFormatted})`)
 
         if (options.mintToken) {
-          console.log(`Minting 100 ${tokenSymbol}`)
-          const mintTx = await tokenInstance.mint(100e18.toString(), {
+          console.log('Minting 100 tokens')
+          const mintTx = await this.contractInteractor.erc20Token.mint(100e18.toString(), {
             from: options.from
           })
           // @ts-ignore
           transactions.push(mintTx.transactionHash)
         }
 
-        console.log(`Approving ${fromWei(stakeValue, 'ether')} ${tokenSymbol} to StakeManager`)
-        const approveTx = await tokenInstance.approve(stakeManager.address, stakeValue, {
+        console.log(`Approving ${stakeValueFormatted} to StakeManager`)
+        const approveTx = await this.contractInteractor.erc20Token.approve(stakeManager.address, stakeValue, {
           from: options.from
         })
         // @ts-ignore

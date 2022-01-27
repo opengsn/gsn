@@ -123,18 +123,12 @@ export class RegistrationManager {
       this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
     }
 
-    let tokenSymbol: string
-    const tokenInstance = await this.contractInteractor._createERC20(this.config.managerStakeTokenAddress)
-    try {
-      tokenSymbol = await tokenInstance.symbol()
-    } catch (_) {
-      tokenSymbol = `ERC-20 token ${this.config.managerStakeTokenAddress}`
-    }
+    const tokenMetadata = await this.contractInteractor.getErc20TokenMetadata()
     const listener = (): void => {
       this.printNotRegisteredMessage()
     }
-    this.balanceRequired = new AmountRequired('Balance', 'ETH', toBN(this.config.managerMinBalance), this.logger, listener)
-    this.stakeRequired = new AmountRequired('Stake', tokenSymbol, toBN(this.config.managerMinStake), this.logger, listener)
+    this.balanceRequired = new AmountRequired('Balance', toBN(this.config.managerMinBalance), this.logger, listener)
+    this.stakeRequired = new AmountRequired('Stake', toBN(this.config.managerMinStake), this.logger, listener, tokenMetadata)
     await this.refreshBalance()
     await this.refreshStake()
     this.isInitialized = true

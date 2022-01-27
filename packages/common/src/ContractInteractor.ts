@@ -23,12 +23,13 @@ import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
 import { LoggerInterface } from './LoggerInterface'
 import {
+  PaymasterGasAndDataLimits,
   address2topic,
   calculateCalldataBytesZeroNonzero,
   decodeRevertReason,
   errorAsBoolean,
   event2topic,
-  PaymasterGasAndDataLimits
+  formatTokenAmount
 } from './Utils'
 import {
   BaseRelayRecipientInstance,
@@ -96,6 +97,12 @@ export function asRelayCallAbi (r: RelayTransactionRequest): RelayCallABI {
 interface ManagerStakeStatus {
   isStaked: boolean
   errorMessage: string | null
+}
+
+export interface ERC20TokenMetadata {
+  tokenName: string
+  tokenSymbol: string
+  tokenDecimals: BN
 }
 
 export class ContractInteractor {
@@ -380,6 +387,42 @@ export class ContractInteractor {
 
   async _createERC20 (address: Address): Promise<IERC20TokenInstance> {
     return await this.IERC20Token.at(address)
+  }
+
+  /**
+   * Queries the balance of the token and displays it in a human-readable format, taking 'decimals' into account.
+   * Note: does not round up the fraction and truncates it.
+   */
+  async getTokenBalanceFormatted (address: Address): Promise<string> {
+    const balance = await this.erc20Token.balanceOf(address)
+    return await this.formatTokenAmount(balance)
+  }
+
+  async formatTokenAmount (balance: BN): Promise<string> {
+    const { tokenSymbol, tokenDecimals } = await this.getErc20TokenMetadata()
+    return formatTokenAmount(balance, tokenDecimals, tokenSymbol)
+  }
+
+  async getErc20TokenMetadata (): Promise<ERC20TokenMetadata> {
+    let tokenName: string
+    try {
+      tokenName = await this.erc20Token.name()
+    } catch (_) {
+      tokenName = `ERC-20 token ${this.erc20Token.address}`
+    }
+    let tokenSymbol: string
+    try {
+      tokenSymbol = await this.erc20Token.symbol()
+    } catch (_) {
+      tokenSymbol = `ERC-20 token ${this.erc20Token.address}`
+    }
+    let tokenDecimals: BN
+    try {
+      tokenDecimals = await this.erc20Token.decimals()
+    } catch (_) {
+      tokenDecimals = toBN(0)
+    }
+    return { tokenName, tokenSymbol, tokenDecimals }
   }
 
   async isTrustedForwarder (recipientAddress: Address, forwarder: Address): Promise<boolean> {

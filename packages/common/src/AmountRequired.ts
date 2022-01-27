@@ -1,23 +1,28 @@
-// @ts-ignore
-import EthVal from 'ethval'
 import BN from 'bn.js'
 import { toBN } from 'web3-utils'
 
-import { boolString } from './Utils'
+import { boolString, formatTokenAmount } from './Utils'
 import { LoggerInterface } from './LoggerInterface'
+import { ERC20TokenMetadata } from './ContractInteractor'
+
+const ether = {
+  tokenName: 'Ether',
+  tokenSymbol: 'ETH',
+  tokenDecimals: toBN(18)
+}
 
 export class AmountRequired {
   logger: LoggerInterface
   _name: string
-  _symbol: string
   _currentValue = toBN(0)
   _requiredValue = toBN(0)
   _listener?: () => void
+  _tokenMetadata: ERC20TokenMetadata
 
-  constructor (name: string, symbol: string, requiredValue: BN, logger: LoggerInterface, listener?: () => void) {
+  constructor (name: string, requiredValue: BN, logger: LoggerInterface, listener?: () => void, tokenMetadata: ERC20TokenMetadata = ether) {
     this.logger = logger
     this._name = name
-    this._symbol = symbol
+    this._tokenMetadata = tokenMetadata
     this._requiredValue = requiredValue
     this._listener = listener
   }
@@ -70,8 +75,8 @@ export class AmountRequired {
 
   get description (): string {
     const status = boolString(this.isSatisfied)
-    const actual: string = new EthVal(this._currentValue).toEth().toFixed(4)
-    const required: string = new EthVal(this._requiredValue).toEth().toFixed(4)
-    return `${this._name.padEnd(14)} | ${status.padEnd(14)} | actual: ${actual.padStart(12)} ${this._symbol} | required: ${required.padStart(12)} ${this._symbol}`
+    const actual: string = formatTokenAmount(this._currentValue, this._tokenMetadata.tokenDecimals, this._tokenMetadata.tokenSymbol)
+    const required: string = formatTokenAmount(this._requiredValue, this._tokenMetadata.tokenDecimals, this._tokenMetadata.tokenSymbol)
+    return `${this._name.padEnd(14)} | ${status.padEnd(14)} | actual: ${actual.padStart(16)} | required: ${required.padStart(16)}`
   }
 }
