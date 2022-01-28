@@ -131,7 +131,10 @@ contract('RegistrationManager', function (accounts) {
         provider: serverWeb3provider,
         logger,
         maxPageSize,
-        deployment: { paymasterAddress: env.paymaster.address }
+        deployment: {
+          managerStakeTokenAddress: env.testToken.address,
+          paymasterAddress: env.paymaster.address
+        }
       })
       await contractInteractor.init()
       const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)

@@ -129,7 +129,8 @@ export class ServerTestEnvironment {
     this.encodedFunction = this.recipient.contract.methods.emitMessage('hello world').encodeABI()
     const shared: Partial<GSNConfig> = {
       loggerConfiguration: { logLevel: 'error' },
-      paymasterAddress: this.paymaster.address
+      paymasterAddress: this.paymaster.address,
+      managerStakeTokenAddress: this.testToken.address
     }
     if (contractFactory == null) {
       const logger = createServerLogger('error', '', '')
