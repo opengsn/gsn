@@ -129,8 +129,7 @@ export class ServerTestEnvironment {
     this.encodedFunction = this.recipient.contract.methods.emitMessage('hello world').encodeABI()
     const shared: Partial<GSNConfig> = {
       loggerConfiguration: { logLevel: 'error' },
-      paymasterAddress: this.paymaster.address,
-      managerStakeTokenAddress: this.testToken.address
+      paymasterAddress: this.paymaster.address
     }
     if (contractFactory == null) {
       const logger = createServerLogger('error', '', '')
@@ -147,7 +146,10 @@ export class ServerTestEnvironment {
       })
       await this.contractInteractor.init()
     } else {
-      this.contractInteractor = await contractFactory(shared)
+      this.contractInteractor = await contractFactory({
+        paymasterAddress: this.paymaster.address,
+        managerStakeTokenAddress: this.testToken.address
+      })
     }
     const mergedConfig = Object.assign({}, shared, clientConfig)
     this.relayClient = new RelayClient({
