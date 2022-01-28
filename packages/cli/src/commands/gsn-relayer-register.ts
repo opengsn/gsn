@@ -33,7 +33,7 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
   const mnemonic = getMnemonic(commander.mnemonic)
   const logger = createCommandsLogger(commander.loglevel)
   const logic = await new CommandsLogic(host, logger, {
-    testTokenAddress: commander.token
+    managerStakeTokenAddress: commander.token
   }, mnemonic).init()
   const registerOptions: RegisterOptions = {
     sleepMs: parseInt(commander.sleep),

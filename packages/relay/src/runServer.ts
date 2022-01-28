@@ -150,7 +150,7 @@ async function run (): Promise<void> {
     versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
     deployment: {
       relayHubAddress: config.relayHubAddress,
-      testTokenAddress: config.managerStakeTokenAddress
+      managerStakeTokenAddress: config.managerStakeTokenAddress
     }
   })
   console.log('Initializing interactor...\n')

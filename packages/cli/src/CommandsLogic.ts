@@ -531,7 +531,7 @@ export class CommandsLogic {
       relayRegistrarAddress: rrInstance.options.address,
       forwarderAddress: fInstance.options.address,
       versionRegistryAddress: regInstance.options.address,
-      testTokenAddress: ttInstance?.options.address ?? constants.ZERO_ADDRESS,
+      managerStakeTokenAddress: ttInstance?.options.address ?? constants.ZERO_ADDRESS,
       paymasterAddress: pmInstance?.options.address ?? constants.ZERO_ADDRESS
     }
 

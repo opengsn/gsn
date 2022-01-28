@@ -336,8 +336,8 @@ export class ContractInteractor {
     if (this.deployment.versionRegistryAddress != null) {
       this.versionRegistry = await this._createVersionRegistry(this.deployment.versionRegistryAddress)
     }
-    if (this.deployment.testTokenAddress != null) {
-      this.erc20Token = await this._createERC20(this.deployment.testTokenAddress)
+    if (this.deployment.managerStakeTokenAddress != null) {
+      this.erc20Token = await this._createERC20(this.deployment.managerStakeTokenAddress)
     }
   }
 

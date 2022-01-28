@@ -139,7 +139,10 @@ export class ServerTestEnvironment {
         provider: this.provider,
         logger,
         maxPageSize,
-        deployment: { paymasterAddress: this.paymaster.address }
+        deployment: {
+          managerStakeTokenAddress: this.testToken.address,
+          paymasterAddress: this.paymaster.address
+        }
       })
       await this.contractInteractor.init()
     } else {

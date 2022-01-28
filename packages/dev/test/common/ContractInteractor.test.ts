@@ -431,7 +431,7 @@ contract('ContractInteractor', function (accounts) {
     before(async function () {
       testDecimalsToken = await TestDecimalsToken.new()
       await testDecimalsToken.mint('123456789123456789123', { from: accounts[1] })
-      const deployment: GSNContractsDeployment = { testTokenAddress: testDecimalsToken.address }
+      const deployment: GSNContractsDeployment = { managerStakeTokenAddress: testDecimalsToken.address }
       contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
       await contractInteractor.init()
     })

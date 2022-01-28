@@ -74,7 +74,7 @@ class GsnTestEnvironmentClass {
     }
 
     const registerOptions: RegisterOptions = {
-      token: deploymentResult.testTokenAddress ?? constants.ZERO_ADDRESS,
+      token: deploymentResult.managerStakeTokenAddress ?? constants.ZERO_ADDRESS,
       mintToken: true,
       from,
       sleepMs: 100,
