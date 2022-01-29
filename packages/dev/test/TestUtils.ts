@@ -5,7 +5,12 @@ import path from 'path'
 
 import { ether } from '@openzeppelin/test-helpers'
 
-import { IStakeManagerInstance, RelayHubInstance, TestTokenInstance } from '@opengsn/contracts/types/truffle-contracts'
+import {
+  IStakeManagerInstance,
+  RelayHubContract,
+  RelayHubInstance,
+  TestTokenInstance
+} from '@opengsn/contracts/types/truffle-contracts'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
@@ -281,12 +286,14 @@ export async function deployHub (
   testToken: string,
   testTokenMinimumStake: IntString,
   configOverride: Partial<RelayHubConfiguration> = {},
-  environment: Environment = defaultEnvironment): Promise<RelayHubInstance> {
+  environment: Environment = defaultEnvironment,
+  hubContract: any = undefined): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
     ...environment.relayHubConfiguration,
     ...configOverride
   }
-  const hub: RelayHubInstance = await RelayHub.new(
+  const HubContract: RelayHubContract = hubContract ?? RelayHub
+  const hub: RelayHubInstance = await HubContract.new(
     stakeManager,
     penalizer,
     batchGateway,

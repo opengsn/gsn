@@ -112,8 +112,8 @@ interface IRelayHub {
 
     // Balance management
 
-    /// Deposits ether for a contract, so that it can receive (and pay for) relayed transactions. Unused balance can only
-    /// be withdrawn by the contract itself, by calling withdraw.
+    /// Deposits ether for a Paymaster, so that it can and pay for relayed transactions. Unused balance can only
+    /// be withdrawn by the holder itself, by calling withdraw.
     /// Emits a Deposited event.
     function depositFor(address target) external payable;
 

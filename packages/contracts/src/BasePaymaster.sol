@@ -3,6 +3,7 @@ pragma solidity >=0.7.6;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import "./utils/GsnTypes.sol";
 import "./interfaces/IPaymaster.sol";
@@ -16,7 +17,7 @@ import "./forwarder/IForwarder.sol";
  *  - preRelayedCall
  *  - postRelayedCall
  */
-abstract contract BasePaymaster is IPaymaster, Ownable {
+abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
 
     IRelayHub internal relayHub;
     address private _trustedForwarder;
@@ -33,6 +34,10 @@ abstract contract BasePaymaster is IPaymaster, Ownable {
     uint256 constant public POST_RELAYED_CALL_GAS_LIMIT = 110000;
     uint256 constant public PAYMASTER_ACCEPTANCE_BUDGET = PRE_RELAYED_CALL_GAS_LIMIT + FORWARDER_HUB_OVERHEAD;
     uint256 constant public CALLDATA_SIZE_LIMIT = 10500;
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
+        return interfaceId == type(IPaymaster).interfaceId || super.supportsInterface(interfaceId);
+    }
 
     function getGasAndDataLimits()
     public

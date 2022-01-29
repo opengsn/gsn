@@ -8,6 +8,7 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "./utils/MinLibBytes.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -26,6 +27,7 @@ import "./interfaces/IStakeManager.sol";
 
 contract RelayHub is IRelayHub, Ownable {
     using SafeMath for uint256;
+    using ERC165Checker for address;
 
     function versionHub() override virtual public pure returns (string memory){
         return "2.2.3+opengsn.hub.irelayhub";
@@ -66,7 +68,7 @@ contract RelayHub is IRelayHub, Ownable {
     // maps relay managers to the number of their workers
     mapping(address => uint256) public override workerCount;
 
-    mapping(address => uint256) private balances;
+    mapping(address => uint256) internal balances;
 
     uint256 public override deprecationBlock = type(uint).max;
 
@@ -108,7 +110,8 @@ contract RelayHub is IRelayHub, Ownable {
         emit RelayWorkersAdded(relayManager, newRelayWorkers, newWorkerCount);
     }
 
-    function depositFor(address target) public override payable {
+    function depositFor(address target) public virtual override payable {
+        require(target.supportsInterface(type(IPaymaster).interfaceId), "target is not a valid IPaymaster");
         uint256 amount = msg.value;
 
         balances[target] = balances[target].add(amount);
