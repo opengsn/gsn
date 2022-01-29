@@ -35,6 +35,11 @@ interface IRelayRegistrar {
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external;
 
     /**
+     * @return the block number in which the contract has been deployed.
+     */
+    function creationBlock() external view returns (uint256);
+
+    /**
      * does this registrar save state into storage?
      * @return false only events are used for registration
      *  true keep registry in storage, in addition to events

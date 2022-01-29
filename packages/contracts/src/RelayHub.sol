@@ -70,6 +70,7 @@ contract RelayHub is IRelayHub, Ownable {
 
     mapping(address => uint256) internal balances;
 
+    uint256 public override creationBlock;
     uint256 public override deprecationBlock = type(uint).max;
 
     constructor (
@@ -78,6 +79,7 @@ contract RelayHub is IRelayHub, Ownable {
         address _batchGateway,
         RelayHubConfig memory _config
     ) {
+        creationBlock = block.number;
         stakeManager = _stakeManager;
         penalizer = _penalizer;
         batchGateway = _batchGateway;

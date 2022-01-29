@@ -27,10 +27,12 @@ contract RelayRegistrar is IRelayRegistrar {
     address[] public indexedValues;
 
     bool public immutable override isUsingStorageRegistry;
+    uint256 public override creationBlock;
 
     IRelayHub public immutable relayHub;
 
     constructor(IRelayHub _relayHub, bool _isUsingStorageRegistry) {
+        creationBlock = block.number;
         relayHub = _relayHub;
         isUsingStorageRegistry = _isUsingStorageRegistry;
     }

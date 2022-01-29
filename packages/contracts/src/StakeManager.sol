@@ -21,6 +21,7 @@ contract StakeManager is IStakeManager {
     uint256 public immutable override maxUnstakeDelay;
 
     address public immutable override burnAddress;
+    uint256 public override creationBlock;
 
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
@@ -38,6 +39,7 @@ contract StakeManager is IStakeManager {
         address _burnAddress
     ) {
         require(_burnAddress != address(0), "transfers to address(0) may fail");
+        creationBlock = block.number;
         maxUnstakeDelay = _maxUnstakeDelay;
         burnAddress = _burnAddress;
     }
