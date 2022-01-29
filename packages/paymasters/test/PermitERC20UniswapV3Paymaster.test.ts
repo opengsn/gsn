@@ -45,7 +45,7 @@ const IQuoter = artifacts.require('IQuoter')
 // as we are using forked mainnet, we will need to impersonate an account with a lot of DAI & UNI
 const MAJOR_DAI_AND_UNI_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503'
 
-const GAS_USED_BY_POST = 197490
+const GAS_USED_BY_POST = 204766
 const MAX_POSSIBLE_GAS = 1e6
 const PERMIT_DATA_LENGTH = 0
 const POOL_FEE = 3000
