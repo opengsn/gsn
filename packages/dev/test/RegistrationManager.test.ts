@@ -26,6 +26,8 @@ import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
+const TestToken = artifacts.require('TestToken')
+
 const { oneEther } = constants
 
 const { expect } = chai.use(chaiAsPromised)
@@ -546,7 +548,23 @@ contract('RegistrationManager', function (accounts) {
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
       })
 
-      it('should not attempt registration incorrect token is staked on hub', async function () {})
+      it('should not attempt registration if incorrect token is staked on hub', async function () {
+        const wrongToken = await TestToken.new()
+        const stake = ether('10')
+        await wrongToken.mint(stake, { from: env.relayOwner })
+        await wrongToken.approve(env.stakeManager.address, stake, { from: env.relayOwner })
+        await env.stakeManager.stakeForRelayManager(wrongToken.address, env.relayServer.managerAddress, unstakeDelay, stake, {
+          from: env.relayOwner
+        })
+        await env.stakeManager.authorizeHubByOwner(env.relayServer.managerAddress, env.relayHub.address, {
+          from: env.relayOwner
+        })
+        await newServer.registrationManager.refreshStake()
+        const receipts = await newServer.registrationManager.attemptRegistration(0)
+        assert.equal(receipts.length, 0)
+        expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
+        expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
+      })
     })
   })
 

@@ -301,9 +301,6 @@ export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
   return c
 }
 
-/**
- * Find a {@code shift} between token's decimal points and Ethereum's to present the value in a human-readable format
- */
 export function formatTokenAmount (balance: BN, tokenDecimals: BN, tokenSymbol: string): string {
   let shiftedBalance: BN
   if (tokenDecimals.eqn(18)) {
