@@ -1,3 +1,5 @@
+/* eslint-disable no-global-assign */
+
 import BN from 'bn.js'
 import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
@@ -23,6 +25,7 @@ import { constants, ContractInteractor, GSNContractsDeployment } from '@opengsn/
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
+import * as process from 'process'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -31,6 +34,12 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
+
+const contractOrig = contract
+if (process.env.GAS_CALCULATIONS == null) {
+  // @ts-ignore
+  contract = contract.skip
+}
 
 contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
@@ -598,3 +607,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       )
   })
 })
+
+// @ts-ignore
+contract = contractOrig

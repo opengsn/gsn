@@ -1,3 +1,5 @@
+/* eslint-disable no-global-assign */
+
 import BN from 'bn.js'
 import { HttpProvider } from 'web3-core'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
@@ -31,6 +33,12 @@ const TestUtil = artifacts.require('TestUtil')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
+
+const contractOrig = contract
+if (process.env.GAS_CALCULATIONS == null) {
+  // @ts-ignore
+  contract = contract.skip
+}
 
 interface PartialRelayRequest {
   request?: Partial<ForwardRequest>
@@ -504,3 +512,6 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     })
   })
 })
+
+// @ts-ignore
+contract = contractOrig
