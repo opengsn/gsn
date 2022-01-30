@@ -60,7 +60,7 @@ options.forEach(params => {
     before(async () => {
       await emptyBalance(gasless, accounts[0])
 
-      const gasPriceFactor = 1.2
+      const gasPriceFactor = 1
 
       sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
       const p = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)

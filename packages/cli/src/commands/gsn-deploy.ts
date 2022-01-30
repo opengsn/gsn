@@ -12,19 +12,19 @@ import { toHex, toWei } from 'web3-utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
 import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
 
-gsnCommander(['n', 'f', 'm', 'g'])
+gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
   .option('--forwarder <address>', 'address of forwarder deployed to the current network (optional; deploys new one by default)')
   .option('--stakeManager <address>', 'stakeManager')
   .option('--relayHub <address>', 'relayHub')
   .option('--penalizer <address>', 'penalizer')
-  .option('--registry <address>', 'versionRegistry')
+  .option('--versionRegistrar <address>', 'versionRegistry')
+  .option('--relayRegistrar <address>', 'relayRegistrar')
   .option('--registryHubId <string>', 'save the address of the relayHub to the registry, with this hub-id')
   .option('--environmentName <string>', `name of one of the GSN supported environments: (${Object.keys(EnvironmentsKeys).toString()}; default: ethereumMainnet)`, EnvironmentsKeys.ethereumMainnet)
   .option('--yes, --skipConfirmation', 'skip con')
   .option('--testPaymaster', 'deploy test paymaster (accepts everything, avoid on main-nets)', false)
   .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
-  .option('-l, --gasLimit <number>', 'gas limit to give to all transactions', '5000000')
   .parse(process.argv);
 
 (async () => {
@@ -43,13 +43,7 @@ gsnCommander(['n', 'f', 'm', 'g'])
   const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic)
   const from = commander.from ?? await logic.findWealthyAccount()
 
-  async function getGasPrice (): Promise<string> {
-    const gasPrice = await web3.eth.getGasPrice()
-    console.log(`Using network gas price of ${gasPrice}`)
-    return gasPrice
-  }
-
-  const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await getGasPrice())
+  const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await logic.getGasPrice())
   const gasLimit = commander.gasLimit
 
   const deploymentResult = await logic.deployGsnContracts({
@@ -65,7 +59,8 @@ gsnCommander(['n', 'f', 'm', 'g'])
     stakeManagerAddress: commander.stakeManager,
     relayHubAddress: commander.relayHub,
     penalizerAddress: commander.penalizer,
-    registryAddress: commander.registry,
+    versionRegistryAddress: commander.versionRegistrar,
+    relayRegistryAddress: commander.relayRegistrar,
     registryHubId: commander.registryHubId
   })
   const paymasterName = 'Default'
