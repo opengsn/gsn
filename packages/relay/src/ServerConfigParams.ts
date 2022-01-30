@@ -264,7 +264,7 @@ function explicitType ([key, val]: [string, any]): any {
       if (val === 'false' || val === false) return [key, false]
       break
     case 'number': {
-      const v = parseInt(val)
+      const v = parseFloat(val)
       if (!isNaN(v)) {
         return [key, v]
       }
