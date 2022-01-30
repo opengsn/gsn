@@ -2,6 +2,8 @@
 pragma solidity ^0.8.6;
 /* solhint-disable no-inline-assembly */
 
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+
 import "./MinLibBytes.sol";
 import "../interfaces/IRelayHub.sol";
 import "../interfaces/IRelayRegistrar.sol";
@@ -12,7 +14,7 @@ import "../interfaces/IRelayRegistrar.sol";
  * - provide view functions to read the list of registered relayers (and filter out invalid ones)
  * - protect the list from spamming entries: only staked relayers are added.
  */
-contract RelayRegistrar is IRelayRegistrar {
+contract RelayRegistrar is IRelayRegistrar, ERC165 {
     using MinLibBytes for bytes;
 
     struct RelayStorageInfo {
@@ -33,6 +35,11 @@ contract RelayRegistrar is IRelayRegistrar {
     constructor(IRelayHub _relayHub, bool _isUsingStorageRegistry) {
         relayHub = _relayHub;
         isUsingStorageRegistry = _isUsingStorageRegistry;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
+        return interfaceId == type(IRelayRegistrar).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {

@@ -3,9 +3,11 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+
 import "./IForwarder.sol";
 
-contract Forwarder is IForwarder {
+contract Forwarder is IForwarder, ERC165 {
     using ECDSA for bytes32;
 
     string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil";
@@ -31,6 +33,11 @@ contract Forwarder is IForwarder {
 
         string memory requestType = string(abi.encodePacked("ForwardRequest(", GENERIC_PARAMS, ")"));
         registerRequestTypeInternal(requestType);
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
+        return interfaceId == type(IForwarder).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function verify(

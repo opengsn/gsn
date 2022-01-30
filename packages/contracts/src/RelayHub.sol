@@ -8,6 +8,7 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "./utils/MinLibBytes.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -25,9 +26,9 @@ import "./interfaces/IStakeManager.sol";
 import "./interfaces/IRelayRegistrar.sol";
 import "./interfaces/IStakeManager.sol";
 
-contract RelayHub is IRelayHub, Ownable {
-    using SafeMath for uint256;
+contract RelayHub is IRelayHub, Ownable, ERC165 {
     using ERC165Checker for address;
+    using SafeMath for uint256;
 
     function versionHub() override virtual public pure returns (string memory){
         return "2.2.3+opengsn.hub.irelayhub";
@@ -84,7 +85,14 @@ contract RelayHub is IRelayHub, Ownable {
         setConfiguration(_config);
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
+        return interfaceId == type(IRelayHub).interfaceId ||
+            interfaceId == type(Ownable).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
     function setRegistrar(address _relayRegistrar) public onlyOwner {
+        require(_relayRegistrar.supportsInterface(type(IRelayRegistrar).interfaceId), "target is not a valid IRegistrar");
         require(relayRegistrar == address(0), "relayRegistrar already set");
         relayRegistrar = _relayRegistrar;
     }
