@@ -6,7 +6,6 @@ import {
   StoredTransactionSerialized
 } from '@opengsn/relay/dist/StoredTransaction'
 import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
-import { bufferToHex, toBuffer } from 'ethereumjs-util'
 
 contract('StoredTransaction', function (accounts) {
   let tx: FeeMarketEIP1559Transaction
@@ -33,7 +32,7 @@ contract('StoredTransaction', function (accounts) {
       data: '0x12345678',
       nonce: 111,
       txId: '0x437a03ff976c96807aad1bc895f1535292e4ddf798fd8232600d89912961fc57',
-      value: bufferToHex(toBuffer(1e18))
+      value: `0x0${1e18.toString(16)}`
     }
     storedTx = { ...serialized, ...metadata }
     storedFromLegacyTx = { ...serialized, ...metadata, txId: '0xa0a6b19c7b6cad00eedb0442f55afa636b985a3b2477a1fc073c685ba3e4326b' }
@@ -44,7 +43,7 @@ contract('StoredTransaction', function (accounts) {
       maxPriorityFeePerGas: 1e9,
       data: '0x12345678',
       nonce: 111,
-      value: 1e18
+      value: `0x0${1e18.toString(16)}`
     })
     tx = tx.sign(privateKey)
     legacyTx = new Transaction({
@@ -53,7 +52,7 @@ contract('StoredTransaction', function (accounts) {
       gasPrice: 1e9,
       data: '0x12345678',
       nonce: 111,
-      value: 1e18
+      value: `0x0${1e18.toString(16)}`
     })
     legacyTx = legacyTx.sign(privateKey)
   })
