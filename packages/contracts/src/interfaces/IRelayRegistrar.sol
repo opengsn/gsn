@@ -1,12 +1,14 @@
 //SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.6;
 
+import "@openzeppelin/contracts/interfaces/IERC165.sol";
+
 /**
  * on-chain registrar for all registered relayManagers.
  * client can use it instead of events to find relay registration info.
  * NOTE: client should IGNORE the order of these requests.
  */
-interface IRelayRegistrar {
+interface IRelayRegistrar is IERC165 {
 
     struct RelayInfo {
         //last registration block number

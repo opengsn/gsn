@@ -26,6 +26,7 @@ import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
+const TestRelayHub = artifacts.require('TestRelayHub')
 const TestToken = artifacts.require('TestToken')
 
 const { oneEther } = constants
@@ -48,7 +49,7 @@ contract('RegistrationManager', function (accounts) {
   before(async function () {
     serverWorkdirs = getTemporaryWorkdirs()
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
-    await env.init({}, { minimumUnstakeDelay: unstakeDelay })
+    await env.init({}, { minimumUnstakeDelay: unstakeDelay }, undefined, TestRelayHub)
     env.newServerInstanceNoFunding({}, serverWorkdirs)
     await env.clearServerStorage()
     relayServer = env.relayServer
@@ -565,6 +566,8 @@ contract('RegistrationManager', function (accounts) {
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
       })
+
+      it('should not attempt registration incorrect token is staked on hub', async function () {})
     })
   })
 

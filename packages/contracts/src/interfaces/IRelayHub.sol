@@ -2,10 +2,12 @@
 pragma solidity >=0.7.6;
 pragma abicoder v2;
 
+import "@openzeppelin/contracts/interfaces/IERC165.sol";
+
 import "../utils/GsnTypes.sol";
 import "./IStakeManager.sol";
 
-interface IRelayHub {
+interface IRelayHub is IERC165 {
     struct RelayHubConfig {
         // maximum number of worker accounts allowed per manager
         uint256 maxWorkerCount;
@@ -112,8 +114,8 @@ interface IRelayHub {
 
     // Balance management
 
-    /// Deposits ether for a contract, so that it can receive (and pay for) relayed transactions. Unused balance can only
-    /// be withdrawn by the contract itself, by calling withdraw.
+    /// Deposits ether for a Paymaster, so that it can and pay for relayed transactions. Unused balance can only
+    /// be withdrawn by the holder itself, by calling withdraw.
     /// Emits a Deposited event.
     function depositFor(address target) external payable;
 

@@ -26,6 +26,7 @@ import { constants } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
+const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -37,7 +38,7 @@ const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
-contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
+contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
   const RelayCallStatusCodes = {
     OK: new BN('0'),
     RelayedCallFailed: new BN('1'),
@@ -91,6 +92,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
     const version = await relayHubInstance.versionHub()
     assert.match(version, /2\.\d*\.\d*-?.*\+opengsn\.hub\.irelayhub/)
   })
+
+  it('should reject setRegistrar for an address that does not implement IPaymaster', async function () {
+    await expectRevert(relayHubInstance.setRegistrar(relayHub), 'target is not a valid IRegistrar')
+  })
+
   describe('balances', function () {
     async function testDeposit (sender: string, paymaster: string, amount: BN): Promise<void> {
       const senderBalanceTracker = await balance.tracker(sender)
@@ -112,41 +118,37 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       expect(await relayHubBalanceTracker.delta()).to.be.bignumber.equal(amount)
     }
 
-    it('can deposit for self', async function () {
-      await testDeposit(other, other, ether('1'))
-    })
-
-    it('can deposit for others', async function () {
-      await testDeposit(other, target, ether('1'))
+    it('can deposit for a valid IPaymaster', async function () {
+      await testDeposit(other, paymaster, ether('1'))
     })
 
     it('can deposit multiple times and have a total deposit larger than the limit', async function () {
-      await relayHubInstance.depositFor(target, {
+      await relayHubInstance.depositFor(paymaster, {
         from: other,
         value: ether('1'),
         gasPrice: 1e9
       })
-      await relayHubInstance.depositFor(target, {
+      await relayHubInstance.depositFor(paymaster, {
         from: other,
         value: ether('1'),
         gasPrice: 1e9
       })
-      await relayHubInstance.depositFor(target, {
+      await relayHubInstance.depositFor(paymaster, {
         from: other,
         value: ether('1'),
         gasPrice: 1e9
       })
 
-      expect(await relayHubInstance.balanceOf(target)).to.be.bignumber.equals(ether('3'))
+      expect(await relayHubInstance.balanceOf(paymaster)).to.be.bignumber.equals(ether('3'))
     })
 
     it('accounts with deposits can withdraw partially', async function () {
       const amount = ether('1')
-      await testDeposit(other, other, amount)
+      await testDeposit(other, paymaster, amount)
 
-      const { logs } = await relayHubInstance.withdraw(amount.divn(2), dest, { from: other })
-      expectEvent.inLogs(logs, 'Withdrawn', {
-        account: other,
+      const { tx } = await paymasterContract.withdrawRelayHubDepositTo(amount.divn(2), dest, { from: paymasterOwner })
+      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+        account: paymaster,
         dest,
         amount: amount.divn(2)
       })
@@ -154,11 +156,11 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
     it('accounts with deposits can withdraw all their balance', async function () {
       const amount = ether('1')
-      await testDeposit(other, other, amount)
+      await testDeposit(other, paymaster, amount)
 
-      const { logs } = await relayHubInstance.withdraw(amount, dest, { from: other })
-      expectEvent.inLogs(logs, 'Withdrawn', {
-        account: other,
+      const { tx } = await paymasterContract.withdrawRelayHubDepositTo(amount, dest, { from: paymasterOwner })
+      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+        account: paymaster,
         dest,
         amount
       })
@@ -166,9 +168,15 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
 
     it('accounts cannot withdraw more than their balance', async function () {
       const amount = ether('1')
-      await testDeposit(other, other, amount)
+      await testDeposit(other, paymaster, amount)
 
-      await expectRevert(relayHubInstance.withdraw(amount.addn(1), dest, { from: other }), 'insufficient funds')
+      await expectRevert(paymasterContract.withdrawRelayHubDepositTo(amount.addn(1), dest, { from: paymasterOwner }), 'insufficient funds')
+    })
+
+    it('should reject depositFor for an address that does not implement IPaymaster', async function () {
+      await expectRevert(relayHubInstance.depositFor(target, {
+        value: ether('1')
+      }), 'target is not a valid IPaymaster')
     })
   })
 
