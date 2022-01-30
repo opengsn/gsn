@@ -39,7 +39,7 @@ const TestProxy = artifacts.require('TestProxy')
 export const transferErc20Error = '\'ERC20: transfer amount exceeds allowance\' -- Reason given: ERC20: transfer amount exceeds allowance.'
 
 // TODO: this test recreates GSN manually. Use GSN tools to do it instead.
-contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
+contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) => {
   let paymaster: TokenPaymasterInstance
   let uniswap: TestUniswapInstance
   let token: TestTokenInstance
@@ -57,9 +57,9 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
       value: (5e18).toString(),
       gas: 10000000
     })
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, burnAddress)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    hub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
+    hub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')
     token = await TestToken.at(await uniswap.tokenAddress())
 
     paymaster = await TokenPaymaster.new([uniswap.address], { gas: 1e7 })
@@ -193,7 +193,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap]) => {
 
     before(async () => {
       // TODO: not needed. use startGsn instead
-      await registerAsRelayServer(stakeManager, relay, relayOwner, hub)
+      await registerAsRelayServer(token, stakeManager, relay, relayOwner, hub)
       await hub.depositFor(paymaster.address, { value: paymasterDeposit })
       await paymaster.setRelayHub(hub.address)
     })

@@ -15,9 +15,9 @@ import {
   ForwarderInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
-  GatewayForwarderInstance
+  GatewayForwarderInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { deployHub, encodeRevertReason } from './TestUtils'
+import { deployHub, encodeRevertReason, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 import chaiAsPromised from 'chai-as-promised'
@@ -31,6 +31,7 @@ const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const GatewayForwarder = artifacts.require('GatewayForwarder')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const TestToken = artifacts.require('TestToken')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
@@ -48,8 +49,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   }
 
   const chainId = defaultEnvironment.chainId
+  const oneEther = ether('1')
 
   let relayHub: string
+  let testToken: TestTokenInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let relayHubInstance: RelayHubInstance
@@ -62,9 +65,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
   let forwarder: string
 
   beforeEach(async function () {
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    testToken = await TestToken.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
+    relayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, oneEther.toString())
     relayRegistrar = await RelayRegistrar.at(await relayHubInstance.relayRegistrar())
 
     paymasterContract = await TestPaymasterEverythingAccepted.new()
@@ -230,26 +234,121 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
           'Unknown relay worker')
       })
 
-      context('with manager stake unlocked', function () {
-        beforeEach(async function () {
+      context('#setMinimumStakes()', function () {
+        it('should assign values correctly with arrays of any size', async function () {
+          const tokens = [
+            '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+            '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+            '0xc944e90c64b2c07662a292be6244bdf05cda44a7',
+            '0x6b175474e89094c44da98b954eedeac495271d0f',
+            '0xeb4c2781e4eba804ce9a9803c67d0893436bb27d',
+            '0x8dae6cb04688c62d939ed9b68d32bc62e49970b1',
+            '0xba100000625a3754423978a60c9317c58a424e3d',
+            '0x111111111117dc0aa78b770fa6a738034120c302'
+          ]
+          const minimums = [100, 200, 300, 400, 500, 600, 700, 8000]
+          assert.equal(tokens.length, minimums.length)
+          await relayHubInstance.setMinimumStakes(tokens, minimums)
+          for (let i = 0; i < tokens.length; i++) {
+            const min = await relayHubInstance.minimumStakePerToken(tokens[i])
+            assert.equal(min.toNumber(), minimums[i])
+          }
+        })
+
+        it('should revert if array lengths do not match', async function () {
+          await expectRevert(
+            relayHubInstance.setMinimumStakes([relayOwner], [0, 0]),
+            'setMinimumStakes: wrong length'
+          )
+        })
+      })
+
+      context('#verifyRelayManagerStaked()', function () {
+        let id: string
+
+        async function mintApproveSetOwnerStake (token: TestTokenInstance = testToken, stake: BN = oneEther, unstakeDelay: number = 1000): Promise<void> {
+          await token.mint(stake, { from: relayOwner })
+          await token.approve(stakeManager.address, stake, { from: relayOwner })
           await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-          await stakeManager.stakeForRelayManager(relayManager, 1000, {
-            value: ether('1'),
+          await stakeManager.stakeForRelayManager(token.address, relayManager, unstakeDelay, stake, {
             from: relayOwner
           })
-          await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
-          await relayHubInstance.addRelayWorkers([relayWorker], {
-            from: relayManager
+        }
+
+        function testRejectsAddRelayWorkers (expectedError: string): void {
+          it('should not accept a relay call with error: ' + expectedError, async function () {
+            await expectRevert(
+              relayHubInstance.addRelayWorkers([relayWorker], {
+                from: relayManager
+              }),
+              expectedError
+            )
           })
-          await stakeManager.unauthorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
+        }
+
+        afterEach(async function () {
+          await revert(id)
         })
-        it('should not accept a relay call', async function () {
-          await expectRevert(
-            relayHubInstance.relayCall(10e6, relayRequest, signature, approvalData, {
-              from: relayWorker,
-              gas
-            }),
-            'relay manager not staked')
+
+        context('with no stake at all', function () {
+          testRejectsAddRelayWorkers('relay manager not staked')
+        })
+
+        context('with manager stake in forbidden token', function () {
+          beforeEach(async function () {
+            id = (await snapshot()).result
+            const forbiddenToken = await TestToken.new()
+            await mintApproveSetOwnerStake(forbiddenToken)
+          })
+          testRejectsAddRelayWorkers('staking this token is forbidden')
+        })
+
+        context('with manager stake that is too small', function () {
+          beforeEach(async function () {
+            id = (await snapshot()).result
+            await mintApproveSetOwnerStake(testToken, ether('0.001'))
+            await relayHubInstance.setMinimumStakes([testToken.address], [oneEther])
+          })
+          testRejectsAddRelayWorkers('stake amount is too small')
+        })
+
+        context('with manager stake that unlocks too soon', function () {
+          beforeEach(async function () {
+            id = (await snapshot()).result
+            await mintApproveSetOwnerStake(testToken, ether('1'), 10)
+            await relayHubInstance.setMinimumStakes([testToken.address], [oneEther])
+          })
+          testRejectsAddRelayWorkers('unstake delay is too small')
+        })
+
+        context('with manager stake with authorized hub', function () {
+          let unauthorizedHub: RelayHubInstance
+          beforeEach(async function () {
+            id = (await snapshot()).result
+            unauthorizedHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, oneEther.toString())
+            await mintApproveSetOwnerStake()
+            await relayHubInstance.setMinimumStakes([testToken.address], [oneEther])
+          })
+
+          it('should not accept a relay call', async function () {
+            await expectRevert(
+              unauthorizedHub.addRelayWorkers([relayWorker], {
+                from: relayManager
+              }),
+              'this hub is not authorized by SM'
+            )
+          })
+        })
+
+        context('with manager stake unlocked', function () {
+          beforeEach(async function () {
+            id = (await snapshot()).result
+            await mintApproveSetOwnerStake()
+            await relayHubInstance.setMinimumStakes([testToken.address], [oneEther])
+            await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
+            await stakeManager.unlockStake(relayManager, { from: relayOwner })
+          })
+          testRejectsAddRelayWorkers('stake has been withdrawn')
         })
       })
     })
@@ -264,9 +363,10 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
       let signatureWithPermissivePaymaster: string
 
       beforeEach(async function () {
+        await testToken.mint(ether('2'), { from: relayOwner })
+        await testToken.approve(stakeManager.address, ether('2'), { from: relayOwner })
         await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-        await stakeManager.stakeForRelayManager(relayManager, 1000, {
-          value: ether('2'),
+        await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, ether('2'), {
           from: relayOwner
         })
         await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
@@ -776,7 +876,7 @@ contract('RelayHub', function ([_, relayOwner, relayManager, relayWorker, sender
             relayRequest = cloneRelayRequest(sharedRelayRequestData)
             gatewayForwarder = await GatewayForwarder.new()
             await registerForwarderForGsn(gatewayForwarder)
-            relayHubInstance = await deployHub(stakeManager.address, penalizer.address, batchGateway)
+            relayHubInstance = await deployHub(stakeManager.address, penalizer.address, batchGateway, testToken.address, oneEther.toString())
             recipientContract = await TestRecipient.new(gatewayForwarder.address)
             await gatewayForwarder.setTrustedRelayHub(relayHubInstance.address)
             await paymasterContract.setTrustedForwarder(gatewayForwarder.address)

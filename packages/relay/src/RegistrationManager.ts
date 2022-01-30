@@ -39,8 +39,8 @@ import { constants } from '@opengsn/common/dist/Constants'
 const mintxgascost = defaultEnvironment.mintxgascost
 
 export class RegistrationManager {
-  balanceRequired: AmountRequired
-  stakeRequired: AmountRequired
+  balanceRequired?: AmountRequired
+  stakeRequired?: AmountRequired
   _isSetOwnerCalled = false
   _isOwnerSetOnStakeManager = false
   _isHubAuthorized = false
@@ -102,12 +102,7 @@ export class RegistrationManager {
     managerAddress: Address,
     workerAddress: Address
   ) {
-    const listener = (): void => {
-      this.printNotRegisteredMessage()
-    }
     this.logger = logger
-    this.balanceRequired = new AmountRequired('Balance', toBN(config.managerMinBalance), logger, listener)
-    this.stakeRequired = new AmountRequired('Stake', toBN(config.managerMinStake), logger, listener)
 
     this.contractInteractor = contractInteractor
     this.hubAddress = config.relayHubAddress
@@ -127,6 +122,13 @@ export class RegistrationManager {
     if (this.lastMinedRegisterTransaction == null) {
       this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
     }
+
+    const tokenMetadata = await this.contractInteractor.getErc20TokenMetadata()
+    const listener = (): void => {
+      this.printNotRegisteredMessage()
+    }
+    this.balanceRequired = new AmountRequired('Balance', toBN(this.config.managerMinBalance), this.logger, listener)
+    this.stakeRequired = new AmountRequired('Stake', toBN(this.config.managerMinStake), this.logger, listener, tokenMetadata)
     await this.refreshBalance()
     await this.refreshStake()
     this.isInitialized = true
@@ -152,7 +154,7 @@ export class RegistrationManager {
   }
 
   async handlePastEvents (hubEventsSinceLastScan: EventData[], lastScannedBlock: number, currentBlock: number, forceRegistration: boolean): Promise<PrefixedHexString[]> {
-    if (!this.isInitialized) {
+    if (!this.isInitialized || this.balanceRequired == null) {
       throw new Error('RegistrationManager not initialized')
     }
     const topics = [address2topic(this.managerAddress)]
@@ -301,14 +303,20 @@ export class RegistrationManager {
   }
 
   async refreshBalance (): Promise<void> {
+    if (this.balanceRequired == null) {
+      throw new Error('not initialized')
+    }
     const currentBalance = await this.contractInteractor.getBalance(this.managerAddress)
     this.balanceRequired.currentValue = toBN(currentBalance)
   }
 
   async refreshStake (): Promise<void> {
+    if (this.stakeRequired == null) {
+      throw new Error('not initialized')
+    }
     const stakeInfo = await this.contractInteractor.getStakeInfo(this.managerAddress)
-    const isStakedOnHub = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
-    if (isStakedOnHub) {
+    const stakedOnHubStatus = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
+    if (stakedOnHubStatus.isStaked) {
       this.isHubAuthorized = true
     }
     const stake = stakeInfo.stake
@@ -351,17 +359,20 @@ export class RegistrationManager {
 
   // TODO: extract worker registration sub-flow
   async attemptRegistration (currentBlock: number): Promise<PrefixedHexString[]> {
-    const isStakedOnHub = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
-    if (!isStakedOnHub && this.ownerAddress != null) {
-      this.logger.error('Relay manager is staked on StakeManager but not on RelayHub.\n' +
-        'Minimum stake/minimum unstake delay misconfigured?')
+    if (this.balanceRequired == null || this.stakeRequired == null) {
+      throw new Error('not initialized')
+    }
+    const stakeOnHubStatus = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
+    if (!stakeOnHubStatus.isStaked && this.ownerAddress != null) {
+      this.logger.error('Relay manager is staked on StakeManager but not on RelayHub.')
+      this.logger.error('Minimum stake/minimum unstake delay/stake token misconfigured?')
     }
     const allPrerequisitesOk =
       this.isHubAuthorized &&
       this.isStakeLocked &&
       this.stakeRequired.isSatisfied &&
       this.balanceRequired.isSatisfied &&
-      isStakedOnHub
+      stakeOnHubStatus.isStaked
     if (!allPrerequisitesOk) {
       this.logger.debug('will not actually attempt registration - prerequisites not satisfied')
       return []
@@ -503,6 +514,9 @@ export class RegistrationManager {
   }
 
   async isRegistered (): Promise<boolean> {
+    if (this.stakeRequired == null) {
+      throw new Error('not initialized')
+    }
     const isRegistrationCorrect = await this._isRegistrationCorrect()
     return this.stakeRequired.isSatisfied &&
       this.isStakeLocked &&
@@ -511,6 +525,9 @@ export class RegistrationManager {
   }
 
   printNotRegisteredMessage (): void {
+    if (this.balanceRequired == null || this.stakeRequired == null) {
+      throw new Error('not initialized')
+    }
     if (this._isRegistrationCorrect()) {
       return
     }

@@ -94,11 +94,16 @@ contract RelayRegistrar is IRelayRegistrar {
             if (relayInfo.lastBlockNumber < oldestBlock) {
                 continue;
             }
-            if (address(relayHub) == address(0) || IRelayHub(relayHub).isRelayManagerStaked(relayManager)) {
-                info[filled++] = relayInfo;
-                if (filled >= maxCount)
-                    break;
+            if (address(relayHub) != address(0)) {
+                // solhint-disable-next-line no-empty-blocks
+                try IRelayHub(relayHub).verifyRelayManagerStaked(relayManager) {
+                } catch (bytes memory /*lowLevelData*/) {
+                    continue;
+                }
             }
+            info[filled++] = relayInfo;
+            if (filled >= maxCount)
+                break;
         }
     }
 

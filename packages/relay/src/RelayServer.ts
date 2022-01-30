@@ -618,7 +618,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _worker (blockNumber: number): Promise<PrefixedHexString[]> {
-    if (!this.initialized) {
+    if (!this.initialized || this.registrationManager.balanceRequired == null) {
       throw new Error('Please run init() first')
     }
     if (blockNumber <= this.lastScannedBlock) {

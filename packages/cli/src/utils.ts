@@ -142,6 +142,7 @@ export function showDeployment (deploymentResult: GSNContractsDeployment, title:
   Penalizer: ${deploymentResult.penalizerAddress}
   VersionRegistry: ${deploymentResult.versionRegistryAddress}
   Forwarder: ${deploymentResult.forwarderAddress}
+  TestToken (test only): ${deploymentResult.managerStakeTokenAddress}
   Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.paymasterAddress}`)
 }
 

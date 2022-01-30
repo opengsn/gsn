@@ -17,7 +17,9 @@ import {
   TestPaymasterVariableGasLimitsInstance,
   StakeManagerInstance,
   IForwarderInstance,
-  PenalizerInstance, RelayRegistrarInstance
+  PenalizerInstance,
+  RelayRegistrarInstance,
+  TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
@@ -31,6 +33,7 @@ const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
+const TestToken = artifacts.require('TestToken')
 const TestPaymasterVariableGasLimits = artifacts.require('TestPaymasterVariableGasLimits')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
@@ -55,6 +58,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const paymasterData = '0x'
   const clientId = '1'
   const devAddress = '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf'
+  const stake = ether('2')
 
   const senderNonce = new BN('0')
 
@@ -66,6 +70,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterVariableGasLimitsInstance
   let forwarderInstance: IForwarderInstance
+  let testToken: TestTokenInstance
   let encodedFunction
   let signature: string
   let relayRequest: RelayRequest
@@ -73,13 +78,14 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   let contractInteractor: ContractInteractor
 
   async function prepareForHub (config: Partial<RelayHubConfiguration> = {}): Promise<void> {
+    testToken = await TestToken.new()
     forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     paymaster = await TestPaymasterVariableGasLimits.new()
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, config)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString(), config)
     relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
 
     await paymaster.setTrustedForwarder(forwarder)
@@ -95,9 +101,10 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       value: (1).toString()
     })
 
+    await testToken.mint(stake, { from: relayOwner })
+    await testToken.approve(stakeManager.address, stake, { from: relayOwner })
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForRelayManager(relayManager, unstakeDelay, {
-      value: ether('2'),
+    await stakeManager.stakeForRelayManager(testToken.address, relayManager, unstakeDelay, stake, {
       from: relayOwner
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
@@ -583,7 +590,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     toBN(requestedFee).add(toBN(100))).div(toBN(100)).add(toBN(baseRelayFee))
                   const gasDiff = actualCharge.sub(expectedCharge).div(gasPrice).mul(toBN(-1)).toString()
                   assert.equal(actualCharge.toNumber(), expectedCharge.toNumber(),
-                    `actual charge from paymaster different than expected. diff = ${gasDiff}. new nonZeroDevFeeGasOverhead = 
+                    `actual charge from paymaster different than expected. diff = ${gasDiff}. new nonZeroDevFeeGasOverhead =
                     ${parseInt(defaultEnvironment.nonZeroDevFeeGasOverhead.toString()) + parseInt(gasDiff)}`)
 
                   // Validate actual profit is with high precision $(requestedFee) percent higher then ether spent relaying

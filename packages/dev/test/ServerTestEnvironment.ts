@@ -13,6 +13,7 @@ import {
   IRelayHubInstance,
   IRelayRecipientInstance,
   IStakeManagerInstance,
+  TestTokenInstance,
   TestPaymasterEverythingAcceptedInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './ServerTestUtils'
@@ -48,6 +49,7 @@ import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManag
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const StakeManager = artifacts.require('StakeManager')
+const TestToken = artifacts.require('TestToken')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
@@ -69,6 +71,7 @@ export interface PrepareRelayRequestOption {
 }
 
 export class ServerTestEnvironment {
+  testToken!: TestTokenInstance
   stakeManager!: IStakeManagerInstance
   penalizer!: IPenalizerInstance
   relayHub!: IRelayHubInstance
@@ -109,10 +112,11 @@ export class ServerTestEnvironment {
    * different provider from the contract interactor itself.
    */
   async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>): Promise<void> {
-    this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    this.testToken = await TestToken.new()
+    this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     this.penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     // @ts-ignore - IRelayHub and RelayHub types are similar enough for tests to work
-    this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, constants.ZERO_ADDRESS, relayHubConfig)
+    this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, constants.ZERO_ADDRESS, this.testToken.address, 1e18.toString(), relayHubConfig)
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
     this.paymaster = await TestPaymasterEverythingAccepted.new()
@@ -135,11 +139,17 @@ export class ServerTestEnvironment {
         provider: this.provider,
         logger,
         maxPageSize,
-        deployment: { paymasterAddress: this.paymaster.address }
+        deployment: {
+          managerStakeTokenAddress: this.testToken.address,
+          paymasterAddress: this.paymaster.address
+        }
       })
       await this.contractInteractor.init()
     } else {
-      this.contractInteractor = await contractFactory(shared)
+      this.contractInteractor = await contractFactory({
+        paymasterAddress: this.paymaster.address,
+        managerStakeTokenAddress: this.testToken.address
+      })
     }
     const mergedConfig = Object.assign({}, shared, clientConfig)
     this.relayClient = new RelayClient({
@@ -183,10 +193,11 @@ export class ServerTestEnvironment {
   }
 
   async stakeAndAuthorizeHub (stake: BN, unstakeDelay: number): Promise<void> {
+    await this.testToken.mint(stake, { from: this.relayOwner })
+    await this.testToken.approve(this.stakeManager.address, stake, { from: this.relayOwner })
     // Now owner can do its operations
-    await this.stakeManager.stakeForRelayManager(this.relayServer.managerAddress, unstakeDelay, {
-      from: this.relayOwner,
-      value: stake
+    await this.stakeManager.stakeForRelayManager(this.testToken.address, this.relayServer.managerAddress, unstakeDelay, stake, {
+      from: this.relayOwner
     })
     await this.stakeManager.authorizeHubByOwner(this.relayServer.managerAddress, this.relayHub.address, {
       from: this.relayOwner
@@ -204,7 +215,10 @@ export class ServerTestEnvironment {
     const logger = createServerLogger('error', '', '')
     const managerKeyManager = this._createKeyManager(serverWorkdirs?.managerWorkdir)
     const workersKeyManager = this._createKeyManager(serverWorkdirs?.workersWorkdir)
-    const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir, autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval }, logger)
+    const txStoreManager = new TxStoreManager({
+      workdir: serverWorkdirs?.workdir ?? getTemporaryWorkdirs().workdir,
+      autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval
+    }, logger)
     const gasPriceFetcher = new GasPriceFetcher('', '', this.contractInteractor, logger)
     let reputationManager
     if (config.runPaymasterReputations != null && config.runPaymasterReputations) {

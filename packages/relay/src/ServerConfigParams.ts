@@ -61,6 +61,7 @@ export interface ServerConfigParams {
   workerTargetBalance: number
   managerMinBalance: number
   managerMinStake: string
+  managerStakeTokenAddress: string
   managerTargetBalance: number
   minHubWithdrawalBalance: number
   withdrawToOwnerOnBalance?: number
@@ -122,6 +123,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
   managerMinStake: '1', // 1 wei
+  managerStakeTokenAddress: constants.ZERO_ADDRESS,
   managerTargetBalance: 0.3e18,
   minHubWithdrawalBalance: 0.1e18,
   checkInterval: 10000,
@@ -192,6 +194,7 @@ const ConfigParamsTypes = {
   workerTargetBalance: 'number',
   managerMinBalance: 'number',
   managerMinStake: 'string',
+  managerStakeTokenAddress: 'string',
   managerTargetBalance: 'number',
   minHubWithdrawalBalance: 'number',
   withdrawToOwnerOnBalance: 'number',
@@ -374,6 +377,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
   if (config.ownerAddress == null || config.ownerAddress === constants.ZERO_ADDRESS) error('missing param: ownerAddress')
+  if (config.managerStakeTokenAddress == null || config.managerStakeTokenAddress === constants.ZERO_ADDRESS) error('missing param: managerStakeTokenAddress')
   const finalConfig = { ...serverDefaultConfiguration, ...config }
   validateBalanceParams(finalConfig)
   return {

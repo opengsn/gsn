@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await */
 // This rule seems to be flickering and buggy - does not understand async arrow functions correctly
-import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
+import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 
 import { Transaction, AccessListEIP2930Transaction, FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
@@ -18,7 +18,7 @@ import {
   PenalizerInstance,
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance
+  TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
@@ -26,12 +26,13 @@ import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { StakeUnlocked } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { getDataAndSignature, constants } from '@opengsn/common/dist'
-import { toBN } from 'web3-utils'
+import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
+const TestToken = artifacts.require('TestToken')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const Forwarder = artifacts.require('Forwarder')
 
@@ -47,6 +48,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
   let penalizer: PenalizerInstance
   let recipient: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
+  let testToken: TestTokenInstance
   let transactionOptions: TxOptions
 
   let forwarder: string
@@ -54,6 +56,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
   const relayWorker = privateToAddress(relayWorkerPrivateKey).toString('hex')
   const anotherRelayWorkerPrivateKey = Buffer.from('4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356', 'hex')
   const anotherRelayWorker = privateToAddress(anotherRelayWorkerPrivateKey).toString('hex')
+  const stake = ether('1')
 
   const encodedCallArgs = {
     sender,
@@ -77,9 +80,10 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
   }
   // TODO: 'before' is a bad thing in general. Use 'beforeEach', this tests all depend on each other!!!
   before(async function () {
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    testToken = await TestToken.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, 40)
-    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     const forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
@@ -88,10 +92,12 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     encodedCallArgs.paymaster = paymaster.address
+
+    await testToken.mint(stake, { from: relayOwner })
+    await testToken.approve(stakeManager.address, stake, { from: relayOwner })
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForRelayManager(relayManager, 1000, {
-      from: relayOwner,
-      value: ether('1')
+    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, stake, {
+      from: relayOwner
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
     await paymaster.setTrustedForwarder(forwarder)
@@ -113,8 +119,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
   })
 
   describe('penalizations', function () {
-    const stake = ether('1')
-
     describe('TransactionType penalization', function () {
       let relayRequest: RelayRequest
       let encodedCall: string
@@ -265,9 +269,10 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
     })
 
     before('register reporter as relayer', async function () {
+      await testToken.mint(stake, { from: relayOwner })
+      await testToken.approve(stakeManager.address, stake, { from: relayOwner })
       await stakeManager.setRelayManagerOwner(relayOwner, { from: reporterRelayManager })
-      await stakeManager.stakeForRelayManager(reporterRelayManager, 1000, {
-        value: ether('1'),
+      await stakeManager.stakeForRelayManager(testToken.address, reporterRelayManager, 1000, stake, {
         from: relayOwner
       })
       await stakeManager.authorizeHubByOwner(reporterRelayManager, relayHub.address, { from: relayOwner })
@@ -299,8 +304,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         gasPrice: 1e9
       }
 
-      const reporterBalanceTracker = await balance.tracker(defaultOptions.from)
-      const stakeManagerBalanceTracker = await balance.tracker(stakeManager.address)
+      const reporterBalanceTracker = await balanceTrackerErc20(testToken.address, defaultOptions.from!)
+      const stakeManagerBalanceTracker = await balanceTrackerErc20(testToken.address, stakeManager.address)
       const stakeInfo = await stakeManager.stakes(relayManager)
       // @ts-ignore (names)
       const stake = stakeInfo.stake
@@ -316,8 +321,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             reject(reason)
           })
       )
-      // @ts-ignore
-      const txCost = toBN(receipt.gasUsed).mul(toBN(receipt.effectiveGasPrice))
       /*
        * TODO: abiDecoder is needed to decode raw Web3.js transactions
       await expectEvent.inTransaction(rec, Penalizer, {
@@ -328,7 +331,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
 
        */
       // The reporter gets half of the stake
-      expect(await reporterBalanceTracker.delta()).to.be.bignumber.equals(stake.divn(2).sub(txCost))
+      expect(await reporterBalanceTracker.delta()).to.be.bignumber.equals(stake.divn(2))
 
       // The other half is burned, so StakeManager's balance is decreased by the full stake
       expect(await stakeManagerBalanceTracker.delta()).to.be.bignumber.equals(stake.neg())
@@ -440,8 +443,9 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       })
 
       beforeEach('staking for relay', async function () {
-        await stakeManager.stakeForRelayManager(relayManager, 1000, {
-          value: stake,
+        await testToken.mint(stake, { from: relayOwner })
+        await testToken.approve(stakeManager.address, stake, { from: relayOwner })
+        await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, stake, {
           from: relayOwner
         })
         await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
@@ -542,9 +546,11 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
 
         it('penalizes relay worker transactions to illegal RelayHub functions (stake)', async function () {
           await stakeManager.setRelayManagerOwner(relayWorker, { from: other })
+
+          await testToken.mint(stake, { from: relayWorker })
+          await testToken.approve(stakeManager.address, stake, { from: relayWorker })
           // Relay staking for a second relay
-          const { tx } = await stakeManager.stakeForRelayManager(other, 1000, {
-            value: ether('1'),
+          const { tx } = await stakeManager.stakeForRelayManager(testToken.address, other, 1000, stake, {
             from: relayWorker
           })
           const { data, signature } = await getDataAndSignatureFromHash(tx, chainId)
@@ -682,9 +688,10 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
 
         context('with staked and locked relay manager and ', function () {
           beforeEach(async function () {
-            await stakeManager.stakeForRelayManager(relayManager, 1000, {
-              from: relayOwner,
-              value: ether('1')
+            await testToken.mint(stake, { from: relayOwner })
+            await testToken.approve(stakeManager.address, stake, { from: relayOwner })
+            await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, stake, {
+              from: relayOwner
             })
           })
 

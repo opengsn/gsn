@@ -5,7 +5,7 @@ import {
   PenalizerInstance,
   RelayHubInstance, RelayRegistrarInstance,
   StakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance
+  TestPaymasterEverythingAcceptedInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub } from './TestUtils'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
@@ -14,23 +14,27 @@ import { constants } from '@opengsn/common'
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
+const TestToken = artifacts.require('TestToken')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, relayWorker1, relayWorker2, relayWorker3]) {
   const baseRelayFee = new BN('10')
   const pctRelayFee = new BN('20')
+  const stake = ether('2')
   const relayUrl = 'http://new-relay.com'
 
   let relayHub: RelayHubInstance
   let relayRegistrar: RelayRegistrarInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   let stakeManager: StakeManagerInstance
+  let testToken: TestTokenInstance
   let penalizer: PenalizerInstance
 
   beforeEach(async function () {
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    testToken = await TestToken.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
+    relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setRelayHub(relayHub.address)
@@ -44,11 +48,13 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
         }),
         'relay manager not staked')
     })
+
     context('after stake unlocked for relayManager', function () {
       beforeEach(async function () {
+        await testToken.mint(stake, { from: relayOwner })
+        await testToken.approve(stakeManager.address, stake, { from: relayOwner })
         await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-        await stakeManager.stakeForRelayManager(relayManager, 2000, {
-          value: ether('2'),
+        await stakeManager.stakeForRelayManager(testToken.address, relayManager, 2000, stake, {
           from: relayOwner
         })
         await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
@@ -59,16 +65,17 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
       it('should not allow relayManager to register a relay server', async function () {
         await expectRevert(
           relayRegistrar.registerRelayServer(baseRelayFee, pctRelayFee, relayUrl, { from: relayManager }),
-          'relay manager not staked')
+          'this hub is not authorized by SM')
       })
     })
   })
 
   context('with stake for relayManager and no active workers added', function () {
     beforeEach(async function () {
+      await testToken.mint(stake, { from: relayOwner })
+      await testToken.approve(stakeManager.address, stake, { from: relayOwner })
       await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-      await stakeManager.stakeForRelayManager(relayManager, 2000, {
-        value: ether('2'),
+      await stakeManager.stakeForRelayManager(testToken.address, relayManager, 2000, stake, {
         from: relayOwner
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
@@ -100,9 +107,10 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
 
   context('with stake for relay manager and active relay workers', function () {
     beforeEach(async function () {
+      await testToken.mint(stake, { from: relayOwner })
+      await testToken.approve(stakeManager.address, stake, { from: relayOwner })
       await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-      await stakeManager.stakeForRelayManager(relayManager, 2000, {
-        value: ether('2'),
+      await stakeManager.stakeForRelayManager(testToken.address, relayManager, 2000, stake, {
         from: relayOwner
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })

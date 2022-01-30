@@ -11,7 +11,7 @@ import {
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance, TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance
+  TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
@@ -26,6 +26,7 @@ const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestRecipient = artifacts.require('TestRecipient')
+const TestToken = artifacts.require('TestToken')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('RelayHub Configuration',
@@ -46,6 +47,7 @@ contract('RelayHub Configuration',
     const senderNonce = new BN('0')
     const maxAcceptanceBudget = 10e6
     const blocksForward = 10
+    const stake = ether('2')
 
     let relayHub: RelayHubInstance
     let relayRegistrar: RelayRegistrarInstance
@@ -54,6 +56,7 @@ contract('RelayHub Configuration',
     let recipient: TestRecipientInstance
     let paymaster: TestPaymasterEverythingAcceptedInstance
     let forwarderInstance: ForwarderInstance
+    let testToken: TestTokenInstance
     let encodedFunction
     let signature: string
     let relayRequest: RelayRequest
@@ -61,15 +64,16 @@ contract('RelayHub Configuration',
     let relayHubOwner: string
 
     beforeEach(async function prepareForHub () {
+      testToken = await TestToken.new()
       forwarderInstance = await Forwarder.new()
       forwarder = forwarderInstance.address
       recipient = await TestRecipient.new(forwarder)
       paymaster = await TestPaymasterEverythingAccepted.new()
-      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
       penalizer = await Penalizer.new(
         defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
         defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-      relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
+      relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
       relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
@@ -81,9 +85,10 @@ contract('RelayHub Configuration',
         from: other
       })
 
+      await testToken.mint(stake, { from: relayOwner })
+      await testToken.approve(stakeManager.address, stake, { from: relayOwner })
       await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-      await stakeManager.stakeForRelayManager(relayManager, unstakeDelay, {
-        value: ether('2'),
+      await stakeManager.stakeForRelayManager(testToken.address, relayManager, unstakeDelay, stake, {
         from: relayOwner
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
@@ -249,7 +254,6 @@ contract('RelayHub Configuration',
             postOverhead: 0xef.toString(),
             gasReserve: 0xef.toString(),
             maxWorkerCount: 0xef.toString(),
-            minimumStake: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
             devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
             devFee: 0x11.toString()

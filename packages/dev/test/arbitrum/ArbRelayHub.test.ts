@@ -4,7 +4,7 @@ import { ether, expectEvent } from '@openzeppelin/test-helpers'
 import {
   ArbRelayHubInstance,
   ForwarderInstance,
-  StakeManagerInstance
+  StakeManagerInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { constants, defaultEnvironment, environments, getEip712Signature } from '@opengsn/common'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
@@ -13,6 +13,7 @@ import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUt
 import { TransactionRelayed } from '@opengsn/contracts/types/truffle-contracts/RelayHub'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 
+const TestToken = artifacts.require('TestToken')
 const Forwarder = artifacts.require('Forwarder')
 const TestArbSys = artifacts.require('TestArbSys')
 const ArbRelayHub = artifacts.require('ArbRelayHub')
@@ -22,16 +23,21 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
 contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]: string[]) {
+  const stake = ether('2')
+
   let arbRelayHub: ArbRelayHubInstance
   let forwarder: ForwarderInstance
   let stakeManager: StakeManagerInstance
   let relayRegistrar: RelayRegistrarInstance
+  let testToken: TestTokenInstance
 
   before(async function () {
+    testToken = await TestToken.new()
     forwarder = await Forwarder.new()
-    stakeManager = await StakeManager.new(Number.MAX_SAFE_INTEGER)
+    stakeManager = await StakeManager.new(Number.MAX_SAFE_INTEGER, constants.BURN_ADDRESS)
     const testArbSys = await TestArbSys.new()
     arbRelayHub = await ArbRelayHub.new(testArbSys.address, stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, environments.arbitrum.relayHubConfiguration)
+    await arbRelayHub.setMinimumStakes([testToken.address], [stake])
     relayRegistrar = await RelayRegistrar.new(arbRelayHub.address, true)
     await arbRelayHub.setRegistrar(relayRegistrar.address)
   })
@@ -60,9 +66,11 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
         value: ether('1'),
         from: from
       })
+
+      await testToken.mint(stake, { from: relayOwner })
+      await testToken.approve(stakeManager.address, stake, { from: relayOwner })
       await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-      await stakeManager.stakeForRelayManager(relayManager, 1000, {
-        value: ether('2'),
+      await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, stake, {
         from: relayOwner
       })
       await stakeManager.authorizeHubByOwner(relayManager, arbRelayHub.address, { from: relayOwner })

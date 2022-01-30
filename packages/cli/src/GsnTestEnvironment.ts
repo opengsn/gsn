@@ -22,6 +22,7 @@ import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClient'
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
+import { constants } from '@opengsn/common'
 
 export interface TestEnvironment {
   contractsDeployment: GSNContractsDeployment
@@ -51,9 +52,11 @@ class GsnTestEnvironmentClass {
     const from = await commandsLogic.findWealthyAccount()
     const deploymentResult = await commandsLogic.deployGsnContracts({
       from,
+      burnAddress: constants.BURN_ADDRESS,
       gasPrice: 1e9.toString(),
       gasLimit: 5000000,
       deployPaymaster: true,
+      deployTestToken: true,
       skipConfirmation: true,
       penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
       relayHubConfiguration: defaultEnvironment.relayHubConfiguration
@@ -71,6 +74,8 @@ class GsnTestEnvironmentClass {
     }
 
     const registerOptions: RegisterOptions = {
+      token: deploymentResult.managerStakeTokenAddress ?? constants.ZERO_ADDRESS,
+      mintToken: true,
       from,
       sleepMs: 100,
       sleepCount: 5,

@@ -123,4 +123,5 @@ export interface StakeInfo {
   unstakeDelay: BN
   withdrawBlock: BN
   owner: Address
+  token: Address
 }

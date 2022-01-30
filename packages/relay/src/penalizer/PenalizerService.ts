@@ -350,8 +350,10 @@ export class PenalizerService {
         error: UNKNOWN_WORKER
       }
     }
-    const staked = await this.contractInteractor.relayHubInstance.isRelayManagerStaked(relayManager)
-    if (!staked) {
+    try {
+      await this.contractInteractor.relayHubInstance.verifyRelayManagerStaked(relayManager)
+    } catch (e) {
+      this.logger.info(e.message)
       return {
         valid: false,
         error: UNSTAKED_RELAY
@@ -369,7 +371,7 @@ export class PenalizerService {
   async validatePenalization (method: any): Promise<{ valid: boolean, error?: string }> {
     try {
       const res = await method.call({
-        from: constants.ZERO_ADDRESS
+        from: constants.BURN_ADDRESS
       })
       this.logger.debug(`res is ${JSON.stringify(res)}`)
       return {

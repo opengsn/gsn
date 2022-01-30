@@ -84,7 +84,6 @@ export interface RelayHubConstructorParams {
   postOverhead: IntString
   gasOverhead: IntString
   minimumUnstakeDelay: IntString
-  minimumStake: IntString
 }
 
 export interface RelayServerInfo {

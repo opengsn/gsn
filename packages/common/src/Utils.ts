@@ -1,6 +1,6 @@
 import BN from 'bn.js'
 import abi from 'web3-eth-abi'
-import web3Utils, { toWei } from 'web3-utils'
+import web3Utils, { fromWei, toWei, toBN } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
 import { Capability, FeeMarketEIP1559Transaction, Transaction, TransactionFactory, TxOptions, TypedTransaction } from '@ethereumjs/tx'
@@ -299,4 +299,18 @@ export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
     }
   }
   return c
+}
+
+export function formatTokenAmount (balance: BN, tokenDecimals: BN, tokenSymbol: string): string {
+  let shiftedBalance: BN
+  if (tokenDecimals.eqn(18)) {
+    shiftedBalance = balance
+  } else if (tokenDecimals.ltn(18)) {
+    const shift = toBN(18).sub(tokenDecimals)
+    shiftedBalance = balance.mul(toBN(10).pow(shift))
+  } else {
+    const shift = tokenDecimals.subn(18)
+    shiftedBalance = balance.div(toBN(10).pow(shift))
+  }
+  return `${fromWei(shiftedBalance)} ${tokenSymbol}`
 }

@@ -1,4 +1,4 @@
-import { ether } from '@opengsn/common/dist/Utils'
+import { constants, ether } from '@opengsn/common'
 
 import { CommandsLogic, RegisterOptions } from '../CommandsLogic'
 import { getNetworkUrl, gsnCommander, getMnemonic } from '../utils'
@@ -24,17 +24,23 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     '--sleepCount <sleepCount>',
     'number of times to sleep before timeout', '5'
   )
+  .option('-t, --token <address>', 'token to be used as a stake, default to 0 meaning native blockchain currency', constants.ZERO_ADDRESS)
+
   .parse(process.argv);
 
 (async () => {
   const host = getNetworkUrl(commander.network)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logger = createCommandsLogger(commander.loglevel)
-  const logic = await new CommandsLogic(host, logger, {}, mnemonic).init()
+  const logic = await new CommandsLogic(host, logger, {
+    managerStakeTokenAddress: commander.token
+  }, mnemonic).init()
   const registerOptions: RegisterOptions = {
     sleepMs: parseInt(commander.sleep),
     sleepCount: parseInt(commander.sleepCount),
     from: commander.from ?? await logic.findWealthyAccount(),
+    token: commander.token,
+    mintToken: false,
     stake: ether(commander.stake),
     funds: ether(commander.funds),
     gasPrice: commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : undefined,
