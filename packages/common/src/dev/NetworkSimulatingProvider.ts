@@ -58,7 +58,7 @@ export class NetworkSimulatingProvider extends WrapperProviderBase {
     this.mempool.delete(txHash)
     return await new Promise((resolve, reject) => {
       if (txPayload == null) {
-        throw new Error('Transaction is not in simulated mempool. It must be already mined')
+        throw new Error(`Transaction ${txHash} is not in simulated mempool. It must be already mined`)
       }
       this.provider.send(txPayload, function (error: (Error | null), result?: JsonRpcResponse) {
         if (error != null || result == null) {

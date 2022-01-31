@@ -305,12 +305,12 @@ export class ServerTestEnvironment {
     assert.deepEqual([], await this.relayServer.transactionManager.txStoreManager.getAll())
   }
 
-  async assertTransactionRelayed (txHash: string, overrideDetails: Partial<GsnTransactionDetails> = {}): Promise<void> {
+  async assertTransactionRelayed (txHash: string, overrideDetails?: Partial<GsnTransactionDetails>): Promise<void> {
     const receipt = await web3.eth.getTransactionReceipt(txHash)
     if (receipt == null) {
       throw new Error('Transaction Receipt not found')
     }
-    const sender = overrideDetails.from ?? this.gasLess
+    const sender = overrideDetails?.from ?? this.gasLess
     const decodedLogs = abiDecoder.decodeLogs(receipt.logs).map(this.relayServer.registrationManager._parseEvent)
     const event1 = decodedLogs.find((e: { name: string }) => e.name === 'SampleRecipientEmitted')
     assert.exists(event1, 'SampleRecipientEmitted not found, maybe transaction was not relayed successfully')
