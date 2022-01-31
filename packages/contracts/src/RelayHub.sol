@@ -206,7 +206,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         console.log("relayCall relayRequest.request.value", relayRequest.request.value);
         console.log("relayCall relayRequest.request.gas", relayRequest.request.gas);
         console.log("relayCall relayRequest.request.nonce", relayRequest.request.nonce);
-        console.log("relayCall relayRequest.request.validUntil", relayRequest.request.validUntil);
+        console.log("relayCall relayRequest.request.validUntilTs", relayRequest.request.validUntilTs);
 
         console.log("relayCall relayRequest.relayData.maxFeePerGas", relayRequest.relayData.maxFeePerGas);
         console.log("relayCall relayRequest.relayData.maxPriorityFeePerGas", relayRequest.relayData.maxPriorityFeePerGas);
