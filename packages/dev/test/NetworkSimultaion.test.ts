@@ -148,8 +148,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
         assert.equal(allBoostedTransactions.size, 0)
       })
 
-      // TODO: unskip this test
-      it.skip('should boost transactions that are not mined after being boosted another time', async function () {
+      it('should boost transactions that are not mined after being boosted another time', async function () {
         await evmMine()
         const latestBlock = await env.web3.eth.getBlock('latest')
         const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
