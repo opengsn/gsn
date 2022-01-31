@@ -2,7 +2,9 @@
 pragma solidity >=0.7.6;
 pragma abicoder v2;
 
-interface IForwarder {
+import "@openzeppelin/contracts/interfaces/IERC165.sol";
+
+interface IForwarder is IERC165 {
 
     struct ForwardRequest {
         address from;

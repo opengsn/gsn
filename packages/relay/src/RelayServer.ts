@@ -133,10 +133,7 @@ export class RelayServer extends EventEmitter {
 
   async pingHandler (paymaster?: string): Promise<PingResponse> {
     if (this.config.runPaymasterReputations && paymaster != null) {
-      const status = await this.reputationManager.getPaymasterStatus(paymaster, this.lastScannedBlock)
-      if (status === PaymasterStatus.BLOCKED || status === PaymasterStatus.ABUSED) {
-        throw new Error(`This paymaster will not be served, status: ${status}`)
-      }
+      await this.validatePaymasterReputation(paymaster, this.lastScannedBlock)
     }
     return {
       relayWorkerAddress: this.workerAddress,
@@ -239,6 +236,9 @@ export class RelayServer extends EventEmitter {
   }
 
   async validatePaymasterReputation (paymaster: Address, currentBlockNumber: number): Promise<void> {
+    if (this._isTrustedPaymaster(paymaster)) {
+      return
+    }
     const status = await this.reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
     if (status === PaymasterStatus.GOOD) {
       return

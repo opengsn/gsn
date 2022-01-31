@@ -27,6 +27,7 @@ import chaiAsPromised from 'chai-as-promised'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 
 const TestRelayHub = artifacts.require('TestRelayHub')
+const TestToken = artifacts.require('TestToken')
 
 const { oneEther } = constants
 
@@ -541,6 +542,24 @@ contract('RegistrationManager', function (accounts) {
 
       it('should not attempt registration if stake amount is too low on hub', async function () {
         await env.stakeAndAuthorizeHub(ether('0.1'), unstakeDelay)
+        await newServer.registrationManager.refreshStake()
+        const receipts = await newServer.registrationManager.attemptRegistration(0)
+        assert.equal(receipts.length, 0)
+        expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
+        expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
+      })
+
+      it('should not attempt registration if incorrect token is staked on hub', async function () {
+        const wrongToken = await TestToken.new()
+        const stake = ether('10')
+        await wrongToken.mint(stake, { from: env.relayOwner })
+        await wrongToken.approve(env.stakeManager.address, stake, { from: env.relayOwner })
+        await env.stakeManager.stakeForRelayManager(wrongToken.address, env.relayServer.managerAddress, unstakeDelay, stake, {
+          from: env.relayOwner
+        })
+        await env.stakeManager.authorizeHubByOwner(env.relayServer.managerAddress, env.relayHub.address, {
+          from: env.relayOwner
+        })
         await newServer.registrationManager.refreshStake()
         const receipts = await newServer.registrationManager.attemptRegistration(0)
         assert.equal(receipts.length, 0)

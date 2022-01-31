@@ -13,14 +13,13 @@
   "scripts": {
     "tsc": "tsc",
     "watch-tsc": "tsc -w",
-    "truffle-compile": "truffle compile",
     "lint": "eslint -f unix .",
     "lint-fix": "yarn lint --fix",
-    "test": "lerna run tsc && truffle --compile-all --network npmtest test",
+    "solpp": "yarn --cwd=\"../..\" solpp",
     "truffle-console": "truffle console",
-    "truffle-test": "truffle test --compile-all ",
+    "test-local": "ENABLE_CONSOLE_LOG=1 yarn solpp && truffle test --compile-all",
+    "gas-calculations": "ENABLE_CONSOLE_LOG=0 yarn solpp && GAS_CALCULATIONS=1 truffle test test/RelayHubGasCalculations.test.ts test/PaymasterCommitment.test.ts --compile-all --network npmtest",
     "test-only": "truffle --network npmtest test",
-    "just-truffle-test": "truffle test",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },
   "dependencies": {

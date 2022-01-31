@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 import "./utils/GsnTypes.sol";
 import "./interfaces/IPaymaster.sol";
@@ -18,6 +19,7 @@ import "./forwarder/IForwarder.sol";
  *  - postRelayedCall
  */
 abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
+    using ERC165Checker for address;
 
     IRelayHub internal relayHub;
     address private _trustedForwarder;
@@ -36,7 +38,9 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
     uint256 constant public CALLDATA_SIZE_LIMIT = 10500;
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
-        return interfaceId == type(IPaymaster).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == type(IPaymaster).interfaceId ||
+            interfaceId == type(Ownable).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function getGasAndDataLimits()
@@ -74,10 +78,12 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
     }
 
     function setRelayHub(IRelayHub hub) public onlyOwner {
+        require(address(hub).supportsInterface(type(IRelayHub).interfaceId), "target is not a valid IRelayHub");
         relayHub = hub;
     }
 
     function setTrustedForwarder(address forwarder) public virtual onlyOwner {
+        require(forwarder.supportsInterface(type(IForwarder).interfaceId), "target is not a valid IForwarder");
         _trustedForwarder = forwarder;
     }
 

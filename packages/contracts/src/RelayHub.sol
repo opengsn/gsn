@@ -7,7 +7,10 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
+import "hardhat/console.sol";
+
 import "./utils/MinLibBytes.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -25,7 +28,8 @@ import "./interfaces/IStakeManager.sol";
 import "./interfaces/IRelayRegistrar.sol";
 import "./interfaces/IStakeManager.sol";
 
-contract RelayHub is IRelayHub, Ownable {
+contract RelayHub is IRelayHub, Ownable, ERC165 {
+    using ERC165Checker for address;
     using SafeMath for uint256;
     using ERC165Checker for address;
 
@@ -86,7 +90,14 @@ contract RelayHub is IRelayHub, Ownable {
         setConfiguration(_config);
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
+        return interfaceId == type(IRelayHub).interfaceId ||
+            interfaceId == type(Ownable).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
     function setRegistrar(address _relayRegistrar) public onlyOwner {
+        require(_relayRegistrar.supportsInterface(type(IRelayRegistrar).interfaceId), "target is not a valid IRegistrar");
         require(relayRegistrar == address(0), "relayRegistrar already set");
         relayRegistrar = _relayRegistrar;
     }
@@ -189,6 +200,34 @@ contract RelayHub is IRelayHub, Ownable {
     override
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
+        // #if ENABLE_CONSOLE_LOG
+        console.log("relayCall relayRequest.request.from", relayRequest.request.from);
+        console.log("relayCall relayRequest.request.to", relayRequest.request.to);
+        console.log("relayCall relayRequest.request.value", relayRequest.request.value);
+        console.log("relayCall relayRequest.request.gas", relayRequest.request.gas);
+        console.log("relayCall relayRequest.request.nonce", relayRequest.request.nonce);
+        console.log("relayCall relayRequest.request.validUntil", relayRequest.request.validUntil);
+
+        console.log("relayCall relayRequest.relayData.maxFeePerGas", relayRequest.relayData.maxFeePerGas);
+        console.log("relayCall relayRequest.relayData.maxPriorityFeePerGas", relayRequest.relayData.maxPriorityFeePerGas);
+        console.log("relayCall relayRequest.relayData.pctRelayFee", relayRequest.relayData.pctRelayFee);
+        console.log("relayCall relayRequest.relayData.baseRelayFee", relayRequest.relayData.baseRelayFee);
+        console.log("relayCall relayRequest.relayData.transactionCalldataGasUsed", relayRequest.relayData.transactionCalldataGasUsed);
+        console.log("relayCall relayRequest.relayData.relayWorker", relayRequest.relayData.relayWorker);
+        console.log("relayCall relayRequest.relayData.paymaster", relayRequest.relayData.paymaster);
+        console.log("relayCall relayRequest.relayData.forwarder", relayRequest.relayData.forwarder);
+        console.log("relayCall relayRequest.relayData.clientId", relayRequest.relayData.clientId);
+
+        console.log("relayCall signature");
+        console.logBytes(signature);
+        console.log("relayCall approvalData");
+        console.logBytes(approvalData);
+        console.log("relayCall relayRequest.request.data");
+        console.logBytes(relayRequest.request.data);
+        console.log("relayCall relayRequest.relayData.paymasterData");
+        console.logBytes(relayRequest.relayData.paymasterData);
+        console.log("relayCall maxAcceptanceBudget", maxAcceptanceBudget);
+        // #endif
         RelayCallData memory vars;
         vars.initialGasLeft = aggregateGasleft();
         vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
