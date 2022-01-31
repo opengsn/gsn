@@ -197,7 +197,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           nonce: senderNonce,
           value: '0',
           gas: gasLimit,
-          validUntil: '0'
+          validUntilTs: '0'
         },
         relayData: {
           pctRelayFee,

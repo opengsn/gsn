@@ -34,7 +34,7 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
-import { toBN, toHex } from 'web3-utils'
+import { toHex } from 'web3-utils'
 
 // forwarder requests are signed with expiration time.
 
@@ -336,10 +336,6 @@ export class RelayClient {
       throw new Error('Contract addresses are not initialized!')
     }
 
-    // valid that many blocks into the future.
-    const validUntilPromise = this.dependencies.contractInteractor.getBlockNumber()
-      .then((num: number) => (toBN(this.config.requestValidBlocks).addn(num)).toString())
-
     const senderNonce = await this.dependencies.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarder)
     const relayWorker = relayInfo.pingResponse.relayWorkerAddress
     const maxFeePerGasHex = gsnTransactionDetails.maxFeePerGas
@@ -361,6 +357,8 @@ export class RelayClient {
     const maxFeePerGas = parseInt(maxFeePerGasHex, 16).toString()
     const maxPriorityFeePerGas = parseInt(maxPriorityFeePerGasHex, 16).toString()
     const value = gsnTransactionDetails.value ?? '0'
+    const secondsNow = Math.round(Date.now() / 1000)
+    const validUntilTs = (secondsNow + this.config.requestValidSeconds).toString()
     const relayRequest: RelayRequest = {
       request: {
         to: gsnTransactionDetails.to,
@@ -369,7 +367,7 @@ export class RelayClient {
         value: value,
         nonce: senderNonce,
         gas: gasLimit,
-        validUntil: await validUntilPromise
+        validUntilTs
       },
       relayData: {
         pctRelayFee: relayInfo.relayInfo.pctRelayFee,

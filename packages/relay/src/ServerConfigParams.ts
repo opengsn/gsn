@@ -73,7 +73,7 @@ export interface ServerConfigParams {
   maxGasPrice: string
   defaultPriorityFee: string
   defaultGasLimit: number
-  requestMinValidBlocks: number
+  requestMinValidSeconds: number
 
   runPenalizer: boolean
   runPaymasterReputations: boolean
@@ -151,7 +151,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   maxGasPrice: 500e9.toString(),
   defaultPriorityFee: 1e9.toString(),
 
-  requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
+  requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
   runPaymasterReputations: true,
   coldRestartLogsFromBlock: 1,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
@@ -199,7 +199,7 @@ const ConfigParamsTypes = {
   minHubWithdrawalBalance: 'number',
   withdrawToOwnerOnBalance: 'number',
   defaultGasLimit: 'number',
-  requestMinValidBlocks: 'number',
+  requestMinValidSeconds: 'number',
 
   trustedPaymasters: 'list',
   blacklistedPaymasters: 'list',

@@ -69,7 +69,7 @@ contract('AccountManager', function (accounts) {
         nonce: '1',
         value: '0',
         gas: '1',
-        validUntil: '0'
+        validUntilTs: '0'
       },
       relayData: {
         pctRelayFee: '1',

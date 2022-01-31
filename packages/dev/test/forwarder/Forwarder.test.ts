@@ -12,6 +12,7 @@ import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { ether, expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
+import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
 require('source-map-support').install({ errorFormatterForce: true })
 
 const TestForwarderTarget = artifacts.require('TestForwarderTarget')
@@ -45,11 +46,11 @@ const ForwardRequestType = [
   { name: 'gas', type: 'uint256' },
   { name: 'nonce', type: 'uint256' },
   { name: 'data', type: 'bytes' },
-  { name: 'validUntil', type: 'uint256' }
+  { name: 'validUntilTs', type: 'uint256' }
 ]
 
 contract('Forwarder', ([from]) => {
-  const GENERIC_PARAMS = 'address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil'
+  const GENERIC_PARAMS = 'address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntilTs'
   // our generic params has 7 bytes32 values
   const countParams = ForwardRequestType.length
 
@@ -164,14 +165,14 @@ contract('Forwarder', ([from]) => {
     })
 
     describe('#verify failures', () => {
-      const req = {
+      const req: ForwardRequest = {
         to: addr(1),
         data: '0x',
         from: senderAddress,
         value: '0',
-        nonce: 0,
-        gas: 123,
-        validUntil: 0
+        nonce: '0',
+        gas: '123',
+        validUntilTs: '0'
       }
 
       it('should fail on unregistered domain separator', async () => {
@@ -193,14 +194,14 @@ contract('Forwarder', ([from]) => {
       })
     })
     describe('#verify success', () => {
-      const req = {
+      const req: ForwardRequest = {
         to: addr(1),
         data: '0x',
         value: '0',
         from: senderAddress,
-        nonce: 0,
-        gas: 123,
-        validUntil: 0
+        nonce: '0',
+        gas: '123',
+        validUntilTs: '0'
       }
 
       let data: EIP712TypedData
@@ -245,7 +246,7 @@ contract('Forwarder', ([from]) => {
           from: senderAddress,
           nonce: 0,
           gas: 123,
-          validUntil: 0,
+          validUntilTs: 0,
           extra: {
             extraAddr: addr(5)
           }
@@ -338,7 +339,7 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         nonce: 0,
         gas: 1e6,
-        validUntil: 0
+        validUntilTs: 0
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
       const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
@@ -367,7 +368,7 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         nonce: nonce.toString(),
         gas: funcGasEtimate,
-        validUntil: 0
+        validUntilTs: 0
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
       const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
@@ -391,7 +392,7 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         nonce: (await fwd.getNonce(senderAddress)).toString(),
         gas: 1e6,
-        validUntil: 0
+        validUntilTs: 0
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -403,14 +404,14 @@ contract('Forwarder', ([from]) => {
     it('should not be able to re-submit after revert (its repeated nonce)', async () => {
       const func = recipient.contract.methods.testRevert().encodeABI()
 
-      const req1 = {
+      const req1: ForwardRequest = {
         to: recipient.address,
         data: func,
-        value: 0,
+        value: '0',
         from: senderAddress,
         nonce: (await fwd.getNonce(senderAddress)).toString(),
-        gas: 1e6,
-        validUntil: 0
+        gas: 1e6.toString(),
+        validUntilTs: '0'
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -432,7 +433,7 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         nonce: (await fwd.getNonce(senderAddress)).toString(),
         gas: 1e6,
-        validUntil: '1' // Math.trunc(Date.now() / 1000 - 10).toString()
+        validUntilTs: '1'
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -460,7 +461,7 @@ contract('Forwarder', ([from]) => {
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
           gas: 1e6,
-          validUntil: 0
+          validUntilTs: '0'
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -479,7 +480,7 @@ contract('Forwarder', ([from]) => {
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: ether('2').toString(),
           gas: 1e6,
-          validUntil: 0
+          validUntilTs: 0
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -499,7 +500,7 @@ contract('Forwarder', ([from]) => {
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
           gas: 1e6,
-          validUntil: 0
+          validUntilTs: 0
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -525,7 +526,7 @@ contract('Forwarder', ([from]) => {
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
           gas: funcEst.toString(),
-          validUntil: 0
+          validUntilTs: 0
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 

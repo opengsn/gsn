@@ -103,7 +103,7 @@ contract('RelayHub Configuration',
           nonce: senderNonce.toString(),
           value: '0',
           gas: gasLimit.toString(),
-          validUntil: '0'
+          validUntilTs: '0'
         },
         relayData: {
           baseRelayFee: baseRelayFee.toString(),
