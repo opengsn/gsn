@@ -2,10 +2,12 @@
 pragma solidity >=0.7.6;
 pragma abicoder v2;
 
+import "@openzeppelin/contracts/interfaces/IERC165.sol";
+
 import "../utils/GsnTypes.sol";
 import "./IStakeManager.sol";
 
-interface IRelayHub {
+interface IRelayHub is IERC165 {
     struct RelayHubConfig {
         // maximum number of worker accounts allowed per manager
         uint256 maxWorkerCount;

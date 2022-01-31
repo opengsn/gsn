@@ -93,6 +93,10 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
     assert.match(version, /2\.\d*\.\d*-?.*\+opengsn\.hub\.irelayhub/)
   })
 
+  it('should reject setRegistrar for an address that does not implement IPaymaster', async function () {
+    await expectRevert(relayHubInstance.setRegistrar(relayHub), 'target is not a valid IRegistrar')
+  })
+
   describe('balances', function () {
     async function testDeposit (sender: string, paymaster: string, amount: BN): Promise<void> {
       const senderBalanceTracker = await balance.tracker(sender)
@@ -169,7 +173,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
       await expectRevert(paymasterContract.withdrawRelayHubDepositTo(amount.addn(1), dest, { from: paymasterOwner }), 'insufficient funds')
     })
 
-    it('cannot deposit for an address that does not implement IPaymaster', async function () {
+    it('should reject depositFor for an address that does not implement IPaymaster', async function () {
       await expectRevert(relayHubInstance.depositFor(target, {
         value: ether('1')
       }), 'target is not a valid IPaymaster')

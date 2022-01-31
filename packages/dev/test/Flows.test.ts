@@ -62,7 +62,7 @@ options.forEach(params => {
     before(async () => {
       await emptyBalance(gasless, accounts[0])
 
-      const gasPriceFactor = 1.2
+      const gasPriceFactor = 1
 
       testToken = await TestToken.new()
       sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)

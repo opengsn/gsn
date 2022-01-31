@@ -439,20 +439,13 @@ contract('ContractInteractor', function (accounts) {
     it('should display amount correctly with 24 decimals', async function () {
       await testDecimalsToken.setDecimals(24)
       const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
-      assert.equal(balanceFormatted, '0.0001 DEC')
+      assert.equal(balanceFormatted, '0.000123456789123456 DEC')
     })
 
     it('should display amount correctly with 18 decimals', async function () {
       await testDecimalsToken.setDecimals(18)
       const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
-      assert.equal(balanceFormatted, '123.4567 DEC')
-    })
-
-    it('should display amount correctly with 18 decimals but no visible fractional part', async function () {
-      await testDecimalsToken.setDecimals(18)
-      await testDecimalsToken.mint('123000009123456789123', { from: accounts[2] })
-      const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[2])
-      assert.equal(balanceFormatted, '123 DEC')
+      assert.equal(balanceFormatted, '123.456789123456789123 DEC')
     })
 
     it('should display amount correctly with 18 decimals but 0 total balance', async function () {
@@ -464,7 +457,7 @@ contract('ContractInteractor', function (accounts) {
     it('should display amount correctly with 6 decimals', async function () {
       await testDecimalsToken.setDecimals(6)
       const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
-      assert.equal(balanceFormatted, '123456789123456.7891 DEC')
+      assert.equal(balanceFormatted, '123456789123456.789123 DEC')
     })
 
     it('should display amount correctly with 2 decimals', async function () {
