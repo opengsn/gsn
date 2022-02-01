@@ -46,11 +46,11 @@ const ForwardRequestType = [
   { name: 'gas', type: 'uint256' },
   { name: 'nonce', type: 'uint256' },
   { name: 'data', type: 'bytes' },
-  { name: 'validUntilTs', type: 'uint256' }
+  { name: 'validUntilTime', type: 'uint256' }
 ]
 
 contract('Forwarder', ([from]) => {
-  const GENERIC_PARAMS = 'address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntilTs'
+  const GENERIC_PARAMS = 'address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntilTime'
   // our generic params has 7 bytes32 values
   const countParams = ForwardRequestType.length
 
@@ -172,7 +172,7 @@ contract('Forwarder', ([from]) => {
         value: '0',
         nonce: '0',
         gas: '123',
-        validUntilTs: '0'
+        validUntilTime: '0'
       }
 
       it('should fail on unregistered domain separator', async () => {
@@ -201,7 +201,7 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         nonce: '0',
         gas: '123',
-        validUntilTs: '0'
+        validUntilTime: '0'
       }
 
       let data: EIP712TypedData
@@ -246,7 +246,7 @@ contract('Forwarder', ([from]) => {
           from: senderAddress,
           nonce: 0,
           gas: 123,
-          validUntilTs: 0,
+          validUntilTime: 0,
           extra: {
             extraAddr: addr(5)
           }
@@ -339,7 +339,7 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         nonce: 0,
         gas: 1e6,
-        validUntilTs: 0
+        validUntilTime: 0
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
       const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
@@ -368,7 +368,7 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         nonce: nonce.toString(),
         gas: funcGasEtimate,
-        validUntilTs: 0
+        validUntilTime: 0
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
       const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
@@ -392,7 +392,7 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         nonce: (await fwd.getNonce(senderAddress)).toString(),
         gas: 1e6,
-        validUntilTs: 0
+        validUntilTime: 0
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -411,7 +411,7 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         nonce: (await fwd.getNonce(senderAddress)).toString(),
         gas: 1e6.toString(),
-        validUntilTs: '0'
+        validUntilTime: '0'
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -433,7 +433,7 @@ contract('Forwarder', ([from]) => {
         from: senderAddress,
         nonce: (await fwd.getNonce(senderAddress)).toString(),
         gas: 1e6,
-        validUntilTs: '1'
+        validUntilTime: '1'
       }
       const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -461,7 +461,7 @@ contract('Forwarder', ([from]) => {
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
           gas: 1e6,
-          validUntilTs: '0'
+          validUntilTime: '0'
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -480,7 +480,7 @@ contract('Forwarder', ([from]) => {
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: ether('2').toString(),
           gas: 1e6,
-          validUntilTs: 0
+          validUntilTime: 0
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -500,7 +500,7 @@ contract('Forwarder', ([from]) => {
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
           gas: 1e6,
-          validUntilTs: 0
+          validUntilTime: 0
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 
@@ -526,7 +526,7 @@ contract('Forwarder', ([from]) => {
           nonce: (await fwd.getNonce(senderAddress)).toString(),
           value: value.toString(),
           gas: funcEst.toString(),
-          validUntilTs: 0
+          validUntilTime: 0
         }
         const sig = signTypedData_v4(senderPrivateKey, { data: { ...data, message: req1 } })
 

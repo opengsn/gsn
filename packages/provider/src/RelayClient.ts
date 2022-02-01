@@ -358,7 +358,7 @@ export class RelayClient {
     const maxPriorityFeePerGas = parseInt(maxPriorityFeePerGasHex, 16).toString()
     const value = gsnTransactionDetails.value ?? '0'
     const secondsNow = Math.round(Date.now() / 1000)
-    const validUntilTs = (secondsNow + this.config.requestValidSeconds).toString()
+    const validUntilTime = (secondsNow + this.config.requestValidSeconds).toString()
     const relayRequest: RelayRequest = {
       request: {
         to: gsnTransactionDetails.to,
@@ -367,7 +367,7 @@ export class RelayClient {
         value: value,
         nonce: senderNonce,
         gas: gasLimit,
-        validUntilTs
+        validUntilTime
       },
       relayData: {
         pctRelayFee: relayInfo.relayInfo.pctRelayFee,

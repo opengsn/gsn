@@ -85,7 +85,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
           nonce: '0',
           value: '0',
           gas: '1000000',
-          validUntilTs: '0'
+          validUntilTime: '0'
         },
         relayData: {
           pctRelayFee: '0',

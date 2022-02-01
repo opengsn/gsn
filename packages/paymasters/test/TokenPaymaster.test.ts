@@ -103,7 +103,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
         data: recipient.contract.methods.test().encodeABI(),
         nonce: '0',
         value: '0',
-        validUntilTs: '0',
+        validUntilTime: '0',
         from,
         to: recipient.address,
         gas: 1e6.toString()

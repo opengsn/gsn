@@ -146,7 +146,7 @@ contract('ContractInteractor', function (accounts) {
           nonce: '1',
           value: '0',
           gas: '50000',
-          validUntilTs: '0'
+          validUntilTime: '0'
         },
         relayData: {
           maxFeePerGas: '11',
@@ -212,7 +212,7 @@ contract('ContractInteractor', function (accounts) {
           nonce: '1',
           value: '0',
           gas: '50000',
-          validUntilTs: '0'
+          validUntilTime: '0'
         },
         relayData: {
           maxFeePerGas: '1',

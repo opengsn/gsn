@@ -121,7 +121,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         nonce: senderNonce.toString(),
         value: '0',
         gas: gasLimit.toString(),
-        validUntilTs: '0'
+        validUntilTime: '0'
       },
       relayData: {
         baseRelayFee: baseFee.toString(),
@@ -339,7 +339,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               nonce: senderNonce,
               value: '0',
               gas: gasLimit.toString(),
-              validUntilTs: '0'
+              validUntilTime: '0'
             },
             relayData: {
               baseRelayFee: '0',
@@ -434,7 +434,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               nonce: senderNonce,
               value: '0',
               gas: gasLimit.toString(),
-              validUntilTs: '0'
+              validUntilTime: '0'
             },
             relayData: {
               baseRelayFee: '0',
@@ -522,7 +522,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                       nonce: senderNonce,
                       value: '0',
                       gas: gasLimit.toString(),
-                      validUntilTs: '0'
+                      validUntilTime: '0'
                     },
                     relayData: {
                       baseRelayFee,

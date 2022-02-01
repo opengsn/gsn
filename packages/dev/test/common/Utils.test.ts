@@ -82,7 +82,7 @@ contract('Utils', function (accounts) {
           nonce: senderNonce,
           value: '0',
           gas: gasLimit,
-          validUntilTs: '0'
+          validUntilTime: '0'
         },
         relayData: {
           maxFeePerGas,

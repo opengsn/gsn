@@ -59,7 +59,7 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       nonce: senderNonce,
       value: '0',
       gas: '10000',
-      validUntilTs: '0'
+      validUntilTime: '0'
     },
     relayData: {
       pctRelayFee: '1',

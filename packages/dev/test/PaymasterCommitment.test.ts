@@ -191,7 +191,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
           nonce: senderNonce,
           value: '0',
           gas: gasLimit,
-          validUntilTs: '0'
+          validUntilTime: '0'
         },
         relayData: {
           pctRelayFee,

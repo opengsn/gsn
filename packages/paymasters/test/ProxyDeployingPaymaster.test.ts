@@ -139,7 +139,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
         to: recipient.address,
         nonce: '0',
         value: '0',
-        validUntilTs: '0',
+        validUntilTime: '0',
         gas: 1e6.toString(),
         data: recipient.contract.methods.test().encodeABI()
       },
@@ -371,7 +371,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
           nonce: '0',
           value: '0',
           data: '0x',
-          validUntilTs: '0',
+          validUntilTime: '0',
           gas: 1e6.toString()
         },
         relayData: {
