@@ -112,7 +112,7 @@ interface IStakeManager {
     /**
      * @return the block number in which the contract has been deployed.
      */
-    function creationBlock() external view returns (uint256);
+    function getCreationBlock() external view returns (uint256);
 
     function versionSM() external view returns (string memory);
 }

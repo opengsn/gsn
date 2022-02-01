@@ -197,13 +197,13 @@ interface IRelayHub is IERC165 {
     // Checks hubs' deprecation status
     function isDeprecated() external view returns (bool);
 
+    // Returns the timestamp from which the hub no longer allows relaying calls.
+    function deprecationTime() external view returns (uint256);
+
     /**
      * @return the block number in which the contract has been deployed.
      */
-    function creationBlock() external view returns (uint256);
-
-    // Returns the timestamp from which the hub no longer allows relaying calls.
-    function deprecationTime() external view returns (uint256);
+    function getCreationBlock() external view returns (uint256);
 
     /// @return a SemVer-compliant version of the hub contract
     function versionHub() external view returns (string memory);
