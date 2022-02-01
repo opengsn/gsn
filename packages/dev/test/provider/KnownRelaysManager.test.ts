@@ -37,7 +37,7 @@ export async function stake (testToken: TestTokenInstance, stakeManager: StakeMa
   await testToken.mint(stake, { from: owner })
   await testToken.approve(stakeManager.address, stake, { from: owner })
   await stakeManager.setRelayManagerOwner(owner, { from: manager })
-  await stakeManager.stakeForRelayManager(testToken.address, manager, 1000, stake, {
+  await stakeManager.stakeForRelayManager(testToken.address, manager, 15000, stake, {
     from: owner
   })
   await stakeManager.authorizeHubByOwner(manager, relayHub.address, { from: owner })

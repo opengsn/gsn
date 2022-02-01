@@ -63,7 +63,7 @@ export class RegistrationManager {
 
   lastMinedRegisterTransaction?: EventData
   lastWorkerAddedTransaction?: EventData
-  private delayedEvents: Array<{ block: number, eventData: EventData }> = []
+  private delayedEvents: Array<{ time: number, eventData: EventData }> = []
 
   get isHubAuthorized (): boolean {
     return this._isHubAuthorized
@@ -199,7 +199,7 @@ export class RegistrationManager {
           this.logger.warn(`Handling HubUnauthorized event: ${JSON.stringify(eventData)} in block ${currentBlock}`)
           if (isSameAddress(eventData.returnValues.relayHub, this.hubAddress)) {
             this.isHubAuthorized = false
-            this.delayedEvents.push({ block: eventData.returnValues.removalBlock.toString(), eventData })
+            this.delayedEvents.push({ time: eventData.returnValues.removalTime.toString(), eventData })
           }
           break
         case StakeUnlocked:
@@ -217,7 +217,11 @@ export class RegistrationManager {
     await this.updateLatestRegistrationTxs(hubEventsSinceLastScan)
 
     // handle HubUnauthorized only after the due time
-    for (const eventData of this._extractDuePendingEvents(currentBlock)) {
+    // TODO: avoid querying time from RPC; reorganize code
+    const currentBlockObject = await this.contractInteractor.getBlock(currentBlock)
+    // In case 'currentBlock' is not found on the node, nothing is due
+    const currentBlockTime = currentBlockObject?.timestamp ?? 0
+    for (const eventData of this._extractDuePendingEvents(currentBlockTime)) {
       switch (eventData.event) {
         case HubUnauthorized:
           transactionHashes = transactionHashes.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock))
@@ -233,9 +237,10 @@ export class RegistrationManager {
     return transactionHashes
   }
 
-  _extractDuePendingEvents (currentBlock: number): EventData[] {
-    const ret = this.delayedEvents.filter(event => event.block <= currentBlock).map(e => e.eventData)
-    this.delayedEvents = [...this.delayedEvents.filter(event => event.block > currentBlock)]
+  _extractDuePendingEvents (currentBlockTime: number | string): EventData[] {
+    const currentBlockTimeNumber = parseInt(currentBlockTime.toString())
+    const ret = this.delayedEvents.filter(event => event.time <= currentBlockTimeNumber).map(e => e.eventData)
+    this.delayedEvents = [...this.delayedEvents.filter(event => event.time > currentBlockTimeNumber)]
     return ret
   }
 
@@ -328,8 +333,8 @@ export class RegistrationManager {
       return
     }
 
-    // a locked stake does not have the 'withdrawBlock' field set
-    this.isStakeLocked = stakeInfo.withdrawBlock.toString() === '0'
+    // a locked stake does not have the 'withdrawTime' field set
+    this.isStakeLocked = stakeInfo.withdrawTime.toString() === '0'
     this.stakeRequired.currentValue = stake
 
     // first time getting stake, setting owner

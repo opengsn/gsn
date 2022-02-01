@@ -171,7 +171,7 @@ export async function startRelay (
   }
 
   const amount = options.stake || ether('1')
-  await stakeManager.stakeForRelayManager(testToken.address, relayManagerAddress, options.delay || 2000, amount, {
+  await stakeManager.stakeForRelayManager(testToken.address, relayManagerAddress, options.delay || 15000, amount, {
     from: options.relayOwner
   })
   await sleep(500)
@@ -212,6 +212,23 @@ export async function increaseTime (time: number): Promise<void> {
       evmMine()
         .then((r: any) => resolve(r))
         .catch((e: Error) => reject(e))
+    })
+  })
+}
+export async function setNextBlockTimestamp (time: number | BN): Promise<void> {
+  return await new Promise((resolve, reject) => {
+    // @ts-ignore
+    web3.currentProvider.send({
+      jsonrpc: '2.0',
+      method: 'evm_setNextBlockTimestamp',
+      params: [parseInt(time.toString())],
+      id: Date.now()
+    }, (e: Error | null, r: any) => {
+      if (e) {
+        reject(e)
+      } else {
+        resolve(r)
+      }
     })
   })
 }

@@ -75,7 +75,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     mapping(address => uint256) internal balances;
 
     uint256 public override creationBlock;
-    uint256 public override deprecationBlock = type(uint).max;
+    uint256 public override deprecationTime = type(uint).max;
 
     constructor (
         IStakeManager _stakeManager,
@@ -474,18 +474,18 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         require(info.stake >= minimumStake, "stake amount is too small");
         require(minimumStake != 0, "staking this token is forbidden");
         require(info.unstakeDelay >= config.minimumUnstakeDelay, "unstake delay is too small");
-        require(info.withdrawBlock == 0, "stake has been withdrawn");
+        require(info.withdrawTime == 0, "stake has been withdrawn");
         require(isHubAuthorized, "this hub is not authorized by SM");
     }
 
-    function deprecateHub(uint256 fromBlock) public override onlyOwner {
-        require(deprecationBlock > block.number, "Already deprecated");
-        deprecationBlock = fromBlock;
-        emit HubDeprecated(fromBlock);
+    function deprecateHub(uint256 _deprecationTime) public override onlyOwner {
+        require(!isDeprecated(), "Already deprecated");
+        deprecationTime = _deprecationTime;
+        emit HubDeprecated(deprecationTime);
     }
 
     function isDeprecated() public override view returns (bool) {
-        return block.number >= deprecationBlock;
+        return block.timestamp >= deprecationTime;
     }
 
     modifier penalizerOnly () {

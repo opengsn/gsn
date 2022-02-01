@@ -12,7 +12,7 @@ import { configureServer, ServerConfigParams, ServerDependencies } from '@opengs
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { constants } from '@opengsn/common/dist/Constants'
 
-import { evmMine, evmMineMany, revert, snapshot } from './TestUtils'
+import { evmMine, revert, setNextBlockTimestamp, snapshot } from './TestUtils'
 
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
@@ -36,7 +36,7 @@ chai.use(sinonChai)
 
 const workerIndex = 0
 
-const unstakeDelay = 50
+const unstakeDelay = 15000
 contract('RegistrationManager', function (accounts) {
   const relayOwner = accounts[4]
   const anotherRelayer = accounts[5]
@@ -289,8 +289,11 @@ contract('RegistrationManager', function (accounts) {
         await newServer._worker(latestBlock.number + 1)
 
         await env.relayHub.depositFor(newServer.managerAddress, { value: 1e18.toString() })
-        await env.stakeManager.unlockStake(newServer.managerAddress, { from: relayOwner })
-        await evmMineMany(unstakeDelay)
+        const { receipt } = await env.stakeManager.unlockStake(newServer.managerAddress, { from: relayOwner })
+        const minedInBlock = await web3.eth.getBlock(receipt.blockNumber)
+        const minedBlockTimestamp = parseInt(minedInBlock.timestamp.toString())
+        const removalTime = toBN(unstakeDelay).add(toBN(minedBlockTimestamp)).addn(1)
+        await setNextBlockTimestamp(removalTime)
         await env.stakeManager.withdrawStake(newServer.managerAddress, { from: relayOwner })
       })
 
@@ -370,7 +373,6 @@ contract('RegistrationManager', function (accounts) {
         await env.stakeManager.unauthorizeHubByOwner(newServer.managerAddress, env.relayHub.address, { from: relayOwner })
         const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
 
-        await evmMineMany(unstakeDelay - 3)
         const latestBlock = await env.web3.eth.getBlock('latest')
 
         const receipt = await newServer._worker(latestBlock.number)
@@ -383,12 +385,11 @@ contract('RegistrationManager', function (accounts) {
 
       it('should ignore unauthorizeHub of another hub', async function () {
         await env.stakeManager.setRelayManagerOwner(env.relayOwner, { from: anotherRelayer })
-        await env.stakeManager.stakeForRelayManager(env.testToken.address, anotherRelayer, 1000, 0, { from: env.relayOwner })
+        await env.stakeManager.stakeForRelayManager(env.testToken.address, anotherRelayer, 15000, 0, { from: env.relayOwner })
         await env.stakeManager.authorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
         await env.stakeManager.unauthorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
         const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
 
-        await evmMineMany(unstakeDelay)
         const latestBlock = await env.web3.eth.getBlock('latest')
         const receipts = await newServer._worker(latestBlock.number)
         const receipts2 = await newServer._worker(latestBlock.number + 1)
@@ -400,7 +401,10 @@ contract('RegistrationManager', function (accounts) {
       })
 
       it('send only workers\' balances to owner (not manager hub,eth balance) - after unstake delay', async function () {
-        await env.stakeManager.unauthorizeHubByOwner(newServer.managerAddress, env.relayHub.address, { from: relayOwner })
+        const { receipt } = await env.stakeManager.unauthorizeHubByOwner(newServer.managerAddress, env.relayHub.address, { from: relayOwner })
+        const minedInBlock = await web3.eth.getBlock(receipt.blockNumber)
+        const minedBlockTimestamp = parseInt(minedInBlock.timestamp.toString())
+        const withdrawalTime = toBN(unstakeDelay).add(toBN(minedBlockTimestamp)).addn(1)
 
         const managerHubBalanceBefore = await env.relayHub.balanceOf(newServer.managerAddress)
         const managerBalanceBefore = await newServer.getManagerBalance()
@@ -410,11 +414,14 @@ contract('RegistrationManager', function (accounts) {
         assert.isTrue(workerBalanceBefore.gtn(0))
         const ownerBalanceBefore = toBN(await env.web3.eth.getBalance(relayOwner))
         assert.isTrue(newServer.registrationManager.isHubAuthorized, 'Hub should be authorized in server')
-        await evmMineMany(unstakeDelay)
+
+        await setNextBlockTimestamp(withdrawalTime)
+        await evmMine()
         const latestBlock = await env.web3.eth.getBlock('latest')
         const receipts = await newServer._worker(latestBlock.number)
         assert.isFalse(newServer.registrationManager.isHubAuthorized, 'Hub should not be authorized in server')
         const gasPrice = await env.web3.eth.getGasPrice()
+        assert.equal(receipts.length, 2)
         // TODO: these two hard-coded indexes are dependent on the order of operations in 'withdrawAllFunds'
         const workerEthTxCost: BN = await getTotalTxCosts([receipts[1]], gasPrice)
         const managerHubSendTxCost = await getTotalTxCosts([receipts[0]], gasPrice)
@@ -450,9 +457,9 @@ contract('RegistrationManager', function (accounts) {
       rm = relayServer.registrationManager;
 
       (rm as any).delayedEvents = [
-        { block: 1, eventData: 'event1' },
-        { block: 2, eventData: 'event2' },
-        { block: 3, eventData: 'event3' }
+        { time: 1, eventData: 'event1' },
+        { time: 2, eventData: 'event2' },
+        { time: 3, eventData: 'event3' }
       ]
       extracted = rm._extractDuePendingEvents(2) as any
     })
@@ -461,7 +468,7 @@ contract('RegistrationManager', function (accounts) {
     })
 
     it('should leave future events in the delayedEvents list', function () {
-      assert.deepEqual((rm as any).delayedEvents, [{ block: 3, eventData: 'event3' }])
+      assert.deepEqual((rm as any).delayedEvents, [{ time: 3, eventData: 'event3' }])
     })
   })
 

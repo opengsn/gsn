@@ -1,4 +1,5 @@
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
+import { toBN } from 'web3-utils'
 import { expect } from 'chai'
 import { evmMineMany, revert, snapshot } from './TestUtils'
 import BN from 'bn.js'
@@ -335,21 +336,25 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
 
     it('should allow relayOwner to unauthorize an authorized hub', async function () {
       const { logs, receipt } = await stakeManager.unauthorizeHubByOwner(relayManager, anyRelayHub, { from: owner })
-      const removalBlock = initialUnstakeDelay.addn(receipt.blockNumber)
+      const minedInBlock = await web3.eth.getBlock(receipt.blockNumber)
+      const minedBlockTimestamp = parseInt(minedInBlock.timestamp.toString())
+      const removalTime = initialUnstakeDelay.add(toBN(minedBlockTimestamp))
       expectEvent.inLogs(logs, 'HubUnauthorized', {
         relayManager,
         relayHub: anyRelayHub,
-        removalBlock
+        removalTime
       })
     })
 
     it('should allow relayManager to unauthorize an authorized hub', async function () {
       const { logs, receipt } = await stakeManager.unauthorizeHubByManager(anyRelayHub, { from: relayManager })
-      const removalBlock = initialUnstakeDelay.addn(receipt.blockNumber)
+      const minedInBlock = await web3.eth.getBlock(receipt.blockNumber)
+      const minedBlockTimestamp = parseInt(minedInBlock.timestamp.toString())
+      const removalTime = initialUnstakeDelay.add(toBN(minedBlockTimestamp))
       expectEvent.inLogs(logs, 'HubUnauthorized', {
         relayManager,
         relayHub: anyRelayHub,
-        removalBlock
+        removalTime
       })
     })
 
@@ -359,11 +364,13 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
 
     it('should allow owner to schedule stake unlock', async function () {
       const { logs, receipt } = await stakeManager.unlockStake(relayManager, { from: owner })
-      const withdrawBlock = initialUnstakeDelay.addn(receipt.blockNumber)
+      const minedInBlock = await web3.eth.getBlock(receipt.blockNumber)
+      const minedBlockTimestamp = parseInt(minedInBlock.timestamp.toString())
+      const withdrawTime = initialUnstakeDelay.add(toBN(minedBlockTimestamp))
       expectEvent.inLogs(logs, 'StakeUnlocked', {
         relayManager,
         owner,
-        withdrawBlock
+        withdrawTime
       })
     })
   })
@@ -452,7 +459,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
 
       it('should remove stake, unstake delay of removed relayManager, but remember the owner and token', async function () {
         // @ts-ignore (typechain does not declare names or iterator for return types)
-        const { stake: actualStake, unstakeDelay: actualUnstakeDelay, withdrawBlock: actualBlock, owner: actualOwner, token: actualToken } =
+        const { stake: actualStake, unstakeDelay: actualUnstakeDelay, withdrawTime: actualWithdrawTime, owner: actualOwner, token: actualToken } =
           await stakeManager.stakes(relayManager)
         // stake token, relay owner and unstake delay are kept
         expect(actualToken).to.equal(testToken.address)
@@ -461,7 +468,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
 
         // staked amount and withdrawal block are reset
         expect(actualStake).to.be.bignumber.equal(new BN(0))
-        expect(actualBlock).to.be.bignumber.equal(new BN(0))
+        expect(actualWithdrawTime).to.be.bignumber.equal(new BN(0))
       })
 
       testNotOwnerCannotStake()

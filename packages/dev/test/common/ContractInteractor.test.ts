@@ -71,7 +71,7 @@ contract('ContractInteractor', function (accounts) {
     await tt.mint(stake)
     await tt.approve(sm.address, stake)
     await sm.setRelayManagerOwner(accounts[0], { from: mgrAddress })
-    await sm.stakeForRelayManager(tt.address, mgrAddress, 1000, stake)
+    await sm.stakeForRelayManager(tt.address, mgrAddress, 15000, stake)
     await sm.authorizeHubByOwner(mgrAddress, rh.address)
     await rh.addRelayWorkers([workerAddress], { from: mgrAddress })
   })
