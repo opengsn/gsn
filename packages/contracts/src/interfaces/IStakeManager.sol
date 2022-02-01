@@ -109,5 +109,10 @@ interface IStakeManager {
 
     function burnAddress() external view returns (address);
 
+    /**
+     * @return the block number in which the contract has been deployed.
+     */
+    function getCreationBlock() external view returns (uint256);
+
     function versionSM() external view returns (string memory);
 }
