@@ -39,7 +39,7 @@ import {
   IRelayHubInstance,
   IRelayRecipientInstance,
   IRelayRegistrarInstance,
-  IStakeManagerInstance,
+  IStakeManagerInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
