@@ -74,7 +74,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     mapping(address => uint256) internal balances;
 
     uint256 private immutable creationBlock;
-    uint256 public override deprecationBlock = type(uint).max;
+    uint256 public override deprecationTime = type(uint).max;
 
     constructor (
         IStakeManager _stakeManager,
