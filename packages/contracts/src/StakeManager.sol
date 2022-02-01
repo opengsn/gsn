@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -14,14 +15,14 @@ import "./interfaces/IRelayHub.sol";
  * Single StakeInfo of a single RelayManager can only have one token address assigned to it.
  * It cannot be changed after the first time 'stakeForRelayManager' is called as it is equivalent to withdrawal.
  */
-contract StakeManager is IStakeManager {
+contract StakeManager is IStakeManager, Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     string public override versionSM = "2.2.3+opengsn.stakemanager.istakemanager";
     uint256 public immutable override maxUnstakeDelay;
 
-    address public immutable override burnAddress;
+    address public override burnAddress;
     uint256 private immutable creationBlock;
 
     /// maps relay managers to their stakes
@@ -32,6 +33,11 @@ contract StakeManager is IStakeManager {
         return (stakes[relayManager], isHubAuthorized);
     }
 
+    function setBurnAddress(address _burnAddress) public override onlyOwner {
+        burnAddress = _burnAddress;
+        emit BurnAddressSet(burnAddress);
+    }
+
     /// maps relay managers to a map of addressed of their authorized hubs to the information on that hub
     mapping(address => mapping(address => RelayHubInfo)) public authorizedHubs;
 
@@ -40,9 +46,9 @@ contract StakeManager is IStakeManager {
         address _burnAddress
     ) {
         require(_burnAddress != address(0), "transfers to address(0) may fail");
+        setBurnAddress(_burnAddress);
         creationBlock = block.number;
         maxUnstakeDelay = _maxUnstakeDelay;
-        burnAddress = _burnAddress;
     }
 
     function getCreationBlock() external override view returns (uint256){
@@ -57,7 +63,7 @@ contract StakeManager is IStakeManager {
     }
 
     /// @inheritdoc IStakeManager
-    function stakeForRelayManager(IERC20 token, address relayManager, uint256 unstakeDelay, uint256 amount) external override ownerOnly(relayManager) {
+    function stakeForRelayManager(IERC20 token, address relayManager, uint256 unstakeDelay, uint256 amount) external override relayOwnerOnly(relayManager) {
         require(unstakeDelay >= stakes[relayManager].unstakeDelay, "unstakeDelay cannot be decreased");
         require(unstakeDelay <= maxUnstakeDelay, "unstakeDelay too big");
         require(token != IERC20(address(0)), "must specify stake token address");
@@ -72,14 +78,14 @@ contract StakeManager is IStakeManager {
         emit StakeAdded(relayManager, stakes[relayManager].owner, stakes[relayManager].token, stakes[relayManager].stake, stakes[relayManager].unstakeDelay);
     }
 
-    function unlockStake(address relayManager) external override ownerOnly(relayManager) {
+    function unlockStake(address relayManager) external override relayOwnerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.withdrawTime == 0, "already pending");
         info.withdrawTime = block.timestamp.add(info.unstakeDelay);
         emit StakeUnlocked(relayManager, msg.sender, info.withdrawTime);
     }
 
-    function withdrawStake(address relayManager) external override ownerOnly(relayManager) {
+    function withdrawStake(address relayManager) external override relayOwnerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.withdrawTime > 0, "Withdrawal is not scheduled");
         require(info.withdrawTime <= block.timestamp, "Withdrawal is not due");
@@ -90,7 +96,7 @@ contract StakeManager is IStakeManager {
         emit StakeWithdrawn(relayManager, msg.sender, info.token, amount);
     }
 
-    modifier ownerOnly (address relayManager) {
+    modifier relayOwnerOnly (address relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
         _;
@@ -102,7 +108,7 @@ contract StakeManager is IStakeManager {
         _;
     }
 
-    function authorizeHubByOwner(address relayManager, address relayHub) external ownerOnly(relayManager) override {
+    function authorizeHubByOwner(address relayManager, address relayHub) external relayOwnerOnly(relayManager) override {
         _authorizeHub(relayManager, relayHub);
     }
 
@@ -115,7 +121,7 @@ contract StakeManager is IStakeManager {
         emit HubAuthorized(relayManager, relayHub);
     }
 
-    function unauthorizeHubByOwner(address relayManager, address relayHub) external override ownerOnly(relayManager) {
+    function unauthorizeHubByOwner(address relayManager, address relayHub) external override relayOwnerOnly(relayManager) {
         _unauthorizeHub(relayManager, relayHub);
     }
 

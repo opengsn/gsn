@@ -12,7 +12,7 @@ import {
   IPenalizerInstance,
   IRelayHubInstance,
   IRelayRecipientInstance,
-  IStakeManagerInstance,
+  StakeManagerInstance,
   TestTokenInstance,
   TestPaymasterEverythingAcceptedInstance
 } from '@opengsn/contracts/types/truffle-contracts'
@@ -72,7 +72,7 @@ export interface PrepareRelayRequestOption {
 
 export class ServerTestEnvironment {
   testToken!: TestTokenInstance
-  stakeManager!: IStakeManagerInstance
+  stakeManager!: StakeManagerInstance
   penalizer!: IPenalizerInstance
   relayHub!: IRelayHubInstance
   forwarder!: IForwarderInstance

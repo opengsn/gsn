@@ -4,7 +4,7 @@ import { toWei } from 'web3-utils'
 
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
-import { IStakeManagerInstance, TokenGasCalculatorInstance } from '@opengsn/paymasters/types/truffle-contracts'
+import { StakeManagerInstance, TokenGasCalculatorInstance } from '@opengsn/paymasters/types/truffle-contracts'
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
 import { RelayHubInstance, TestTokenInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
@@ -25,7 +25,7 @@ export async function revertReason (func: Promise<any>): Promise<string> {
   }
 }
 
-export async function registerAsRelayServer (testToken: TestTokenInstance, stakeManager: IStakeManagerInstance, relay: string, relayOwner: string, hub: RelayHubInstance): Promise<void> {
+export async function registerAsRelayServer (testToken: TestTokenInstance, stakeManager: StakeManagerInstance, relay: string, relayOwner: string, hub: RelayHubInstance): Promise<void> {
   const stake = ether('2')
   await testToken.mint(stake, { from: relayOwner })
   await testToken.approve(stakeManager.address, stake, { from: relayOwner })
