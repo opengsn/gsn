@@ -355,7 +355,6 @@ contract('ContractInteractor', function (accounts) {
       assert.equal(deploymentOut.relayHubAddress, rh.address)
       assert.equal(deploymentOut.stakeManagerAddress, sm.address)
       assert.equal(deploymentOut.penalizerAddress, pen.address)
-      assert.equal(deploymentOut.versionRegistryAddress, undefined)
     })
 
     it('should throw if no contract at paymaster address', async () => {

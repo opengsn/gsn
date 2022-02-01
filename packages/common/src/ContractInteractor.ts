@@ -15,7 +15,6 @@ import forwarderAbi from './interfaces/IForwarder.json'
 import stakeManagerAbi from './interfaces/IStakeManager.json'
 import penalizerAbi from './interfaces/IPenalizer.json'
 import gsnRecipientAbi from './interfaces/IRelayRecipient.json'
-import versionRegistryAbi from './interfaces/IVersionRegistry.json'
 import relayRegistrarAbi from './interfaces/IRelayRegistrar.json'
 import iErc20TokenAbi from './interfaces/IERC20Token.json'
 
@@ -41,7 +40,6 @@ import {
   IRelayRecipientInstance,
   IRelayRegistrarInstance,
   IStakeManagerInstance,
-  IVersionRegistryInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
@@ -112,7 +110,6 @@ export class ContractInteractor {
   private readonly IStakeManager: Contract<IStakeManagerInstance>
   private readonly IPenalizer: Contract<IPenalizerInstance>
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
-  private readonly IVersionRegistry: Contract<IVersionRegistryInstance>
   private readonly IRelayRegistrar: Contract<IRelayRegistrarInstance>
   private readonly IERC20Token: Contract<IERC20TokenInstance>
 
@@ -122,7 +119,6 @@ export class ContractInteractor {
   private forwarderInstance!: IForwarderInstance
   private stakeManagerInstance!: IStakeManagerInstance
   penalizerInstance!: IPenalizerInstance
-  versionRegistry!: IVersionRegistryInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
   relayRegistrar!: IRelayRegistrarInstance
   erc20Token!: IERC20TokenInstance
@@ -191,11 +187,6 @@ export class ContractInteractor {
       contractName: 'IRelayRecipient',
       abi: gsnRecipientAbi
     })
-    // @ts-ignore
-    this.IVersionRegistry = TruffleContract({
-      contractName: 'IVersionRegistry',
-      abi: versionRegistryAbi
-    })
     this.IRelayRegistrar = TruffleContract({
       contractName: 'IRelayRegistrar',
       abi: relayRegistrarAbi
@@ -210,7 +201,6 @@ export class ContractInteractor {
     this.IForwarderContract.setProvider(this.provider, undefined)
     this.IPenalizer.setProvider(this.provider, undefined)
     this.IRelayRecipient.setProvider(this.provider, undefined)
-    this.IVersionRegistry.setProvider(this.provider, undefined)
     this.IRelayRegistrar.setProvider(this.provider, undefined)
     this.IERC20Token.setProvider(this.provider, undefined)
 
@@ -333,9 +323,6 @@ export class ContractInteractor {
     if (this.deployment.penalizerAddress != null) {
       this.penalizerInstance = await this._createPenalizer(this.deployment.penalizerAddress)
     }
-    if (this.deployment.versionRegistryAddress != null) {
-      this.versionRegistry = await this._createVersionRegistry(this.deployment.versionRegistryAddress)
-    }
     if (this.deployment.managerStakeTokenAddress != null) {
       this.erc20Token = await this._createERC20(this.deployment.managerStakeTokenAddress)
     }
@@ -375,10 +362,6 @@ export class ContractInteractor {
 
   async _createPenalizer (address: Address): Promise<IPenalizerInstance> {
     return await this.IPenalizer.at(address)
-  }
-
-  async _createVersionRegistry (address: Address): Promise<IVersionRegistryInstance> {
-    return await this.IVersionRegistry.at(address)
   }
 
   async _createRelayRegistrar (address: Address): Promise<IRelayRegistrarInstance> {
@@ -596,10 +579,6 @@ export class ContractInteractor {
 
   async getPastEventsForPenalizer (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     return await this._getPastEventsPaginated(this.penalizerInstance.contract, names, extraTopics, options)
-  }
-
-  async getPastEventsForVersionRegistry (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    return await this._getPastEventsPaginated(this.versionRegistry.contract, names, extraTopics, options)
   }
 
   getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): number {
@@ -1177,16 +1156,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const topics = address2topic(managerAddress)
     const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])
     return workersAddedEvents.map(it => it.returnValues.newRelayWorkers).flat()
-  }
-
-  /* Version Registry methods */
-
-  async addVersionInVersionRegistry (id: string, version: string, value: string, transactionDetails: TransactionDetails): Promise<void> {
-    await this.versionRegistry.addVersion(id, version, value, transactionDetails)
-  }
-
-  async cancelVersionInVersionRegistry (id: string, version: string, cancelReason: string, transactionDetails: TransactionDetails): Promise<void> {
-    await this.versionRegistry.cancelVersion(id, version, cancelReason, transactionDetails)
   }
 }
 

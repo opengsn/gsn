@@ -18,13 +18,11 @@ import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import TestToken from './compiled/TestToken.json'
-import VersionRegistryAbi from './compiled/VersionRegistry.json'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { constants } from '@opengsn/common/dist/Constants'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-import { string32 } from '@opengsn/common/dist/VersionRegistry'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
@@ -71,9 +69,7 @@ interface DeployOptions {
   relayRegistryAddress?: string
   stakeManagerAddress?: string
   penalizerAddress?: string
-  versionRegistryAddress?: string
   burnAddress?: string
-  registryHubId?: string
   verbose?: boolean
   skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
@@ -505,12 +501,6 @@ export class CommandsLogic {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
     }
 
-    const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.versionRegistryAddress, { ...options }, deployOptions.skipConfirmation)
-    if (deployOptions.registryHubId != null) {
-      await regInstance.methods.addVersion(string32(deployOptions.registryHubId), string32('1'), rInstance.options.address).send({ ...options })
-      console.log(`== Saved RelayHub address at HubId:"${deployOptions.registryHubId}" to VersionRegistry`)
-    }
-
     let pmInstance: Contract | undefined
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, fInstance, deployOptions.skipConfirmation)
@@ -530,7 +520,6 @@ export class CommandsLogic {
       penalizerAddress: pInstance.options.address,
       relayRegistrarAddress: rrInstance.options.address,
       forwarderAddress: fInstance.options.address,
-      versionRegistryAddress: regInstance.options.address,
       managerStakeTokenAddress: ttInstance?.options.address ?? constants.ZERO_ADDRESS,
       paymasterAddress: pmInstance?.options.address ?? constants.ZERO_ADDRESS
     }

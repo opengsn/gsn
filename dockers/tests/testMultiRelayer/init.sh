@@ -38,12 +38,9 @@ waitForUrl http://localhost:8545 Bad "start ganache"
 
 node ../../../packages/cli/dist/commands/gsn-deploy.js --yes -m ''
 export HUB=`jq -r .address < ./build/gsn/RelayHub.json`
-export REG=`jq -r .address < ./build/gsn/VersionRegistry.json`
-node ../../../packages/cli/dist/commands/gsn-registry.js --registry $REG --id hub --ver test --add $HUB
 
-echo "registry=$REG hub=$HUB myip=$MYIP"
+echo "hub=$HUB myip=$MYIP"
 test -n "$MYIP" || fatal "unable to find MYIP"
-test -n "$REG" || fatal "unable to find VersionRegistry"
 
 #we don't want relayer-register to depend on local configuration, only on actual server
 rm -rf build/gsn
