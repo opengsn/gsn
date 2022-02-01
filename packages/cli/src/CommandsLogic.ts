@@ -30,7 +30,7 @@ import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeploym
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { resolveConfigRelayHubAddress, ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
 
 export interface RegisterOptions {
@@ -366,8 +366,7 @@ export class CommandsLogic {
   async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
     const relayManager = keyManager.getAddress(0)
     console.log('relayManager is', relayManager)
-    const relayHubAddress = await resolveConfigRelayHubAddress(config, this.contractInteractor)
-    const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+    const relayHub = await this.contractInteractor._createRelayHub(config.relayHubAddress)
     const accountBalance = toBN(await this.contractInteractor.getBalance(relayManager))
     console.log(`Relay manager account balance is ${fromWei(accountBalance)}eth`)
     const hubBalance = await relayHub.balanceOf(relayManager)
@@ -380,8 +379,7 @@ export class CommandsLogic {
       console.log('Withdrawing from GSN relayer to owner')
       const relayManager = options.keyManager.getAddress(0)
       console.log('relayManager is', relayManager)
-      const relayHubAddress = await resolveConfigRelayHubAddress(options.config, this.contractInteractor)
-      const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+      const relayHub = await this.contractInteractor._createRelayHub(options.config.relayHubAddress)
       const stakeManagerAddress = await relayHub.stakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { owner } = (await stakeManager.getStakeInfo(relayManager))[0]
@@ -420,7 +418,7 @@ export class CommandsLogic {
         const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
         const encodedCall = method.encodeABI()
         txToSign = new Transaction({
-          to: relayHubAddress,
+          to: options.config.relayHubAddress,
           value: 0,
           gasLimit,
           gasPrice,
@@ -430,7 +428,7 @@ export class CommandsLogic {
         console.log('Calling in view mode')
         await method.call({
           from: relayManager,
-          to: relayHubAddress,
+          to: options.config.relayHubAddress,
           value: 0,
           gas: gasLimit,
           gasPrice

@@ -299,16 +299,6 @@ export function parseServerConfig (args: string[], env: any): any {
   return entriesToObj(Object.entries(config).map(explicitType))
 }
 
-export async function resolveConfigRelayHubAddress (config: Partial<ServerConfigParams>, contractInteractor: ContractInteractor): Promise<string> {
-  let relayHubAddress: string
-  if (config.relayHubAddress == null) {
-    error('missing param: must have relayHubAddress')
-  }
-  contractInteractor.validateAddress(config.relayHubAddress, 'invalid param: "relayHubAddress" is not a valid address:')
-  relayHubAddress = config.relayHubAddress
-  return relayHubAddress
-}
-
 // resolve params, and validate the resulting struct
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<{
   config: ServerConfigParams
@@ -338,10 +328,9 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   })
   await contractInteractor._initializeContracts()
   await contractInteractor._initializeNetworkParams()
-  config.relayHubAddress = await resolveConfigRelayHubAddress(config, contractInteractor)
 
   if (config.relayHubAddress == null) {
-    error('relayHubAddress is still null')
+    error('missing param: must have relayHubAddress')
   }
   if (!await contractInteractor.isContractDeployed(config.relayHubAddress)) {
     error(`RelayHub: no contract at address ${config.relayHubAddress}`)
