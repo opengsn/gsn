@@ -1,3 +1,4 @@
+// solhint-disable not-rely-on-time
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 pragma abicoder v2;
@@ -10,7 +11,7 @@ import "./IForwarder.sol";
 contract Forwarder is IForwarder, ERC165 {
     using ECDSA for bytes32;
 
-    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil";
+    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntilTime";
 
     string public constant EIP712_DOMAIN_TYPE = "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
 
@@ -65,7 +66,7 @@ contract Forwarder is IForwarder, ERC165 {
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _verifyAndUpdateNonce(req);
 
-        require(req.validUntil == 0 || req.validUntil > block.number, "FWD: request expired");
+        require(req.validUntilTime == 0 || req.validUntilTime > block.timestamp, "FWD: request expired");
 
         uint gasForTransfer = 0;
         if ( req.value != 0 ) {
@@ -82,7 +83,6 @@ contract Forwarder is IForwarder, ERC165 {
 
         return (success,ret);
     }
-
 
     function _verifyNonce(ForwardRequest calldata req) internal view {
         require(nonces[req.from] == req.nonce, "FWD: nonce mismatch");
@@ -168,7 +168,7 @@ contract Forwarder is IForwarder, ERC165 {
             req.gas,
             req.nonce,
             keccak256(req.data),
-            req.validUntil,
+            req.validUntilTime,
             suffixData
         );
     }

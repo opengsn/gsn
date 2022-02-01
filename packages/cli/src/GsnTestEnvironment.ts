@@ -83,7 +83,7 @@ class GsnTestEnvironmentClass {
       funds: ether('5'),
       relayUrl: relayUrl,
       gasPrice: 1e9.toString(),
-      unstakeDelay: '2000'
+      unstakeDelay: '15000'
     }
     const registrationResult = await commandsLogic.registerRelay(registerOptions)
     if (registrationResult.success) {

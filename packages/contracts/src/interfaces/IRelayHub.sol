@@ -18,7 +18,7 @@ interface IRelayHub is IERC165 {
         // Gas cost of all relayCall() instructions after actual 'calculateCharge()'
         // Assume that relay has non-zero balance (costs 15'000 more otherwise).
         uint256 gasOverhead;
-        // Minimum unstake delay blocks of a relay manager's stake on the StakeManager
+        // Minimum unstake delay seconds of a relay manager's stake on the StakeManager
         uint256 minimumUnstakeDelay;
         // Developers address
         address devAddress;
@@ -86,7 +86,7 @@ interface IRelayHub is IERC165 {
         bytes returnValue
     );
 
-    event HubDeprecated(uint256 fromBlock);
+    event HubDeprecated(uint256 deprecationTime);
 
     /// Reason error codes for the TransactionRelayed event
     /// @param OK - the transaction was successfully relayed and execution successful - never included in the event
@@ -159,9 +159,9 @@ interface IRelayHub is IERC165 {
 
     function setMinimumStakes(IERC20[] memory token, uint256[] memory minimumStake) external;
 
-    // Deprecate hub (reverting relayCall()) from block number 'fromBlock'
+    // Deprecate hub (reverting relayCall()) from timestamp specified by '_deprecationTime' in seconds
     // Can only be called by owner
-    function deprecateHub(uint256 fromBlock) external;
+    function deprecateHub(uint256 _deprecationTime) external;
 
     /// The fee is expressed as a base fee in wei plus percentage on actual charge.
     /// E.g. a value of 40 stands for a 40% fee, so the recipient will be
@@ -197,13 +197,13 @@ interface IRelayHub is IERC165 {
     // Checks hubs' deprecation status
     function isDeprecated() external view returns (bool);
 
+    // Returns the timestamp from which the hub no longer allows relaying calls.
+    function deprecationTime() external view returns (uint256);
+
     /**
      * @return the block number in which the contract has been deployed.
      */
     function getCreationBlock() external view returns (uint256);
-
-    // Returns the block number from which the hub no longer allows relaying calls.
-    function deprecationBlock() external view returns (uint256);
 
     /// @return a SemVer-compliant version of the hub contract
     function versionHub() external view returns (string memory);

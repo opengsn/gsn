@@ -1,3 +1,4 @@
+// solhint-disable not-rely-on-time
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 pragma abicoder v2;
@@ -27,7 +28,7 @@ contract StakeManager is IStakeManager {
     mapping(address => StakeInfo) public stakes;
 
     function getStakeInfo(address relayManager) external override view returns (StakeInfo memory stakeInfo, bool isSenderAuthorizedHub) {
-        bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalBlock == type(uint).max;
+        bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalTime == type(uint).max;
         return (stakes[relayManager], isHubAuthorized);
     }
 
@@ -73,19 +74,18 @@ contract StakeManager is IStakeManager {
 
     function unlockStake(address relayManager) external override ownerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
-        require(info.withdrawBlock == 0, "already pending");
-        uint withdrawBlock = block.number.add(info.unstakeDelay);
-        info.withdrawBlock = withdrawBlock;
-        emit StakeUnlocked(relayManager, msg.sender, withdrawBlock);
+        require(info.withdrawTime == 0, "already pending");
+        info.withdrawTime = block.timestamp.add(info.unstakeDelay);
+        emit StakeUnlocked(relayManager, msg.sender, info.withdrawTime);
     }
 
     function withdrawStake(address relayManager) external override ownerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
-        require(info.withdrawBlock > 0, "Withdrawal is not scheduled");
-        require(info.withdrawBlock <= block.number, "Withdrawal is not due");
+        require(info.withdrawTime > 0, "Withdrawal is not scheduled");
+        require(info.withdrawTime <= block.timestamp, "Withdrawal is not due");
         uint256 amount = info.stake;
         info.stake = 0;
-        info.withdrawBlock = 0;
+        info.withdrawTime = 0;
         info.token.safeTransfer(msg.sender, amount);
         emit StakeWithdrawn(relayManager, msg.sender, info.token, amount);
     }
@@ -111,7 +111,7 @@ contract StakeManager is IStakeManager {
     }
 
     function _authorizeHub(address relayManager, address relayHub) internal {
-        authorizedHubs[relayManager][relayHub].removalBlock = type(uint).max;
+        authorizedHubs[relayManager][relayHub].removalTime = type(uint).max;
         emit HubAuthorized(relayManager, relayHub);
     }
 
@@ -125,10 +125,9 @@ contract StakeManager is IStakeManager {
 
     function _unauthorizeHub(address relayManager, address relayHub) internal {
         RelayHubInfo storage hubInfo = authorizedHubs[relayManager][relayHub];
-        require(hubInfo.removalBlock == type(uint).max, "hub not authorized");
-        uint256 removalBlock = block.number.add(stakes[relayManager].unstakeDelay);
-        hubInfo.removalBlock = removalBlock;
-        emit HubUnauthorized(relayManager, relayHub, removalBlock);
+        require(hubInfo.removalTime == type(uint).max, "hub not authorized");
+        hubInfo.removalTime = block.timestamp.add(stakes[relayManager].unstakeDelay);
+        emit HubUnauthorized(relayManager, relayHub, hubInfo.removalTime);
     }
 
     /// Slash the stake of the relay relayManager. In order to prevent stake kidnapping, burns half of stake on the way.
@@ -136,9 +135,9 @@ contract StakeManager is IStakeManager {
     /// @param beneficiary - address that receives half of the penalty amount
     /// @param amount - amount to withdraw from stake
     function penalizeRelayManager(address relayManager, address beneficiary, uint256 amount) external override {
-        uint256 removalBlock = authorizedHubs[relayManager][msg.sender].removalBlock;
-        require(removalBlock != 0, "hub not authorized");
-        require(removalBlock > block.number, "hub authorization expired");
+        uint256 removalTime = authorizedHubs[relayManager][msg.sender].removalTime;
+        require(removalTime != 0, "hub not authorized");
+        require(removalTime > block.timestamp, "hub authorization expired");
 
         // Half of the stake will be burned (sent to address 0)
         require(stakes[relayManager].stake >= amount, "penalty exceeds stake");

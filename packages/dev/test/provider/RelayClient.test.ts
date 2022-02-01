@@ -116,7 +116,7 @@ contract('RelayClient', function (accounts) {
     await testToken.mint(stake, { from: relayOwner })
     await testToken.approve(stakeManager.address, stake, { from: relayOwner })
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, stake, {
+    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 15000, stake, {
       from: relayOwner
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })

@@ -228,6 +228,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
     }
 
     async function assertBoostAndRebroadcast (): Promise<void> {
+      originalTxHashes.length = 0
       await env.relayServer.txStoreManager.clearAll()
       await env.relayServer.transactionManager._initNonces()
       const spy = sinon.spy(env.relayServer.transactionManager, 'resendTransaction')
@@ -236,6 +237,10 @@ contract('Network Simulation for Relay Server', function (accounts) {
       await evmMineMany(pendingTransactionTimeoutBlocks)
       const latestBlock = await env.web3.eth.getBlock('latest')
       const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number)
+      // NOTE: this is needed for the 'repeated boosting' test
+      for (const [originalTxHash, signedTransactionDetails] of allBoostedTransactions) {
+        overrideParamsPerTx.set(signedTransactionDetails.transactionHash, overrideParamsPerTx.get(originalTxHash)!)
+      }
       assert.equal(allBoostedTransactions.size, stuckTransactionsCount - 1)
       const storedTxsAfter = await env.relayServer.txStoreManager.getAll()
       assert.equal(storedTxsBefore.length, stuckTransactionsCount)

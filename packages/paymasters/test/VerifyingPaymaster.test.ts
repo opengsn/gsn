@@ -28,7 +28,7 @@ contract('VerifyingPaymaster', ([from]) => {
           from: '0x'.padEnd(42, '2'),
           value: '1',
           nonce: '2',
-          validUntil: '0',
+          validUntilTime: '0',
           gas: '3'
         },
         relayData: {

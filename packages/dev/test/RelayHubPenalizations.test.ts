@@ -96,7 +96,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
     await testToken.mint(stake, { from: relayOwner })
     await testToken.approve(stakeManager.address, stake, { from: relayOwner })
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, stake, {
+    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 15000, stake, {
       from: relayOwner
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
@@ -139,7 +139,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               nonce: encodedCallArgs.nonce.toString(),
               value: '0',
               gas: encodedCallArgs.gasLimit.toString(),
-              validUntil: '0'
+              validUntilTime: '0'
             },
             relayData: {
               baseRelayFee: encodedCallArgs.baseFee.toString(),
@@ -272,7 +272,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       await testToken.mint(stake, { from: relayOwner })
       await testToken.approve(stakeManager.address, stake, { from: relayOwner })
       await stakeManager.setRelayManagerOwner(relayOwner, { from: reporterRelayManager })
-      await stakeManager.stakeForRelayManager(testToken.address, reporterRelayManager, 1000, stake, {
+      await stakeManager.stakeForRelayManager(testToken.address, reporterRelayManager, 15000, stake, {
         from: relayOwner
       })
       await stakeManager.authorizeHubByOwner(reporterRelayManager, relayHub.address, { from: relayOwner })
@@ -445,7 +445,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       beforeEach('staking for relay', async function () {
         await testToken.mint(stake, { from: relayOwner })
         await testToken.approve(stakeManager.address, stake, { from: relayOwner })
-        await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, stake, {
+        await stakeManager.stakeForRelayManager(testToken.address, relayManager, 15000, stake, {
           from: relayOwner
         })
         await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
@@ -550,7 +550,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           await testToken.mint(stake, { from: relayWorker })
           await testToken.approve(stakeManager.address, stake, { from: relayWorker })
           // Relay staking for a second relay
-          const { tx } = await stakeManager.stakeForRelayManager(testToken.address, other, 1000, stake, {
+          const { tx } = await stakeManager.stakeForRelayManager(testToken.address, other, 15000, stake, {
             from: relayWorker
           })
           const { data, signature } = await getDataAndSignatureFromHash(tx, chainId)
@@ -608,7 +608,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               nonce: senderNonce.toString(),
               value: '0',
               gas: gasLimit.toString(),
-              validUntil: '0'
+              validUntilTime: '0'
             },
             relayData: {
               maxFeePerGas: maxFeePerGas.toString(),
@@ -690,7 +690,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           beforeEach(async function () {
             await testToken.mint(stake, { from: relayOwner })
             await testToken.approve(stakeManager.address, stake, { from: relayOwner })
-            await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, stake, {
+            await stakeManager.stakeForRelayManager(testToken.address, relayManager, 15000, stake, {
               from: relayOwner
             })
           })
@@ -724,7 +724,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             nonce: encodedCallArgs.nonce.toString(),
             value: '0',
             gas: encodedCallArgs.gasLimit.toString(),
-            validUntil: '0'
+            validUntilTime: '0'
           },
           relayData: {
             baseRelayFee: encodedCallArgs.baseFee.toString(),

@@ -201,7 +201,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           nonce: senderNonce,
           value: '0',
           gas: gasLimit,
-          validUntil: '0'
+          validUntilTime: '0'
         },
         relayData: {
           pctRelayFee,
@@ -274,7 +274,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
       context('#verifyRelayManagerStaked()', function () {
         let id: string
 
-        async function mintApproveSetOwnerStake (token: TestTokenInstance = testToken, stake: BN = oneEther, unstakeDelay: number = 1000): Promise<void> {
+        async function mintApproveSetOwnerStake (token: TestTokenInstance = testToken, stake: BN = oneEther, unstakeDelay: number = 15000): Promise<void> {
           await token.mint(stake, { from: relayOwner })
           await token.approve(stakeManager.address, stake, { from: relayOwner })
           await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
@@ -374,7 +374,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         await testToken.mint(ether('2'), { from: relayOwner })
         await testToken.approve(stakeManager.address, ether('2'), { from: relayOwner })
         await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-        await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, ether('2'), {
+        await stakeManager.stakeForRelayManager(testToken.address, relayManager, 15000, ether('2'), {
           from: relayOwner
         })
         await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })

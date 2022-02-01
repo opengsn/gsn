@@ -10,7 +10,7 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
   .option('--stake <stake>', 'amount to stake for the relayer, in ETH', '1')
   .option(
     '--unstakeDelay <delay>',
-    'blocks to wait between unregistering and withdrawing the stake', '1000'
+    'seconds to wait between unregistering and withdrawing the stake', '15000'
   )
   .option(
     '--funds <funds>',

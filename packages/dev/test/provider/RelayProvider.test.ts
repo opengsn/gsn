@@ -59,7 +59,7 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       nonce: senderNonce,
       value: '0',
       gas: '10000',
-      validUntil: '0'
+      validUntilTime: '0'
     },
     relayData: {
       pctRelayFee: '1',
@@ -338,7 +338,7 @@ contract('RelayProvider', function (accounts) {
       await testToken.mint(stake, { from: accounts[2] })
       await testToken.approve(stakeManager.address, stake, { from: accounts[2] })
       // add accounts[0], accounts[1] and accounts[2] as worker, manager and owner
-      await stakeManager.stakeForRelayManager(testToken.address, accounts[1], 1000, stake, {
+      await stakeManager.stakeForRelayManager(testToken.address, accounts[1], 15000, stake, {
         from: accounts[2]
       })
       await stakeManager.authorizeHubByOwner(accounts[1], relayHub.address, { from: accounts[2] })

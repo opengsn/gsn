@@ -125,7 +125,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         data: sampleRecipient.contract.methods.something().encodeABI(),
         nonce: '0',
         value: '0',
-        validUntil: '0',
+        validUntilTime: '0',
         from: account0,
         to: sampleRecipient.address,
         gas: 1e6.toString()

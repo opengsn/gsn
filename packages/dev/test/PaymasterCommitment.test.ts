@@ -154,7 +154,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     // await relayHubInstance.setMinimumStakes([testToken.address], [stake])
 
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 1000, stake, {
+    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 15000, stake, {
       from: relayOwner
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
@@ -191,7 +191,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
           nonce: senderNonce,
           value: '0',
           gas: gasLimit,
-          validUntil: '0'
+          validUntilTime: '0'
         },
         relayData: {
           pctRelayFee,

@@ -45,7 +45,7 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
           gas: '1',
           nonce: '2',
           data: appended.data ?? '0x',
-          validUntil: '0'
+          validUntilTime: '0'
         },
         relayData: {
           maxFeePerGas: '0',
@@ -86,7 +86,7 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
         gas: '1',
         nonce: '2',
         data: '0x',
-        validUntil: '0'
+        validUntilTime: '0'
       },
       relayData: {
         maxFeePerGas: '0',

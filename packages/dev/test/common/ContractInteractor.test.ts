@@ -71,7 +71,7 @@ contract('ContractInteractor', function (accounts) {
     await tt.mint(stake)
     await tt.approve(sm.address, stake)
     await sm.setRelayManagerOwner(accounts[0], { from: mgrAddress })
-    await sm.stakeForRelayManager(tt.address, mgrAddress, 1000, stake)
+    await sm.stakeForRelayManager(tt.address, mgrAddress, 15000, stake)
     await sm.authorizeHubByOwner(mgrAddress, rh.address)
     await rh.addRelayWorkers([workerAddress], { from: mgrAddress })
   })
@@ -146,7 +146,7 @@ contract('ContractInteractor', function (accounts) {
           nonce: '1',
           value: '0',
           gas: '50000',
-          validUntil: '0'
+          validUntilTime: '0'
         },
         relayData: {
           maxFeePerGas: '11',
@@ -212,7 +212,7 @@ contract('ContractInteractor', function (accounts) {
           nonce: '1',
           value: '0',
           gas: '50000',
-          validUntil: '0'
+          validUntilTime: '0'
         },
         relayData: {
           maxFeePerGas: '1',

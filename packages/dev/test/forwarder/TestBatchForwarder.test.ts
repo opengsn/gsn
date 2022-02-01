@@ -47,7 +47,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     await testToken.mint(stake, { from: relayOwner })
     await testToken.approve(stakeManager.address, stake, { from: relayOwner })
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 2000, stake, {
+    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 15000, stake, {
       from: relayOwner
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
@@ -76,7 +76,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         nonce: '1',
         value: '0',
         gas: 1e6.toString(),
-        validUntil: '0'
+        validUntilTime: '0'
       },
       relayData: {
         pctRelayFee: '1',

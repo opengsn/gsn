@@ -47,7 +47,7 @@ if (process.env.GAS_CALCULATIONS == null) {
 
 contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
-  const unstakeDelay = 1000
+  const unstakeDelay = 15000
   const chainId = defaultEnvironment.chainId
   const baseFee = new BN('300')
   const fee = new BN('10')
@@ -121,7 +121,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         nonce: senderNonce.toString(),
         value: '0',
         gas: gasLimit.toString(),
-        validUntil: '0'
+        validUntilTime: '0'
       },
       relayData: {
         baseRelayFee: baseFee.toString(),
@@ -339,7 +339,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               nonce: senderNonce,
               value: '0',
               gas: gasLimit.toString(),
-              validUntil: '0'
+              validUntilTime: '0'
             },
             relayData: {
               baseRelayFee: '0',
@@ -434,7 +434,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               nonce: senderNonce,
               value: '0',
               gas: gasLimit.toString(),
-              validUntil: '0'
+              validUntilTime: '0'
             },
             relayData: {
               baseRelayFee: '0',
@@ -522,7 +522,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                       nonce: senderNonce,
                       value: '0',
                       gas: gasLimit.toString(),
-                      validUntil: '0'
+                      validUntilTime: '0'
                     },
                     relayData: {
                       baseRelayFee,

@@ -43,7 +43,7 @@ export const defaultGsnConfig: GSNConfig = {
   jsonStringifyRequest: true,
   auditorsCount: 0,
   clientId: '1',
-  requestValidBlocks: '6000',
+  requestValidSeconds: 172800, // 2 days
   maxViewableGasLimit: '12000000',
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,
@@ -86,7 +86,7 @@ export interface GSNConfig {
   paymasterAddress?: Address
   clientId: IntString
   auditorsCount: number
-  requestValidBlocks: IntString
+  requestValidSeconds: number
   maxViewableGasLimit: IntString
   environment: Environment
   maxApprovalDataLength: number

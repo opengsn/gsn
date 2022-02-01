@@ -290,13 +290,13 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
       it('should fail to relay request too close to expiration', async function () {
         const req = await env.createRelayHttpRequest()
-        req.relayRequest.request.validUntil = '1010'
+        req.relayRequest.request.validUntilTime = '1234567890'
         try {
           env.relayServer.validateInput(req, 1000)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
-            'expired in 10 blocks')
+            'Request expired (or too close): expired at (Fri, 13 Feb 2009 23:31:30 GMT), we expect it to be valid until')
         }
       })
 
