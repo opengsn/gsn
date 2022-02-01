@@ -200,7 +200,7 @@ interface IRelayHub is IERC165 {
     /**
      * @return the block number in which the contract has been deployed.
      */
-    function creationBlock() external view returns (uint256);
+    function getCreationBlock() external view returns (uint256);
 
     // Returns the block number from which the hub no longer allows relaying calls.
     function deprecationBlock() external view returns (uint256);

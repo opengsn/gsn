@@ -74,7 +74,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
     mapping(address => uint256) internal balances;
 
-    uint256 public override creationBlock;
+    uint256 private immutable creationBlock;
     uint256 public override deprecationBlock = type(uint).max;
 
     constructor (
@@ -88,6 +88,10 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         penalizer = _penalizer;
         batchGateway = _batchGateway;
         setConfiguration(_config);
+    }
+
+    function getCreationBlock() external override view returns (uint256){
+        return creationBlock;
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {

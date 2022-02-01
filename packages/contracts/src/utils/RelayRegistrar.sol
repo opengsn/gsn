@@ -29,7 +29,7 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     address[] public indexedValues;
 
     bool public immutable override isUsingStorageRegistry;
-    uint256 public override creationBlock;
+    uint256 private immutable creationBlock;
 
     IRelayHub public immutable relayHub;
 
@@ -37,6 +37,10 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         creationBlock = block.number;
         relayHub = _relayHub;
         isUsingStorageRegistry = _isUsingStorageRegistry;
+    }
+
+    function getCreationBlock() external override view returns (uint256){
+        return creationBlock;
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {

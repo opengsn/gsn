@@ -21,7 +21,7 @@ contract StakeManager is IStakeManager {
     uint256 public immutable override maxUnstakeDelay;
 
     address public immutable override burnAddress;
-    uint256 public override creationBlock;
+    uint256 private immutable creationBlock;
 
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
@@ -42,6 +42,10 @@ contract StakeManager is IStakeManager {
         creationBlock = block.number;
         maxUnstakeDelay = _maxUnstakeDelay;
         burnAddress = _burnAddress;
+    }
+
+    function getCreationBlock() external override view returns (uint256){
+        return creationBlock;
     }
 
     function setRelayManagerOwner(address owner) external override {
@@ -132,7 +136,7 @@ contract StakeManager is IStakeManager {
     /// @param beneficiary - address that receives half of the penalty amount
     /// @param amount - amount to withdraw from stake
     function penalizeRelayManager(address relayManager, address beneficiary, uint256 amount) external override {
-        uint256 removalBlock =  authorizedHubs[relayManager][msg.sender].removalBlock;
+        uint256 removalBlock = authorizedHubs[relayManager][msg.sender].removalBlock;
         require(removalBlock != 0, "hub not authorized");
         require(removalBlock > block.number, "hub authorization expired");
 
