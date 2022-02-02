@@ -135,7 +135,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
-    relayRegistrar = await RelayRegistrar.at(await relayHubInstance.relayRegistrar())
+    relayRegistrar = await RelayRegistrar.at(await relayHubInstance.getRelayRegistrar())
 
     forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address

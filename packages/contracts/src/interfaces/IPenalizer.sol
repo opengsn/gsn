@@ -34,6 +34,6 @@ interface IPenalizer {
     ) external;
 
     function versionPenalizer() external view returns (string memory);
-    function penalizeBlockDelay() external view returns (uint256);
-    function penalizeBlockExpiration() external view returns (uint256);
+    function getPenalizeBlockDelay() external view returns (uint256);
+    function getPenalizeBlockExpiration() external view returns (uint256);
 }

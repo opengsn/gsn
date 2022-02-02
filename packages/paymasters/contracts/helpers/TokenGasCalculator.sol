@@ -42,17 +42,17 @@ contract TokenGasCalculator is RelayHub {
     function calculatePostGas(
         BasePaymaster paymaster,
         bytes memory ctx1
-    ) public returns (uint gasUsedByPost) {
+    ) public returns (uint256 gasUsedByPost) {
         GsnTypes.RelayData memory relayData = GsnTypes.RelayData(1, 1, 0, 0, 0, address(0), address(0), address(0), "", 0);
 
         //with precharge
-        uint gas0 = gasleft();
+        uint256 gas0 = gasleft();
         paymaster.postRelayedCall(ctx1, true, 100, relayData);
-        uint gas1 = gasleft();
+        uint256 gas1 = gasleft();
         gasUsedByPost = gas0 - gas1;
         emit GasUsed(gasUsedByPost);
     }
 
-    event GasUsed(uint gasUsedByPost);
+    event GasUsed(uint256 gasUsedByPost);
 }
 

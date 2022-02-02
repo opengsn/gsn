@@ -11,10 +11,10 @@ import "../interfaces/IUniswap.sol";
 //- mints new tokens at will...
 contract TestUniswap is IUniswap {
     IERC20 public token;
-    uint public rateMult;
-    uint public rateDiv;
+    uint256 public rateMult;
+    uint256 public rateDiv;
 
-    constructor(uint _rateMult, uint _rateDiv) payable {
+    constructor(uint256 _rateMult, uint256 _rateDiv) payable {
         token = new TestToken();
         rateMult = _rateMult;
         rateDiv = _rateDiv;
@@ -31,7 +31,7 @@ contract TestUniswap is IUniswap {
 
     function tokenToEthSwapOutput(uint256 ethBought, uint256 maxTokens, uint256 deadline) public override returns (uint256 out) {
         (maxTokens, deadline);
-        uint tokensToSell = getTokenToEthOutputPrice(ethBought);
+        uint256 tokensToSell = getTokenToEthOutputPrice(ethBought);
         require(address(this).balance > ethBought, "not enough liquidity");
 
         token.transferFrom(msg.sender, address(this), tokensToSell);
@@ -47,7 +47,7 @@ contract TestUniswap is IUniswap {
         (maxTokens, deadline, recipient);
         require(address(this).balance > ethBought, "not enough liquidity");
 
-        uint tokensToSell = getTokenToEthOutputPrice(ethBought);
+        uint256 tokensToSell = getTokenToEthOutputPrice(ethBought);
 
         token.transferFrom(msg.sender, address(this), tokensToSell);
         recipient.transfer(ethBought);

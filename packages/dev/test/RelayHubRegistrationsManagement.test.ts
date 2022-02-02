@@ -35,7 +35,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
-    relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
+    relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setRelayHub(relayHub.address)
   })

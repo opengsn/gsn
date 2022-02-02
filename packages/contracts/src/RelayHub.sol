@@ -36,14 +36,14 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         return "2.2.3+opengsn.hub.irelayhub";
     }
 
-    IStakeManager public immutable override stakeManager;
-    address public immutable override penalizer;
-    address public immutable override batchGateway;
+    IStakeManager internal immutable stakeManager;
+    address internal immutable penalizer;
+    address internal immutable batchGateway;
 
     //TODO: make immutable (currently has a setter. deployment requires future address, since there is cross-references between RH and RR
-    address public override relayRegistrar;
+    address internal relayRegistrar;
 
-    RelayHubConfig private config;
+    RelayHubConfig internal config;
 
     function getConfiguration() public override view returns (RelayHubConfig memory) {
         return config;
@@ -56,7 +56,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     // maps ERC-20 token address to a minimum stake for it
-    mapping(IERC20 => uint256) public override minimumStakePerToken;
+    mapping(IERC20 => uint256) internal minimumStakePerToken;
 
     function setMinimumStakes(IERC20[] memory token, uint256[] memory minimumStake) public override onlyOwner {
         require(token.length == minimumStake.length, "setMinimumStakes: wrong length");
@@ -66,15 +66,15 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     // maps relay worker's address to its manager's address
-    mapping(address => address) public override workerToManager;
+    mapping(address => address) internal workerToManager;
 
     // maps relay managers to the number of their workers
-    mapping(address => uint256) public override workerCount;
+    mapping(address => uint256) internal workerCount;
 
     mapping(address => uint256) internal balances;
 
-    uint256 private immutable creationBlock;
-    uint256 public override deprecationTime = type(uint).max;
+    uint256 internal immutable creationBlock;
+    uint256 internal deprecationTime = type(uint256).max;
 
     constructor (
         IStakeManager _stakeManager,
@@ -91,6 +91,38 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
     function getCreationBlock() external override view returns (uint256){
         return creationBlock;
+    }
+
+    function getDeprecationTime() external override view returns (uint256) {
+        return deprecationTime;
+    }
+
+    function getStakeManager() external override view returns (IStakeManager) {
+        return stakeManager;
+    }
+
+    function getPenalizer() external override view returns (address) {
+        return penalizer;
+    }
+
+    function getBatchGateway() external override view returns (address) {
+        return batchGateway;
+    }
+
+    function getRelayRegistrar() external override view returns (address) {
+        return relayRegistrar;
+    }
+
+    function getMinimumStakePerToken(IERC20 token) external override view returns (uint256) {
+        return minimumStakePerToken[token];
+    }
+
+    function getWorkerManager(address worker) external override view returns (address) {
+        return workerToManager[worker];
+    }
+
+    function getWorkerCount(address manager) external override view returns (uint256) {
+        return workerCount[manager];
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
@@ -194,7 +226,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     function relayCall(
-        uint maxAcceptanceBudget,
+        uint256 maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData

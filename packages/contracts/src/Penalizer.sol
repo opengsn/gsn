@@ -10,13 +10,12 @@ import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPenalizer.sol";
 
 contract Penalizer is IPenalizer {
+    using ECDSA for bytes32;
 
     string public override versionPenalizer = "2.2.3+opengsn.penalizer.ipenalizer";
 
-    using ECDSA for bytes32;
-
-    uint256 public immutable override penalizeBlockDelay;
-    uint256 public immutable override penalizeBlockExpiration;
+    uint256 internal immutable penalizeBlockDelay;
+    uint256 internal immutable penalizeBlockExpiration;
 
     constructor(
         uint256 _penalizeBlockDelay,
@@ -24,6 +23,14 @@ contract Penalizer is IPenalizer {
     ) {
         penalizeBlockDelay = _penalizeBlockDelay;
         penalizeBlockExpiration = _penalizeBlockExpiration;
+    }
+
+    function getPenalizeBlockDelay() external override view returns (uint256) {
+        return penalizeBlockDelay;
+    }
+
+    function getPenalizeBlockExpiration() external override view returns (uint256) {
+        return penalizeBlockExpiration;
     }
 
     function isLegacyTransaction(bytes calldata rawTransaction) internal pure returns (bool) {
@@ -66,7 +73,7 @@ contract Penalizer is IPenalizer {
         return transaction;
     }
 
-    mapping(bytes32 => uint) public commits;
+    mapping(bytes32 => uint256) public commits;
 
     /**
      * any sender can call "commit(keccak(encodedPenalizeFunction))", to make sure

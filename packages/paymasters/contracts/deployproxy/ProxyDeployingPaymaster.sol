@@ -47,7 +47,7 @@ contract ProxyDeployingPaymaster is TokenPaymaster {
         }
         token.transferFrom(payer, address(this), tokenPrecharge);
         //solhint-disable-next-line
-        uniswap.tokenToEthSwapOutput(relayRequest.request.value, type(uint).max, block.timestamp+60*15);
+        uniswap.tokenToEthSwapOutput(relayRequest.request.value, type(uint256).max, block.timestamp+60*15);
         payable(relayRequest.relayData.forwarder).transfer(relayRequest.request.value);
         return (abi.encode(payer, relayRequest.request.from, tokenPrecharge, relayRequest.request.value, relayRequest.relayData.forwarder, token, uniswap), false);
     }

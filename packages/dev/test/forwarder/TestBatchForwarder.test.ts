@@ -41,7 +41,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     hub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
-    const relayRegistrar = await RelayRegistrar.at(await hub.relayRegistrar())
+    const relayRegistrar = await RelayRegistrar.at(await hub.getRelayRegistrar())
     const relayHub = hub
 
     await testToken.mint(stake, { from: relayOwner })

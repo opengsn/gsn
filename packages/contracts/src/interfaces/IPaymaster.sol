@@ -51,10 +51,10 @@ interface IPaymaster is IERC165 {
 
     function trustedForwarder() external view returns (address);
 
-/**
- * return the relayHub of this contract.
- */
-    function getHubAddr() external view returns (address);
+    /**
+     * return the relayHub of this contract.
+     */
+    function getHubAddress() external view returns (address);
 
     /**
      * Can be used to determine if the contract can pay for incoming calls before making any.

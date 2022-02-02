@@ -20,22 +20,30 @@ contract StakeManager is IStakeManager, Ownable {
     using SafeMath for uint256;
 
     string public override versionSM = "2.2.3+opengsn.stakemanager.istakemanager";
-    uint256 public immutable override maxUnstakeDelay;
+    uint256 internal immutable maxUnstakeDelay;
 
-    address public override burnAddress;
-    uint256 private immutable creationBlock;
+    address internal burnAddress;
+    uint256 internal immutable creationBlock;
 
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
 
     function getStakeInfo(address relayManager) external override view returns (StakeInfo memory stakeInfo, bool isSenderAuthorizedHub) {
-        bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalTime == type(uint).max;
+        bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalTime == type(uint256).max;
         return (stakes[relayManager], isHubAuthorized);
     }
 
     function setBurnAddress(address _burnAddress) public override onlyOwner {
         burnAddress = _burnAddress;
         emit BurnAddressSet(burnAddress);
+    }
+
+    function getBurnAddress() external override view returns (address) {
+        return burnAddress;
+    }
+
+    function getMaxUnstakeDelay() external override view returns (uint256) {
+        return maxUnstakeDelay;
     }
 
     /// maps relay managers to a map of addressed of their authorized hubs to the information on that hub
@@ -117,7 +125,7 @@ contract StakeManager is IStakeManager, Ownable {
     }
 
     function _authorizeHub(address relayManager, address relayHub) internal {
-        authorizedHubs[relayManager][relayHub].removalTime = type(uint).max;
+        authorizedHubs[relayManager][relayHub].removalTime = type(uint256).max;
         emit HubAuthorized(relayManager, relayHub);
     }
 
@@ -131,7 +139,7 @@ contract StakeManager is IStakeManager, Ownable {
 
     function _unauthorizeHub(address relayManager, address relayHub) internal {
         RelayHubInfo storage hubInfo = authorizedHubs[relayManager][relayHub];
-        require(hubInfo.removalTime == type(uint).max, "hub not authorized");
+        require(hubInfo.removalTime == type(uint256).max, "hub not authorized");
         hubInfo.removalTime = block.timestamp.add(stakes[relayManager].unstakeDelay);
         emit HubUnauthorized(relayManager, relayHub, hubInfo.removalTime);
     }

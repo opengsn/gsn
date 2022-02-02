@@ -30,7 +30,7 @@ contract TestForwarderTarget is BaseRelayRecipient {
         return _msgData();
     }
 
-    function mustReceiveEth(uint value) public payable {
+    function mustReceiveEth(uint256 value) public payable {
         require( msg.value == value, "didn't receive value");
     }
 

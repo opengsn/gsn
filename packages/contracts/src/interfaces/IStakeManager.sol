@@ -109,11 +109,11 @@ interface IStakeManager {
 
     function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo, bool isSenderAuthorizedHub);
 
-    function maxUnstakeDelay() external view returns (uint256);
+    function getMaxUnstakeDelay() external view returns (uint256);
 
     function setBurnAddress(address _burnAddress) external;
 
-    function burnAddress() external view returns (address);
+    function getBurnAddress() external view returns (address);
 
     /**
      * @return the block number in which the contract has been deployed.

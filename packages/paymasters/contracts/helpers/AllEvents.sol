@@ -9,7 +9,7 @@ pragma solidity ^0.8.7;
  */
 interface AllEvents {
     event Received(address indexed sender, uint256 eth);
-    event Withdrawal(address indexed src, uint wad);
+    event Withdrawal(address indexed src, uint256 wad);
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event TokensCharged(uint256 gasUseWithoutPost, uint256 gasJustPost, uint256 ethActualCharge);

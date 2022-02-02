@@ -70,7 +70,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, oneEther.toString())
-    relayRegistrar = await RelayRegistrar.at(await relayHubInstance.relayRegistrar())
+    relayRegistrar = await RelayRegistrar.at(await relayHubInstance.getRelayRegistrar())
 
     paymasterContract = await TestPaymasterEverythingAccepted.new()
     forwarderInstance = await Forwarder.new()

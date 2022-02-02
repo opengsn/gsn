@@ -22,7 +22,7 @@ contract BatchForwarder is Forwarder, BaseRelayRecipient {
     function sendBatch(address[] calldata targets, bytes[] calldata encodedFunctions) external {
         require(targets.length == encodedFunctions.length, "BatchForwarder: wrong length");
         address sender = _msgSender();
-        for (uint i = 0; i < targets.length; i++) {
+        for (uint256 i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory ret) = targets[i].call(abi.encodePacked(encodedFunctions[i], sender));
             if (!success){

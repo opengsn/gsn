@@ -31,7 +31,7 @@ contract TokenPaymaster is BasePaymaster {
 
     mapping (IUniswap=>bool ) private supportedUniswaps;
 
-    uint public gasUsedByPost;
+    uint256 public gasUsedByPost;
 
     constructor(IUniswap[] memory _uniswaps) {
         uniswaps = _uniswaps;
@@ -39,7 +39,7 @@ contract TokenPaymaster is BasePaymaster {
         for (uint256 i = 0; i < _uniswaps.length; i++){
             supportedUniswaps[_uniswaps[i]] = true;
             tokens.push(IERC20(_uniswaps[i].tokenAddress()));
-            tokens[i].approve(address(_uniswaps[i]), type(uint).max);
+            tokens[i].approve(address(_uniswaps[i]), type(uint256).max);
         }
     }
 
@@ -48,7 +48,7 @@ contract TokenPaymaster is BasePaymaster {
      * You can use TokenGasCalculator to calculate these values (they depend on actual code of postRelayedCall,
      * but also the gas usage of the token and of Uniswap)
      */
-    function setPostGasUsage(uint _gasUsedByPost) external onlyOwner {
+    function setPostGasUsage(uint256 _gasUsedByPost) external onlyOwner {
         gasUsedByPost = _gasUsedByPost;
     }
 
@@ -59,7 +59,7 @@ contract TokenPaymaster is BasePaymaster {
         return relayRequest.request.to;
     }
 
-    event Received(uint eth);
+    event Received(uint256 eth);
     receive() external override payable {
         emit Received(msg.value);
     }
@@ -80,7 +80,7 @@ contract TokenPaymaster is BasePaymaster {
     returns (address payer, uint256 tokenPreCharge) {
         (token);
         payer = this.getPayer(relayRequest);
-        uint ethMaxCharge = relayHub.calculateCharge(maxPossibleGas, relayRequest.relayData);
+        uint256 ethMaxCharge = relayHub.calculateCharge(maxPossibleGas, relayRequest.relayData);
         ethMaxCharge += relayRequest.request.value;
         tokenPreCharge = uniswap.getTokenToEthOutputPrice(ethMaxCharge);
     }
@@ -149,9 +149,9 @@ contract TokenPaymaster is BasePaymaster {
 
     function _depositProceedsToHub(uint256 ethActualCharge, IUniswap uniswap) private {
         //solhint-disable-next-line
-        uniswap.tokenToEthSwapOutput(ethActualCharge, type(uint).max, block.timestamp+60*15);
+        uniswap.tokenToEthSwapOutput(ethActualCharge, type(uint256).max, block.timestamp+60*15);
         relayHub.depositFor{value:ethActualCharge}(address(this));
     }
 
-    event TokensCharged(uint gasUseWithoutPost, uint gasJustPost, uint ethActualCharge, uint tokenActualCharge);
+    event TokensCharged(uint256 gasUseWithoutPost, uint256 gasJustPost, uint256 ethActualCharge, uint256 tokenActualCharge);
 }

@@ -36,7 +36,7 @@ export async function registerAsRelayServer (testToken: TestTokenInstance, stake
   await stakeManager.authorizeHubByOwner(relay, hub.address, { from: relayOwner })
   await hub.setMinimumStakes([testToken.address], [stake])
   await hub.addRelayWorkers([relay], { from: relay })
-  const relayRegistrar = await RelayRegistrar.at(await hub.relayRegistrar())
+  const relayRegistrar = await RelayRegistrar.at(await hub.getRelayRegistrar())
   await relayRegistrar.registerRelayServer(2e16.toString(), '10', 'url', { from: relay })
 }
 
