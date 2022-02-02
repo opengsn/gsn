@@ -495,7 +495,7 @@ export class CommandsLogic {
       arguments: [rInstance.options.address, true]
     }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
 
-    if (!isSameAddress(await rInstance.methods.relayRegistrar().call(), rrInstance.options.address)) {
+    if (!isSameAddress(await rInstance.methods.getRelayRegistrar().call(), rrInstance.options.address)) {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
     }
 
