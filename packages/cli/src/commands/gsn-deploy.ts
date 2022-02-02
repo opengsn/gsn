@@ -18,9 +18,7 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('--stakeManager <address>', 'stakeManager')
   .option('--relayHub <address>', 'relayHub')
   .option('--penalizer <address>', 'penalizer')
-  .option('--versionRegistrar <address>', 'versionRegistry')
   .option('--relayRegistrar <address>', 'relayRegistrar')
-  .option('--registryHubId <string>', 'save the address of the relayHub to the registry, with this hub-id')
   .option('--environmentName <string>', `name of one of the GSN supported environments: (${Object.keys(EnvironmentsKeys).toString()}; default: ethereumMainnet)`, EnvironmentsKeys.ethereumMainnet)
   .option('--burnAddress <string>', 'address to transfer burned stake tokens into', constants.BURN_ADDRESS)
   .option('--yes, --skipConfirmation', 'skip con')
@@ -62,9 +60,7 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
     stakeManagerAddress: commander.stakeManager,
     relayHubAddress: commander.relayHub,
     penalizerAddress: commander.penalizer,
-    versionRegistryAddress: commander.versionRegistrar,
     relayRegistryAddress: commander.relayRegistrar,
-    registryHubId: commander.registryHubId,
     burnAddress: commander.burnAddress
   })
   const paymasterName = 'Default'

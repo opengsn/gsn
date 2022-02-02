@@ -2,7 +2,7 @@
 {
   "baseRelayFee": 0,
   "pctRelayFee": 70,
-  "versionRegistryAddress": "$REG",
+  "relayHubAddress": "$HUB",
   "gasPricePercent": 1,
   "ethereumNodeUrl": "http://$MYIP:8545",
   "debug": true,

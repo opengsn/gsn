@@ -8,6 +8,5 @@ export interface GSNContractsDeployment {
   relayHubAddress?: Address
   relayRegistrar?: Address
   stakeManagerAddress?: Address
-  versionRegistryAddress?: Address
   managerStakeTokenAddress?: Address
 }

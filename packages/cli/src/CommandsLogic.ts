@@ -18,13 +18,11 @@ import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import TestToken from './compiled/TestToken.json'
-import VersionRegistryAbi from './compiled/VersionRegistry.json'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { constants } from '@opengsn/common/dist/Constants'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-import { string32 } from '@opengsn/common/dist/VersionRegistry'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
@@ -32,7 +30,7 @@ import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeploym
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { resolveConfigRelayHubAddress, ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
 
 export interface RegisterOptions {
@@ -71,9 +69,7 @@ interface DeployOptions {
   relayRegistryAddress?: string
   stakeManagerAddress?: string
   penalizerAddress?: string
-  versionRegistryAddress?: string
   burnAddress?: string
-  registryHubId?: string
   verbose?: boolean
   skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
@@ -370,8 +366,7 @@ export class CommandsLogic {
   async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
     const relayManager = keyManager.getAddress(0)
     console.log('relayManager is', relayManager)
-    const relayHubAddress = await resolveConfigRelayHubAddress(config, this.contractInteractor)
-    const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+    const relayHub = await this.contractInteractor._createRelayHub(config.relayHubAddress)
     const accountBalance = toBN(await this.contractInteractor.getBalance(relayManager))
     console.log(`Relay manager account balance is ${fromWei(accountBalance)}eth`)
     const hubBalance = await relayHub.balanceOf(relayManager)
@@ -384,8 +379,7 @@ export class CommandsLogic {
       console.log('Withdrawing from GSN relayer to owner')
       const relayManager = options.keyManager.getAddress(0)
       console.log('relayManager is', relayManager)
-      const relayHubAddress = await resolveConfigRelayHubAddress(options.config, this.contractInteractor)
-      const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+      const relayHub = await this.contractInteractor._createRelayHub(options.config.relayHubAddress)
       const stakeManagerAddress = await relayHub.stakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { owner } = (await stakeManager.getStakeInfo(relayManager))[0]
@@ -424,7 +418,7 @@ export class CommandsLogic {
         const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
         const encodedCall = method.encodeABI()
         txToSign = new Transaction({
-          to: relayHubAddress,
+          to: options.config.relayHubAddress,
           value: 0,
           gasLimit,
           gasPrice,
@@ -434,7 +428,7 @@ export class CommandsLogic {
         console.log('Calling in view mode')
         await method.call({
           from: relayManager,
-          to: relayHubAddress,
+          to: options.config.relayHubAddress,
           value: 0,
           gas: gasLimit,
           gasPrice
@@ -505,12 +499,6 @@ export class CommandsLogic {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
     }
 
-    const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.versionRegistryAddress, { ...options }, deployOptions.skipConfirmation)
-    if (deployOptions.registryHubId != null) {
-      await regInstance.methods.addVersion(string32(deployOptions.registryHubId), string32('1'), rInstance.options.address).send({ ...options })
-      console.log(`== Saved RelayHub address at HubId:"${deployOptions.registryHubId}" to VersionRegistry`)
-    }
-
     let pmInstance: Contract | undefined
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, fInstance, deployOptions.skipConfirmation)
@@ -530,7 +518,6 @@ export class CommandsLogic {
       penalizerAddress: pInstance.options.address,
       relayRegistrarAddress: rrInstance.options.address,
       forwarderAddress: fInstance.options.address,
-      versionRegistryAddress: regInstance.options.address,
       managerStakeTokenAddress: ttInstance?.options.address ?? constants.ZERO_ADDRESS,
       paymasterAddress: pmInstance?.options.address ?? constants.ZERO_ADDRESS
     }

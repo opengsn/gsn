@@ -58,9 +58,6 @@ export class CommandLineStatisticsPresenter {
 
   createContractsDeploymentTable (deployment: GSNContractsDeployment, balances: ObjectMap<IntString>, versions: ObjectMap<SemVerString>): string {
     const table = new Table({ head: ['', 'Address', 'Balance', 'Version'] })
-    if (deployment.versionRegistryAddress != null) {
-      table.push({ 'Version Registry': [deployment.versionRegistryAddress, versions[deployment.versionRegistryAddress ?? '']] })
-    }
     table.push({ 'Stake Manager': [this.toBlockExplorerLink(deployment.stakeManagerAddress, true), this.ethValueStr(balances[deployment.stakeManagerAddress ?? '']), versions[deployment.stakeManagerAddress ?? '']] })
     table.push({ 'Penalizer ': [this.toBlockExplorerLink(deployment.penalizerAddress, true), this.ethValueStr(balances[deployment.penalizerAddress ?? '']), versions[deployment.penalizerAddress ?? '']] })
     table.push({ 'Relay Hub': [this.toBlockExplorerLink(deployment.relayHubAddress, true), this.ethValueStr(balances[deployment.relayHubAddress ?? '']), versions[deployment.relayHubAddress ?? '']] })
