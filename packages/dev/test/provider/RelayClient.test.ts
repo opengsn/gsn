@@ -54,6 +54,7 @@ const { expect, assert } = chai.use(chaiAsPromised)
 chai.use(sinonChai)
 
 const localhostOne = 'http://localhost:8090'
+const localhost127One = 'http://127.0.0.1:8090'
 const underlyingProvider = web3.currentProvider as HttpProvider
 
 class MockHttpClient extends HttpClient {
@@ -335,6 +336,79 @@ contract('RelayClient', function (accounts) {
       assert.equal(relayingErrors.get(localhostOne)!.message, BadHttpClient.message)
     })
 
+    it('should abort scanning if user cancels signature request', async () => {
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: gsnConfig
+        })
+      await relayClient.init()
+      // @ts-ignore
+      const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
+      const mockRelays = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
+      ]
+
+      getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
+      sinon.stub(relayClient.dependencies.accountManager, 'sign').onCall(0).throws(new Error('client sig failure'))
+
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.get(localhost127One)!.message, 'client sig failure')
+    })
+
+    it('should continue scanning if returned relayer TX is malformed', async () => {
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: gsnConfig
+        })
+      await relayClient.init()
+      // @ts-ignore
+      const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
+      const mockRelays = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '70', pctRelayFee: '70' },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '70', pctRelayFee: '70' }
+      ]
+
+      getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
+      sinon.stub(relayClient.dependencies.transactionValidator, 'validateRelayResponse').throws(new Error('fail returned tx'))
+
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 2)
+      assert.equal(relayingErrors.get(localhostOne)!.message, 'fail returned tx')
+    })
+
+    it('should continue looking up relayers after relayer error', async function () {
+      const badHttpClient = new BadHttpClient(logger, false, true, false)
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: gsnConfig,
+          overrideDependencies: { httpClient: badHttpClient }
+        })
+      await relayClient.init()
+      // @ts-ignore
+      const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
+      const mockRelays = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
+      ]
+
+      getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
+
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 2)
+      assert.equal(relayingErrors.get(localhostOne)!.message, BadHttpClient.message)
+    })
+
     it('should return errors in callback (asyncApprovalData) ', async function () {
       const relayClient =
         new RelayClient({
@@ -492,8 +566,9 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { contractInteractor: badContractInteractor }
         })
       await relayClient.init()
-      const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
+      assert.isUndefined(isRelayError)
       // @ts-ignore
       assert.equal(error.message, `local view call to 'relayCall()' reverted: ${BadContractInteractor.message}`)
     })
@@ -510,6 +585,7 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const attempt = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      assert.equal(attempt.isRelayError, true, 'timeout should not abort relay search')
       assert.equal(attempt.error?.message, 'some error describing how timeout occurred somewhere')
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
     })
@@ -553,8 +629,9 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
-      const { transaction, error } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
       assert.isUndefined(transaction)
+      assert.equal(isRelayError, true)
       // @ts-ignore
       assert.equal(error.message, 'Returned transaction did not pass validation')
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
