@@ -54,7 +54,7 @@ interface IPaymaster is IERC165 {
     /**
      * return the relayHub of this contract.
      */
-    function getHubAddress() external view returns (address);
+    function getRelayHub() external view returns (address);
 
     /**
      * Can be used to determine if the contract can pay for incoming calls before making any.

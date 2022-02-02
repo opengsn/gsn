@@ -24,7 +24,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
     IRelayHub internal relayHub;
     address private _trustedForwarder;
 
-    function getHubAddress() public override view returns (address) {
+    function getRelayHub() public override view returns (address) {
         return address(relayHub);
     }
 
@@ -73,7 +73,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
      * modifier to be used by recipients as access control protection for preRelayedCall & postRelayedCall
      */
     modifier relayHubOnly() {
-        require(msg.sender == getHubAddress(), "can only be called by RelayHub");
+        require(msg.sender == getRelayHub(), "can only be called by RelayHub");
         _;
     }
 
