@@ -89,7 +89,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
   describe('with no stake for relay server', function () {
     beforeEach(async function () {
       testToken = await TestToken.new()
-      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, burnAddress)
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
       await testToken.mint(constants.MAX_INT256, { from: owner })
       await testToken.approve(stakeManager.address, constants.MAX_INT256, { from: owner })
     })
@@ -308,7 +308,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
 
   describe('with authorized hub', function () {
     beforeEach(async function () {
-      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, burnAddress)
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
       await testToken.approve(stakeManager.address, constants.MAX_INT256, { from: owner })
       await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
       await stakeManager.stakeForRelayManager(testToken.address, relayManager, initialUnstakeDelay, initialStake, {
@@ -377,7 +377,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
 
   describe('with scheduled deauthorization of an authorized hub', function () {
     beforeEach(async function () {
-      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, burnAddress)
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
       await testToken.approve(stakeManager.address, constants.MAX_INT256, { from: owner })
       await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
       await stakeManager.stakeForRelayManager(testToken.address, relayManager, initialUnstakeDelay, initialStake, {
@@ -409,7 +409,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
 
   describe('with scheduled unlock while hub still authorized', function () {
     beforeEach(async function () {
-      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, burnAddress)
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
       await testToken.approve(stakeManager.address, constants.MAX_INT256, { from: owner })
       await stakeManager.setRelayManagerOwner(owner, { from: relayManager })
       await stakeManager.stakeForRelayManager(testToken.address, relayManager, initialUnstakeDelay, initialStake, {
@@ -474,6 +474,25 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
       testNotOwnerCannotStake()
 
       testOwnerCanStake()
+    })
+  })
+
+  context('#setBurnAddress', function () {
+    before(async function () {
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+    })
+
+    it('should allow owner to change burn address', async function () {
+      const { tx } = await stakeManager.setBurnAddress(burnAddress)
+      await expectEvent.inTransaction(tx, StakeManager, 'BurnAddressSet', {
+        burnAddress
+      })
+    })
+    it('should not allow non-owner to change burn address', async function () {
+      await expectRevert(
+        stakeManager.setBurnAddress(burnAddress, { from: nonOwner }),
+        'caller is not the owner'
+      )
     })
   })
 })

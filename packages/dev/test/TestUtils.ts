@@ -6,7 +6,7 @@ import path from 'path'
 import { ether } from '@openzeppelin/test-helpers'
 
 import {
-  IStakeManagerInstance,
+  StakeManagerInstance,
   RelayHubContract,
   RelayHubInstance,
   TestTokenInstance
@@ -38,7 +38,7 @@ const localhostOne = 'http://localhost:8090'
 export async function startRelay (
   relayHubAddress: string,
   testToken: TestTokenInstance,
-  stakeManager: IStakeManagerInstance,
+  stakeManager: StakeManagerInstance,
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
 

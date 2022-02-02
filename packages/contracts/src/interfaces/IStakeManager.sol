@@ -54,6 +54,10 @@ interface IStakeManager {
         address indexed owner
     );
 
+    event BurnAddressSet(
+        address indexed burnAddress
+    );
+
     /// @param stake - amount of ether staked for this relay
     /// @param unstakeDelay - number of seconds to elapse before the owner can retrieve the stake after calling 'unlock'
     /// @param withdrawTime - timestamp in seconds when 'withdraw' will be callable, or zero if the unlock has not been called
@@ -106,6 +110,8 @@ interface IStakeManager {
     function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo, bool isSenderAuthorizedHub);
 
     function maxUnstakeDelay() external view returns (uint256);
+
+    function setBurnAddress(address _burnAddress) external;
 
     function burnAddress() external view returns (address);
 
