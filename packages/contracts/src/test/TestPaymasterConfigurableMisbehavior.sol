@@ -59,7 +59,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     returns (bytes memory, bool) {
         (signature, approvalData, maxPossibleGas);
         if (outOfGasPre) {
-            uint i = 0;
+            uint256 i = 0;
             while (true) {
                 i++;
             }
@@ -114,7 +114,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     returns (IPaymaster.GasAndDataLimits memory) {
 
         if (expensiveGasLimits) {
-            uint sum;
+            uint256 sum;
             //memory access is 700gas, so we waste ~50000
             for ( int i=0; i<100000; i+=700 ) {
                 sum  = sum + limits.acceptanceBudget;
@@ -129,7 +129,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
 
     bool private trustRecipientRevert;
 
-    function setGasLimits(uint acceptanceBudget, uint preRelayedCallGasLimit, uint postRelayedCallGasLimit) public {
+    function setGasLimits(uint256 acceptanceBudget, uint256 preRelayedCallGasLimit, uint256 postRelayedCallGasLimit) public {
         limits = IPaymaster.GasAndDataLimits(
             acceptanceBudget,
             preRelayedCallGasLimit,

@@ -234,7 +234,7 @@ export class CommandsLogic {
       const relayHubAddress = response.relayHubAddress
 
       const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
-      const stakeManagerAddress = await relayHub.stakeManager()
+      const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { stake, unstakeDelay, owner, token } = (await stakeManager.getStakeInfo(relayAddress))[0]
 
@@ -292,7 +292,7 @@ export class CommandsLogic {
         console.log('Relayer already staked')
       } else {
         const config = await relayHub.getConfiguration()
-        const minimumStakeForToken = await relayHub.minimumStakePerToken(options.token)
+        const minimumStakeForToken = await relayHub.getMinimumStakePerToken(options.token)
         if (minimumStakeForToken.gt(toBN(options.stake.toString()))) {
           throw new Error(`Given minimum stake ${options.stake.toString()} too low for the given hub ${minimumStakeForToken.toString()} and token ${options.token}`)
         }
@@ -380,7 +380,7 @@ export class CommandsLogic {
       const relayManager = options.keyManager.getAddress(0)
       console.log('relayManager is', relayManager)
       const relayHub = await this.contractInteractor._createRelayHub(options.config.relayHubAddress)
-      const stakeManagerAddress = await relayHub.stakeManager()
+      const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { owner } = (await stakeManager.getStakeInfo(relayManager))[0]
       if (owner.toLowerCase() !== options.config.ownerAddress.toLowerCase()) {
@@ -495,7 +495,7 @@ export class CommandsLogic {
       arguments: [rInstance.options.address, true]
     }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
 
-    if (!isSameAddress(await rInstance.methods.relayRegistrar().call(), rrInstance.options.address)) {
+    if (!isSameAddress(await rInstance.methods.getRelayRegistrar().call(), rrInstance.options.address)) {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
     }
 

@@ -54,7 +54,7 @@ contract TestRecipient is BaseRelayRecipient {
     }
 
     //return (or revert) with a string in the given length
-    function checkReturnValues(uint len, bool doRevert) public view returns (string memory) {
+    function checkReturnValues(uint256 len, bool doRevert) public view returns (string memory) {
         (this);
         string memory mesg = "this is a long message that we are going to return a small part from. we don't use a loop since we want a fixed gas usage of the method itself.";
         require( bytes(mesg).length>=len, "invalid len: too large");

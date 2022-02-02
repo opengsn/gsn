@@ -145,7 +145,7 @@ interface IRelayHub is IERC165 {
     ///
     /// Emits a TransactionRelayed event.
     function relayCall(
-        uint maxAcceptanceBudget,
+        uint256 maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData
@@ -173,22 +173,22 @@ interface IRelayHub is IERC165 {
     /// Returns the whole hub configuration
     function getConfiguration() external view returns (RelayHubConfig memory config);
 
-    function minimumStakePerToken(IERC20 token) external view returns (uint256);
+    function getMinimumStakePerToken(IERC20 token) external view returns (uint256);
 
-    function workerToManager(address worker) external view returns(address);
+    function getWorkerManager(address worker) external view returns(address);
 
-    function workerCount(address manager) external view returns(uint256);
+    function getWorkerCount(address manager) external view returns(uint256);
 
     /// Returns an account's deposits. It can be either a deposit of a paymaster, or a revenue of a relay manager.
     function balanceOf(address target) external view returns (uint256);
 
-    function stakeManager() external view returns (IStakeManager);
+    function getStakeManager() external view returns (IStakeManager);
 
-    function penalizer() external view returns (address);
+    function getPenalizer() external view returns (address);
 
-    function relayRegistrar() external view returns (address);
+    function getRelayRegistrar() external view returns (address);
 
-    function batchGateway() external view returns (address);
+    function getBatchGateway() external view returns (address);
 
     /// Uses StakeManager info to decide if the Relay Manager can be considered staked
     /// returns if stake size and delay satisfy all requirements, reverts otherwise
@@ -198,7 +198,7 @@ interface IRelayHub is IERC165 {
     function isDeprecated() external view returns (bool);
 
     // Returns the timestamp from which the hub no longer allows relaying calls.
-    function deprecationTime() external view returns (uint256);
+    function getDeprecationTime() external view returns (uint256);
 
     /**
      * @return the block number in which the contract has been deployed.

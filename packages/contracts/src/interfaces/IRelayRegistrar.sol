@@ -12,12 +12,12 @@ interface IRelayRegistrar is IERC165 {
 
     struct RelayInfo {
         //last registration block number
-        uint lastBlockNumber;
+        uint256 lastBlockNumber;
         //stake (first registration) block number
-        uint stakeBlockNumber;
+        uint256 stakeBlockNumber;
         address relayManager;
-        uint baseRelayFee;
-        uint pctRelayFee;
+        uint256 baseRelayFee;
+        uint256 pctRelayFee;
         string url;
     }
 
@@ -50,5 +50,5 @@ interface IRelayRegistrar is IERC165 {
 
     function getRelayInfo(address relayManager) external view returns (RelayInfo memory info);
 
-    function readRelayInfos(uint oldestBlock, uint maxCount) external view returns (RelayInfo[] memory info, uint filled);
+    function readRelayInfos(uint256 oldestBlock, uint256 maxCount) external view returns (RelayInfo[] memory info, uint256 filled);
 }

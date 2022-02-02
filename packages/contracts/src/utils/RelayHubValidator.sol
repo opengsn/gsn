@@ -21,7 +21,7 @@ library RelayHubValidator {
         // relayData 9 members
         // ForwardRequest: 7 members
         // total 22 32-byte words if all dynamic params are zero-length.
-        uint expectedMsgDataLen = 4 + 23 * 32 +
+        uint256 expectedMsgDataLen = 4 + 23 * 32 +
             dynamicParamSize(signature) +
             dynamicParamSize(approvalData) +
             dynamicParamSize(relayRequest.request.data) +
@@ -34,7 +34,7 @@ library RelayHubValidator {
     // helper method for verifyTransactionPacking:
     // size (in bytes) of the given "bytes" parameter. size include the length (32-byte word),
     // and actual data size, rounded up to full 32-byte words
-    function dynamicParamSize(bytes calldata buf) internal pure returns (uint) {
-        return 32 + ((buf.length + 31) & (type(uint).max - 31));
+    function dynamicParamSize(bytes calldata buf) internal pure returns (uint256) {
+        return 32 + ((buf.length + 31) & (type(uint256).max - 31));
     }
 }

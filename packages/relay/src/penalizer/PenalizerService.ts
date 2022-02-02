@@ -343,7 +343,7 @@ export class PenalizerService {
       }
     }
     const relayWorker = bufferToHex(requestTx.getSenderAddress().toBuffer())
-    const relayManager = await this.contractInteractor.relayHubInstance.workerToManager(relayWorker)
+    const relayManager = await this.contractInteractor.relayHubInstance.getWorkerManager(relayWorker)
     if (isZeroAddress(relayManager)) {
       return {
         valid: false,

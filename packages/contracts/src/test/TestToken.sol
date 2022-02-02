@@ -9,7 +9,7 @@ contract TestToken is ERC20 {
         mint(100 ether);
     }
 
-    function mint(uint amount) public {
+    function mint(uint256 amount) public {
         _mint(msg.sender, amount);
     }
 }

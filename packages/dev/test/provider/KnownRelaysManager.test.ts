@@ -45,7 +45,7 @@ export async function stake (testToken: TestTokenInstance, stakeManager: StakeMa
 
 export async function register (relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
   await relayHub.addRelayWorkers([worker], { from: manager })
-  const relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
+  const relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
   await relayRegistrar.registerRelayServer(baseRelayFee ?? '0', pctRelayFee ?? '0', url, { from: manager })
 }
 
@@ -117,7 +117,7 @@ contract('KnownRelaysManager', function (
       await stake(testToken, stakeManager, relayHub, notActiveRelay, owner)
       const txPaymasterRejected = await prepareTransaction(testRecipient, other, workerPaymasterRejected, paymaster.address, web3)
       const txTransactionRelayed = await prepareTransaction(testRecipient, other, workerTransactionRelayed, paymaster.address, web3)
-      const relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
+      const relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
 
       /** events that are not supposed to be visible to the manager */
       await relayHub.addRelayWorkers([workerRelayServerRegistered], {

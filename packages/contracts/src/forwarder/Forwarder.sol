@@ -68,7 +68,7 @@ contract Forwarder is IForwarder, ERC165 {
 
         require(req.validUntilTime == 0 || req.validUntilTime > block.timestamp, "FWD: request expired");
 
-        uint gasForTransfer = 0;
+        uint256 gasForTransfer = 0;
         if ( req.value != 0 ) {
             gasForTransfer = 40000; //buffer in case we need to move eth after the transaction.
         }
@@ -94,7 +94,7 @@ contract Forwarder is IForwarder, ERC165 {
 
     function registerRequestType(string calldata typeName, string calldata typeSuffix) external override {
 
-        for (uint i = 0; i < bytes(typeName).length; i++) {
+        for (uint256 i = 0; i < bytes(typeName).length; i++) {
             bytes1 c = bytes(typeName)[i];
             require(c != "(" && c != ")", "FWD: invalid typename");
         }

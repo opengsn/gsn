@@ -67,7 +67,7 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         return storageInfo;
     }
 
-    function storeRelayServerRegistration(address relayManager, uint baseRelayFee, uint pctRelayFee, string calldata url) internal {
+    function storeRelayServerRegistration(address relayManager, uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) internal {
         RelayStorageInfo storage storageInfo = addItem(relayManager);
         if (storageInfo.stakeBlockNumber==0) {
             storageInfo.stakeBlockNumber = uint32(block.number);
@@ -97,11 +97,11 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
      * @return info - list of RelayInfo for registered relays
      * @return filled - # of entries filled in info (last entries in returned array might be empty)
      */
-    function readRelayInfos(uint oldestBlock, uint maxCount) public view override returns (RelayInfo[] memory info, uint filled) {
+    function readRelayInfos(uint256 oldestBlock, uint256 maxCount) public view override returns (RelayInfo[] memory info, uint256 filled) {
         address[] storage items = indexedValues;
         filled = 0;
         info = new RelayInfo[](items.length < maxCount ? items.length : maxCount);
-        for (uint i = 0; i < items.length; i++) {
+        for (uint256 i = 0; i < items.length; i++) {
             address relayManager = items[i];
             RelayInfo memory relayInfo = getRelayInfo(relayManager);
             if (relayInfo.lastBlockNumber < oldestBlock) {
@@ -140,7 +140,7 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     function packString(bytes32[3] memory parts) public pure returns (string memory str) {
         bytes memory ret = bytes.concat(parts[0], parts[1], parts[2]);
         //trim trailing zeros
-        uint len = ret.length - 1;
+        uint256 len = ret.length - 1;
         while (len > 0 && ret[len] == 0) len--;
         assembly {
             mstore(ret, add(len, 1))

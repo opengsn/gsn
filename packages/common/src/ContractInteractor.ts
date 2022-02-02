@@ -257,7 +257,7 @@ export class ContractInteractor {
     const [
       relayHubAddress, forwarderAddress, paymasterVersion
     ] = await Promise.all([
-      this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
+      this.paymasterInstance.getRelayHub().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
       this.paymasterInstance.trustedForwarder().catch(
         (e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
       this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then(
@@ -909,7 +909,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   async workerToManager (worker: Address): Promise<string> {
-    return await this.relayHubInstance.workerToManager(worker)
+    return await this.relayHubInstance.getWorkerManager(worker)
   }
 
   /**
@@ -1069,7 +1069,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   private async _hubStakeManagerAddress (): Promise<Address> {
-    return await this.relayHubInstance.stakeManager()
+    return await this.relayHubInstance.getStakeManager()
   }
 
   stakeManagerAddress (): Address {
@@ -1077,11 +1077,11 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   private async _hubPenalizerAddress (): Promise<Address> {
-    return await this.relayHubInstance.penalizer()
+    return await this.relayHubInstance.getPenalizer()
   }
 
   private async _hubRelayRegistrarAddress (): Promise<Address> {
-    return await this.relayHubInstance.relayRegistrar()
+    return await this.relayHubInstance.getRelayRegistrar()
   }
 
   penalizerAddress (): Address {

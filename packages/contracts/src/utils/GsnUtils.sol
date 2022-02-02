@@ -31,7 +31,7 @@ library GsnUtils {
      * see: https://solidity.readthedocs.io/en/develop/abi-spec.html#formal-specification-of-the-encoding
      * the return value should be casted to the right type (uintXXX/bytesXXX/address/bool/enum)
      */
-    function getParam(bytes memory msgData, uint index) internal pure returns (uint) {
+    function getParam(bytes memory msgData, uint256 index) internal pure returns (uint256) {
         return MinLibBytes.readUint256(msgData, 4 + index * 32);
     }
 

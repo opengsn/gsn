@@ -9,5 +9,5 @@ interface ArbSys {
      * @notice get the caller's amount of available storage gas
      * @return amount of storage gas available to the caller
      */
-    function getStorageGasAvailable() external view returns (uint);
+    function getStorageGasAvailable() external view returns (uint256);
 }

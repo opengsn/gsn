@@ -74,7 +74,7 @@ contract('RelayHub Configuration',
         defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
         defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
-      relayRegistrar = await RelayRegistrar.at(await relayHub.relayRegistrar())
+      relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
       // Register hub's RelayRequest with forwarder, if not already done.
@@ -140,7 +140,7 @@ contract('RelayHub Configuration',
         expectEvent(
           res,
           'HubDeprecated', { deprecationTime })
-        const deprecationTimeFromHub = (await relayHub.deprecationTime()).toString()
+        const deprecationTimeFromHub = (await relayHub.getDeprecationTime()).toString()
         assert.equal(deprecationTime, deprecationTimeFromHub)
       })
 
@@ -184,7 +184,7 @@ contract('RelayHub Configuration',
         // Before deprecation block set
         let isDeprecated = await relayHub.isDeprecated()
         assert.isFalse(isDeprecated)
-        let deprecationTime = (await relayHub.deprecationTime())
+        let deprecationTime = (await relayHub.getDeprecationTime())
         const maxUint256 = 'f'.repeat(64)
         assert.equal(deprecationTime.toString(16), maxUint256)
 
@@ -193,7 +193,7 @@ contract('RelayHub Configuration',
         await relayHub.deprecateHub(newDeprecationTime)
         isDeprecated = await relayHub.isDeprecated()
         assert.isFalse(isDeprecated)
-        deprecationTime = (await relayHub.deprecationTime())
+        deprecationTime = (await relayHub.getDeprecationTime())
         assert.equal(deprecationTime.toNumber(), newDeprecationTime)
 
         // After deprecation time set and passed
