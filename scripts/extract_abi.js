@@ -17,7 +17,7 @@ files.forEach(file => {
 
   const outNodeFile = outAbiFolder + '/' + c + '.json'
   const jsonFile = `packages/cli/src/compiled/${c.replace(/interfaces./, '')}.json`
-  const abiStr = JSON.parse(fs.readFileSync(jsonFile, { encoding: 'ascii' }))
+  const abiStr = JSON.parse(fs.readFileSync(jsonFile, { encoding: 'utf8' }))
   fs.mkdirSync(path.dirname(outNodeFile), { recursive: true })
   fs.writeFileSync(outNodeFile, JSON.stringify(abiStr.abi))
   console.log('written "' + outNodeFile + '"')

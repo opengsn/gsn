@@ -19,7 +19,7 @@ contract TestDecimalsToken is ERC20 {
         return _decimals;
     }
 
-    function setDecimals(uint8 decimals) public {
-        _decimals = decimals;
+    function setDecimals(uint8 _dec) public {
+        _decimals = _dec;
     }
 }

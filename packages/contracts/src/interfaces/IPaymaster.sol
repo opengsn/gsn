@@ -8,15 +8,15 @@ import "../utils/GsnTypes.sol";
 
 /**
  * @title The Paymaster Interface
- * @dev Contracts implementing this interface exist to make decision about paying the transaction fee to the relay.
+ * @notice Contracts implementing this interface exist to make decision about paying the transaction fee to the relay.
  *
- * @dev There are two callbacks here that are executed by the RelayHub: 'preRelayedCall' and 'postRelayedCall'.
+ * @notice There are two callbacks here that are executed by the RelayHub: 'preRelayedCall' and 'postRelayedCall'.
  *
- * @dev It is recommended that your implementation inherits from the abstract BasePaymaster contract.<br />
+ * @notice It is recommended that your implementation inherits from the abstract BasePaymaster contract.
 */
 interface IPaymaster is IERC165 {
     /**
-     * The limits this Paymaster wants to be imposed by the RelayHub on user input. See `getGasAndDataLimits`.
+     * @notice The limits this Paymaster wants to be imposed by the RelayHub on user input. See `getGasAndDataLimits`.
      */
     struct GasAndDataLimits {
         uint256 acceptanceBudget;

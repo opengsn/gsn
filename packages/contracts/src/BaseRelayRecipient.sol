@@ -15,7 +15,7 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
      */
     address private _trustedForwarder;
 
-    function trustedForwarder() public virtual view returns (address){
+    function getTrustedForwarder() public virtual view returns (address){
         return _trustedForwarder;
     }
 

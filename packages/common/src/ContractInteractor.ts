@@ -258,7 +258,7 @@ export class ContractInteractor {
       relayHubAddress, forwarderAddress, paymasterVersion
     ] = await Promise.all([
       this.paymasterInstance.getRelayHub().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
-      this.paymasterInstance.trustedForwarder().catch(
+      this.paymasterInstance.getTrustedForwarder().catch(
         (e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
       this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then(
         (version: string) => {
