@@ -23,6 +23,7 @@
 {{return}} {{description}}
 {{/each}}
 
+---
 {{/each}}
 
 ## Events
@@ -33,6 +34,7 @@
 
 {{{natspec.devdoc}}}
 
+---
 {{/each}}
 
 ## Structs
@@ -45,6 +47,7 @@
 
 {{/each}}
 
+---
 {{/each}}
 
 ## Enums
@@ -57,14 +60,16 @@
 
 {{/each}}
 
+---
 {{/each}}
 
 ## Modifiers
 {{#each ownModifiers}}
-    ### `{{name}}({{args}})`
+### `{{name}}({{args}})`
 
-    {{{natspec.userdoc}}}
+{{{natspec.userdoc}}}
 
-    {{{natspec.devdoc}}}
+{{{natspec.devdoc}}}
 
+---
 {{/each}}
