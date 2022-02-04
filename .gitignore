@@ -44,3 +44,4 @@ yarn-error.log
 /packages/paymasters/json-input.json
 hardhat.log
 /packages/contracts/solpp/
+/packages/contracts/docs/

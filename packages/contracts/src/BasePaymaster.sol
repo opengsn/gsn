@@ -87,18 +87,8 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
         _trustedForwarder = forwarder;
     }
 
-    function trustedForwarder() public virtual view override returns (address){
+    function getTrustedForwarder() public virtual view override returns (address){
         return _trustedForwarder;
-    }
-
-
-    /// check current deposit on relay hub.
-    function getRelayHubDeposit()
-    public
-    override
-    view
-    returns (uint256) {
-        return relayHub.balanceOf(address(this));
     }
 
     // any money moved into the paymaster is transferred as a deposit.
