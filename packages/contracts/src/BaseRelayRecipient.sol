@@ -19,7 +19,7 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
     address private _trustedForwarder;
 
     /**
-     * ⚠️ **Warning** ⚠️ The Forwarder can have a full control over your Recipient. Only trust verified Forwarder.
+     * :warning: **Warning** :warning: The Forwarder can have a full control over your Recipient. Only trust verified Forwarder.
      * @notice Method is not a required method to allow Recipients to trust multiple Forwarders. Not recommended yet.
      * @return forwarder The address of the Forwarder contract that is being used.
      */

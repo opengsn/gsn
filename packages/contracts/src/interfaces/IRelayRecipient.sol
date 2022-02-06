@@ -11,7 +11,7 @@ pragma solidity >=0.6.0;
 abstract contract IRelayRecipient {
 
     /**
-     * ⚠️ **Warning** ⚠️ The Forwarder can have a full control over your Recipient. Only trust verified Forwarder.
+     * :warning: **Warning** :warning: The Forwarder can have a full control over your Recipient. Only trust verified Forwarder.
      * @param forwarder The address of the Forwarder contract that is being used.
      * @return isTrustedForwarder `true` if the Forwarder is trusted to forward relayed transactions by this Recipient.
      */

@@ -82,7 +82,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
 
     /**
      * @notice The owner of the Paymaster can change the instance of the RelayHub this Paymaster works with.
-     * ⚠️ **Warning** ⚠️ The deposit on the previous RelayHub must be withdrawn first.
+     * :warning: **Warning** :warning: The deposit on the previous RelayHub must be withdrawn first.
      */
     function setRelayHub(IRelayHub hub) public onlyOwner {
         require(address(hub).supportsInterface(type(IRelayHub).interfaceId), "target is not a valid IRelayHub");

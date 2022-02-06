@@ -10,7 +10,7 @@ import "../utils/GsnTypes.sol";
  * @title The Paymaster Interface
  * @notice Contracts implementing this interface exist to make decision about paying the transaction fee to the relay.
  *
- * @notice There are two callbacks here that are executed by the RelayHub: 'preRelayedCall' and 'postRelayedCall'.
+ * @notice There are two callbacks here that are executed by the RelayHub: `preRelayedCall` and `postRelayedCall`.
  *
  * @notice It is recommended that your implementation inherits from the abstract BasePaymaster contract.
 */
@@ -26,33 +26,33 @@ interface IPaymaster is IERC165 {
     }
 
     /**
-     * Return the Gas Limits for Paymaster's functions and maximum msg.data length values for this Paymaster.
+     * @notice Return the Gas Limits for Paymaster's functions and maximum msg.data length values for this Paymaster.
      * This function allows different paymasters to have different properties without changes to the RelayHub.
      * @return limits An instance of the `GasAndDataLimits` struct
      *
-     *  acceptanceBudget:
-     *  If the transactions consumes more than `acceptanceBudget` this Paymaster will be charged for gas no matter what.
-     *  Transaction that gets rejected after consuming more than `acceptanceBudget` gas is on this Paymaster's expense.
+     * ##### `acceptanceBudget`
+     * If the transactions consumes more than `acceptanceBudget` this Paymaster will be charged for gas no matter what.
+     * Transaction that gets rejected after consuming more than `acceptanceBudget` gas is on this Paymaster's expense.
      *
-     *  Should be set to an amount gas this Paymaster expects to spend deciding whether to accept or reject a request.
-     *  This includes gas consumed by calculations in the `preRelayedCall`, `Forwarder` and the recipient contract.
+     * Should be set to an amount gas this Paymaster expects to spend deciding whether to accept or reject a request.
+     * This includes gas consumed by calculations in the `preRelayedCall`, `Forwarder` and the recipient contract.
      *
-     *  ⚠️ **Warning** ⚠️ As long this value is above preRelayedCallGasLimit (see defaults in BasePaymaster), the
-     *  Paymaster is guaranteed it will never pay for rejected transactions.
-     *  If this value is below preRelayedCallGasLimit, it might might make Paymaster open to a "griefing" attack.
+     * :warning: **Warning** :warning: As long this value is above `preRelayedCallGasLimit`
+     * (see defaults in `BasePaymaster`), the Paymaster is guaranteed it will never pay for rejected transactions.
+     * If this value is below `preRelayedCallGasLimit`, it might might make Paymaster open to a "griefing" attack.
      *
-     *  The relayers should prefer lower acceptanceBudget, as it improves their chances of being compensated.
-     *  From a Relay's point of view, this is the highest gas value a paymaster might "grief" the relay,
-     *  since the paymaster will pay anything above that (regardless if the tx reverts)
-     *  Specifying value too high might make the call rejected by relayers (see `maxAcceptanceBudget` in server config).
+     * The relayers should prefer lower `acceptanceBudget`, as it improves their chances of being compensated.
+     * From a Relay's point of view, this is the highest gas value a bad Paymaster may cost the relay,
+     * since the paymaster will pay anything above that value regardless of whether the transaction succeeds or reverts.
+     * Specifying value too high might make the call rejected by relayers (see `maxAcceptanceBudget` in server config).
      *
-     *  preRelayedCallGasLimit:
-     *  The max gas usage of preRelayedCall. Any revert of the `preRelayedCall` is a request rejection by the paymaster.
-     *  As long as `acceptanceBudget` is above `preRelayedCallGasLimit`, any such revert is not payed by the paymaster.
+     * ##### `preRelayedCallGasLimit`
+     * The max gas usage of preRelayedCall. Any revert of the `preRelayedCall` is a request rejection by the paymaster.
+     * As long as `acceptanceBudget` is above `preRelayedCallGasLimit`, any such revert is not payed by the paymaster.
      *
-     *  postRelayedCallGasLimit:
-     *  The max gas usage of postRelayedCall. The Paymaster is not charged for the maximum, only for actually used gas.
-     *  Note that an OOG will revert the inner transaction, but the paymaster will be charged for it anyway.
+     * ##### `postRelayedCallGasLimit`
+     * The max gas usage of postRelayedCall. The Paymaster is not charged for the maximum, only for actually used gas.
+     * Note that an OOG will revert the inner transaction, but the paymaster will be charged for it anyway.
      */
     function getGasAndDataLimits()
     external
@@ -62,25 +62,26 @@ interface IPaymaster is IERC165 {
     );
 
     /**
-     * ⚠️ **Warning** ⚠️ using incorrect Forwarder may lead to the Paymaster agreeing to pay for invalid transactions.
-     * @return trustedForwarder The address of the Forwarder that is trusted by this Paymaster to execute the requests.
+     * @notice :warning: **Warning** :warning: using incorrect Forwarder may cause the Paymaster to agreeing to pay for invalid transactions.
+     * @return trustedForwarder The address of the `Forwarder` that is trusted by this Paymaster to execute the requests.
      */
     function getTrustedForwarder() external view returns (address trustedForwarder);
 
     /**
-     * @return relayHub The address of the RelayHub that is trusted by this Paymaster to execute the requests.
+     * @return relayHub The address of the `RelayHub` that is trusted by this Paymaster to execute the requests.
      */
     function getRelayHub() external view returns (address relayHub);
 
     /**
-     * @notice Called by Relay (and RelayHub), to validate if the paymaster agrees to pay for this call.
+     * @notice Called by the Relay in view mode and later by the `RelayHub` on-chain to validate that
+     * the Paymaster agrees to pay for this call.
      *
-     * ⚠️ **Warning** ⚠️ This method MUST be protected with relayHubOnly() in case it modifies state.
+     * :warning: **Warning** :warning: This method MUST be protected with `relayHubOnly()` in case it modifies state.
      *
      * The request is considered to be rejected by the Paymaster in one of the following conditions:
-     *  - preRelayedCall() method reverts
-     *  - the Forwarder reverts because of nonce or signature error
-     *  - the Paymaster returned `rejectOnRecipientRevert: true` and the recipient contract reverted,
+     *  - `preRelayedCall()` method reverts
+     *  - the `Forwarder` reverts because of nonce or signature error
+     *  - the `Paymaster` returned `rejectOnRecipientRevert: true` and the recipient contract reverted
      *    (and all that did not consume more than `acceptanceBudget` gas).
      *
      * In any of the above cases, all Paymaster calls and the recipient call are reverted.
@@ -121,7 +122,7 @@ interface IPaymaster is IERC165 {
      * @notice This method is called after the actual relayed function call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
      *
-     * ⚠️ **Warning** ⚠️ This method MUST be protected with relayHubOnly() in case it modifies state.
+     * :warning: **Warning** :warning: This method MUST be protected with relayHubOnly() in case it modifies state.
      *
      * Revert in this functions causes a revert of the client's relayed call (and preRelayedCall(), but the Paymaster
      * is still committed to pay the relay for the entire transaction.
