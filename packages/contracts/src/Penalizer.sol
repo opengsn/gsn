@@ -9,9 +9,15 @@ import "./utils/GsnUtils.sol";
 import "./interfaces/IRelayHub.sol";
 import "./interfaces/IPenalizer.sol";
 
+/**
+ * @title The Penalizer Implementation
+ *
+ * @notice This Penalizer supports parsing Legacy, Type 1 and Type 2 raw RLP Encoded transactions.
+ */
 contract Penalizer is IPenalizer {
     using ECDSA for bytes32;
 
+    /// @inheritdoc IPenalizer
     string public override versionPenalizer = "2.2.3+opengsn.penalizer.ipenalizer";
 
     uint256 internal immutable penalizeBlockDelay;
@@ -25,10 +31,12 @@ contract Penalizer is IPenalizer {
         penalizeBlockExpiration = _penalizeBlockExpiration;
     }
 
+    /// @inheritdoc IPenalizer
     function getPenalizeBlockDelay() external override view returns (uint256) {
         return penalizeBlockDelay;
     }
 
+    /// @inheritdoc IPenalizer
     function getPenalizeBlockExpiration() external override view returns (uint256) {
         return penalizeBlockExpiration;
     }
@@ -46,10 +54,12 @@ contract Penalizer is IPenalizer {
         return (uint8(rawTransaction[0]) == 2);
     }
 
+    /// @return `true` if raw transaction is of types Legacy, 1 or 2. `false` otherwise.
     function isTransactionTypeValid(bytes calldata rawTransaction) public pure returns(bool) {
         return isLegacyTransaction(rawTransaction) || isTransactionType1(rawTransaction) || isTransactionType2(rawTransaction);
     }
 
+    /// @return transaction The details that the `Penalizer` needs to decide if the transaction is penalizable.
     function decodeTransaction(bytes calldata rawTransaction) public pure returns (Transaction memory transaction) {
         if (isTransactionType1(rawTransaction)) {
             (transaction.nonce,
@@ -75,16 +85,14 @@ contract Penalizer is IPenalizer {
 
     mapping(bytes32 => uint256) public commits;
 
-    /**
-     * any sender can call "commit(keccak(encodedPenalizeFunction))", to make sure
-     * no-one can front-run it to claim this penalization
-     */
+    /// @inheritdoc IPenalizer
     function commit(bytes32 commitHash) external override {
         uint256 readyBlockNumber = block.number + penalizeBlockDelay;
         commits[commitHash] = readyBlockNumber;
         emit CommitAdded(msg.sender, commitHash, readyBlockNumber);
     }
 
+    /// Modifier that verifies there was a `commit` operation before this call that has not expired yet.
     modifier commitRevealOnly() {
         bytes32 commitHash = keccak256(abi.encodePacked(keccak256(msg.data), msg.sender));
         uint256 readyBlockNumber = commits[commitHash];
@@ -98,6 +106,7 @@ contract Penalizer is IPenalizer {
         _;
     }
 
+    /// @inheritdoc IPenalizer
     function penalizeRepeatedNonce(
         bytes calldata unsignedTx1,
         bytes calldata signature1,
@@ -122,16 +131,6 @@ contract Penalizer is IPenalizer {
     )
     private
     {
-        // If a relay attacked the system by signing multiple transactions with the same nonce
-        // (so only one is accepted), anyone can grab both transactions from the blockchain and submit them here.
-        // Check whether unsignedTx1 != unsignedTx2, that both are signed by the same address,
-        // and that unsignedTx1.nonce == unsignedTx2.nonce.
-        // If all conditions are met, relay is considered an "offending relay".
-        // The offending relay will be unregistered immediately, its stake will be forfeited and given
-        // to the address who reported it (msg.sender), thus incentivizing anyone to report offending relays.
-        // If reported via a relay, the forfeited stake is split between
-        // msg.sender (the relay used for reporting) and the address that reported it.
-
         address addr1 = keccak256(unsignedTx1).recover(signature1);
         address addr2 = keccak256(unsignedTx2).recover(signature2);
 
@@ -157,6 +156,7 @@ contract Penalizer is IPenalizer {
         penalize(addr1, hub);
     }
 
+    /// @inheritdoc IPenalizer
     function penalizeIllegalTransaction(
         bytes calldata unsignedTx,
         bytes calldata signature,

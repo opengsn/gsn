@@ -43,11 +43,13 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         return creationBlock;
     }
 
+    /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
         return interfaceId == type(IRelayRegistrar).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
+    /// @inheritdoc IRelayRegistrar
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
         address relayManager = msg.sender;
         if (address(relayHub) != address(0)) {
@@ -79,7 +81,9 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         storageInfo.urlParts = parts;
     }
 
-    function getRelayInfo(address relayManager) public view override returns (RelayInfo memory info) {
+    /// @inheritdoc IRelayRegistrar
+    function getRelayInfo(address relayManager) public view override returns (RelayInfo memory) {
+        RelayInfo memory info;
         RelayStorageInfo storage storageInfo = values[relayManager];
         require(storageInfo.lastBlockNumber != 0, "relayManager not found");
         info.lastBlockNumber = storageInfo.lastBlockNumber;
@@ -88,15 +92,10 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         info.pctRelayFee = storageInfo.pctRelayFee;
         info.relayManager = relayManager;
         info.url = packString(storageInfo.urlParts);
+        return info;
     }
 
-    /**
-     * read relay info of registered relays
-     * @param maxCount - return at most that many relays
-     * @param oldestBlock - return only relays registered from this block on.
-     * @return info - list of RelayInfo for registered relays
-     * @return filled - # of entries filled in info (last entries in returned array might be empty)
-     */
+    /// @inheritdoc IRelayRegistrar
     function readRelayInfos(uint256 oldestBlock, uint256 maxCount) public view override returns (RelayInfo[] memory info, uint256 filled) {
         address[] storage items = indexedValues;
         filled = 0;
@@ -120,7 +119,13 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         }
     }
 
-    function splitString(string calldata str) public pure returns (bytes32[3] memory parts) {
+    /**
+     * @notice Splits the variable size string array into static size bytes array. See `packString` for reverse.
+     * @param str The string to be split.
+     * @return The same string split into parts.
+     */
+    function splitString(string calldata str) public pure returns (bytes32[3] memory) {
+        bytes32[3] memory parts;
         bytes calldata url = bytes(str);
         require(url.length <= 96, "url too long");
         parts[0] = bytes32(url[0 :]);
@@ -135,8 +140,14 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
             parts[1] = 0;
             parts[2] = 0;
         }
+        return parts;
     }
 
+    /**
+     * @notice Packs a string back after being split in `splitString`.
+     * @param parts The string split into parts.
+     * @return str The same string joined back together.
+     */
     function packString(bytes32[3] memory parts) public pure returns (string memory str) {
         bytes memory ret = bytes.concat(parts[0], parts[1], parts[2]);
         //trim trailing zeros

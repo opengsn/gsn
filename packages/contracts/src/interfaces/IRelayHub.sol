@@ -285,7 +285,7 @@ interface IRelayHub is IERC165 {
     /// @return The block number in which the contract has been deployed.
     function getCreationBlock() external view returns (uint256);
 
-    /// @return a SemVer-compliant version of the hub contract.
+    /// @return a SemVer-compliant version of the `RelayHub` contract.
     function versionHub() external view returns (string memory);
 
     /// @return A total measurable amount of gas left to current execution. Same as 'gasleft()' for pure EVMs.
