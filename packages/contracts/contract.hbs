@@ -27,6 +27,7 @@
 ---
 {{/each}}
 
+{{#if ownEvents}}
 ## Events
 {{#each ownEvents}}
 ### `{{name}}({{args}})`
@@ -37,7 +38,9 @@
 
 ---
 {{/each}}
+{{/if}}
 
+{{#if ownStructs}}
 ## Structs
 {{#each ownStructs}}
 ### `{{name}}`
@@ -50,7 +53,9 @@
 
 ---
 {{/each}}
+{{/if}}
 
+{{#if ownEnums}}
 ## Enums
 {{#each ownEnums}}
 ### `{{name}}`
@@ -63,7 +68,9 @@
 
 ---
 {{/each}}
+{{/if}}
 
+{{#if ownModifiers}}
 ## Modifiers
 {{#each ownModifiers}}
 ### `{{name}}({{args}})`
@@ -74,3 +81,4 @@
 
 ---
 {{/each}}
+{{/if}}

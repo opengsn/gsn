@@ -14,6 +14,8 @@ import "@openzeppelin/contracts/interfaces/IERC165.sol";
  *
  * :warning: **Warning** :warning: The Forwarder can have a full control over a `Recipient` contract.
  * Any vulnerability in a `Forwarder` implementation can make all of its `Recipient` contracts susceptible!
+ * Recipient contracts should only trust forwarders that passed through security audit,
+ * otherwise they are susceptible to identity theft.
  */
 interface IForwarder is IERC165 {
 
