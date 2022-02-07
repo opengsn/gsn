@@ -14,7 +14,7 @@ import relayHubAbi from './interfaces/IRelayHub.json'
 import forwarderAbi from './interfaces/IForwarder.json'
 import stakeManagerAbi from './interfaces/IStakeManager.json'
 import penalizerAbi from './interfaces/IPenalizer.json'
-import gsnRecipientAbi from './interfaces/IRelayRecipient.json'
+import gsnRecipientAbi from './interfaces/IERC2771Recipient.json'
 import relayRegistrarAbi from './interfaces/IRelayRegistrar.json'
 import iErc20TokenAbi from './interfaces/IERC20Token.json'
 
@@ -108,7 +108,7 @@ export class ContractInteractor {
   private readonly IForwarderContract: Contract<IForwarderInstance>
   private readonly IStakeManager: Contract<IStakeManagerInstance>
   private readonly IPenalizer: Contract<IPenalizerInstance>
-  private readonly IRelayRecipient: Contract<IERC2771RecipientInstance>
+  private readonly IERC2771Recipient: Contract<IERC2771RecipientInstance>
   private readonly IRelayRegistrar: Contract<IRelayRegistrarInstance>
   private readonly IERC20Token: Contract<IERC20TokenInstance>
 
@@ -118,7 +118,7 @@ export class ContractInteractor {
   private forwarderInstance!: IForwarderInstance
   private stakeManagerInstance!: IStakeManagerInstance
   penalizerInstance!: IPenalizerInstance
-  private relayRecipientInstance?: IERC2771RecipientInstance
+  private erc2771RecipientInstance?: IERC2771RecipientInstance
   relayRegistrar!: IRelayRegistrarInstance
   erc20Token!: IERC20TokenInstance
   private readonly relayCallMethod: any
@@ -156,34 +156,28 @@ export class ContractInteractor {
     this.provider = provider
     this.lastBlockNumber = 0
     this.environment = environment
-    // @ts-ignore
     this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
       abi: paymasterAbi
     })
-    // @ts-ignore
     this.IRelayHubContract = TruffleContract({
       contractName: 'IRelayHub',
       abi: relayHubAbi
     })
-    // @ts-ignore
     this.IForwarderContract = TruffleContract({
       contractName: 'IForwarder',
       abi: forwarderAbi
     })
-    // @ts-ignore
     this.IStakeManager = TruffleContract({
       contractName: 'IStakeManager',
       abi: stakeManagerAbi
     })
-    // @ts-ignore
     this.IPenalizer = TruffleContract({
       contractName: 'IPenalizer',
       abi: penalizerAbi
     })
-    // @ts-ignore
-    this.IRelayRecipient = TruffleContract({
-      contractName: 'IRelayRecipient',
+    this.IERC2771Recipient = TruffleContract({
+      contractName: 'IERC2771Recipient',
       abi: gsnRecipientAbi
     })
     this.IRelayRegistrar = TruffleContract({
@@ -199,7 +193,7 @@ export class ContractInteractor {
     this.IPaymasterContract.setProvider(this.provider, undefined)
     this.IForwarderContract.setProvider(this.provider, undefined)
     this.IPenalizer.setProvider(this.provider, undefined)
-    this.IRelayRecipient.setProvider(this.provider, undefined)
+    this.IERC2771Recipient.setProvider(this.provider, undefined)
     this.IRelayRegistrar.setProvider(this.provider, undefined)
     this.IERC20Token.setProvider(this.provider, undefined)
 
@@ -336,11 +330,11 @@ export class ContractInteractor {
   }
 
   async _createRecipient (address: Address): Promise<IERC2771RecipientInstance> {
-    if (this.relayRecipientInstance != null && this.relayRecipientInstance.address.toLowerCase() === address.toLowerCase()) {
-      return this.relayRecipientInstance
+    if (this.erc2771RecipientInstance != null && this.erc2771RecipientInstance.address.toLowerCase() === address.toLowerCase()) {
+      return this.erc2771RecipientInstance
     }
-    this.relayRecipientInstance = await this.IRelayRecipient.at(address)
-    return this.relayRecipientInstance
+    this.erc2771RecipientInstance = await this.IERC2771Recipient.at(address)
+    return this.erc2771RecipientInstance
   }
 
   async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
