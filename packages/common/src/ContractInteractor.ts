@@ -31,13 +31,12 @@ import {
   formatTokenAmount
 } from './Utils'
 import {
-  BaseRelayRecipientInstance,
   IERC20TokenInstance,
+  IERC2771RecipientInstance,
   IForwarderInstance,
   IPaymasterInstance,
   IPenalizerInstance,
   IRelayHubInstance,
-  IRelayRecipientInstance,
   IRelayRegistrarInstance,
   IStakeManagerInstance
 } from '@opengsn/contracts/types/truffle-contracts'
@@ -109,7 +108,7 @@ export class ContractInteractor {
   private readonly IForwarderContract: Contract<IForwarderInstance>
   private readonly IStakeManager: Contract<IStakeManagerInstance>
   private readonly IPenalizer: Contract<IPenalizerInstance>
-  private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
+  private readonly IRelayRecipient: Contract<IERC2771RecipientInstance>
   private readonly IRelayRegistrar: Contract<IRelayRegistrarInstance>
   private readonly IERC20Token: Contract<IERC20TokenInstance>
 
@@ -119,7 +118,7 @@ export class ContractInteractor {
   private forwarderInstance!: IForwarderInstance
   private stakeManagerInstance!: IStakeManagerInstance
   penalizerInstance!: IPenalizerInstance
-  private relayRecipientInstance?: BaseRelayRecipientInstance
+  private relayRecipientInstance?: IERC2771RecipientInstance
   relayRegistrar!: IRelayRegistrarInstance
   erc20Token!: IERC20TokenInstance
   private readonly relayCallMethod: any
@@ -336,7 +335,7 @@ export class ContractInteractor {
     return this.rawTxOptions
   }
 
-  async _createRecipient (address: Address): Promise<IRelayRecipientInstance> {
+  async _createRecipient (address: Address): Promise<IERC2771RecipientInstance> {
     if (this.relayRecipientInstance != null && this.relayRecipientInstance.address.toLowerCase() === address.toLowerCase()) {
       return this.relayRecipientInstance
     }

@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "@opengsn/contracts/src/BaseRelayRecipient.sol";
+import "@opengsn/contracts/src/ERC2771Recipient.sol";
 
-contract TestProxy is BaseRelayRecipient, Ownable  {
+contract TestProxy is ERC2771Recipient, Ownable  {
 
     string public override versionRecipient = "2.0.0-beta.1+opengsn.testproxy.irelayrecipient";
 
@@ -30,11 +30,11 @@ contract TestProxy is BaseRelayRecipient, Ownable  {
         require(success, string(ret));
     }
 
-    function _msgSender() internal override(Context, BaseRelayRecipient) view returns (address) {
-        return BaseRelayRecipient._msgSender();
+    function _msgSender() internal override(Context, ERC2771Recipient) view returns (address) {
+        return ERC2771Recipient._msgSender();
     }
 
-    function _msgData() internal override(Context, BaseRelayRecipient) view returns (bytes memory) {
-        return BaseRelayRecipient._msgData();
+    function _msgData() internal override(Context, ERC2771Recipient) view returns (bytes memory) {
+        return ERC2771Recipient._msgData();
     }
 }

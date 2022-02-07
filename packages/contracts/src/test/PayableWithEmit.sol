@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
-import "@opengsn/contracts/src/BaseRelayRecipient.sol";
+
+import "@opengsn/contracts/src/ERC2771Recipient.sol";
 
 //make sure that "payable" function that uses _msgSender() still works
 // (its not required to use _msgSender(), since the default function
 // will never be called through GSN, but still, if someone uses it,
 // it should work)
-contract PayableWithEmit is BaseRelayRecipient {
+contract PayableWithEmit is ERC2771Recipient {
 
   string public override versionRecipient = "2.2.3+opengsn.payablewithemit.irelayrecipient";
 

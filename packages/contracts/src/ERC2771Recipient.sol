@@ -2,16 +2,16 @@
 // solhint-disable no-inline-assembly
 pragma solidity >=0.6.9;
 
-import "./interfaces/IRelayRecipient.sol";
+import "./interfaces/IERC2771Recipient.sol";
 
 /**
- * @title The Relay Recipient Base Abstract Class - Implementation
+ * @title The ERC-2771 Recipient Base Abstract Class - Implementation
  *
  * @notice A base contract to be inherited by any contract that want to receive relayed transactions.
  *
  * @notice A subclass must use `_msgSender()` instead of `msg.sender`.
  */
-abstract contract BaseRelayRecipient is IRelayRecipient {
+abstract contract ERC2771Recipient is IERC2771Recipient {
 
     /*
      * Forwarder singleton we accept calls from
@@ -31,12 +31,12 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
         _trustedForwarder = _forwarder;
     }
 
-    /// @inheritdoc IRelayRecipient
+    /// @inheritdoc IERC2771Recipient
     function isTrustedForwarder(address forwarder) public virtual override view returns(bool) {
         return forwarder == _trustedForwarder;
     }
 
-    /// @inheritdoc IRelayRecipient
+    /// @inheritdoc IERC2771Recipient
     function _msgSender() internal override virtual view returns (address ret) {
         if (msg.data.length >= 20 && isTrustedForwarder(msg.sender)) {
             // At this point we know that the sender is a trusted forwarder,
@@ -50,7 +50,7 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
         }
     }
 
-    /// @inheritdoc IRelayRecipient
+    /// @inheritdoc IERC2771Recipient
     function _msgData() internal override virtual view returns (bytes calldata ret) {
         if (msg.data.length >= 20 && isTrustedForwarder(msg.sender)) {
             return msg.data[0:msg.data.length-20];
