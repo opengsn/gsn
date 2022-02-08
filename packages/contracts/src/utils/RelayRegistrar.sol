@@ -98,7 +98,18 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     }
 
     /// @inheritdoc IRelayRegistrar
-    function readRelayInfos(address relayHub, uint256 oldestBlock, uint256 maxCount) public view override returns (RelayInfo[] memory info, uint256 filled) {
+    function readRelayInfos(
+        address relayHub,
+        uint256 oldestBlock,
+        uint256 maxCount
+    )
+    public
+    view
+    override
+    returns (
+        RelayInfo[] memory info,
+        uint256 filled
+    ) {
         address[] storage items = indexedValues[relayHub];
         filled = 0;
         info = new RelayInfo[](items.length < maxCount ? items.length : maxCount);
