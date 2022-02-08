@@ -42,9 +42,9 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
     forwarder = await Forwarder.new()
     stakeManager = await StakeManager.new(Number.MAX_SAFE_INTEGER, constants.BURN_ADDRESS)
     const testArbSys = await TestArbSys.new()
+    relayRegistrar = await RelayRegistrar.new(true)
     arbRelayHub = await ArbRelayHub.new(testArbSys.address, stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, relayRegistrar.address, environments.arbitrum.relayHubConfiguration)
     await arbRelayHub.setMinimumStakes([testToken.address], [stake])
-    relayRegistrar = await RelayRegistrar.new(true)
   })
 
   context('#aggregateGasleft()', function () {

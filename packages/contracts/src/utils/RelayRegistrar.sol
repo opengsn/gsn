@@ -107,11 +107,10 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     view
     override
     returns (
-        RelayInfo[] memory info,
-        uint256 filled
+        RelayInfo[] memory info
     ) {
         address[] storage items = indexedValues[relayHub];
-        filled = 0;
+        uint256 filled = 0;
         info = new RelayInfo[](items.length < maxCount ? items.length : maxCount);
         for (uint256 i = 0; i < items.length; i++) {
             address relayManager = items[i];
@@ -128,5 +127,6 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
             if (filled >= maxCount)
                 break;
         }
+        assembly { mstore(info, filled) }
     }
 }

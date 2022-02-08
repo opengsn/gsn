@@ -9,7 +9,7 @@ import {
   StakeManagerInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
   TestTokenInstance,
-  TestDecimalsTokenInstance
+  TestDecimalsTokenInstance, TestRelayHubForRegistrarInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
@@ -35,6 +35,7 @@ import { splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const { expect } = chai.use(chaiAsPromised)
 
+const TestRelayHubForRegistrar = artifacts.require('TestRelayHubForRegistrar')
 const TestDecimalsToken = artifacts.require('TestDecimalsToken')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestToken = artifacts.require('TestToken')
@@ -586,6 +587,7 @@ contract('ContractInteractor', function (accounts) {
   context('#LightTruffleContract', () => {
     let contractInteractor: ContractInteractor
     let relayReg: RelayRegistrarInstance
+    let testRelayHub: TestRelayHubForRegistrarInstance
     let lightreg: IRelayRegistrarInstance
 
     before(async () => {
@@ -602,8 +604,11 @@ contract('ContractInteractor', function (accounts) {
       relayReg = await RelayRegistrar.new(true)
       lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
 
-      await relayReg.registerRelayServer(constants.ZERO_ADDRESS, 10, 11, splitRelayUrlForRegistrar('url1'), { from: accounts[1] })
-      await relayReg.registerRelayServer(constants.ZERO_ADDRESS, 20, 21, splitRelayUrlForRegistrar('url2'), { from: accounts[2] })
+      testRelayHub = await TestRelayHubForRegistrar.new()
+      await testRelayHub.setRelayManagerStaked(accounts[1], true)
+      await testRelayHub.setRelayManagerStaked(accounts[2], true)
+      await relayReg.registerRelayServer(testRelayHub.address, 10, 11, splitRelayUrlForRegistrar('url1'), { from: accounts[1] })
+      await relayReg.registerRelayServer(testRelayHub.address, 20, 21, splitRelayUrlForRegistrar('url2'), { from: accounts[2] })
     })
 
     // it('should get matching numeric return value', async () => {
@@ -611,8 +616,8 @@ contract('ContractInteractor', function (accounts) {
     //     .to.deep.equal(await relayReg.countRelays())
     // })
     it('should get matching returned struct', async () => {
-      expect(await lightreg.getRelayInfo(constants.ZERO_ADDRESS, accounts[1]))
-        .to.eql(await relayReg.getRelayInfo(constants.ZERO_ADDRESS, accounts[1]))
+      expect(await lightreg.getRelayInfo(testRelayHub.address, accounts[1]))
+        .to.eql(await relayReg.getRelayInfo(testRelayHub.address, accounts[1]))
     })
     // note: this is no longer true - we retype tuples to BN in LightTruffleContracts while actual Truffle doesn't do so
     it.skip('should get matching mixed return values', async () => {

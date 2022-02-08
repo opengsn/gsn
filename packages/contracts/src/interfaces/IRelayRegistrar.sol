@@ -76,15 +76,13 @@ interface IRelayRegistrar is IERC165 {
      * @param relayHub The address of the `RelayHub` contract for which this action is performed.
      * @param maxCount The maximum amount of relays to be returned by this function.
      * @param oldestBlock The latest block number in which a Relay Server may be registered in order to be returned.
-     * @return info The list of `RelayInfo`s or registered Relay Servers
-     * @return filled The number of entries filled in info. Entries in returned array that are not filled will be empty.
+     * @return info The list of `RelayInfo`s of registered Relay Servers
      */
     function readRelayInfos(
         address relayHub,
         uint256 oldestBlock,
         uint256 maxCount
     ) external view returns (
-        RelayInfo[] memory info,
-        uint256 filled
+        RelayInfo[] memory info
     );
 }
