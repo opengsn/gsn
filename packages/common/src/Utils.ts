@@ -3,8 +3,23 @@ import abi from 'web3-eth-abi'
 import web3Utils, { fromWei, toWei, toBN } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
-import { Capability, FeeMarketEIP1559Transaction, Transaction, TransactionFactory, TxOptions, TypedTransaction } from '@ethereumjs/tx'
-import { bnToUnpaddedBuffer, bufferToHex, ecrecover, PrefixedHexString, pubToAddress, toBuffer, unpadBuffer } from 'ethereumjs-util'
+import {
+  Capability,
+  FeeMarketEIP1559Transaction,
+  Transaction,
+  TransactionFactory,
+  TxOptions,
+  TypedTransaction
+} from '@ethereumjs/tx'
+import {
+  bnToUnpaddedBuffer,
+  bufferToHex,
+  ecrecover,
+  PrefixedHexString,
+  pubToAddress,
+  toBuffer,
+  unpadBuffer
+} from 'ethereumjs-util'
 
 import { Address } from './types/Aliases'
 
@@ -313,4 +328,25 @@ export function formatTokenAmount (balance: BN, tokenDecimals: BN, tokenSymbol: 
     shiftedBalance = balance.div(toBN(10).pow(shift))
   }
   return `${fromWei(shiftedBalance)} ${tokenSymbol}`
+}
+
+export function splitRelayUrlForRegistrar (url: string, partsCount: number = 3): string[] {
+  const maxLength = 32 * partsCount
+  if (url.length > maxLength) {
+    throw new Error(`The URL does not fit to the RelayRegistrar. Please shorten it to less than ${maxLength} characters`)
+  }
+  const parts = url.match(/.{1,32}/g) ?? []
+  const result: string[] = []
+  for (let i = 0; i < partsCount; i++) {
+    result.push(`0x${Buffer.from(parts[i] ?? '').toString('hex').padEnd(64, '0')}`)
+  }
+  return result
+}
+
+export function packRelayUrlForRegistrar (parts: string[]): string {
+  let result = ''
+  for (const part of parts) {
+    result += Buffer.from(removeHexPrefix(part), 'hex').filter(it => it !== 0).toString()
+  }
+  return result
 }

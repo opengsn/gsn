@@ -6,7 +6,13 @@ import {
   ForwarderInstance,
   StakeManagerInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { constants, defaultEnvironment, environments, getEip712Signature } from '@opengsn/common'
+import {
+  constants,
+  defaultEnvironment,
+  environments,
+  getEip712Signature,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
@@ -36,10 +42,9 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
     forwarder = await Forwarder.new()
     stakeManager = await StakeManager.new(Number.MAX_SAFE_INTEGER, constants.BURN_ADDRESS)
     const testArbSys = await TestArbSys.new()
-    arbRelayHub = await ArbRelayHub.new(testArbSys.address, stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, environments.arbitrum.relayHubConfiguration)
+    arbRelayHub = await ArbRelayHub.new(testArbSys.address, stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, relayRegistrar.address, environments.arbitrum.relayHubConfiguration)
     await arbRelayHub.setMinimumStakes([testToken.address], [stake])
-    relayRegistrar = await RelayRegistrar.new(arbRelayHub.address, true)
-    await arbRelayHub.setRegistrar(relayRegistrar.address)
+    relayRegistrar = await RelayRegistrar.new(true)
   })
 
   context('#aggregateGasleft()', function () {
@@ -75,7 +80,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
       })
       await stakeManager.authorizeHubByOwner(relayManager, arbRelayHub.address, { from: relayOwner })
       await arbRelayHub.addRelayWorkers([relayWorker], { from: relayManager })
-      await relayRegistrar.registerRelayServer('0', '0', '', { from: relayManager })
+      await relayRegistrar.registerRelayServer(arbRelayHub.address, '0', '0', splitRelayUrlForRegistrar(''), { from: relayManager })
 
       relayRequest = {
         request: {

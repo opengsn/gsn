@@ -26,12 +26,12 @@ import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeploym
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { EventName } from '@opengsn/common/dist/types/Aliases'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { AddressZero } from 'ethers/constants'
 import { toHex } from 'web3-utils'
 import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contracts'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 import { ether } from '@openzeppelin/test-helpers'
+import { splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -599,11 +599,11 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      relayReg = await RelayRegistrar.new(AddressZero, true)
+      relayReg = await RelayRegistrar.new(true)
       lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
 
-      await relayReg.registerRelayServer(10, 11, 'url1', { from: accounts[1] })
-      await relayReg.registerRelayServer(20, 21, 'url2', { from: accounts[2] })
+      await relayReg.registerRelayServer(constants.ZERO_ADDRESS, 10, 11, splitRelayUrlForRegistrar('url1'), { from: accounts[1] })
+      await relayReg.registerRelayServer(constants.ZERO_ADDRESS, 20, 21, splitRelayUrlForRegistrar('url2'), { from: accounts[2] })
     })
 
     // it('should get matching numeric return value', async () => {
@@ -611,13 +611,13 @@ contract('ContractInteractor', function (accounts) {
     //     .to.deep.equal(await relayReg.countRelays())
     // })
     it('should get matching returned struct', async () => {
-      expect(await lightreg.getRelayInfo(accounts[1]))
-        .to.eql(await relayReg.getRelayInfo(accounts[1]))
+      expect(await lightreg.getRelayInfo(constants.ZERO_ADDRESS, accounts[1]))
+        .to.eql(await relayReg.getRelayInfo(constants.ZERO_ADDRESS, accounts[1]))
     })
     // note: this is no longer true - we retype tuples to BN in LightTruffleContracts while actual Truffle doesn't do so
     it.skip('should get matching mixed return values', async () => {
-      expect(await lightreg.readRelayInfos(0, 100))
-        .to.eql(await relayReg.readRelayInfos(0, 100))
+      expect(await lightreg.readRelayInfos(constants.ZERO_ADDRESS, 0, 100))
+        .to.eql(await relayReg.readRelayInfos(constants.ZERO_ADDRESS, 0, 100))
     })
   })
 })

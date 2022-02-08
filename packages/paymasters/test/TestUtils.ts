@@ -8,7 +8,7 @@ import { StakeManagerInstance, TokenGasCalculatorInstance } from '@opengsn/payma
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
 import { RelayHubInstance, TestTokenInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { defaultEnvironment } from '@opengsn/common'
+import { defaultEnvironment, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 import { GasUsed } from '../types/truffle-contracts/TokenGasCalculator'
 
@@ -37,12 +37,13 @@ export async function registerAsRelayServer (testToken: TestTokenInstance, stake
   await hub.setMinimumStakes([testToken.address], [stake])
   await hub.addRelayWorkers([relay], { from: relay })
   const relayRegistrar = await RelayRegistrar.at(await hub.getRelayRegistrar())
-  await relayRegistrar.registerRelayServer(2e16.toString(), '10', 'url', { from: relay })
+  await relayRegistrar.registerRelayServer('', 2e16.toString(), '10', splitRelayUrlForRegistrar('url'), { from: relay })
 }
 
 export async function deployTestHub (calculator: boolean = false): Promise<Truffle.ContractInstance> {
   const contract = calculator ? TokenGasCalculator : TestHub
   return await contract.new(
+    constants.ZERO_ADDRESS,
     constants.ZERO_ADDRESS,
     constants.ZERO_ADDRESS,
     constants.ZERO_ADDRESS,

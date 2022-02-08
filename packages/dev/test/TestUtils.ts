@@ -310,14 +310,14 @@ export async function deployHub (
     ...configOverride
   }
   const HubContract: RelayHubContract = hubContract ?? RelayHub
+  const relayRegistrar = await RelayRegistrar.new(true)
   const hub: RelayHubInstance = await HubContract.new(
     stakeManager,
     penalizer,
     batchGateway,
+    relayRegistrar.address,
     relayHubConfiguration)
 
-  const relayRegistrar = await RelayRegistrar.new(hub.address, true)
-  await hub.setRegistrar(relayRegistrar.address)
   await hub.setMinimumStakes([testToken], [testTokenMinimumStake])
 
   return hub

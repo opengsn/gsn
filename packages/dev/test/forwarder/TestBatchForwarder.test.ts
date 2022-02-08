@@ -15,7 +15,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason } from '../TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { constants } from '@opengsn/common'
+import { constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const StakeManager = artifacts.require('StakeManager')
@@ -54,7 +54,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
     const baseRelayFee = 1
     const pctRelayFee = 2
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayRegistrar.registerRelayServer(baseRelayFee, pctRelayFee, 'url', { from: relayManager })
+    await relayRegistrar.registerRelayServer(relayHub.address, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar('url'), { from: relayManager })
 
     paymaster = await TestPaymasterEverythingAccepted.new({ gas: 1e7 })
     await hub.depositFor(paymaster.address, { value: paymasterDeposit })
