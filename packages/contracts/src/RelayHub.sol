@@ -28,10 +28,15 @@ import "./interfaces/IStakeManager.sol";
 import "./interfaces/IRelayRegistrar.sol";
 import "./interfaces/IStakeManager.sol";
 
+/**
+ * @title The RelayHub Implementation
+ * @notice This contract implements the `IRelayHub` interface for the EVM-compatible networks.
+ */
 contract RelayHub is IRelayHub, Ownable, ERC165 {
     using ERC165Checker for address;
     using SafeMath for uint256;
 
+    /// @inheritdoc IRelayHub
     function versionHub() override virtual public pure returns (string memory){
         return "2.2.3+opengsn.hub.irelayhub";
     }
@@ -45,10 +50,12 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
     RelayHubConfig internal config;
 
+    /// @inheritdoc IRelayHub
     function getConfiguration() public override view returns (RelayHubConfig memory) {
         return config;
     }
 
+    /// @inheritdoc IRelayHub
     function setConfiguration(RelayHubConfig memory _config) public override onlyOwner {
         require(_config.devFee < 100, "dev fee too high");
         config = _config;
@@ -58,6 +65,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     // maps ERC-20 token address to a minimum stake for it
     mapping(IERC20 => uint256) internal minimumStakePerToken;
 
+    /// @inheritdoc IRelayHub
     function setMinimumStakes(IERC20[] memory token, uint256[] memory minimumStake) public override onlyOwner {
         require(token.length == minimumStake.length, "setMinimumStakes: wrong length");
         for (uint256 i = 0; i < token.length; i++) {
@@ -89,59 +97,72 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         setConfiguration(_config);
     }
 
+    /// @inheritdoc IRelayHub
     function getCreationBlock() external override view returns (uint256){
         return creationBlock;
     }
 
+    /// @inheritdoc IRelayHub
     function getDeprecationTime() external override view returns (uint256) {
         return deprecationTime;
     }
 
+    /// @inheritdoc IRelayHub
     function getStakeManager() external override view returns (IStakeManager) {
         return stakeManager;
     }
 
+    /// @inheritdoc IRelayHub
     function getPenalizer() external override view returns (address) {
         return penalizer;
     }
 
+    /// @inheritdoc IRelayHub
     function getBatchGateway() external override view returns (address) {
         return batchGateway;
     }
 
+    /// @inheritdoc IRelayHub
     function getRelayRegistrar() external override view returns (address) {
         return relayRegistrar;
     }
 
+    /// @inheritdoc IRelayHub
     function getMinimumStakePerToken(IERC20 token) external override view returns (uint256) {
         return minimumStakePerToken[token];
     }
 
+    /// @inheritdoc IRelayHub
     function getWorkerManager(address worker) external override view returns (address) {
         return workerToManager[worker];
     }
 
+    /// @inheritdoc IRelayHub
     function getWorkerCount(address manager) external override view returns (uint256) {
         return workerCount[manager];
     }
 
+    /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
         return interfaceId == type(IRelayHub).interfaceId ||
             interfaceId == type(Ownable).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
+    // TODO: make registrar immutable
     function setRegistrar(address _relayRegistrar) public onlyOwner {
         require(_relayRegistrar.supportsInterface(type(IRelayRegistrar).interfaceId), "target is not a valid IRegistrar");
         require(relayRegistrar == address(0), "relayRegistrar already set");
         relayRegistrar = _relayRegistrar;
     }
 
+    /// @inheritdoc IRelayHub
     function verifyCanRegister(address relayManager) external view override {
         verifyRelayManagerStaked(relayManager);
         require(workerCount[relayManager] > 0, "no relay workers");
     }
 
+    /// @inheritdoc IRelayHub
     function addRelayWorkers(address[] calldata newRelayWorkers) external override {
         address relayManager = msg.sender;
         uint256 newWorkerCount = workerCount[relayManager] + newRelayWorkers.length;
@@ -158,6 +179,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         emit RelayWorkersAdded(relayManager, newRelayWorkers, newWorkerCount);
     }
 
+    /// @inheritdoc IRelayHub
     function depositFor(address target) public virtual override payable {
         require(target.supportsInterface(type(IPaymaster).interfaceId), "target is not a valid IPaymaster");
         uint256 amount = msg.value;
@@ -167,10 +189,12 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         emit Deposited(target, msg.sender, amount);
     }
 
+    /// @inheritdoc IRelayHub
     function balanceOf(address target) external override view returns (uint256) {
         return balances[target];
     }
 
+    /// @inheritdoc IRelayHub
     function withdraw(uint256 amount, address payable dest) public override {
         address payable account = payable(msg.sender);
         require(balances[account] >= amount, "insufficient funds");
@@ -225,6 +249,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         bytes32 relayRequestId;
     }
 
+    /// @inheritdoc IRelayHub
     function relayCall(
         uint256 maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
@@ -382,6 +407,10 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         bool rejectOnRecipientRevert;
     }
 
+    /**
+     * @notice This method can only by called by this `RelayHub`.
+     * It wraps the execution of the `RelayRequest` in a revertable frame context.
+     */
     function innerRelayCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
@@ -482,7 +511,8 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         }
     }
 
-    function calculateDevCharge(uint256 charge) public view returns (uint256){
+    /// @inheritdoc IRelayHub
+    function calculateDevCharge(uint256 charge) public override virtual view returns (uint256){
         if (config.devFee == 0){ // save some gas in case of zero dev charge
             return 0;
         }
@@ -491,6 +521,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         }
     }
 
+    /// @inheritdoc IRelayHub
     function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) public override virtual view returns (uint256) {
         uint256 basefee;
         if (relayData.maxFeePerGas == relayData.maxPriorityFeePerGas) {
@@ -502,6 +533,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         return relayData.baseRelayFee.add((gasUsed.mul(chargeableGasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
     }
 
+    /// @inheritdoc IRelayHub
     function verifyRelayManagerStaked(address relayManager) public override view {
         (IStakeManager.StakeInfo memory info, bool isHubAuthorized) = stakeManager.getStakeInfo(relayManager);
         uint256 minimumStake = minimumStakePerToken[info.token];
@@ -513,21 +545,25 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         require(isHubAuthorized, "this hub is not authorized by SM");
     }
 
+    /// @inheritdoc IRelayHub
     function deprecateHub(uint256 _deprecationTime) public override onlyOwner {
         require(!isDeprecated(), "Already deprecated");
         deprecationTime = _deprecationTime;
         emit HubDeprecated(deprecationTime);
     }
 
+    /// @inheritdoc IRelayHub
     function isDeprecated() public override view returns (bool) {
         return block.timestamp >= deprecationTime;
     }
 
+    /// @notice Prevents any address other than the `Penalizer` from calling this method.
     modifier penalizerOnly () {
         require(msg.sender == penalizer, "Not penalizer");
         _;
     }
 
+    /// @inheritdoc IRelayHub
     function penalize(address relayWorker, address payable beneficiary) external override penalizerOnly {
         address relayManager = workerToManager[relayWorker];
         // The worker must be controlled by a manager with a locked stake
@@ -537,6 +573,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
     }
 
+    /// @inheritdoc IRelayHub
     function aggregateGasleft() public override virtual view returns (uint256){
         return gasleft();
     }

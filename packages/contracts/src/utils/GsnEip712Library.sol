@@ -9,7 +9,8 @@ import "../forwarder/IForwarder.sol";
 import "./GsnUtils.sol";
 
 /**
- * Bridge Library to map GSN RelayRequest into a call of a Forwarder
+ * @title The ERC-712 Library for GSN
+ * @notice Bridge Library to convert a GSN RelayRequest into a valid `ForwardRequest` for a `Forwarder`.
  */
 library GsnEip712Library {
     // maximum length of return value/revert reason for 'execute' method. Will truncate result if exceeded.

@@ -4,9 +4,14 @@ pragma abicoder v2;
 
 import "../utils/GsnTypes.sol";
 
+/**
+ * @title The RelayHub Validator Library
+ * @notice Validates the `msg.data` received by the `RelayHub` does not contain unnecessary bytes.
+ * Including these extra bytes would allow the Relay Server to inflate transaction costs and overcharge the client.
+ */
 library RelayHubValidator {
 
-    // validate that encoded relayCall is properly packed without any extra bytes
+    /// @notice Validate that encoded `relayCall` is properly packed without any extra bytes
     function verifyTransactionPacking(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,

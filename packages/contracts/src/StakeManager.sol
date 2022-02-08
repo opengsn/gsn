@@ -11,9 +11,12 @@ import "./interfaces/IStakeManager.sol";
 import "./interfaces/IRelayHub.sol";
 
 /**
- * An IStakeManager instance that accepts stakes in any ERC-20 token.
- * Single StakeInfo of a single RelayManager can only have one token address assigned to it.
- * It cannot be changed after the first time 'stakeForRelayManager' is called as it is equivalent to withdrawal.
+ * @title The StakeManager implementation
+ * @notice An IStakeManager instance that accepts stakes in any ERC-20 token.
+ *
+ * @notice Single StakeInfo of a single RelayManager can only have one token address assigned to it.
+ *
+ * @notice It cannot be changed after the first time 'stakeForRelayManager' is called as it is equivalent to withdrawal.
  */
 contract StakeManager is IStakeManager, Ownable {
     using SafeERC20 for IERC20;
@@ -28,20 +31,24 @@ contract StakeManager is IStakeManager, Ownable {
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
 
+    /// @inheritdoc IStakeManager
     function getStakeInfo(address relayManager) external override view returns (StakeInfo memory stakeInfo, bool isSenderAuthorizedHub) {
         bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalTime == type(uint256).max;
         return (stakes[relayManager], isHubAuthorized);
     }
 
+    /// @inheritdoc IStakeManager
     function setBurnAddress(address _burnAddress) public override onlyOwner {
         burnAddress = _burnAddress;
         emit BurnAddressSet(burnAddress);
     }
 
+    /// @inheritdoc IStakeManager
     function getBurnAddress() external override view returns (address) {
         return burnAddress;
     }
 
+    /// @inheritdoc IStakeManager
     function getMaxUnstakeDelay() external override view returns (uint256) {
         return maxUnstakeDelay;
     }
@@ -59,10 +66,12 @@ contract StakeManager is IStakeManager, Ownable {
         maxUnstakeDelay = _maxUnstakeDelay;
     }
 
+    /// @inheritdoc IStakeManager
     function getCreationBlock() external override view returns (uint256){
         return creationBlock;
     }
 
+    /// @inheritdoc IStakeManager
     function setRelayManagerOwner(address owner) external override {
         require(owner != address(0), "invalid owner");
         require(stakes[msg.sender].owner == address(0), "already owned");
@@ -86,6 +95,7 @@ contract StakeManager is IStakeManager, Ownable {
         emit StakeAdded(relayManager, stakes[relayManager].owner, stakes[relayManager].token, stakes[relayManager].stake, stakes[relayManager].unstakeDelay);
     }
 
+    /// @inheritdoc IStakeManager
     function unlockStake(address relayManager) external override relayOwnerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.withdrawTime == 0, "already pending");
@@ -93,6 +103,7 @@ contract StakeManager is IStakeManager, Ownable {
         emit StakeUnlocked(relayManager, msg.sender, info.withdrawTime);
     }
 
+    /// @inheritdoc IStakeManager
     function withdrawStake(address relayManager) external override relayOwnerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.withdrawTime > 0, "Withdrawal is not scheduled");
@@ -104,22 +115,26 @@ contract StakeManager is IStakeManager, Ownable {
         emit StakeWithdrawn(relayManager, msg.sender, info.token, amount);
     }
 
+    /// @notice Prevents any address other than a registered Relay Owner from calling this method.
     modifier relayOwnerOnly (address relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.owner == msg.sender, "not owner");
         _;
     }
 
+    /// @notice Prevents any address other than a registered Relay Manager from calling this method.
     modifier managerOnly () {
         StakeInfo storage info = stakes[msg.sender];
         require(info.owner != address(0), "not manager");
         _;
     }
 
+    /// @inheritdoc IStakeManager
     function authorizeHubByOwner(address relayManager, address relayHub) external relayOwnerOnly(relayManager) override {
         _authorizeHub(relayManager, relayHub);
     }
 
+    /// @inheritdoc IStakeManager
     function authorizeHubByManager(address relayHub) external managerOnly override {
         _authorizeHub(msg.sender, relayHub);
     }
@@ -129,10 +144,12 @@ contract StakeManager is IStakeManager, Ownable {
         emit HubAuthorized(relayManager, relayHub);
     }
 
+    /// @inheritdoc IStakeManager
     function unauthorizeHubByOwner(address relayManager, address relayHub) external override relayOwnerOnly(relayManager) {
         _unauthorizeHub(relayManager, relayHub);
     }
 
+    /// @inheritdoc IStakeManager
     function unauthorizeHubByManager(address relayHub) external override managerOnly {
         _unauthorizeHub(msg.sender, relayHub);
     }
@@ -144,10 +161,7 @@ contract StakeManager is IStakeManager, Ownable {
         emit HubUnauthorized(relayManager, relayHub, hubInfo.removalTime);
     }
 
-    /// Slash the stake of the relay relayManager. In order to prevent stake kidnapping, burns half of stake on the way.
-    /// @param relayManager - entry to penalize
-    /// @param beneficiary - address that receives half of the penalty amount
-    /// @param amount - amount to withdraw from stake
+    /// @inheritdoc IStakeManager
     function penalizeRelayManager(address relayManager, address beneficiary, uint256 amount) external override {
         uint256 removalTime = authorizedHubs[relayManager][msg.sender].removalTime;
         require(removalTime != 0, "hub not authorized");

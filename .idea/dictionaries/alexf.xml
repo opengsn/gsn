@@ -32,6 +32,7 @@
       <w>hashcash</w>
       <w>ierc</w>
       <w>iforwarder</w>
+      <w>incentivizing</w>
       <w>infura</w>
       <w>interactor</w>
       <w>ipaymaster</w>
@@ -72,7 +73,9 @@
       <w>relayer</w>
       <w>relayers</w>
       <w>relaylog</w>
+      <w>revertable</w>
       <w>rinkeby</w>
+      <w>rollups</w>
       <w>ropsten</w>
       <w>solc</w>
       <w>solhint</w>
