@@ -4,9 +4,8 @@ import { expect } from 'chai'
 import { evmMineMany, revert, snapshot } from './TestUtils'
 import BN from 'bn.js'
 
-import { StakeManagerInstance } from '@opengsn/contracts/types/truffle-contracts'
+import { StakeManagerInstance, TestTokenInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { TestTokenInstance } from '@opengsn/paymasters/types/truffle-contracts'
 import { constants } from '@opengsn/common'
 
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'

@@ -40,7 +40,6 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     sleepCount: parseInt(commander.sleepCount),
     from: commander.from ?? await logic.findWealthyAccount(),
     token: commander.token,
-    mintToken: false,
     stake: ether(commander.stake),
     funds: ether(commander.funds),
     gasPrice: commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : undefined,

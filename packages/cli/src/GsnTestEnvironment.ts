@@ -74,8 +74,8 @@ class GsnTestEnvironmentClass {
     }
 
     const registerOptions: RegisterOptions = {
-      token: deploymentResult.managerStakeTokenAddress ?? constants.ZERO_ADDRESS,
-      mintToken: true,
+      // force using default (wrapped eth) token
+      token: constants.ZERO_ADDRESS,
       from,
       sleepMs: 100,
       sleepCount: 5,

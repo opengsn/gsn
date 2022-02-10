@@ -3,8 +3,23 @@ import abi from 'web3-eth-abi'
 import web3Utils, { fromWei, toWei, toBN } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
-import { Capability, FeeMarketEIP1559Transaction, Transaction, TransactionFactory, TxOptions, TypedTransaction } from '@ethereumjs/tx'
-import { bnToUnpaddedBuffer, bufferToHex, ecrecover, PrefixedHexString, pubToAddress, toBuffer, unpadBuffer } from 'ethereumjs-util'
+import {
+  Capability,
+  FeeMarketEIP1559Transaction,
+  Transaction,
+  TransactionFactory,
+  TxOptions,
+  TypedTransaction
+} from '@ethereumjs/tx'
+import {
+  bnToUnpaddedBuffer,
+  bufferToHex,
+  ecrecover,
+  PrefixedHexString,
+  pubToAddress,
+  toBuffer,
+  unpadBuffer
+} from 'ethereumjs-util'
 
 import { Address } from './types/Aliases'
 
@@ -301,8 +316,9 @@ export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
   return c
 }
 
-export function formatTokenAmount (balance: BN, tokenDecimals: BN, tokenSymbol: string): string {
+export function formatTokenAmount (balance: BN, decimals: BN | number, tokenSymbol: string): string {
   let shiftedBalance: BN
+  const tokenDecimals = toBN(decimals.toString())
   if (tokenDecimals.eqn(18)) {
     shiftedBalance = balance
   } else if (tokenDecimals.ltn(18)) {

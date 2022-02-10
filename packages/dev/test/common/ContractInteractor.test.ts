@@ -26,7 +26,6 @@ import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeploym
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { EventName } from '@opengsn/common/dist/types/Aliases'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { AddressZero } from 'ethers/constants'
 import { toHex } from 'web3-utils'
 import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contracts'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
@@ -599,7 +598,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      relayReg = await RelayRegistrar.new(AddressZero, true)
+      relayReg = await RelayRegistrar.new(constants.ZERO_ADDRESS, true)
       lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
 
       await relayReg.registerRelayServer(10, 11, 'url1', { from: accounts[1] })

@@ -1,11 +1,12 @@
 import { expect } from 'chai'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { AddressZero, HashZero } from 'ethers/constants'
 import '../utils/chaiHelper'
 import { cleanValue } from './chaiHelper'
 import { evmMineMany } from '../TestUtils'
-
+import { constants } from "@opengsn/common";
 const RelayRegistrar = artifacts.require('RelayRegistrar')
+
+const HashZero = constants.ZERO_BYTES32
 
 contract('#RelayRegistrar', function ([fromAddress, relay, relay2]) {
   let reg: RelayRegistrarInstance
@@ -14,7 +15,7 @@ contract('#RelayRegistrar', function ([fromAddress, relay, relay2]) {
   let secondBlockNumber: number
 
   before(async function () {
-    reg = await RelayRegistrar.new(AddressZero, true)
+    reg = await RelayRegistrar.new(constants.ZERO_ADDRESS, true)
     await reg.registerRelayServer(1, 2, 'http://relay', { from: relay })
     relay1block = await web3.eth.getBlockNumber()
     await reg.registerRelayServer(210, 220, 'http://relay20', { from: relay2 })
