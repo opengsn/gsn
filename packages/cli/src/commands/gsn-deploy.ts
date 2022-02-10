@@ -21,10 +21,11 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('--relayRegistrar <address>', 'relayRegistrar')
   .option('--environmentName <string>', `name of one of the GSN supported environments: (${Object.keys(EnvironmentsKeys).toString()}; default: ethereumMainnet)`, EnvironmentsKeys.ethereumMainnet)
   .option('--burnAddress <string>', 'address to transfer burned stake tokens into', constants.BURN_ADDRESS)
+  .option('--stakingToken <string>', 'default staking token to use. (wrapped eth)')
+  .option('--minimumTokenStake <number>', 'minimum staking eth value (in wrapped eth staking token)', '1')
   .option('--yes, --skipConfirmation', 'skip con')
   .option('--testPaymaster', 'deploy test paymaster (accepts everything, avoid on main-nets)', false)
-  .option('--testToken', 'deploy test token (public mint function)', false)
-  .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
+  .option('-c, --config <path>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
   .parse(process.argv);
 
 (async () => {
@@ -52,7 +53,8 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
     gasLimit,
     relayHubConfiguration,
     penalizerConfiguration,
-    deployTestToken: commander.testToken,
+    stakingTokenAddress: commander.stakingToken,
+    minimumTokenStake: commander.minimumTokenStake,
     deployPaymaster: commander.testPaymaster,
     verbose: true,
     skipConfirmation: commander.skipConfirmation,

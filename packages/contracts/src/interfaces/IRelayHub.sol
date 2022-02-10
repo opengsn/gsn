@@ -20,7 +20,6 @@ import "./IStakeManager.sol";
  * developers or Relay Server operators to redeploy, reimplement, modify or override the `RelayHub`.
  */
 interface IRelayHub is IERC165 {
-
     /**
      * @notice A struct that contains all the parameters of the `RelayHub` that can be modified after the deployment.
      */
@@ -65,6 +64,12 @@ interface IRelayHub is IERC165 {
         address indexed paymaster,
         address indexed from,
         uint256 amount
+    );
+
+    /// @notice Emitted for each token configured for staking in setMinimumStakes
+    event StakingToken(
+        address token,
+        uint minimumStake
     );
 
     /**
@@ -156,6 +161,7 @@ interface IRelayHub is IERC165 {
     function withdraw(uint256 amount, address payable dest) external;
 
     // Relaying
+
 
     /**
      * @notice Relays a transaction. For this to succeed, multiple conditions must be met:

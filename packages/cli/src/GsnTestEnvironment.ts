@@ -53,10 +53,10 @@ class GsnTestEnvironmentClass {
     const deploymentResult = await commandsLogic.deployGsnContracts({
       from,
       burnAddress: constants.BURN_ADDRESS,
+      minimumTokenStake: 1,
       gasPrice: 1e9.toString(),
       gasLimit: 5000000,
       deployPaymaster: true,
-      deployTestToken: true,
       skipConfirmation: true,
       penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
       relayHubConfiguration: defaultEnvironment.relayHubConfiguration

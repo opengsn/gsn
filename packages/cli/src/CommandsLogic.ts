@@ -17,7 +17,7 @@ import RelayRegistrar from './compiled/RelayRegistrar.json'
 import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
-import TestToken from './compiled/TestToken.json'
+import WrappedEthToken from './compiled/WrappedEthToken.json'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
@@ -63,11 +63,12 @@ interface DeployOptions {
   gasPrice: string
   gasLimit: number | IntString
   deployPaymaster?: boolean
-  deployTestToken?: boolean
   forwarderAddress?: string
   relayHubAddress?: string
   relayRegistryAddress?: string
   stakeManagerAddress?: string
+  stakingTokenAddress?: string
+  minimumTokenStake: number| IntString
   penalizerAddress?: string
   burnAddress?: string
   verbose?: boolean
@@ -238,8 +239,22 @@ export class CommandsLogic {
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { stake, unstakeDelay, owner, token } = (await stakeManager.getStakeInfo(relayAddress))[0]
 
-      if (!(isSameAddress(token, options.token) || isSameAddress(token, constants.ZERO_ADDRESS))) {
-        throw new Error(`Cannot use specified token for staking. Specified token address: ${options.token} Currently used token: ${token}`)
+      var isDefaultToken = false
+      let stakingToken = options.token
+      if (stakingToken === constants.ZERO_ADDRESS) {
+        const fromBlock = await relayHub.getCreationBlock().then(b => b.toNumber())
+        const toBlock = Math.min(fromBlock + 5000, await this.contractInteractor.getBlockNumber())
+        const tokens = await this.contractInteractor.getPastEventsForHub([], { fromBlock, toBlock }, ['StakingTokens'])
+        console.log('tokens=', tokens)
+        if (tokens.length === 0) {
+          throw new Error(`no registered StakingTokens tokens on relayhub ${relayHubAddress}`)
+        }
+        stakingToken = tokens[0].returnValues.token
+        isDefaultToken = true
+      }
+
+      if (!(isSameAddress(token, stakingToken) || isSameAddress(token, constants.ZERO_ADDRESS))) {
+        throw new Error(`Cannot use token ${stakingToken}. Relay already using token: ${token}`)
       }
 
       const currentStakeFormatted = await this.contractInteractor.formatTokenAmount(stake)
@@ -307,21 +322,24 @@ export class CommandsLogic {
         console.log(`Staking relayer ${stakeValueFormatted}`,
           stake.toString() === '0' ? '' : ` (already has ${currentStakeFormatted})`)
 
-        if (options.mintToken) {
-          console.log('Minting 100 tokens')
-          const mintTx = await this.contractInteractor.erc20Token.mint(100e18.toString(), {
+        const stakingTokenContract = await this.contractInteractor._createERC20(stakingToken)
+        const tokenBalance = await stakingTokenContract.balanceOf(options.from)
+        if (tokenBalance.lt(stakeValue) && isDefaultToken) {
+          // default token is wrapped eth, so deposit eth to make then into tokens.
+          const depositTx = await stakingTokenContract.deposit({ value: stakeValue });
+          console.log('depositTx=', depositTx)
+          transactions.push(depositTx.receipt.transactionHash)
+        }
+
+        const currentAllowance = await stakingTokenContract.allowance(options.from, stakeManager.address)
+        if ( currentAllowance.lt(stakeValue)) {
+          console.log(`Approving ${stakeValueFormatted} to StakeManager`)
+          const approveTx = await this.contractInteractor.erc20Token.approve(stakeManager.address, stakeValue, {
             from: options.from
           })
           // @ts-ignore
-          transactions.push(mintTx.transactionHash)
+          transactions.push(approveTx.transactionHash)
         }
-
-        console.log(`Approving ${stakeValueFormatted} to StakeManager`)
-        const approveTx = await this.contractInteractor.erc20Token.approve(stakeManager.address, stakeValue, {
-          from: options.from
-        })
-        // @ts-ignore
-        transactions.push(approveTx.transactionHash)
 
         const stakeTx = await stakeManager
           .stakeForRelayManager(options.token, relayAddress, options.unstakeDelay.toString(), stakeValue, {
@@ -505,12 +523,14 @@ export class CommandsLogic {
     }
     await registerForwarderForGsn(fInstance, options)
 
-    let ttInstance: Contract | undefined
-    if (deployOptions.deployTestToken ?? false) {
-      ttInstance = await this.getContractInstance(TestToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
-      console.log('Setting minimum stake of 1 TestToken on Hub')
-      await rInstance.methods.setMinimumStakes([ttInstance.options.address], [1e18.toString()]).send({ ...options })
+    let stakingTokenAddress = deployOptions.stakeManagerAddress
+    if (stakingTokenAddress == null) {
+      const ttInstance = await this.getContractInstance(WrappedEthToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
+      stakingTokenAddress = ttInstance.options.address
     }
+    const stakingContact = this.contractInteractor._createERC20(stakingTokenAddress)
+    console.log(`Setting minimum stake of ${deployOptions.minimumTokenStake} of ${(await stakingContact).symbol()}`)
+    await rInstance.methods.setMinimumStakes([stakingTokenAddress], [deployOptions.minimumTokenStake]).send({ ...options })
 
     this.deployment = {
       relayHubAddress: rInstance.options.address,
@@ -518,7 +538,7 @@ export class CommandsLogic {
       penalizerAddress: pInstance.options.address,
       relayRegistrarAddress: rrInstance.options.address,
       forwarderAddress: fInstance.options.address,
-      managerStakeTokenAddress: ttInstance?.options.address ?? constants.ZERO_ADDRESS,
+      managerStakeTokenAddress: stakingTokenAddress,
       paymasterAddress: pmInstance?.options.address ?? constants.ZERO_ADDRESS
     }
 

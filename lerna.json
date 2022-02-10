@@ -1,5 +1,11 @@
 {
   "version": "2.2.4",
   "npmClient": "yarn",
-  "useWorkspaces": true
+  "useWorkspaces": true,
+  "commands": {
+    "run": {
+      "ignore": "@opengsn/paymasters",
+      "stream": true
+    }
+  }
 }
