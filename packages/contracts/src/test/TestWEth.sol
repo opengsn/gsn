@@ -19,6 +19,7 @@ contract TestWEth is ERC20 {
 
     function withdraw(uint amount) public {
         _burn(msg.sender, amount);
-        payable(msg.sender).transfer(amount);
+        (bool success,) = msg.sender.call{value:amount}("");
+        require(success, "twEth: withdraw failed");
     }
 }

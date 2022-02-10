@@ -8,7 +8,7 @@ import "@opengsn/contracts/src/BaseRelayRecipient.sol";
 // it should work)
 contract PayableWithEmit is BaseRelayRecipient {
 
-  string public override versionRecipient = "2.2.3+opengsn.payablewithemit.irelayrecipient";
+  string public override versionRecipient = "3.0.0-alpha.2+opengsn.payablewithemit.irelayrecipient";
 
   event Received(address sender, uint256 value, uint256 gasleft);
 

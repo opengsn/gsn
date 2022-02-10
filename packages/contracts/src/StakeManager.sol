@@ -22,7 +22,7 @@ contract StakeManager is IStakeManager, Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    string public override versionSM = "2.2.3+opengsn.stakemanager.istakemanager";
+    string public override versionSM = "3.0.0-alpha.2+opengsn.stakemanager.istakemanager";
     uint256 internal immutable maxUnstakeDelay;
 
     address internal burnAddress;

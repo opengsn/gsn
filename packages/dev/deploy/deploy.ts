@@ -11,7 +11,7 @@ import { formatEther, parseEther } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 // @ts-ignore
 import { deployments, ethers } from 'hardhat'
-import { AddressZero } from "ethers/constants";
+import { AddressZero } from 'ethers/constants'
 
 const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const deployRegistrar = true
@@ -89,10 +89,10 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const b = await deployments.read('TestWEth', 'balanceOf', deployer)
   if (b.toString() === '0') {
     console.log('== wrap some eth for deployer')
-    await ethers.provider.getSigner().sendTransaction({ to: TestWEth.address, value: parseEther('5') })
+    await ethers.provider.getSigner().sendTransaction({ to: TestWEth.address, value: parseEther('1') })
   }
 
-  const burnAddress = '0x'.padEnd(42, 'f');
+  const burnAddress = '0x'.padEnd(42, 'f')
   const stakeManager = await deploy('StakeManager', {
     from: deployer,
     args: [env.maxUnstakeDelay, burnAddress]

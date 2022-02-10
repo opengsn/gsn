@@ -1,2 +1,3 @@
-export const gsnRuntimeVersion = '2.2.4'
-export const gsnRequiredVersion = '^2.2.0'
+export const gsnRuntimeVersion = '3.0.0-alpha.2'
+export const gsnRequiredVersion = '^3.0.0-alpha.2'
+
