@@ -80,10 +80,12 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         bytes32[3] calldata url
     ) internal {
         RelayInfo storage storageInfo = addItem(relayHub, relayManager);
-        if (storageInfo.firstSeenBlockNumber==0) {
+        if (storageInfo.firstSeenBlockNumber == 0) {
             storageInfo.firstSeenBlockNumber = uint32(block.number);
+            storageInfo.firstSeenTimestamp = uint32(block.timestamp);
         }
         storageInfo.lastSeenBlockNumber = uint32(block.number);
+        storageInfo.lastSeenTimestamp = uint32(block.timestamp);
         storageInfo.baseRelayFee = baseRelayFee;
         storageInfo.pctRelayFee = pctRelayFee;
         storageInfo.relayManager = relayManager;
@@ -100,7 +102,8 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     /// @inheritdoc IRelayRegistrar
     function readRelayInfos(
         address relayHub,
-        uint256 oldestBlock,
+        uint256 oldestBlockNumber,
+        uint256 oldestBlockTimestamp,
         uint256 maxCount
     )
     public
@@ -115,7 +118,10 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         for (uint256 i = 0; i < items.length; i++) {
             address relayManager = items[i];
             RelayInfo memory relayInfo = getRelayInfo(relayHub, relayManager);
-            if (relayInfo.lastSeenBlockNumber < oldestBlock) {
+            if (
+                relayInfo.lastSeenBlockNumber < oldestBlockNumber ||
+                relayInfo.lastSeenTimestamp < oldestBlockTimestamp
+            ) {
                 continue;
             }
             // solhint-disable-next-line no-empty-blocks

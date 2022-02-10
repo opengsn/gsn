@@ -215,7 +215,7 @@ export async function increaseTime (time: number): Promise<void> {
     })
   })
 }
-export async function setNextBlockTimestamp (time: number | BN): Promise<void> {
+export async function setNextBlockTimestamp (time: number | string | BN): Promise<void> {
   return await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({

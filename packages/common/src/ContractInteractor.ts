@@ -1133,7 +1133,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     if (relayHub == null) {
       throw new Error('RelayHub is not initialized!')
     }
-    const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub, 0, 100)
+    const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub, 0, 0, 100)
 
     return relayInfos.map(info => {
       return {

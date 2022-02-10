@@ -621,8 +621,8 @@ contract('ContractInteractor', function (accounts) {
     })
     // note: this is no longer true - we retype tuples to BN in LightTruffleContracts while actual Truffle doesn't do so
     it.skip('should get matching mixed return values', async () => {
-      expect(await lightreg.readRelayInfos(constants.ZERO_ADDRESS, 0, 100))
-        .to.eql(await relayReg.readRelayInfos(constants.ZERO_ADDRESS, 0, 100))
+      expect(await lightreg.readRelayInfos(constants.ZERO_ADDRESS, 0, 0, 100))
+        .to.eql(await relayReg.readRelayInfos(constants.ZERO_ADDRESS, 0, 0, 100))
     })
   })
 })

@@ -1,14 +1,17 @@
-import { expect } from 'chai'
 import { RelayRegistrarInstance, TestRelayHubForRegistrarInstance } from '@opengsn/contracts'
-import { cleanValue } from './chaiHelper'
-import { evmMine, evmMineMany, revert, snapshot } from '../TestUtils'
+import { expect } from 'chai'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
+
 import { splitRelayUrlForRegistrar } from '@opengsn/common'
+
+import { cleanValue } from './chaiHelper'
+import { evmMine, evmMineMany, revert, setNextBlockTimestamp, snapshot } from '../TestUtils'
 
 const TestRelayHubForRegistrar = artifacts.require('TestRelayHubForRegistrar')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
-contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
+// note that due to being very dependent on timestamps, this test does a lot of manual snapshot/reverting
+contract.only('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
   const splitUrl1 = splitRelayUrlForRegistrar('http://relay1')
   const splitUrl2 = splitRelayUrlForRegistrar('http://relay2')
   const splitUrl4 = splitRelayUrlForRegistrar('http://relay4')
@@ -42,13 +45,18 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
     info.forEach((item: any) => {
       delete item.lastSeenBlockNumber
       delete item.firstSeenBlockNumber
+      delete item.lastSeenTimestamp
+      delete item.firstSeenTimestamp
     })
   }
 
   let id: string
+  let originalID: string
   let relayHubOne: TestRelayHubForRegistrarInstance
   let relayHubTwo: TestRelayHubForRegistrarInstance
   let relayRegistrar: RelayRegistrarInstance
+  let firstSeenTimestamp: string | number
+  let lastSeenTimestamp: number
   let firstSeenBlockNumber: number
   let lastSeenBlockNumber: number
 
@@ -58,14 +66,13 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
     await relayHubOne.setRelayManagerStaked(relay1, true)
     await relayHubTwo.setRelayManagerStaked(relay1, true)
     relayRegistrar = await RelayRegistrar.new(true)
-  })
-
-  beforeEach(async function () {
+    originalID = (await snapshot()).result
     id = (await snapshot()).result
   })
 
   afterEach(async function () {
     await revert(id)
+    id = (await snapshot()).result
   })
 
   context('#registerRelayServer()', function () {
@@ -90,11 +97,16 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
 
     context('with multiple re-registrations by a single relay', function () {
       before(async function () {
-        await relayRegistrar.registerRelayServer(relayHubOne.address, 210, 220, splitUrl1, { from: relay1 })
+        await expectRevert(relayRegistrar.getRelayInfo(relayHubOne.address, relay1), 'relayManager not found')
+        const { receipt } = await relayRegistrar.registerRelayServer(relayHubOne.address, 210, 220, splitUrl1, { from: relay1 })
+        const block = await web3.eth.getBlock(receipt.blockNumber)
+        firstSeenTimestamp = block.timestamp
         firstSeenBlockNumber = await web3.eth.getBlockNumber()
         await evmMineMany(2)
         await relayRegistrar.registerRelayServer(relayHubOne.address, 21, 22, splitUrl2, { from: relay1 })
         await evmMineMany(2)
+        lastSeenTimestamp = parseInt(firstSeenTimestamp.toString()) + 7000
+        await setNextBlockTimestamp(lastSeenTimestamp)
         await relayRegistrar.registerRelayServer(relayHubOne.address, 121, 122, splitUrl2, { from: relay1 })
         lastSeenBlockNumber = await web3.eth.getBlockNumber()
       })
@@ -103,13 +115,16 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
         const info = await relayRegistrar.getRelayInfo(relayHubOne.address, relay1)
         expect(info.lastSeenBlockNumber).to.eql(lastSeenBlockNumber)
         expect(info.firstSeenBlockNumber).to.eql(firstSeenBlockNumber)
+        expect(info.lastSeenTimestamp).to.eql(lastSeenTimestamp)
+        expect(info.firstSeenTimestamp).to.eql(firstSeenTimestamp)
       })
     })
   })
 
   context('#readRelayInfos()', function () {
     context('with multiple relays across multiple RelayHubs', function () {
-      let oldestBlock: number
+      let oldestBlockNumber: number
+      let oldestBlockTimestamp: number
       before(async function () {
         await relayHubOne.setRelayManagerStaked(relay2, true)
         await relayHubTwo.setRelayManagerStaked(relay3, true)
@@ -118,27 +133,38 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
         await relayRegistrar.registerRelayServer(relayHubTwo.address, 111, 1111, splitUrl1, { from: relay1 })
         await relayRegistrar.registerRelayServer(relayHubOne.address, 222, 2222, splitUrl2, { from: relay2 })
         await evmMine()
-        oldestBlock = await web3.eth.getBlockNumber()
+        oldestBlockNumber = await web3.eth.getBlockNumber()
+        const block = await web3.eth.getBlock(oldestBlockNumber)
+        oldestBlockTimestamp = parseInt(block.timestamp.toString()) + 7000
+        await setNextBlockTimestamp(oldestBlockTimestamp)
         await relayRegistrar.registerRelayServer(relayHubTwo.address, 333, 3333, splitUrl1, { from: relay3 })
         await relayRegistrar.registerRelayServer(relayHubOne.address, 444, 4444, splitUrl4, { from: relay4 })
+        id = (await snapshot()).result
       })
 
       it('should read all relays relevant for this hub', async () => {
-        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, 0, 5) as any
+        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, 0, 0, 5) as any
         info = cleanValue(info)
         cleanBlockNumbers(info)
         expect(info).to.eql([relay1Info, relay2Info, relay4Info])
       })
 
       it('should read all relays relevant for that hub', async () => {
-        let info = await relayRegistrar.readRelayInfos(relayHubTwo.address, 0, 5) as any
+        let info = await relayRegistrar.readRelayInfos(relayHubTwo.address, 0, 0, 5) as any
         info = cleanValue(info)
         cleanBlockNumbers(info)
         expect(info).to.eql([relay1Info, relay3Info])
       })
 
-      it('should not include relays last re-registered before oldestBlock, but have empty elements left (leaked implementation detail)', async function () {
-        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, oldestBlock, 5) as any
+      it('should not include relays last re-registered before oldestBlockNumber', async function () {
+        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, oldestBlockNumber, 0, 5) as any
+        info = cleanValue(info)
+        cleanBlockNumbers(info)
+        expect(info).to.eql([relay4Info])
+      })
+
+      it('should not include relays last re-registered before oldestBlockTimestamp', async function () {
+        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, 0, oldestBlockTimestamp, 5) as any
         info = cleanValue(info)
         cleanBlockNumbers(info)
         expect(info).to.eql([relay4Info])
@@ -146,7 +172,7 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
 
       it('should not include relays that fail verifyRelayManagerStaked', async function () {
         await relayHubOne.setRelayManagerStaked(relay2, false)
-        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, 0, 5) as any
+        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, 0, 0, 5) as any
         info = cleanValue(info)
         cleanBlockNumbers(info)
         expect(info).to.eql([relay1Info, relay4Info])
@@ -160,6 +186,7 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
     before(async function () {
       await relayRegistrar.registerRelayServer(relayHubOne.address, 111, 222, splitUrl1, { from: relay1 })
       firstSeenBlockNumber = await web3.eth.getBlockNumber()
+      id = (await snapshot()).result
     })
 
     it('should revert if such relay is not registered for this hub', async function () {
@@ -168,7 +195,6 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
 
     it('should return all the registration details', async () => {
       const info = await relayRegistrar.getRelayInfo(relayHubOne.address, relay1)
-      expect(info.lastSeenBlockNumber).to.eql(firstSeenBlockNumber)
       expect(info.baseRelayFee).to.eql(111)
       expect(info.pctRelayFee).to.eql(222)
       expect(info.urlParts).to.eql(splitUrl1)
