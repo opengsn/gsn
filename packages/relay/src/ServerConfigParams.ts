@@ -205,6 +205,7 @@ const ConfigParamsTypes = {
   retryGasPriceFactor: 'number',
   runPaymasterReputations: 'boolean',
   refreshStateTimeoutBlocks: 'number',
+  pendingTransactionTimeoutSeconds: 'number',
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
   maxGasPrice: 'string',
