@@ -220,27 +220,27 @@ contract('RegistrationManager', function (accounts) {
       // await assertRelayAdded(receipts, relayServer)
       // await relayServer._worker(latestBlock.number + 1)
 
-      let transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, 0, false)
+      let transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, parseInt(latestBlock.timestamp.toString()), 0, false)
       assert.equal(transactionHashes.length, 0, 'should not re-register if already registered')
 
       const currentBlockFake = 1000000
 
       relayServer.config.baseRelayFee = (parseInt(relayServer.config.baseRelayFee) + 1).toString()
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, currentBlockFake, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, parseInt(latestBlock.timestamp.toString()), currentBlockFake, false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
       latestBlock = await env.web3.eth.getBlock('latest')
       await relayServer._worker(latestBlock.number)
 
       relayServer.config.pctRelayFee++
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, currentBlockFake, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, parseInt(latestBlock.timestamp.toString()), currentBlockFake, false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
       latestBlock = await env.web3.eth.getBlock('latest')
       await relayServer._worker(latestBlock.number)
 
       relayServer.config.url = 'fakeUrl'
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, currentBlockFake, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, parseInt(latestBlock.timestamp.toString()), currentBlockFake, false)
       await assertRelayAdded(transactionHashes, relayServer, false)
     })
   })
@@ -286,7 +286,6 @@ contract('RegistrationManager', function (accounts) {
         newServer = env.relayServer
         const latestBlock = await env.web3.eth.getBlock('latest')
         await newServer._worker(latestBlock.number)
-        await newServer._worker(latestBlock.number + 1)
 
         await env.relayHub.depositFor(newServer.managerAddress, { value: 1e18.toString() })
         const { receipt } = await env.stakeManager.unlockStake(newServer.managerAddress, { from: relayOwner })
@@ -321,6 +320,7 @@ contract('RegistrationManager', function (accounts) {
           serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
           destination: env.relayHub.address,
           creationBlockNumber: 0,
+          creationBlockTimestamp: 0,
           gasLimit,
           method
         })
@@ -361,7 +361,6 @@ contract('RegistrationManager', function (accounts) {
         newServer = env.relayServer
         const latestBlock = await env.web3.eth.getBlock('latest')
         await newServer._worker(latestBlock.number)
-        await newServer._worker(latestBlock.number + 1)
         await env.relayHub.depositFor(newServer.managerAddress, { value: 1e18.toString() })
       })
 
@@ -376,6 +375,7 @@ contract('RegistrationManager', function (accounts) {
         const latestBlock = await env.web3.eth.getBlock('latest')
 
         const receipt = await newServer._worker(latestBlock.number)
+        await evmMine()
         const receipt2 = await newServer._worker(latestBlock.number + 1)
 
         assert.equal(receipt.length, 0)
@@ -392,6 +392,7 @@ contract('RegistrationManager', function (accounts) {
 
         const latestBlock = await env.web3.eth.getBlock('latest')
         const receipts = await newServer._worker(latestBlock.number)
+        await evmMine()
         const receipts2 = await newServer._worker(latestBlock.number + 1)
 
         const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
@@ -495,7 +496,7 @@ contract('RegistrationManager', function (accounts) {
         await newServer.registrationManager.refreshStake()
         assert.deepEqual(newServer.registrationManager.stakeRequired!.currentValue, oneEther)
         assert.equal(newServer.registrationManager.ownerAddress, relayOwner, 'owner should be set after refreshing stake')
-        assert.equal(newServer.config.registrationBlockRate, 0)
+        assert.equal(newServer.config.registrationRateSeconds, 0)
       })
 
       afterEach(async function () {
@@ -506,7 +507,7 @@ contract('RegistrationManager', function (accounts) {
         let allStoredTransactions = await newServer.txStoreManager.getAll()
         assert.equal(allStoredTransactions.length, 1)
         assert.equal(allStoredTransactions[0].serverAction, ServerAction.SET_OWNER)
-        const receipts = await newServer.registrationManager.attemptRegistration(0)
+        const receipts = await newServer.registrationManager.attemptRegistration(0, 0)
         await assertRelayAdded(receipts, newServer)
         allStoredTransactions = await newServer.txStoreManager.getAll()
         assert.equal(allStoredTransactions.length, 3)
@@ -541,7 +542,7 @@ contract('RegistrationManager', function (accounts) {
       it('should not attempt registration if unstake delay is too low on hub', async function () {
         await env.stakeAndAuthorizeHub(ether('1'), unstakeDelay - 1)
         await newServer.registrationManager.refreshStake()
-        const receipts = await newServer.registrationManager.attemptRegistration(0)
+        const receipts = await newServer.registrationManager.attemptRegistration(0, 0)
         assert.equal(receipts.length, 0)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
@@ -550,7 +551,7 @@ contract('RegistrationManager', function (accounts) {
       it('should not attempt registration if stake amount is too low on hub', async function () {
         await env.stakeAndAuthorizeHub(ether('0.1'), unstakeDelay)
         await newServer.registrationManager.refreshStake()
-        const receipts = await newServer.registrationManager.attemptRegistration(0)
+        const receipts = await newServer.registrationManager.attemptRegistration(0, 0)
         assert.equal(receipts.length, 0)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
@@ -568,7 +569,7 @@ contract('RegistrationManager', function (accounts) {
           from: env.relayOwner
         })
         await newServer.registrationManager.refreshStake()
-        const receipts = await newServer.registrationManager.attemptRegistration(0)
+        const receipts = await newServer.registrationManager.attemptRegistration(0, 0)
         assert.equal(receipts.length, 0)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)

@@ -140,18 +140,21 @@ contract('TransactionManager', function (accounts) {
 
   describe('local storage maintenance', function () {
     let parsedTxHash: PrefixedHexString
-    let latestBlock: number
+    let latestBlockNumber: number
+    let latestBlockTimestamp: number
 
     beforeEach(async function () {
       await transactionManager.txStoreManager.clearAll()
       transactionManager._initNonces()
       const { signedTx } = await env.relayTransaction()
       parsedTxHash = ethUtils.bufferToHex((TransactionFactory.fromSerializedData(toBuffer(signedTx), transactionManager.rawTxOptions)).hash())
-      latestBlock = (await env.web3.eth.getBlock('latest')).number
+      const latestBlock = await env.web3.eth.getBlock('latest')
+      latestBlockNumber = latestBlock.number
+      latestBlockTimestamp = parseInt(latestBlock.timestamp.toString())
     })
 
     it('should remove confirmed transactions from the recent transactions storage', async function () {
-      await transactionManager.removeConfirmedTransactions(latestBlock)
+      await transactionManager.removeConfirmedTransactions(latestBlockNumber)
       let storedTransactions = await transactionManager.txStoreManager.getAll()
       assert.equal(storedTransactions[0].txId, parsedTxHash)
       await evmMineMany(confirmationsNeeded)
@@ -162,7 +165,7 @@ contract('TransactionManager', function (accounts) {
     })
 
     it('should remove stale boosted unconfirmed transactions', async function () {
-      await transactionManager.removeConfirmedTransactions(latestBlock)
+      await transactionManager.removeConfirmedTransactions(latestBlockNumber)
       let storedTransactions = await transactionManager.txStoreManager.getAll()
       const oldTransaction = storedTransactions[0]
       assert.equal(storedTransactions.length, 1)
@@ -171,7 +174,7 @@ contract('TransactionManager', function (accounts) {
       // Ganache is on auto-mine, so the server will throw after broadcasting on nonce error, after storing the boosted tx.
       try {
         await transactionManager.resendTransaction(
-          oldTransaction, latestBlock, oldTransaction.maxFeePerGas * 2, oldTransaction.maxPriorityFeePerGas * 2, false)
+          oldTransaction, latestBlockNumber, latestBlockTimestamp, oldTransaction.maxFeePerGas * 2, oldTransaction.maxPriorityFeePerGas * 2, false)
       } catch (e) {
         assert.include(e.message, 'Nonce too low. Expected nonce to be')
       }

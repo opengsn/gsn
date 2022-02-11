@@ -11,7 +11,7 @@ const TestRelayHubForRegistrar = artifacts.require('TestRelayHubForRegistrar')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 // note that due to being very dependent on timestamps, this test does a lot of manual snapshot/reverting
-contract.only('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
+contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
   const splitUrl1 = splitRelayUrlForRegistrar('http://relay1')
   const splitUrl2 = splitRelayUrlForRegistrar('http://relay2')
   const splitUrl4 = splitRelayUrlForRegistrar('http://relay4')
@@ -51,7 +51,6 @@ contract.only('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
   }
 
   let id: string
-  let originalID: string
   let relayHubOne: TestRelayHubForRegistrarInstance
   let relayHubTwo: TestRelayHubForRegistrarInstance
   let relayRegistrar: RelayRegistrarInstance
@@ -66,7 +65,6 @@ contract.only('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
     await relayHubOne.setRelayManagerStaked(relay1, true)
     await relayHubTwo.setRelayManagerStaked(relay1, true)
     relayRegistrar = await RelayRegistrar.new(true)
-    originalID = (await snapshot()).result
     id = (await snapshot()).result
   })
 
@@ -181,11 +179,8 @@ contract.only('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
   })
 
   context('#getRelayInfo()', function () {
-    let firstSeenBlockNumber: number
-
     before(async function () {
       await relayRegistrar.registerRelayServer(relayHubOne.address, 111, 222, splitUrl1, { from: relay1 })
-      firstSeenBlockNumber = await web3.eth.getBlockNumber()
       id = (await snapshot()).result
     })
 

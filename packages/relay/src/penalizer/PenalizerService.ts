@@ -300,6 +300,8 @@ export class PenalizerService {
   async broadcastTransaction (methodName: string, method: any): Promise<PrefixedHexString> {
     const gasLimit = await this.transactionManager.attemptEstimateGas(methodName, method, this.managerAddress)
     const creationBlockNumber = await this.contractInteractor.getBlockNumber()
+    const block = await this.contractInteractor.getBlock(creationBlockNumber)
+    const creationBlockTimestamp = parseInt(block.timestamp.toString())
     const serverAction = ServerAction.PENALIZATION
     const { signedTx, transactionHash } = await this.transactionManager.sendTransaction(
       {
@@ -308,6 +310,7 @@ export class PenalizerService {
         destination: this.contractInteractor.penalizerInstance.address,
         gasLimit,
         creationBlockNumber,
+        creationBlockTimestamp,
         serverAction
       })
     this.logger.debug(`penalization raw tx: ${signedTx} txHash: ${transactionHash}`)

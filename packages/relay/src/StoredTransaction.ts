@@ -18,7 +18,9 @@ export interface StoredTransactionMetadata {
   readonly attempts: number
   readonly serverAction: ServerAction
   readonly creationBlockNumber: number
+  readonly creationBlockTimestamp: number
   readonly boostBlockNumber?: number
+  readonly boostBlockTimestamp?: number
   readonly minedBlockNumber?: number
 }
 

@@ -215,6 +215,7 @@ export async function increaseTime (time: number): Promise<void> {
     })
   })
 }
+
 export async function setNextBlockTimestamp (time: number | string | BN): Promise<void> {
   return await new Promise((resolve, reject) => {
     // @ts-ignore
@@ -234,6 +235,9 @@ export async function setNextBlockTimestamp (time: number | string | BN): Promis
 }
 
 export async function evmMineMany (count: number): Promise<void> {
+  if (count > 101) {
+    throw new Error(`Mining ${count} blocks will make tests run way too long`)
+  }
   for (let i = 0; i < count; i++) {
     await evmMine()
   }
@@ -334,7 +338,13 @@ export async function emptyBalance (source: Address, target: Address): Promise<v
   const transferValue = balance.sub(txCost)
   console.log('bal=', balance.toString(), 'xfer=', transferValue.toString())
   if (transferValue.gtn(0)) {
-    await web3.eth.sendTransaction({ from: source, to: target, value: transferValue, gasPrice, gas: defaultEnvironment.mintxgascost })
+    await web3.eth.sendTransaction({
+      from: source,
+      to: target,
+      value: transferValue,
+      gasPrice,
+      gas: defaultEnvironment.mintxgascost
+    })
   }
   balance = toBN(await web3.eth.getBalance(source))
   assert.isTrue(balance.eqn(0))

@@ -57,6 +57,7 @@ contract('TxStoreManager', function (accounts) {
       txId: '123456',
       serverAction: ServerAction.VALUE_TRANSFER,
       creationBlockNumber: 0,
+      creationBlockTimestamp: 0,
       minedBlockNumber: 0,
       attempts: 1
     }
@@ -72,6 +73,7 @@ contract('TxStoreManager', function (accounts) {
       txId: '1234567',
       serverAction: ServerAction.VALUE_TRANSFER,
       creationBlockNumber: 0,
+      creationBlockTimestamp: 0,
       minedBlockNumber: 0,
       attempts: 1
     }
@@ -88,6 +90,7 @@ contract('TxStoreManager', function (accounts) {
         txId: '12345678',
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
+        creationBlockTimestamp: 0,
         minedBlockNumber: 0,
         attempts: 1
       }

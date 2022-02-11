@@ -50,7 +50,6 @@ export class KnownRelaysManager {
   private readonly relayFilter: RelayFilter
   private readonly scoreCalculator: AsyncScoreCalculator
 
-  private latestScannedBlock: number = 0
   private relayFailures = new Map<string, RelayFailureInfo[]>()
 
   public preferredRelayers: RelayInfoUrl[] = []
@@ -77,14 +76,10 @@ export class KnownRelaysManager {
   }
 
   async getRelayInfoForManagers (): Promise<RelayRegisteredEventInfo[]> {
-    const toBlock = await this.contractInteractor.getBlockNumber()
-    const fromBlock = Math.max(0, toBlock - this.config.relayLookupWindowBlocks)
-
-    const relayInfos = await this.contractInteractor.getRegisteredRelays(undefined, fromBlock)
+    const relayInfos = await this.contractInteractor.getRegisteredRelays(this.config.relayRegistrationMaximumAge)
 
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
 
-    this.latestScannedBlock = toBlock
     const filteredRelayInfos = relayInfos.filter(this.relayFilter)
     if (filteredRelayInfos.length !== relayInfos.length) {
       this.logger.warn(`RelayFilter: removing ${relayInfos.length - filteredRelayInfos.length} relays from results`)

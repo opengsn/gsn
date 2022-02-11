@@ -34,21 +34,23 @@ contract('StatisticsManager', function (accounts) {
       pctRelayFee: 66
     })
     await env.newServerInstance()
-    let block = await web3.eth.getBlockNumber()
+    let currentBlockNumber = await web3.eth.getBlockNumber()
+    const block = await web3.eth.getBlock(currentBlockNumber)
+    const currentBlockTimestamp = parseInt(block.timestamp.toString())
 
     // unregister 1 relay
     await env.stakeManager.unlockStake(relayToUnregister, { from: accounts[4] })
 
     // second registration
-    await env.relayServer.registrationManager.attemptRegistration(block)
+    await env.relayServer.registrationManager.attemptRegistration(currentBlockNumber, currentBlockTimestamp)
 
     // three transactions to relay, one transaction to be rejected
     await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest())
     await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest())
     await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest())
     await misbehavingPaymaster.setRevertPreRelayCallOnEvenBlocks(true)
-    block = await web3.eth.getBlockNumber()
-    if (block % 2 !== 0) {
+    currentBlockNumber = await web3.eth.getBlockNumber()
+    if (currentBlockNumber % 2 !== 0) {
       await evmMine()
     }
 

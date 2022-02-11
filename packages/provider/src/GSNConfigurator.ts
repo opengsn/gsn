@@ -20,7 +20,6 @@ import { defaultEnvironment, Environment } from '@opengsn/common/dist/Environmen
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
 const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 1800
-const DEFAULT_LOOKUP_WINDOW_BLOCKS = 60000
 
 export const defaultLoggerConfiguration: LoggerConfiguration = {
   logLevel: 'info'
@@ -28,8 +27,7 @@ export const defaultLoggerConfiguration: LoggerConfiguration = {
 
 export const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
-  relayLookupWindowBlocks: DEFAULT_LOOKUP_WINDOW_BLOCKS,
-  relayRegistrationLookupBlocks: Number.MAX_SAFE_INTEGER,
+  relayRegistrationMaximumAge: Number.MAX_SAFE_INTEGER,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   gasPriceOracleUrl: '',
@@ -63,12 +61,9 @@ export interface LoggerConfiguration {
  */
 export interface GSNConfig {
   preferredRelays: string[]
-  // number of blocks back the relay will be considered 'active'
-  // must match Relay Server's "activityBlockRate" to be able to discover relay consistently
-  relayLookupWindowBlocks: number
-  // in case access to older logs is restricted, limit number of blocks the client will look for registration info
-  // must match Relay Server's "registrationBlockRate" to be able to discover relay consistently
-  relayRegistrationLookupBlocks: number
+  // in order to avoid pinging relays that are long dead, the client can filter out older registrations
+  // must match Relay Server's "registrationRateSeconds" to be able to discover relays consistently
+  relayRegistrationMaximumAge: number
   // in case querying large block ranges is restricted, set limit and use pagination
   pastEventsQueryMaxPageSize: number
 
