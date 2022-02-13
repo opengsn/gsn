@@ -3,7 +3,7 @@ import { RelayRegistrarInstance } from '@opengsn/contracts'
 import '../utils/chaiHelper'
 import { cleanValue } from './chaiHelper'
 import { evmMineMany } from '../TestUtils'
-import { constants } from "@opengsn/common";
+import { constants } from '@opengsn/common'
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const HashZero = constants.ZERO_BYTES32

@@ -6,6 +6,7 @@ import "../interfaces/IERC20Token.sol";
 
 contract WrappedEthToken is ERC20, IERC20Token {
 
+    // solhint-disable-next-line no-empty-blocks
     constructor() ERC20("Wrapped Eth", "wEth") {
     }
 
@@ -15,7 +16,8 @@ contract WrappedEthToken is ERC20, IERC20Token {
 
     function withdraw(uint amount) public override {
         _burn(msg.sender, amount);
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success,) = msg.sender.call{value:amount}("");
-        require(success);
+        require(success, "transfer failed");
     }
 }

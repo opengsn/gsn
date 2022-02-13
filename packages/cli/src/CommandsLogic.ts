@@ -32,7 +32,7 @@ import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConf
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
-import { formatTokenAmount } from "@opengsn/common";
+import { formatTokenAmount } from '@opengsn/common'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -325,7 +325,7 @@ export class CommandsLogic {
         if (tokenBalance.lt(stakeValue) && isDefaultToken) {
           console.log(`Wrapping ${formatTokenAmount(stakeValue, 18, 'eth')}`)
           // default token is wrapped eth, so deposit eth to make then into tokens.
-          const depositTx = await stakingTokenContract.deposit({ from: options.from, value: stakeValue });
+          const depositTx = await stakingTokenContract.deposit({ from: options.from, value: stakeValue }) as any
           transactions.push(depositTx.transactionHash)
         }
 
