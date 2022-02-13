@@ -11,7 +11,8 @@ import { formatEther, parseEther } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 // @ts-ignore
 import { deployments, ethers } from 'hardhat'
-import { AddressZero } from 'ethers/constants'
+
+const { AddressZero } = ethers.constants
 
 const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const deployRegistrar = true
@@ -153,7 +154,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
     deployedPm = await deploy('TestPaymasterEverythingAccepted', { from: deployer, log: true })
 
     await setField('TestPaymasterEverythingAccepted', 'getRelayHub', 'setRelayHub', relayHub.address)
-    await setField('TestPaymasterEverythingAccepted', 'trustedForwarder', 'setTrustedForwarder', deployedForwarder.address)
+    await setField('TestPaymasterEverythingAccepted', 'getTrustedForwarder', 'setTrustedForwarder', deployedForwarder.address)
 
     const val = await deployments.read(hubContractName, 'balanceOf', deployedPm.address)
     console.log('current balance=', val.toString())
