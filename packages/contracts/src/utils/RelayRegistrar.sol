@@ -53,8 +53,8 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     /// @inheritdoc IRelayRegistrar
     function registerRelayServer(
         address relayHub,
-        uint96 baseRelayFee,
-        uint96 pctRelayFee,
+        uint80 baseRelayFee,
+        uint16 pctRelayFee,
         bytes32[3] calldata url
     ) external override {
         address relayManager = msg.sender;
@@ -76,17 +76,17 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     function storeRelayServerRegistration(
         address relayHub,
         address relayManager,
-        uint96 baseRelayFee,
-        uint96 pctRelayFee,
+        uint80 baseRelayFee,
+        uint16 pctRelayFee,
         bytes32[3] calldata url
     ) internal {
         RelayInfo storage storageInfo = addItem(relayHub, relayManager);
         if (storageInfo.firstSeenBlockNumber == 0) {
             storageInfo.firstSeenBlockNumber = uint32(block.number);
-            storageInfo.firstSeenTimestamp = uint32(block.timestamp);
+            storageInfo.firstSeenTimestamp = uint40(block.timestamp);
         }
         storageInfo.lastSeenBlockNumber = uint32(block.number);
-        storageInfo.lastSeenTimestamp = uint32(block.timestamp);
+        storageInfo.lastSeenTimestamp = uint40(block.timestamp);
         storageInfo.baseRelayFee = baseRelayFee;
         storageInfo.pctRelayFee = pctRelayFee;
         storageInfo.relayManager = relayManager;

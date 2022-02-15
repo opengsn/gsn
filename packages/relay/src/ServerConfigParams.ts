@@ -103,7 +103,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   // set to paymasters' default acceptanceBudget + RelayHub.calldataGasCost(<paymasters' default calldataSizeLimit>)
   maxAcceptanceBudget:
     defaultEnvironment.paymasterConfiguration.acceptanceBudget +
-    parseInt(defaultEnvironment.dataOnChainHandlingGasCostPerByte.toString()) *
+    defaultEnvironment.dataOnChainHandlingGasCostPerByte *
     defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],

@@ -30,7 +30,8 @@ import {
   event2topic,
   formatTokenAmount,
   packRelayUrlForRegistrar,
-  splitRelayUrlForRegistrar
+  splitRelayUrlForRegistrar,
+  toNumber
 } from './Utils'
 import {
   IERC20TokenInstance,
@@ -772,12 +773,12 @@ export class ContractInteractor {
         .muln(msgDataLength)
         .toNumber()
     const calldataCost = this.calculateCalldataCost(_.msgData)
-    const result = parseInt(this.relayHubConfiguration.gasOverhead.toString()) +
+    const result = toNumber(this.relayHubConfiguration.gasOverhead) +
       msgDataGasCostInsideTransaction +
       calldataCost +
       parseInt(_.relayCallGasLimit) +
-      parseInt(_.gasAndDataLimits.preRelayedCallGasLimit.toString()) +
-      parseInt(_.gasAndDataLimits.postRelayedCallGasLimit.toString())
+      toNumber(_.gasAndDataLimits.preRelayedCallGasLimit) +
+      toNumber(_.gasAndDataLimits.postRelayedCallGasLimit)
     this.logger.debug(`
 input:\n${JSON.stringify(_)}
 msgDataLength: ${msgDataLength}
@@ -1131,7 +1132,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     let oldestBlockTimestamp = 0
     if (relayRegistrationMaximumAge !== 0) {
       const block = await this.getBlock('latest')
-      oldestBlockTimestamp = Math.max(0, parseInt(block.timestamp.toString()) - relayRegistrationMaximumAge)
+      oldestBlockTimestamp = Math.max(0, toNumber(block.timestamp) - relayRegistrationMaximumAge)
     }
     const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub, 0, oldestBlockTimestamp, 100)
 

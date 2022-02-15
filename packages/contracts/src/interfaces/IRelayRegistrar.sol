@@ -21,13 +21,13 @@ interface IRelayRegistrar is IERC165 {
         //last registration block number
         uint32 lastSeenBlockNumber;
         //last registration block timestamp
-        uint32 lastSeenTimestamp;
+        uint40 lastSeenTimestamp;
         //stake (first registration) block number
         uint32 firstSeenBlockNumber;
         //stake (first registration) block timestamp
-        uint32 firstSeenTimestamp;
-        uint96 baseRelayFee;
-        uint96 pctRelayFee;
+        uint40 firstSeenTimestamp;
+        uint80 baseRelayFee;
+        uint16 pctRelayFee;
         bytes32[3] urlParts;
         address relayManager;
     }
@@ -38,8 +38,8 @@ interface IRelayRegistrar is IERC165 {
      */
     event RelayServerRegistered(
         address indexed relayManager,
-        uint96 baseRelayFee,
-        uint96 pctRelayFee,
+        uint80 baseRelayFee,
+        uint16 pctRelayFee,
         bytes32[3] relayUrl
     );
 
@@ -52,8 +52,8 @@ interface IRelayRegistrar is IERC165 {
      */
     function registerRelayServer(
         address relayHub,
-        uint96 baseRelayFee,
-        uint96 pctRelayFee,
+        uint80 baseRelayFee,
+        uint16 pctRelayFee,
         bytes32[3] calldata url
     ) external;
 

@@ -35,6 +35,7 @@ import {
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { isRegistrationValid } from './Utils'
 import { constants } from '@opengsn/common/dist/Constants'
+import { toNumber } from '@opengsn/common'
 
 const mintxgascost = defaultEnvironment.mintxgascost
 
@@ -146,7 +147,7 @@ export class RegistrationManager {
           if (this.lastMinedRegisterTransaction == null || isSecondEventLater(this.lastMinedRegisterTransaction.eventData, eventData)) {
             this.logger.debug('New lastMinedRegisterTransaction: ' + JSON.stringify(eventData))
             const block = await this.contractInteractor.getBlock(eventData.blockNumber)
-            const blockTimestamp = parseInt(block.timestamp.toString())
+            const blockTimestamp = toNumber(block.timestamp)
             this.lastMinedRegisterTransaction = { eventData, blockTimestamp }
           }
           break
@@ -154,7 +155,7 @@ export class RegistrationManager {
           if (this.lastWorkerAddedTransaction == null || isSecondEventLater(this.lastWorkerAddedTransaction.eventData, eventData)) {
             this.logger.debug('New lastWorkerAddedTransaction: ' + JSON.stringify(eventData))
             const block = await this.contractInteractor.getBlock(eventData.blockNumber)
-            const blockTimestamp = parseInt(block.timestamp.toString())
+            const blockTimestamp = toNumber(block.timestamp)
             this.lastWorkerAddedTransaction = { eventData, blockTimestamp }
           }
           break
@@ -252,7 +253,7 @@ export class RegistrationManager {
   }
 
   _extractDuePendingEvents (currentBlockTime: number | string): EventData[] {
-    const currentBlockTimeNumber = parseInt(currentBlockTime.toString())
+    const currentBlockTimeNumber = toNumber(currentBlockTime)
     const ret = this.delayedEvents.filter(event => event.time <= currentBlockTimeNumber).map(e => e.eventData)
     this.delayedEvents = [...this.delayedEvents.filter(event => event.time > currentBlockTimeNumber)]
     return ret
@@ -274,7 +275,7 @@ export class RegistrationManager {
       return undefined
     }
     const block = await this.contractInteractor.getBlock(eventData.blockNumber)
-    const blockTimestamp = parseInt(block.timestamp.toString())
+    const blockTimestamp = toNumber(block.timestamp)
     return { eventData, blockTimestamp }
   }
 
@@ -541,7 +542,7 @@ export class RegistrationManager {
       return undefined
     }
     const block = await this.contractInteractor.getBlock(eventData.blockNumber)
-    const blockTimestamp = parseInt(block.timestamp.toString())
+    const blockTimestamp = toNumber(block.timestamp)
     return { eventData, blockTimestamp }
   }
 

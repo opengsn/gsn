@@ -11,7 +11,7 @@ import {
 } from '../types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { ForwarderInstance } from '@opengsn/contracts/types/truffle-contracts'
-import { constants } from '@opengsn/common'
+import { constants, toNumber } from '@opengsn/common'
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
 import {
   CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS,
@@ -263,7 +263,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
 
         const paymasterBalanceAfter = await daiPermittableToken.balanceOf(permitPaymaster.address)
         // it is dependant on actual cost of ether on uniswap, but pre-charge below 10¢ will be unfortunate
-        assert.isAbove(parseInt(paymasterBalanceAfter.toString()), 1e17, 'unexpected balance (real-world price dependant)')
+        assert.isAbove(toNumber(paymasterBalanceAfter), 1e17, 'unexpected balance (real-world price dependant)')
 
         const accountBalanceAfter = await daiPermittableToken.balanceOf(account0)
         const accountDifference = accountBalanceBefore.sub(accountBalanceAfter)

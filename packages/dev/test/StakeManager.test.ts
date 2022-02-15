@@ -7,7 +7,7 @@ import BN from 'bn.js'
 import { StakeManagerInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { TestTokenInstance } from '@opengsn/paymasters/types/truffle-contracts'
-import { constants } from '@opengsn/common'
+import { constants, toNumber } from '@opengsn/common'
 
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 
@@ -337,7 +337,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
     it('should allow relayOwner to unauthorize an authorized hub', async function () {
       const { logs, receipt } = await stakeManager.unauthorizeHubByOwner(relayManager, anyRelayHub, { from: owner })
       const minedInBlock = await web3.eth.getBlock(receipt.blockNumber)
-      const minedBlockTimestamp = parseInt(minedInBlock.timestamp.toString())
+      const minedBlockTimestamp = toNumber(minedInBlock.timestamp)
       const removalTime = initialUnstakeDelay.add(toBN(minedBlockTimestamp))
       expectEvent.inLogs(logs, 'HubUnauthorized', {
         relayManager,
@@ -349,7 +349,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
     it('should allow relayManager to unauthorize an authorized hub', async function () {
       const { logs, receipt } = await stakeManager.unauthorizeHubByManager(anyRelayHub, { from: relayManager })
       const minedInBlock = await web3.eth.getBlock(receipt.blockNumber)
-      const minedBlockTimestamp = parseInt(minedInBlock.timestamp.toString())
+      const minedBlockTimestamp = toNumber(minedInBlock.timestamp)
       const removalTime = initialUnstakeDelay.add(toBN(minedBlockTimestamp))
       expectEvent.inLogs(logs, 'HubUnauthorized', {
         relayManager,
@@ -365,7 +365,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
     it('should allow owner to schedule stake unlock', async function () {
       const { logs, receipt } = await stakeManager.unlockStake(relayManager, { from: owner })
       const minedInBlock = await web3.eth.getBlock(receipt.blockNumber)
-      const minedBlockTimestamp = parseInt(minedInBlock.timestamp.toString())
+      const minedBlockTimestamp = toNumber(minedInBlock.timestamp)
       const withdrawTime = initialUnstakeDelay.add(toBN(minedBlockTimestamp))
       expectEvent.inLogs(logs, 'StakeUnlocked', {
         relayManager,

@@ -23,6 +23,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
+import { toNumber } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -493,7 +494,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         it('should accept a transaction from paymaster returning below configured max exposure', async function () {
           await rejectingPaymaster.setGreedyAcceptanceBudget(false)
           const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
-          assert.equal(parseInt(gasLimits.acceptanceBudget.toString()), paymasterExpectedAcceptanceBudget)
+          assert.equal(toNumber(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget)
           await env.relayServer.validatePaymasterGasAndDataLimits(req)
         })
 
@@ -503,7 +504,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           try {
             await env.relayServer._initTrustedPaymasters([rejectingPaymaster.address])
             const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
-            assert.equal(parseInt(gasLimits.acceptanceBudget.toString()), paymasterExpectedAcceptanceBudget * 9)
+            assert.equal(toNumber(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
             await env.relayServer.validatePaymasterGasAndDataLimits(req)
           } finally {
             await env.relayServer._initTrustedPaymasters([])
@@ -615,7 +616,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, withdrawToOwnerOnBalance)
       const latestBlock = await env.web3.eth.getBlock('latest')
       currentBlockNumber = latestBlock.number
-      currentBlockTimestamp = parseInt(latestBlock.timestamp.toString())
+      currentBlockTimestamp = toNumber(latestBlock.timestamp)
     })
     afterEach(async function () {
       sinon.restore()

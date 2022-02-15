@@ -23,7 +23,13 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { constants, ContractInteractor, GSNContractsDeployment, splitRelayUrlForRegistrar } from '@opengsn/common'
+import {
+  constants,
+  ContractInteractor,
+  GSNContractsDeployment,
+  splitRelayUrlForRegistrar,
+  toNumber
+} from '@opengsn/common'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
@@ -223,7 +229,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       const usedGas = parseInt(tx.receipt.gasUsed)
       assert.closeTo(gasUseWithoutPost, usedGas - estimatePostGas, 100,
         `postOverhead: increase by ${usedGas - estimatePostGas - gasUseWithoutPost}\
-        \n\tpostOverhead: ${parseInt(defaultEnvironment.relayHubConfiguration.postOverhead.toString()) + usedGas - estimatePostGas - gasUseWithoutPost},\n`
+        \n\tpostOverhead: ${toNumber(defaultEnvironment.relayHubConfiguration.postOverhead) + usedGas - estimatePostGas - gasUseWithoutPost},\n`
       )
     })
 
@@ -313,7 +319,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     if (gasDiff !== '0') {
       console.log('== zero-fee unmatched gas. RelayHubConfiguration.gasOverhead should be increased by: ' + gasDiff.toString())
       const fixedGasOverhead =
-        parseInt(defaultEnvironment.relayHubConfiguration.gasOverhead.toString()) +
+        toNumber(defaultEnvironment.relayHubConfiguration.gasOverhead) +
         parseInt(gasDiff)
       console.log(`=== fixed:\n\tgasOverhead: ${fixedGasOverhead},\n`)
     }
@@ -501,7 +507,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               it(
                 `should compensate relay with requested fee of ${requestedFee.toString()}%, dev fee of ${devFee.toString()}% and ${messageLength.toString()} calldata size`,
                 async function () {
-                  let gasOverhead = parseInt(defaultEnvironment.relayHubConfiguration.gasOverhead.toString())
+                  let gasOverhead = toNumber(defaultEnvironment.relayHubConfiguration.gasOverhead)
                   if (devFee !== 0) {
                     gasOverhead += defaultEnvironment.nonZeroDevFeeGasOverhead
                   }
@@ -592,7 +598,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   const gasDiff = actualCharge.sub(expectedCharge).div(gasPrice).mul(toBN(-1)).toString()
                   assert.equal(actualCharge.toNumber(), expectedCharge.toNumber(),
                     `actual charge from paymaster different than expected. diff = ${gasDiff}. new nonZeroDevFeeGasOverhead =
-                    ${parseInt(defaultEnvironment.nonZeroDevFeeGasOverhead.toString()) + parseInt(gasDiff)}`)
+                    ${toNumber(defaultEnvironment.nonZeroDevFeeGasOverhead) + parseInt(gasDiff)}`)
 
                   // Validate actual profit is with high precision $(requestedFee) percent higher then ether spent relaying
                   const devExpectedCharge = expectedCharge.mul(toBN(devFee)).div(toBN(100))

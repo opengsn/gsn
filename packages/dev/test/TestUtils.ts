@@ -19,7 +19,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-import { Environment } from '@opengsn/common'
+import { Environment, toNumber } from '@opengsn/common'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
@@ -222,7 +222,7 @@ export async function setNextBlockTimestamp (time: number | string | BN): Promis
     web3.currentProvider.send({
       jsonrpc: '2.0',
       method: 'evm_setNextBlockTimestamp',
-      params: [parseInt(time.toString())],
+      params: [toNumber(time)],
       id: Date.now()
     }, (e: Error | null, r: any) => {
       if (e) {

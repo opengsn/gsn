@@ -25,6 +25,7 @@ import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { toNumber } from '@opengsn/common'
 
 const TestRelayHub = artifacts.require('TestRelayHub')
 const TestToken = artifacts.require('TestToken')
@@ -220,27 +221,27 @@ contract('RegistrationManager', function (accounts) {
       // await assertRelayAdded(receipts, relayServer)
       // await relayServer._worker(latestBlock.number + 1)
 
-      let transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, parseInt(latestBlock.timestamp.toString()), 0, false)
+      let transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, toNumber(latestBlock.timestamp), 0, false)
       assert.equal(transactionHashes.length, 0, 'should not re-register if already registered')
 
       const currentBlockFake = 1000000
 
       relayServer.config.baseRelayFee = (parseInt(relayServer.config.baseRelayFee) + 1).toString()
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, parseInt(latestBlock.timestamp.toString()), currentBlockFake, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, toNumber(latestBlock.timestamp), currentBlockFake, false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
       latestBlock = await env.web3.eth.getBlock('latest')
       await relayServer._worker(latestBlock.number)
 
       relayServer.config.pctRelayFee++
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, parseInt(latestBlock.timestamp.toString()), currentBlockFake, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, toNumber(latestBlock.timestamp), currentBlockFake, false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
       latestBlock = await env.web3.eth.getBlock('latest')
       await relayServer._worker(latestBlock.number)
 
       relayServer.config.url = 'fakeUrl'
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, parseInt(latestBlock.timestamp.toString()), currentBlockFake, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, toNumber(latestBlock.timestamp), currentBlockFake, false)
       await assertRelayAdded(transactionHashes, relayServer, false)
     })
   })
@@ -290,7 +291,7 @@ contract('RegistrationManager', function (accounts) {
         await env.relayHub.depositFor(newServer.managerAddress, { value: 1e18.toString() })
         const { receipt } = await env.stakeManager.unlockStake(newServer.managerAddress, { from: relayOwner })
         const minedInBlock = await web3.eth.getBlock(receipt.blockNumber)
-        const minedBlockTimestamp = parseInt(minedInBlock.timestamp.toString())
+        const minedBlockTimestamp = toNumber(minedInBlock.timestamp)
         const removalTime = toBN(unstakeDelay).add(toBN(minedBlockTimestamp)).addn(1)
         await setNextBlockTimestamp(removalTime)
         await env.stakeManager.withdrawStake(newServer.managerAddress, { from: relayOwner })
@@ -404,7 +405,7 @@ contract('RegistrationManager', function (accounts) {
       it('send only workers\' balances to owner (not manager hub,eth balance) - after unstake delay', async function () {
         const { receipt } = await env.stakeManager.unauthorizeHubByOwner(newServer.managerAddress, env.relayHub.address, { from: relayOwner })
         const minedInBlock = await web3.eth.getBlock(receipt.blockNumber)
-        const minedBlockTimestamp = parseInt(minedInBlock.timestamp.toString())
+        const minedBlockTimestamp = toNumber(minedInBlock.timestamp)
         const withdrawalTime = toBN(unstakeDelay).add(toBN(minedBlockTimestamp)).addn(1)
 
         const managerHubBalanceBefore = await env.relayHub.balanceOf(newServer.managerAddress)

@@ -8,6 +8,7 @@ import { HttpProvider } from 'web3-core'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { SignedTransaction } from '@opengsn/relay/dist/KeyManager'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
+import { toNumber } from '@opengsn/common'
 
 contract('TransactionManager', function (accounts) {
   const confirmationsNeeded = 12
@@ -150,7 +151,7 @@ contract('TransactionManager', function (accounts) {
       parsedTxHash = ethUtils.bufferToHex((TransactionFactory.fromSerializedData(toBuffer(signedTx), transactionManager.rawTxOptions)).hash())
       const latestBlock = await env.web3.eth.getBlock('latest')
       latestBlockNumber = latestBlock.number
-      latestBlockTimestamp = parseInt(latestBlock.timestamp.toString())
+      latestBlockTimestamp = toNumber(latestBlock.timestamp)
     })
 
     it('should remove confirmed transactions from the recent transactions storage', async function () {

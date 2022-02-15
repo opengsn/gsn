@@ -35,6 +35,7 @@ import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
+import { toNumber } from '@opengsn/common'
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -302,7 +303,7 @@ export class RelayServer extends EventEmitter {
         throw new Error(message)
       }
       const msgDataGasCostInsideTransaction = msgDataLength * this.environment.dataOnChainHandlingGasCostPerByte
-      const paymasterAcceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget.toString())
+      const paymasterAcceptanceBudget = toNumber(gasAndDataLimits.acceptanceBudget)
       if (paymasterAcceptanceBudget + msgDataGasCostInsideTransaction > acceptanceBudget) {
         if (!this._isTrustedPaymaster(paymaster)) {
           throw new Error(
@@ -313,7 +314,7 @@ export class RelayServer extends EventEmitter {
       }
     } else {
       // its a trusted paymaster. just use its acceptance budget as-is
-      acceptanceBudget = parseInt(gasAndDataLimits.acceptanceBudget.toString())
+      acceptanceBudget = toNumber(gasAndDataLimits.acceptanceBudget)
     }
 
     // TODO: this is not a good way to calculate gas limit for relay call
@@ -391,7 +392,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     const currentBlockNumber = await this.contractInteractor.getBlockNumber()
     const block = await this.contractInteractor.getBlock(currentBlockNumber)
-    const currentBlockTimestamp = parseInt(block.timestamp.toString())
+    const currentBlockTimestamp = toNumber(block.timestamp)
     this.validateInput(req, currentBlockNumber)
     this.validateRelayFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
@@ -639,7 +640,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       return []
     }
     const block = await this.contractInteractor.getBlock(blockNumber)
-    const currentBlockTimestamp = parseInt(block.timestamp.toString())
+    const currentBlockTimestamp = toNumber(block.timestamp)
     await this.withdrawToOwnerIfNeeded(blockNumber, currentBlockTimestamp)
     this.lastRefreshBlock = blockNumber
     await this._refreshPriorityFee()
@@ -770,7 +771,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   async _handleTransactionRejectedByPaymasterEvent (paymaster: Address, currentBlockNumber: number, eventBlockNumber: number): Promise<void> {
     this.alerted = true
     const block = await this.contractInteractor.getBlock(eventBlockNumber)
-    const eventBlockTimestamp = parseInt(block.timestamp.toString())
+    const eventBlockTimestamp = toNumber(block.timestamp)
     this.alertedByTransactionBlockTimestamp = eventBlockTimestamp
     const alertedUntil = this.alertedByTransactionBlockTimestamp + this.config.alertedDelaySeconds
     this.logger.error(`Relay entered alerted state. Block number: ${eventBlockNumber} Block timestamp: ${eventBlockTimestamp}.

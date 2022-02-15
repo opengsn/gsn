@@ -2,7 +2,7 @@ import { RelayRegistrarInstance, TestRelayHubForRegistrarInstance } from '@openg
 import { expect } from 'chai'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 
-import { splitRelayUrlForRegistrar } from '@opengsn/common'
+import { splitRelayUrlForRegistrar, toNumber } from '@opengsn/common'
 
 import { cleanValue } from './chaiHelper'
 import { evmMine, evmMineMany, revert, setNextBlockTimestamp, snapshot } from '../TestUtils'
@@ -103,7 +103,7 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
         await evmMineMany(2)
         await relayRegistrar.registerRelayServer(relayHubOne.address, 21, 22, splitUrl2, { from: relay1 })
         await evmMineMany(2)
-        lastSeenTimestamp = parseInt(firstSeenTimestamp.toString()) + 7000
+        lastSeenTimestamp = toNumber(firstSeenTimestamp) + 7000
         await setNextBlockTimestamp(lastSeenTimestamp)
         await relayRegistrar.registerRelayServer(relayHubOne.address, 121, 122, splitUrl2, { from: relay1 })
         lastSeenBlockNumber = await web3.eth.getBlockNumber()
@@ -133,7 +133,7 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
         await evmMine()
         oldestBlockNumber = await web3.eth.getBlockNumber()
         const block = await web3.eth.getBlock(oldestBlockNumber)
-        oldestBlockTimestamp = parseInt(block.timestamp.toString()) + 7000
+        oldestBlockTimestamp = toNumber(block.timestamp) + 7000
         await setNextBlockTimestamp(oldestBlockTimestamp)
         await relayRegistrar.registerRelayServer(relayHubTwo.address, 333, 3333, splitUrl1, { from: relay3 })
         await relayRegistrar.registerRelayServer(relayHubOne.address, 444, 4444, splitUrl4, { from: relay4 })
