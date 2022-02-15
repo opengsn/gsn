@@ -7,7 +7,7 @@ import {
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
-import { formatEther, parseEther } from 'ethers/lib/utils'
+import { formatEther, getAddress, parseEther } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 // @ts-ignore
 import { deployments, ethers } from 'hardhat'
@@ -87,11 +87,6 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const TestWEth = await deploy('TestWEth', {
     from: deployer
   })
-  const b = await deployments.read('TestWEth', 'balanceOf', deployer)
-  if (b.toString() === '0') {
-    console.log('== wrap some eth for deployer')
-    await ethers.provider.getSigner().sendTransaction({ to: TestWEth.address, value: parseEther('1') })
-  }
 
   const burnAddress = '0x'.padEnd(42, 'f')
   const stakeManager = await deploy('StakeManager', {
@@ -108,9 +103,10 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
     relayHub = await deploy(hubContractName, {
       from: deployer,
       args: [
-        '0x0000000000000000000000000000000000000064',
+        '0x0000000000000000000000000000000000000064', // ArbSys
         stakeManager.address,
         penalizer.address,
+        AddressZero, // batch gateway
         hubConfig
       ]
     })
@@ -139,7 +135,8 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
     })
 
     const currentRegistrar = await hub.getRelayRegistrar() as string
-    if (currentRegistrar !== relayRegistrar.address) {
+
+    if (currentRegistrar !== getAddress(relayRegistrar.address)) {
       if (currentRegistrar !== ethers.constants.AddressZero) {
         console.error(chalk.red(`fatal: unable to modify registrar in hub. currently set: ${currentRegistrar}`))
       } else {

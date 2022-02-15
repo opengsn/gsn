@@ -243,11 +243,11 @@ export class CommandsLogic {
       if (stakingToken === constants.ZERO_ADDRESS) {
         const fromBlock = await relayHub.getCreationBlock().then(b => b.toNumber())
         const toBlock = Math.min(fromBlock + 5000, await this.contractInteractor.getBlockNumber())
-        const tokens = await this.contractInteractor.getPastEventsForHub([], { fromBlock, toBlock }, ['StakingToken'])
-        if (tokens.length === 0) {
+        const tokenEvents = await relayHub.contract.getPastEvents('StakingToken', { fromBlock, toBlock })
+        if (tokenEvents.length === 0) {
           throw new Error(`no registered StakingTokens tokens on relayhub ${relayHubAddress}`)
         }
-        stakingToken = tokens[0].returnValues.token
+        stakingToken = tokenEvents[0].returnValues.token
         isDefaultToken = true
       }
 
@@ -255,7 +255,13 @@ export class CommandsLogic {
         throw new Error(`Cannot use token ${stakingToken}. Relay already using token: ${token}`)
       }
 
-      const currentStakeFormatted = await this.contractInteractor.formatTokenAmount(stake)
+      const stakingTokenContract = await this.contractInteractor._createERC20(stakingToken)
+      const tokenSymbol = await stakingTokenContract.symbol()
+      const tokenDecimals = await stakingTokenContract.decimals();
+
+      const tokenFormatter = async (balance: BN): Promise<string> => formatTokenAmount(balance, tokenDecimals, tokenSymbol)
+
+      const currentStakeFormatted = await tokenFormatter(stake)
       console.log('current stake= ', currentStakeFormatted)
 
       if (owner !== constants.ZERO_ADDRESS && !isSameAddress(owner, options.from)) {
@@ -263,6 +269,7 @@ export class CommandsLogic {
       }
 
       const bal = await this.contractInteractor.getBalance(relayAddress)
+      console.log( 'current relayer balance', bal.toString())
       if (toBN(bal).gt(toBN(options.funds.toString()))) {
         console.log('Relayer already funded')
       } else {
@@ -316,12 +323,12 @@ export class CommandsLogic {
           throw new Error(`Given minimum unstake delay ${options.unstakeDelay.toString()} too low for the given hub ${config.minimumUnstakeDelay.toString()}`)
         }
         const stakeValue = toBN(options.stake.toString()).sub(stake)
-        const stakeValueFormatted = await this.contractInteractor.formatTokenAmount(stakeValue)
+        const stakeValueFormatted = await tokenFormatter(stakeValue)
         console.log(`Staking relayer ${stakeValueFormatted}`,
           stake.toString() === '0' ? '' : ` (already has ${currentStakeFormatted})`)
 
-        const stakingTokenContract = await this.contractInteractor._createERC20(stakingToken)
         const tokenBalance = await stakingTokenContract.balanceOf(options.from)
+        console.log( 'owner token balance=', tokenFormatter(tokenBalance), 'needed', tokenFormatter(stakeValue), 'default=', isDefaultToken)
         if (tokenBalance.lt(stakeValue) && isDefaultToken) {
           console.log(`Wrapping ${formatTokenAmount(stakeValue, 18, 'eth')}`)
           // default token is wrapped eth, so deposit eth to make then into tokens.
