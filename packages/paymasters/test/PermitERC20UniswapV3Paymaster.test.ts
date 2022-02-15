@@ -263,7 +263,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
 
         const paymasterBalanceAfter = await daiPermittableToken.balanceOf(permitPaymaster.address)
         // it is dependant on actual cost of ether on uniswap, but pre-charge below 10¢ will be unfortunate
-        assert.isAbove(toNumber(paymasterBalanceAfter), 1e17, 'unexpected balance (real-world price dependant)')
+        assert.isAbove(parseInt(paymasterBalanceAfter.toString()), 1e17, 'unexpected balance (real-world price dependant)')
 
         const accountBalanceAfter = await daiPermittableToken.balanceOf(account0)
         const accountDifference = accountBalanceBefore.sub(accountBalanceAfter)
