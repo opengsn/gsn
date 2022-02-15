@@ -11,7 +11,7 @@ import {
 } from '../types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { ForwarderInstance } from '@opengsn/contracts/types/truffle-contracts'
-import { constants, toNumber } from '@opengsn/common'
+import { constants } from '@opengsn/common'
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
 import {
   CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS,
