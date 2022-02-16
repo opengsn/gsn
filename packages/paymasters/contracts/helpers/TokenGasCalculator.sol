@@ -20,9 +20,11 @@ contract TokenGasCalculator is RelayHub {
         IStakeManager _stakeManager,
         address _penalizer,
         address _batchGateway,
+        address _relayRegistrar,
         RelayHubConfig memory _config) RelayHub(_stakeManager,
         _penalizer,
         _batchGateway,
+        _relayRegistrar,
         _config)
         // solhint-disable-next-line no-empty-blocks
     {}

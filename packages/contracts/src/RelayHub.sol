@@ -44,9 +44,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     IStakeManager internal immutable stakeManager;
     address internal immutable penalizer;
     address internal immutable batchGateway;
-
-    //TODO: make immutable (currently has a setter. deployment requires future address, since there is cross-references between RH and RR
-    address internal relayRegistrar;
+    address internal immutable relayRegistrar;
 
     RelayHubConfig internal config;
 
@@ -88,12 +86,14 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         IStakeManager _stakeManager,
         address _penalizer,
         address _batchGateway,
+        address _relayRegistrar,
         RelayHubConfig memory _config
     ) {
         creationBlock = block.number;
         stakeManager = _stakeManager;
         penalizer = _penalizer;
         batchGateway = _batchGateway;
+        relayRegistrar = _relayRegistrar;
         setConfiguration(_config);
     }
 
@@ -147,13 +147,6 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         return interfaceId == type(IRelayHub).interfaceId ||
             interfaceId == type(Ownable).interfaceId ||
             super.supportsInterface(interfaceId);
-    }
-
-    // TODO: make registrar immutable
-    function setRegistrar(address _relayRegistrar) public onlyOwner {
-        require(_relayRegistrar.supportsInterface(type(IRelayRegistrar).interfaceId), "target is not a valid IRegistrar");
-        require(relayRegistrar == address(0), "relayRegistrar already set");
-        relayRegistrar = _relayRegistrar;
     }
 
     /// @inheritdoc IRelayHub
@@ -396,7 +389,6 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
     struct InnerRelayCallData {
         uint256 initialGasLeft;
-        // TODO: consider if it is even an important value we want to account for; its probably not
         uint256 gasUsedToCallInner;
         uint256 balanceBefore;
         bytes32 preReturnValue;

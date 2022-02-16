@@ -28,7 +28,9 @@ import {
   decodeRevertReason,
   errorAsBoolean,
   event2topic,
-  formatTokenAmount
+  formatTokenAmount,
+  packRelayUrlForRegistrar,
+  splitRelayUrlForRegistrar
 } from './Utils'
 import {
   IERC20TokenInstance,
@@ -984,9 +986,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
-  async getRegisterRelayMethod (baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
+  async getRegisterRelayMethod (relayHub: Address, baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
     const registrar = this.relayRegistrar
-    return registrar?.contract.methods.registerRelayServer(baseRelayFee, pctRelayFee, url)
+    return registrar?.contract.methods.registerRelayServer(relayHub, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar(url))
   }
 
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
@@ -1127,20 +1129,18 @@ calculateTransactionMaxPossibleGas: result: ${result}
     if (this.relayRegistrar == null) {
       return null
     }
-    const ret = await this.relayRegistrar.readRelayInfos(0, 100)
-    const relayInfos = ret[0]
-    const filled = parseInt(ret[1].toString())
-    if (filled === 0) {
-      return null
+    const relayHub = this.relayHubInstance.address
+    if (relayHub == null) {
+      throw new Error('RelayHub is not initialized!')
     }
+    const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub, 0, 100)
 
-    const infos = relayInfos.slice(0, filled)
-    return infos.map(info => {
+    return relayInfos.map(info => {
       return {
         relayManager: info.relayManager,
         pctRelayFee: info.pctRelayFee.toString(),
         baseRelayFee: info.baseRelayFee.toString(),
-        relayUrl: info.url
+        relayUrl: packRelayUrlForRegistrar(info.urlParts)
       }
     })
   }

@@ -9,38 +9,38 @@ import "../interfaces/IRelayHub.sol";
 import "../interfaces/IRelayRegistrar.sol";
 
 /**
- * on-chain relayer registrar.
- * - keep a list of registered relayers (using registerRelayer).
- * - provide view functions to read the list of registered relayers (and filter out invalid ones)
- * - protect the list from spamming entries: only staked relayers are added.
+ * @title The RelayRegistrar Implementation
+ * @notice Keeps a list of registered relayers.
+ *
+ * @notice Provides view functions to read the list of registered relayers and filters out invalid ones.
+ *
+ * @notice Protects the list from spamming entries: only staked relayers are added.
  */
 contract RelayRegistrar is IRelayRegistrar, ERC165 {
     using MinLibBytes for bytes;
 
-    struct RelayStorageInfo {
-        uint32 lastBlockNumber;
-        uint32 stakeBlockNumber;
-        uint96 baseRelayFee;
-        uint96 pctRelayFee;
-        bytes32[3] urlParts;
-    }
+    /// @notice Mapping from `RelayHub` address to a mapping from a Relay Manager address to its registration details.
+    mapping(address => mapping(address => RelayInfo)) internal values;
 
-    mapping(address => RelayStorageInfo) public values;
-    address[] public indexedValues;
+    /// @notice Mapping from `RelayHub` address to an array of Relay Managers that are registered on that `RelayHub`.
+    mapping(address => address[]) internal indexedValues;
 
-    bool public immutable override isUsingStorageRegistry;
+    bool internal immutable isUsingStorageRegistry;
     uint256 private immutable creationBlock;
 
-    IRelayHub public immutable relayHub;
-
-    constructor(IRelayHub _relayHub, bool _isUsingStorageRegistry) {
+    constructor(bool _isUsingStorageRegistry) {
         creationBlock = block.number;
-        relayHub = _relayHub;
         isUsingStorageRegistry = _isUsingStorageRegistry;
     }
 
+    /// @inheritdoc IRelayRegistrar
     function getCreationBlock() external override view returns (uint256){
         return creationBlock;
+    }
+
+    /// @inheritdoc IRelayRegistrar
+    function getIsUsingStorageRegistry() external override view returns (bool){
+        return isUsingStorageRegistry;
     }
 
     /// @inheritdoc IERC165
@@ -50,112 +50,83 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     }
 
     /// @inheritdoc IRelayRegistrar
-    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
+    function registerRelayServer(
+        address relayHub,
+        uint96 baseRelayFee,
+        uint96 pctRelayFee,
+        bytes32[3] calldata url
+    ) external override {
         address relayManager = msg.sender;
-        if (address(relayHub) != address(0)) {
-            relayHub.verifyCanRegister(relayManager);
-        }
+        IRelayHub(relayHub).verifyCanRegister(relayManager);
         emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);
         if (isUsingStorageRegistry) {
-            storeRelayServerRegistration(relayManager, baseRelayFee, pctRelayFee, url);
+            storeRelayServerRegistration(relayHub, relayManager, baseRelayFee, pctRelayFee, url);
         }
     }
 
-    function addItem(address relayManager) internal returns (RelayStorageInfo storage) {
-        RelayStorageInfo storage storageInfo = values[relayManager];
-        if (storageInfo.lastBlockNumber == 0) {
-            indexedValues.push(relayManager);
+    function addItem(address relayHub, address relayManager) internal returns (RelayInfo storage) {
+        RelayInfo storage storageInfo = values[relayHub][relayManager];
+        if (storageInfo.lastSeenBlockNumber == 0) {
+            indexedValues[relayHub].push(relayManager);
         }
         return storageInfo;
     }
 
-    function storeRelayServerRegistration(address relayManager, uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) internal {
-        RelayStorageInfo storage storageInfo = addItem(relayManager);
-        if (storageInfo.stakeBlockNumber==0) {
-            storageInfo.stakeBlockNumber = uint32(block.number);
+    function storeRelayServerRegistration(
+        address relayHub,
+        address relayManager,
+        uint96 baseRelayFee,
+        uint96 pctRelayFee,
+        bytes32[3] calldata url
+    ) internal {
+        RelayInfo storage storageInfo = addItem(relayHub, relayManager);
+        if (storageInfo.firstSeenBlockNumber==0) {
+            storageInfo.firstSeenBlockNumber = uint32(block.number);
         }
-        storageInfo.lastBlockNumber = uint32(block.number);
-        storageInfo.baseRelayFee = uint96(baseRelayFee);
-        storageInfo.pctRelayFee = uint96(pctRelayFee);
-        bytes32[3] memory parts = splitString(url);
-        storageInfo.urlParts = parts;
+        storageInfo.lastSeenBlockNumber = uint32(block.number);
+        storageInfo.baseRelayFee = baseRelayFee;
+        storageInfo.pctRelayFee = pctRelayFee;
+        storageInfo.relayManager = relayManager;
+        storageInfo.urlParts = url;
     }
 
     /// @inheritdoc IRelayRegistrar
-    function getRelayInfo(address relayManager) public view override returns (RelayInfo memory) {
-        RelayInfo memory info;
-        RelayStorageInfo storage storageInfo = values[relayManager];
-        require(storageInfo.lastBlockNumber != 0, "relayManager not found");
-        info.lastBlockNumber = storageInfo.lastBlockNumber;
-        info.stakeBlockNumber = storageInfo.stakeBlockNumber;
-        info.baseRelayFee = storageInfo.baseRelayFee;
-        info.pctRelayFee = storageInfo.pctRelayFee;
-        info.relayManager = relayManager;
-        info.url = packString(storageInfo.urlParts);
+    function getRelayInfo(address relayHub, address relayManager) public view override returns (RelayInfo memory) {
+        RelayInfo memory info = values[relayHub][relayManager];
+        require(info.lastSeenBlockNumber != 0, "relayManager not found");
         return info;
     }
 
     /// @inheritdoc IRelayRegistrar
-    function readRelayInfos(uint256 oldestBlock, uint256 maxCount) public view override returns (RelayInfo[] memory info, uint256 filled) {
-        address[] storage items = indexedValues;
-        filled = 0;
+    function readRelayInfos(
+        address relayHub,
+        uint256 oldestBlock,
+        uint256 maxCount
+    )
+    public
+    view
+    override
+    returns (
+        RelayInfo[] memory info
+    ) {
+        address[] storage items = indexedValues[relayHub];
+        uint256 filled = 0;
         info = new RelayInfo[](items.length < maxCount ? items.length : maxCount);
         for (uint256 i = 0; i < items.length; i++) {
             address relayManager = items[i];
-            RelayInfo memory relayInfo = getRelayInfo(relayManager);
-            if (relayInfo.lastBlockNumber < oldestBlock) {
+            RelayInfo memory relayInfo = getRelayInfo(relayHub, relayManager);
+            if (relayInfo.lastSeenBlockNumber < oldestBlock) {
                 continue;
             }
-            if (address(relayHub) != address(0)) {
-                // solhint-disable-next-line no-empty-blocks
-                try IRelayHub(relayHub).verifyRelayManagerStaked(relayManager) {
-                } catch (bytes memory /*lowLevelData*/) {
-                    continue;
-                }
+            // solhint-disable-next-line no-empty-blocks
+            try IRelayHub(relayHub).verifyRelayManagerStaked(relayManager) {
+            } catch (bytes memory /*lowLevelData*/) {
+                continue;
             }
             info[filled++] = relayInfo;
             if (filled >= maxCount)
                 break;
         }
-    }
-
-    /**
-     * @notice Splits the variable size string array into static size bytes array. See `packString` for reverse.
-     * @param str The string to be split.
-     * @return The same string split into parts.
-     */
-    function splitString(string calldata str) public pure returns (bytes32[3] memory) {
-        bytes32[3] memory parts;
-        bytes calldata url = bytes(str);
-        require(url.length <= 96, "url too long");
-        parts[0] = bytes32(url[0 :]);
-        if (url.length > 32) {
-            parts[1] = bytes32(url[32 :]);
-            if (url.length > 64) {
-                parts[2] = bytes32(url[64 :]);
-            } else {
-                parts[2] = 0;
-            }
-        } else {
-            parts[1] = 0;
-            parts[2] = 0;
-        }
-        return parts;
-    }
-
-    /**
-     * @notice Packs a string back after being split in `splitString`.
-     * @param parts The string split into parts.
-     * @return str The same string joined back together.
-     */
-    function packString(bytes32[3] memory parts) public pure returns (string memory str) {
-        bytes memory ret = bytes.concat(parts[0], parts[1], parts[2]);
-        //trim trailing zeros
-        uint256 len = ret.length - 1;
-        while (len > 0 && ret[len] == 0) len--;
-        assembly {
-            mstore(ret, add(len, 1))
-        }
-        str = string(ret);
+        assembly { mstore(info, filled) }
     }
 }

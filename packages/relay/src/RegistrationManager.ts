@@ -391,7 +391,7 @@ export class RegistrationManager {
       const txHash = await this.addRelayWorker(currentBlock)
       transactions = transactions.concat(txHash)
     }
-    const registerMethod = await this.contractInteractor.getRegisterRelayMethod(this.config.baseRelayFee, this.config.pctRelayFee, this.config.url)
+    const registerMethod = await this.contractInteractor.getRegisterRelayMethod(this.hubAddress, this.config.baseRelayFee, this.config.pctRelayFee, this.config.url)
     const gasLimit = await this.transactionManager.attemptEstimateGas('RegisterRelay', registerMethod, this.managerAddress)
     const details: SendTransactionDetails = {
       serverAction: ServerAction.REGISTER_SERVER,
