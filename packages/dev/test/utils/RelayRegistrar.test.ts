@@ -64,7 +64,7 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
     relayHubTwo = await TestRelayHubForRegistrar.new()
     await relayHubOne.setRelayManagerStaked(relay1, true)
     await relayHubTwo.setRelayManagerStaked(relay1, true)
-    relayRegistrar = await RelayRegistrar.new(true)
+    relayRegistrar = await RelayRegistrar.new()
     id = (await snapshot()).result
   })
 

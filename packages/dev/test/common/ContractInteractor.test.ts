@@ -601,7 +601,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      relayReg = await RelayRegistrar.new(true)
+      relayReg = await RelayRegistrar.new()
       lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
 
       testRelayHub = await TestRelayHubForRegistrar.new()
