@@ -91,7 +91,6 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     }
 
     /// @inheritdoc IRelayRegistrar
-
     function getRelayInfo(address relayHub, address relayManager) public view override returns (RelayInfo memory) {
         RelayInfo memory info = values[relayHub][relayManager];
         require(info.lastSeenBlockNumber != 0, "relayManager not found");
