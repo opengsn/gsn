@@ -11,9 +11,9 @@ import { defaultEnvironment } from '@opengsn/common'
 
 contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
-  const callsPerStateRefresh = 12
+  const callsPerStateRefresh = 13
   const callsPerBlock = 0
-  const callsPerTransaction = 12
+  const callsPerTransaction = 13
 
   let provider: ProfilingProvider
   let relayServer: RelayServer

@@ -19,13 +19,17 @@ interface IRelayRegistrar is IERC165 {
      */
     struct RelayInfo {
         //last registration block number
-        uint256 lastBlockNumber;
+        uint32 lastSeenBlockNumber;
+        //last registration block timestamp
+        uint40 lastSeenTimestamp;
         //stake (first registration) block number
-        uint256 stakeBlockNumber;
+        uint32 firstSeenBlockNumber;
+        //stake (first registration) block timestamp
+        uint40 firstSeenTimestamp;
+        uint80 baseRelayFee;
+        uint16 pctRelayFee;
+        bytes32[3] urlParts;
         address relayManager;
-        uint256 baseRelayFee;
-        uint256 pctRelayFee;
-        string url;
     }
 
     /**
@@ -36,16 +40,22 @@ interface IRelayRegistrar is IERC165 {
         address indexed relayManager,
         uint256 baseRelayFee,
         uint256 pctRelayFee,
-        string relayUrl
+        bytes32[3] relayUrl
     );
 
     /**
      * @notice This function is called by Relay Servers in order to register or to update their registration.
+     * @param relayHub The address of the `RelayHub` contract for which this action is performed.
      * @param baseRelayFee The base fee the Relay Server charges for a single transaction in Ether, in wei.
      * @param pctRelayFee The percent of the total charge to add as a Relay Server fee to the total charge.
      * @param url The URL of the Relay Server that is listening to the clients' requests.
      */
-    function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external;
+    function registerRelayServer(
+        address relayHub,
+        uint80 baseRelayFee,
+        uint16 pctRelayFee,
+        bytes32[3] calldata url
+    ) external;
 
     /**
      * @return The block number in which the contract has been deployed.
@@ -56,20 +66,29 @@ interface IRelayRegistrar is IERC165 {
      * @return `true` if this `RelayRegistrar` keeps registrations on-chain in storage in addition to emitting events.
      * `false` if only events are emitted as part of Relay Server registration on this `RelayRegistrar`.
      */
-    function isUsingStorageRegistry() external returns (bool);
+    function getIsUsingStorageRegistry() external returns (bool);
 
     /**
      * @param relayManager An address of a Relay Manager.
-     * @return info All the details of the given Relay Manager's registration.
+     * @param relayHub The address of the `RelayHub` contract for which this action is performed.
+     * @return info All the details of the given Relay Manager's registration. Throws if relay not found for `RelayHub`.
      */
-    function getRelayInfo(address relayManager) external view returns (RelayInfo memory info);
+    function getRelayInfo(address relayHub, address relayManager) external view returns (RelayInfo memory info);
 
     /**
      * @notice Read relay info of registered Relay Server from an on-chain storage.
+     * @param relayHub The address of the `RelayHub` contract for which this action is performed.
      * @param maxCount The maximum amount of relays to be returned by this function.
-     * @param oldestBlock The latest block number in which a Relay Server may be registered in order to be returned.
-     * @return info The list of `RelayInfo`s or registered Relay Servers
-     * @return filled The number of entries filled in info. Entries in returned array that are not filled will be empty.
+     * @param oldestBlockNumber The latest block number in which a Relay Server may be registered.
+     * @param oldestBlockTimestamp The latest block timestamp in which a Relay Server may be registered.
+     * @return info The list of `RelayInfo`s of registered Relay Servers
      */
-    function readRelayInfos(uint256 oldestBlock, uint256 maxCount) external view returns (RelayInfo[] memory info, uint256 filled);
+    function readRelayInfos(
+        address relayHub,
+        uint256 oldestBlockNumber,
+        uint256 oldestBlockTimestamp,
+        uint256 maxCount
+    ) external view returns (
+        RelayInfo[] memory info
+    );
 }

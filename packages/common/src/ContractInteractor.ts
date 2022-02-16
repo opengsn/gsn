@@ -28,7 +28,10 @@ import {
   decodeRevertReason,
   errorAsBoolean,
   event2topic,
-  formatTokenAmount
+  formatTokenAmount,
+  packRelayUrlForRegistrar,
+  splitRelayUrlForRegistrar,
+  toNumber
 } from './Utils'
 import {
   IERC20TokenInstance,
@@ -770,12 +773,12 @@ export class ContractInteractor {
         .muln(msgDataLength)
         .toNumber()
     const calldataCost = this.calculateCalldataCost(_.msgData)
-    const result = parseInt(this.relayHubConfiguration.gasOverhead.toString()) +
+    const result = toNumber(this.relayHubConfiguration.gasOverhead) +
       msgDataGasCostInsideTransaction +
       calldataCost +
       parseInt(_.relayCallGasLimit) +
-      parseInt(_.gasAndDataLimits.preRelayedCallGasLimit.toString()) +
-      parseInt(_.gasAndDataLimits.postRelayedCallGasLimit.toString())
+      toNumber(_.gasAndDataLimits.preRelayedCallGasLimit) +
+      toNumber(_.gasAndDataLimits.postRelayedCallGasLimit)
     this.logger.debug(`
 input:\n${JSON.stringify(_)}
 msgDataLength: ${msgDataLength}
@@ -984,9 +987,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
-  async getRegisterRelayMethod (baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
+  async getRegisterRelayMethod (relayHub: Address, baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
     const registrar = this.relayRegistrar
-    return registrar?.contract.methods.registerRelayServer(baseRelayFee, pctRelayFee, url)
+    return registrar?.contract.methods.registerRelayServer(relayHub, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar(url))
   }
 
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
@@ -1083,15 +1086,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   /**
    * discover registered relays
-   * @param subset if set, then filter only to these relays
+   * @param relayRegistrationMaximumAge - the oldest registrations to be counted
    */
-  async getRegisteredRelays (subset?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
-    const infoFromStorage = await this.getRegisteredRelaysFromRegistrar()
-    if (infoFromStorage != null) {
-      return infoFromStorage.filter(info => subset == null || subset.includes(info.relayManager))
-    } else {
-      return await this.getRegisteredRelaysFromEvents(subset, fromBlock)
-    }
+  async getRegisteredRelays (relayRegistrationMaximumAge: number): Promise<RelayRegisteredEventInfo[]> {
+    return await this.getRegisteredRelaysFromRegistrar(relayRegistrationMaximumAge)
   }
 
   async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
@@ -1123,24 +1121,27 @@ calculateTransactionMaxPossibleGas: result: ${result}
    * get registered relayers from registrar
    * (output format matches event info)
    */
-  async getRegisteredRelaysFromRegistrar (): Promise<null | RelayRegisteredEventInfo[]> {
+  async getRegisteredRelaysFromRegistrar (relayRegistrationMaximumAge: number): Promise<RelayRegisteredEventInfo[]> {
     if (this.relayRegistrar == null) {
-      return null
+      throw new Error('Relay Registrar is not initialized')
     }
-    const ret = await this.relayRegistrar.readRelayInfos(0, 100)
-    const relayInfos = ret[0]
-    const filled = parseInt(ret[1].toString())
-    if (filled === 0) {
-      return null
+    const relayHub = this.relayHubInstance.address
+    if (relayHub == null) {
+      throw new Error('RelayHub is not initialized!')
     }
+    let oldestBlockTimestamp = 0
+    if (relayRegistrationMaximumAge !== 0) {
+      const block = await this.getBlock('latest')
+      oldestBlockTimestamp = Math.max(0, toNumber(block.timestamp) - relayRegistrationMaximumAge)
+    }
+    const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub, 0, oldestBlockTimestamp, 100)
 
-    const infos = relayInfos.slice(0, filled)
-    return infos.map(info => {
+    return relayInfos.map(info => {
       return {
         relayManager: info.relayManager,
         pctRelayFee: info.pctRelayFee.toString(),
         baseRelayFee: info.baseRelayFee.toString(),
-        relayUrl: info.url
+        relayUrl: packRelayUrlForRegistrar(info.urlParts)
       }
     })
   }

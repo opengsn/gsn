@@ -21,7 +21,6 @@ export type { GSNConfig } from '@opengsn/common/dist/ConfigResponse'
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
 const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 1800
-const DEFAULT_LOOKUP_WINDOW_BLOCKS = 60000
 
 export const defaultLoggerConfiguration: LoggerConfiguration = {
   logLevel: 'info'
@@ -29,8 +28,7 @@ export const defaultLoggerConfiguration: LoggerConfiguration = {
 
 export const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
-  relayLookupWindowBlocks: DEFAULT_LOOKUP_WINDOW_BLOCKS,
-  relayRegistrationLookupBlocks: Number.MAX_SAFE_INTEGER,
+  relayRegistrationMaximumAge: Number.MAX_SAFE_INTEGER,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   gasPriceOracleUrl: '',

@@ -470,6 +470,9 @@ export class CommandsLogic {
       gasPrice: deployOptions.gasPrice
     }
 
+    const rrInstance = await this.getContractInstance(RelayRegistrar, {
+      arguments: [true]
+    }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
     const sInstance = await this.getContractInstance(StakeManager, {
       arguments: [defaultEnvironment.maxUnstakeDelay, deployOptions.burnAddress]
     }, deployOptions.stakeManagerAddress, { ...options }, deployOptions.skipConfirmation)
@@ -487,13 +490,10 @@ export class CommandsLogic {
         sInstance.options.address,
         pInstance.options.address,
         batchGatewayAddress,
+        rrInstance.options.address,
         deployOptions.relayHubConfiguration
       ]
     }, deployOptions.relayHubAddress, { ...options }, deployOptions.skipConfirmation)
-
-    const rrInstance = await this.getContractInstance(RelayRegistrar, {
-      arguments: [rInstance.options.address, true]
-    }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
 
     if (!isSameAddress(await rInstance.methods.getRelayRegistrar().call(), rrInstance.options.address)) {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })

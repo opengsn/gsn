@@ -19,7 +19,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-import { Environment } from '@opengsn/common'
+import { Environment, toNumber } from '@opengsn/common'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
@@ -215,13 +215,14 @@ export async function increaseTime (time: number): Promise<void> {
     })
   })
 }
-export async function setNextBlockTimestamp (time: number | BN): Promise<void> {
+
+export async function setNextBlockTimestamp (time: number | string | BN): Promise<void> {
   return await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
       jsonrpc: '2.0',
       method: 'evm_setNextBlockTimestamp',
-      params: [parseInt(time.toString())],
+      params: [toNumber(time)],
       id: Date.now()
     }, (e: Error | null, r: any) => {
       if (e) {
@@ -234,6 +235,9 @@ export async function setNextBlockTimestamp (time: number | BN): Promise<void> {
 }
 
 export async function evmMineMany (count: number): Promise<void> {
+  if (count > 101) {
+    throw new Error(`Mining ${count} blocks will make tests run way too long`)
+  }
   for (let i = 0; i < count; i++) {
     await evmMine()
   }
@@ -310,14 +314,14 @@ export async function deployHub (
     ...configOverride
   }
   const HubContract: RelayHubContract = hubContract ?? RelayHub
+  const relayRegistrar = await RelayRegistrar.new(true)
   const hub: RelayHubInstance = await HubContract.new(
     stakeManager,
     penalizer,
     batchGateway,
+    relayRegistrar.address,
     relayHubConfiguration)
 
-  const relayRegistrar = await RelayRegistrar.new(hub.address, true)
-  await hub.setRegistrar(relayRegistrar.address)
   await hub.setMinimumStakes([testToken], [testTokenMinimumStake])
 
   return hub
@@ -334,7 +338,13 @@ export async function emptyBalance (source: Address, target: Address): Promise<v
   const transferValue = balance.sub(txCost)
   console.log('bal=', balance.toString(), 'xfer=', transferValue.toString())
   if (transferValue.gtn(0)) {
-    await web3.eth.sendTransaction({ from: source, to: target, value: transferValue, gasPrice, gas: defaultEnvironment.mintxgascost })
+    await web3.eth.sendTransaction({
+      from: source,
+      to: target,
+      value: transferValue,
+      gasPrice,
+      gas: defaultEnvironment.mintxgascost
+    })
   }
   balance = toBN(await web3.eth.getBalance(source))
   assert.isTrue(balance.eqn(0))

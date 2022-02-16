@@ -49,7 +49,7 @@ import { BadContractInteractor } from '../dummies/BadContractInteractor'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { constants } from '@opengsn/common'
+import { constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 import { ConfigResponse } from '@opengsn/common/dist/ConfigResponse'
 
 const StakeManager = artifacts.require('StakeManager')
@@ -123,7 +123,7 @@ contract('RelayClient', function (accounts) {
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
 
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayRegistrar.registerRelayServer(1, 1, cheapRelayerUrl, { from: relayManager })
+    await relayRegistrar.registerRelayServer(relayHub.address, 1, 1, splitRelayUrlForRegistrar(cheapRelayerUrl), { from: relayManager })
   }
 
   before(async function () {
@@ -541,7 +541,7 @@ contract('RelayClient', function (accounts) {
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorkerAddress], { from: relayManager })
-      await relayRegistrar.registerRelayServer(2e16.toString(), '10', 'url', { from: relayManager })
+      await relayRegistrar.registerRelayServer(relayHub.address, 2e16.toString(), '10', splitRelayUrlForRegistrar('url'), { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
         ownerAddress: relayOwner,
