@@ -54,6 +54,14 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
     })
   })
 
+  context('#getCreationBlock()', function () {
+    it('should return separate L1 and L2 creation blocks', async function () {
+      const l1CreationBlock = await arbRelayHub.getL1CreationBlock()
+      const l2CreationBlock = await arbRelayHub.getCreationBlock()
+      assert.equal(l1CreationBlock.muln(17).toString(), l2CreationBlock.toString())
+    })
+  })
+
   context('#relayCall()', function () {
     const transactionCalldataGasUsed = 7e6.toString()
 

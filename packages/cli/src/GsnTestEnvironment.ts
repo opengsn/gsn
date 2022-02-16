@@ -184,6 +184,7 @@ class GsnTestEnvironmentClass {
       reputationManager
     }
     const relayServerParams: Partial<ServerConfigParams> = {
+      coldRestartLogsFromBlock: 1,
       devMode: true,
       url: relayUrl,
       relayHubAddress: deploymentResult.relayHubAddress,

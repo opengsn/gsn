@@ -491,7 +491,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       throw new Error('_init was already called')
     }
     const latestBlock = await this.contractInteractor.getBlock('latest')
-    if (latestBlock.number < this.config.coldRestartLogsFromBlock) {
+    if (this.config.coldRestartLogsFromBlock == null || latestBlock.number < this.config.coldRestartLogsFromBlock) {
       throw new Error(
         `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${latestBlock.number}`)
     }
