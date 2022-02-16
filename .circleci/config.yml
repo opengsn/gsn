@@ -10,7 +10,8 @@ jobs: # a collection of steps
 
       - run:
           name: git info
-          command: git branch; git describe; git show --oneline; exit 1
+          command: test `git branch` == 'master' || git log --format="%ad %an, %s"|head -1 egrep  '(\w\w+-\d\d+|dependabot)'
+          
       - run:
           name: package-json-all-deps
           command: yarn create-all-deps
