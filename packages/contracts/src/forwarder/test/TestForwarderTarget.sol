@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../BaseRelayRecipient.sol";
+import "../../ERC2771Recipient.sol";
 
-contract TestForwarderTarget is BaseRelayRecipient {
+contract TestForwarderTarget is ERC2771Recipient {
 
     string public override versionRecipient = "2.2.3+opengsn.test.recipient";
 
