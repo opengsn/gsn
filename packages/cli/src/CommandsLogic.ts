@@ -67,6 +67,7 @@ interface DeployOptions {
   relayHubAddress?: string
   relayRegistryAddress?: string
   stakeManagerAddress?: string
+  deployTestToken?: boolean
   stakingTokenAddress?: string
   minimumTokenStake: number| IntString
   penalizerAddress?: string
@@ -495,6 +496,7 @@ export class CommandsLogic {
 
   async deployGsnContracts (deployOptions: DeployOptions): Promise<GSNContractsDeployment> {
     ow(deployOptions, ow.object.partialShape(DeployOptionsPartialShape))
+
     const options: Required<SendOptions> = {
       from: deployOptions.from,
       gas: deployOptions.gasLimit,

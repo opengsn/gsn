@@ -1,4 +1,4 @@
-import commander from 'commander'
+import commander, { command } from 'commander'
 import { CommandsLogic } from '../CommandsLogic'
 import {
   getMnemonic,
@@ -24,6 +24,7 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('--stakingToken <string>', 'default staking token to use. (wrapped eth)')
   .option('--minimumTokenStake <number>', 'minimum staking value', '1')
   .option('--yes, --skipConfirmation', 'skip con')
+  .option('--testToken', 'deploy test weth token', false)
   .option('--testPaymaster', 'deploy test paymaster (accepts everything, avoid on main-nets)', false)
   .option('-c, --config <path>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
   .parse(process.argv);
@@ -47,6 +48,10 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await logic.getGasPrice())
   const gasLimit = commander.gasLimit
 
+  if (commander.testToken === (commander.stakingToken != null)) {
+    throw new Error('must specify either --testToken or --stakingToken')
+  }
+
   const deploymentResult = await logic.deployGsnContracts({
     from,
     gasPrice,
@@ -56,6 +61,7 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
     stakingTokenAddress: commander.stakingToken,
     minimumTokenStake: commander.minimumTokenStake,
     deployPaymaster: commander.testPaymaster,
+    deployTestToken: commander.testToken,
     verbose: true,
     skipConfirmation: commander.skipConfirmation,
     forwarderAddress: commander.forwarder,
