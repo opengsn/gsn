@@ -1,3 +1,4 @@
+import Web3 from 'web3'
 import { EventEmitter } from 'events'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
@@ -468,9 +469,31 @@ export class RelayClient {
     provider,
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
+    let configFromServer = {}
+    const chainId = await new Web3(provider as any).eth.getChainId()
+    const useClientDefaultConfigUrl = config.useClientDefaultConfigUrl ?? defaultGsnConfig.useClientDefaultConfigUrl
+    if (useClientDefaultConfigUrl) {
+      this.logger.debug(`Reading default client config for chainId ${chainId.toString()}`)
+      configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.clientDefaultConfigUrl)
+    }
     return {
       ...defaultGsnConfig,
+      ...configFromServer,
       ...removeNullValues(config)
+    }
+  }
+
+  async _resolveConfigurationFromServer (chainId: number, clientDefaultConfigUrl: string): Promise<Partial<GSNConfig>> {
+    try {
+      const httpClient = new HttpClient(new HttpWrapper(), this.logger)
+      const jsonConfig = await httpClient.getNetworkConfiguration(clientDefaultConfigUrl)
+      if (jsonConfig.networks[chainId] == null) {
+        return {}
+      }
+      return jsonConfig.networks[chainId].gsnConfig
+    } catch (e) {
+      this.logger.error(`Could not fetch configuration from docs: ${(e as Error).message}`)
+      return {}
     }
   }
 
