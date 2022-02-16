@@ -15,7 +15,7 @@ import { TestPaymasterConfigurableMisbehaviorInstance } from '@opengsn/contracts
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { sleep } from '@opengsn/common/dist/Utils'
 
-import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, revert, snapshot } from './TestUtils'
+import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, increaseTime, revert, snapshot } from './TestUtils'
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts } from './ServerTestUtils'
@@ -23,6 +23,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
+import { toNumber } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -30,7 +31,7 @@ const TestRelayHub = artifacts.require('TestRelayHub')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
 contract('RelayServer', function (accounts: Truffle.Accounts) {
-  const alertedBlockDelay = 0
+  const alertedDelaySeconds = 0
   const baseRelayFee = '12'
 
   let id: string
@@ -47,7 +48,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
     await env.init(relayClientConfig, undefined, undefined, TestRelayHub)
     const overrideParams: Partial<ServerConfigParams> = {
-      alertedBlockDelay,
+      alertedDelaySeconds,
       baseRelayFee
     }
     await env.newServerInstance(overrideParams)
@@ -231,7 +232,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         } catch (e) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            `priorityFee given ${wrongPriorityFee} too low : ${env.relayServer.minMaxPriorityFeePerGas}`)
+            `priorityFee given ${wrongPriorityFee} too low. Minimum maxPriorityFee server accepts: ${env.relayServer.minMaxPriorityFeePerGas}`)
         }
       })
 
@@ -371,7 +372,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
             signer,
             serverAction: ServerAction.VALUE_TRANSFER,
             destination: accounts[0],
-            creationBlockNumber: 0
+            creationBlockNumber: 0,
+            creationBlockTimestamp: 0
           })
         })
 
@@ -492,7 +494,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         it('should accept a transaction from paymaster returning below configured max exposure', async function () {
           await rejectingPaymaster.setGreedyAcceptanceBudget(false)
           const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
-          assert.equal(parseInt(gasLimits.acceptanceBudget.toString()), paymasterExpectedAcceptanceBudget)
+          assert.equal(toNumber(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget)
           await env.relayServer.validatePaymasterGasAndDataLimits(req)
         })
 
@@ -502,7 +504,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           try {
             await env.relayServer._initTrustedPaymasters([rejectingPaymaster.address])
             const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
-            assert.equal(parseInt(gasLimits.acceptanceBudget.toString()), paymasterExpectedAcceptanceBudget * 9)
+            assert.equal(toNumber(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
             await env.relayServer.validatePaymasterGasAndDataLimits(req)
           } finally {
             await env.relayServer._initTrustedPaymasters([])
@@ -607,11 +609,14 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
   describe('withdrawToOwnerIfNeeded', function () {
     let currentBlockNumber: number
+    let currentBlockTimestamp: number
     const withdrawToOwnerOnBalance = 3e18
     beforeEach(async function () {
       await env.newServerInstance({ withdrawToOwnerOnBalance }, getTemporaryWorkdirs())
       assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, withdrawToOwnerOnBalance)
-      currentBlockNumber = await env.web3.eth.getBlockNumber()
+      const latestBlock = await env.web3.eth.getBlock('latest')
+      currentBlockNumber = latestBlock.number
+      currentBlockTimestamp = toNumber(latestBlock.timestamp)
     })
     afterEach(async function () {
       sinon.restore()
@@ -619,7 +624,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     it('should not withdraw if relayer is not ready', async function () {
       env.relayServer.setReadyState(false)
       const serverSpy = sinon.spy(env.relayServer)
-      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockTimestamp)
       assert.deepEqual(txHashes, [])
       sinon.assert.calledOnce(serverSpy.isReady)
       assert.isFalse(serverSpy.isReady.returnValues[0])
@@ -629,7 +634,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       await env.newServerInstance({}, getTemporaryWorkdirs())
       assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, undefined)
       const serverSpy = sinon.spy(env.relayServer)
-      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockTimestamp)
       assert.deepEqual(txHashes, [])
       sinon.assert.calledOnce(serverSpy.isReady)
       assert.isTrue(serverSpy.isReady.returnValues[0])
@@ -649,7 +654,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const managerHubBalanceBefore = await env.relayHub.balanceOf(env.relayServer.managerAddress)
       assert.isTrue(managerHubBalanceBefore.gte(toBN(withdrawToOwnerOnBalance).add(reserveBalance)))
       const withdrawalAmount = managerHubBalanceBefore.sub(reserveBalance)
-      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockTimestamp)
       const balanceAfter = await env.web3.eth.getBalance(owner)
       assert.deepEqual(txHashes.length, 1)
       assert.equal(balanceBefore.add(withdrawalAmount).toString(), balanceAfter)
@@ -659,7 +664,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         loggerSpy
       )
       sinon.assert.calledWith(loggerSpy, `Withdrew ${withdrawalAmount.toString()} to owner`)
-      sinon.assert.calledWith(sendBalanceSpy, currentBlockNumber, withdrawalAmount)
+      sinon.assert.calledWith(sendBalanceSpy, currentBlockNumber, currentBlockTimestamp, withdrawalAmount)
     })
 
     it('should not withdraw to owner when hub balance is too low', async function () {
@@ -676,7 +681,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const managerHubBalanceBefore = await env.relayHub.balanceOf(env.relayServer.managerAddress)
       assert.isTrue(managerHubBalanceBefore.gte(toBN(withdrawToOwnerOnBalance)))
       assert.isTrue(managerHubBalanceBefore.lt(toBN(withdrawToOwnerOnBalance).add(reserveBalance)))
-      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockTimestamp)
       const balanceAfter = await env.web3.eth.getBalance(owner)
       assert.deepEqual(txHashes.length, 0)
       assert.equal(balanceBefore.toString(), balanceAfter)
@@ -708,6 +713,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
         creationBlockNumber: 0,
+        creationBlockTimestamp: 0,
         value: toHex(workerBalanceBefore.sub(txCost))
       })
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
@@ -739,7 +745,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       await env.web3.eth.sendTransaction(
         { from: accounts[0], to: relayServer.workerAddress, value: relayServer.config.workerTargetBalance })
       const currentBlockNumber = await env.web3.eth.getBlockNumber()
-      const receipts = await relayServer.replenishServer(workerIndex, 0)
+      const receipts = await relayServer.replenishServer(workerIndex, 0, 0)
       assert.deepEqual(receipts, [])
       assert.equal(currentBlockNumber, await env.web3.eth.getBlockNumber())
     })
@@ -751,6 +757,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         signer: relayServer.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
+        creationBlockTimestamp: 0,
         destination: accounts[0],
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
@@ -767,7 +774,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.isTrue(managerHubBalanceBefore.gte(refill), 'manager hub balance should be sufficient to replenish worker')
       assert.isTrue(managerEthBalanceBefore.lt(toBN(relayServer.config.managerTargetBalance.toString())),
         'manager eth balance should be lower than target to withdraw hub balance')
-      const receipts = await relayServer.replenishServer(workerIndex, 0)
+      const receipts = await relayServer.replenishServer(workerIndex, 0, 0)
       const totalTxCosts = await getTotalTxCosts(receipts, await env.web3.eth.getGasPrice())
       const managerHubBalanceAfter = await env.relayHub.balanceOf(relayServer.managerAddress)
       assert.isTrue(managerHubBalanceAfter.eqn(0), 'manager hub balance should be zero')
@@ -792,7 +799,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const refill = toBN(relayServer.config.workerTargetBalance).sub(workerBalanceBefore)
       assert.isTrue(managerHubBalanceBefore.lt(refill), 'manager hub balance should be insufficient to replenish worker')
       assert.isTrue(managerEthBalance.gte(refill), 'manager eth balance should be sufficient to replenish worker')
-      await relayServer.replenishServer(workerIndex, 0)
+      await relayServer.replenishServer(workerIndex, 0, 0)
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -804,6 +811,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         signer: relayServer.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
+        creationBlockTimestamp: 0,
         destination: accounts[0],
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
@@ -819,14 +827,13 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       relayServer.on('fundingNeeded', () => {
         fundingNeededEmitted = true
       })
-      await relayServer.replenishServer(workerIndex, 0)
+      await relayServer.replenishServer(workerIndex, 0, 0)
       assert.isTrue(fundingNeededEmitted, 'fundingNeeded not emitted')
     })
   })
 
   describe('server keepalive re-registration', function () {
-    const registrationBlockRate = 100
-    const activityBlockRate = registrationBlockRate / 2
+    const registrationRateSeconds = 5000
     const refreshStateTimeoutBlocks = 1
     let relayServer: RelayServer
     let latestBlockNumber: number
@@ -835,13 +842,13 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     async function checkRegistration (shouldRegister: boolean): Promise<void> {
       latestBlockNumber = await env.web3.eth.getBlockNumber()
       receipts = await relayServer._worker(latestBlockNumber)
-      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any,
+      expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any,
         shouldRegister)
       if (shouldRegister) {
         await assertRelayAdded(receipts, relayServer, false)
         latestBlockNumber = await env.web3.eth.getBlockNumber()
         receipts = await relayServer._worker(latestBlockNumber)
-        expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any,
+        expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any,
           false)
       }
       assert.equal(receipts.length, 0, 'should not re-register if already registered')
@@ -850,15 +857,15 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     beforeEach(async function () {
       id = (await snapshot()).result
       await env.newServerInstance({
-        registrationBlockRate,
-        activityBlockRate,
+        registrationRateSeconds,
         refreshStateTimeoutBlocks
       })
       relayServer = env.relayServer
       sinon.spy(relayServer.registrationManager, 'handlePastEvents')
 
       await checkRegistration(false)
-      await evmMineMany(registrationBlockRate)
+      await increaseTime(registrationRateSeconds + 1)
+      await evmMineMany(relayServer.config.recentActionAvoidRepeatDistanceBlocks + 1)
       await checkRegistration(true)
     })
 
@@ -866,24 +873,20 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       await revert(id)
     })
 
-    it('should re-register server if registrationBlockRate passed from register tx regardless of other txs', async function () {
+    it('should re-register server if registrationRateSeconds passed from register tx regardless of other txs', async function () {
       // When no other tx happened
-      await evmMineMany(registrationBlockRate)
+      await increaseTime(registrationRateSeconds + 1)
+      await evmMineMany(relayServer.config.recentActionAvoidRepeatDistanceBlocks + 1)
       await checkRegistration(true)
       // When relayed call txs were sent inside the registrationBlockRate window, but no register tx,
       // server should still re-register
-      for (let i = 1; i < registrationBlockRate - 1; i++) {
+      for (let i = 1; i < registrationRateSeconds - 1; i += 1000) {
         const req = await env.createRelayHttpRequest()
         await relayServer.createRelayTransaction(req)
         await checkRegistration(false)
       }
-      await evmMine()
-      await checkRegistration(true)
-    })
-
-    it('should re-register server if activityBlockRate passed from any tx', async function () {
-      await evmMineMany(activityBlockRate - 1)
-      await checkRegistration(false)
+      await increaseTime(registrationRateSeconds + 1)
+      await evmMineMany(relayServer.config.recentActionAvoidRepeatDistanceBlocks + 1)
       await evmMine()
       await checkRegistration(true)
     })
@@ -926,7 +929,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   })
 
   describe('alerted state as griefing mitigation', function () {
-    const alertedBlockDelay = 100
+    const alertedDelaySeconds = 100
     const refreshStateTimeoutBlocks = 1
     let rejectingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
     let newServer: RelayServer
@@ -934,7 +937,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     beforeEach('should enter an alerted state for a configured blocks delay after paymaster rejecting an on-chain tx', async function () {
       id = (await snapshot()).result
       await env.newServerInstance({
-        alertedBlockDelay,
+        alertedDelaySeconds,
         refreshStateTimeoutBlocks
       })
       newServer = env.relayServer
@@ -972,7 +975,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const currentBlock = await env.web3.eth.getBlock('latest')
       await server._worker(currentBlock.number)
       assert.isTrue(server.alerted, 'server not alerted')
-      assert.equal(server.alertedBlock, currentBlock.number, 'server alerted block incorrect')
+      assert.equal(server.alertedByTransactionBlockTimestamp, currentBlock.timestamp, 'server alerted block incorrect')
     }
 
     it('should delay transactions in alerted state', async function () {
@@ -987,7 +990,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     })
 
     it('should exit alerted state after the configured blocks delay', async function () {
-      await evmMineMany(newServer.config.alertedBlockDelay - 1)
+      await increaseTime(newServer.config.alertedDelaySeconds - 1)
       let latestBlock = await env.web3.eth.getBlock('latest')
       await newServer._worker(latestBlock.number)
       assert.isTrue(newServer.alerted, 'server not alerted')

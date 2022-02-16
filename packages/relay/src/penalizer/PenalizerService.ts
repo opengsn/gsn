@@ -23,6 +23,8 @@ import { address2topic, getDataAndSignature, removeHexPrefix } from '@opengsn/co
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
 import { ServerConfigParams } from '../ServerConfigParams'
 import { constants } from '@opengsn/common/dist/Constants'
+import { toNumber } from '@opengsn/common'
+
 import Timeout = NodeJS.Timeout
 
 abiDecoder.addABI(RelayHubABI)
@@ -300,6 +302,8 @@ export class PenalizerService {
   async broadcastTransaction (methodName: string, method: any): Promise<PrefixedHexString> {
     const gasLimit = await this.transactionManager.attemptEstimateGas(methodName, method, this.managerAddress)
     const creationBlockNumber = await this.contractInteractor.getBlockNumber()
+    const block = await this.contractInteractor.getBlock(creationBlockNumber)
+    const creationBlockTimestamp = toNumber(block.timestamp)
     const serverAction = ServerAction.PENALIZATION
     const { signedTx, transactionHash } = await this.transactionManager.sendTransaction(
       {
@@ -308,6 +312,7 @@ export class PenalizerService {
         destination: this.contractInteractor.penalizerInstance.address,
         gasLimit,
         creationBlockNumber,
+        creationBlockTimestamp,
         serverAction
       })
     this.logger.debug(`penalization raw tx: ${signedTx} txHash: ${transactionHash}`)

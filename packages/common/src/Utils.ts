@@ -334,7 +334,7 @@ export function formatTokenAmount (balance: BN, decimals: BN | number, tokenSymb
 export function splitRelayUrlForRegistrar (url: string, partsCount: number = 3): string[] {
   const maxLength = 32 * partsCount
   if (url.length > maxLength) {
-    throw new Error(`The URL does not fit to the RelayRegistrar. Please shorten it to less than ${maxLength} characters`)
+    throw new Error(`The URL does not fit to the RelayRegistrar. Please shorten it to less than ${maxLength} characters. The provided URL is: ${url}`)
   }
   const parts = url.match(/.{1,32}/g) ?? []
   const result: string[] = []
@@ -350,4 +350,27 @@ export function packRelayUrlForRegistrar (parts: string[]): string {
     result += Buffer.from(removeHexPrefix(part), 'hex').filter(it => it !== 0).toString()
   }
   return result
+}
+
+function isBigNumber (object: Object): boolean {
+  return object?.constructor?.name === 'BigNumber' || object?.constructor?.name === 'BN'
+}
+
+export function toNumber (numberish: number | string | BN | BigInt): number {
+  switch (typeof numberish) {
+    case 'string':
+      return parseInt(numberish)
+    case 'number':
+      return numberish
+    case 'bigint':
+      return Number(numberish)
+    case 'object':
+      if (isBigNumber(numberish)) {
+        // @ts-ignore
+        return numberish.toNumber()
+      }
+      throw new Error(`unsupported object of type ${numberish.constructor.name}`)
+    default:
+      throw new Error(`unsupported type ${typeof numberish}`)
+  }
 }

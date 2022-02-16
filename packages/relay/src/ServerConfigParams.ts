@@ -34,12 +34,10 @@ export interface ServerConfigParams {
   checkInterval: number
   devMode: boolean
   loggingProvider: LoggingProviderMode
-  // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
-  registrationBlockRate: number
-  // if set, must match clients' "relayLookupWindowBlocks" parameter for relay to be discoverable
-  activityBlockRate: number
+  // if set, must match clients' "relayRegistrationMaximumAge" parameter for relay to remain discoverable
+  registrationRateSeconds: number
   maxAcceptanceBudget: number
-  alertedBlockDelay: number
+  alertedDelaySeconds: number
   minAlertedDelayMS: number
   maxAlertedDelayMS: number
   trustedPaymasters: Address[]
@@ -62,7 +60,7 @@ export interface ServerConfigParams {
   minHubWithdrawalBalance: number
   withdrawToOwnerOnBalance?: number
   refreshStateTimeoutBlocks: number
-  pendingTransactionTimeoutBlocks: number
+  pendingTransactionTimeoutSeconds: number
   confirmationsNeeded: number
   dbAutoCompactionInterval: number
   retryGasPriceFactor: number
@@ -99,13 +97,13 @@ export interface ServerDependencies {
 
 export const serverDefaultConfiguration: ServerConfigParams = {
   ownerAddress: constants.ZERO_ADDRESS,
-  alertedBlockDelay: 0,
+  alertedDelaySeconds: 0,
   minAlertedDelayMS: 0,
   maxAlertedDelayMS: 0,
   // set to paymasters' default acceptanceBudget + RelayHub.calldataGasCost(<paymasters' default calldataSizeLimit>)
   maxAcceptanceBudget:
     defaultEnvironment.paymasterConfiguration.acceptanceBudget +
-    parseInt(defaultEnvironment.dataOnChainHandlingGasCostPerByte.toString()) *
+    defaultEnvironment.dataOnChainHandlingGasCostPerByte *
     defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
@@ -113,8 +111,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   gasPriceFactor: 1,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
-  registrationBlockRate: 0,
-  activityBlockRate: 0,
+  registrationRateSeconds: 0,
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
@@ -138,7 +135,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   port: 8090,
   workdir: '',
   refreshStateTimeoutBlocks: 5,
-  pendingTransactionTimeoutBlocks: 30, // around 5 minutes with 10 seconds block times
+  pendingTransactionTimeoutSeconds: 300,
   confirmationsNeeded: 12,
   dbAutoCompactionInterval: 604800000, // Week in ms: 1000*60*60*24*7
   retryGasPriceFactor: 1.2,
@@ -177,10 +174,9 @@ const ConfigParamsTypes = {
   customerToken: 'string',
   hostOverride: 'string',
   userId: 'string',
-  registrationBlockRate: 'number',
-  activityBlockRate: 'number',
+  registrationRateSeconds: 'number',
   maxAcceptanceBudget: 'number',
-  alertedBlockDelay: 'number',
+  alertedDelaySeconds: 'number',
 
   workerMinBalance: 'number',
   workerTargetBalance: 'number',
@@ -209,7 +205,7 @@ const ConfigParamsTypes = {
   retryGasPriceFactor: 'number',
   runPaymasterReputations: 'boolean',
   refreshStateTimeoutBlocks: 'number',
-  pendingTransactionTimeoutBlocks: 'number',
+  pendingTransactionTimeoutSeconds: 'number',
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
   maxGasPrice: 'string',
