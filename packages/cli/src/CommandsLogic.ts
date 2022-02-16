@@ -253,7 +253,7 @@ export class CommandsLogic {
       const tokenDecimals = await stakingTokenContract.decimals()
       const tokenSymbol = await stakingTokenContract.symbol()
 
-      const stakeParam = toBN(options.stake).div(toBN(10).pow(tokenDecimals))
+      const stakeParam = toBN(toNumber(options.stake) * Math.pow(10, tokenDecimals.toNumber()))
 
       const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, tokenSymbol)
 
@@ -324,13 +324,12 @@ export class CommandsLogic {
         if (tokenBalance.lt(stakeValue) && isDefaultToken && options.wrap) {
           // default token is wrapped eth, so deposit eth to make then into tokens.
           console.log(`Wrapping ${formatToken(stakeValue)}`)
-          let gas: number
+          let depositTx: any
           try {
-            gas = await stakingTokenContract.deposit.estimateGas({ from: options.from, value: stakeValue })
+            depositTx = await stakingTokenContract.deposit({ from: options.from, value: stakeValue }) as any
           } catch (e) {
             throw new Error('No deposit() method on default token. is it wrapped ETH?')
           }
-          const depositTx = await stakingTokenContract.deposit({ from: options.from, value: stakeValue, gas }) as any
           transactions.push(depositTx.transactionHash)
         }
 

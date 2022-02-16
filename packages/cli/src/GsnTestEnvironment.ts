@@ -75,12 +75,11 @@ class GsnTestEnvironmentClass {
 
     const registerOptions: RegisterOptions = {
       // force using default (wrapped eth) token
-      token: constants.ZERO_ADDRESS,
+      wrap: true,
       from,
       sleepMs: 100,
       sleepCount: 5,
       stake: '1',
-      wrap: true,
       funds: ether('5'),
       relayUrl: relayUrl,
       gasPrice: 1e9.toString(),
