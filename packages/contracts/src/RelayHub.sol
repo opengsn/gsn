@@ -98,7 +98,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     /// @inheritdoc IRelayHub
-    function getCreationBlock() external override view returns (uint256){
+    function getCreationBlock() external override virtual view returns (uint256){
         return creationBlock;
     }
 

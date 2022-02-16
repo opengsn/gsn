@@ -1149,8 +1149,8 @@ calculateTransactionMaxPossibleGas: result: ${result}
     })
   }
 
-  async getCreationBlockFromRegistrar (): Promise<BN> {
-    return await this.relayRegistrar.getCreationBlock()
+  async getCreationBlockFromRelayHub (): Promise<BN> {
+    return await this.relayHubInstance.getCreationBlock()
   }
 
   async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {

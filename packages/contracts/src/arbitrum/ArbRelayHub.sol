@@ -19,8 +19,9 @@ contract ArbRelayHub is RelayHub {
     }
 
     ArbSys public immutable arbsys;
+    uint256 internal immutable arbCreationBlock;
 
-    // note: we accept the 'ArbSys' address in the constructor to allow mocking it in tests
+    /// @notice we accept the `ArbSys` address in the constructor to allow mocking it in tests.
     constructor(
         ArbSys _arbsys,
         IStakeManager _stakeManager,
@@ -30,8 +31,20 @@ contract ArbRelayHub is RelayHub {
         RelayHubConfig memory _config
     ) RelayHub(_stakeManager, _penalizer, _batchGateway, _relayRegistrar, _config){
         arbsys = _arbsys;
+        arbCreationBlock = _arbsys.arbBlockNumber();
     }
 
+    /// @inheritdoc IRelayHub
+    /// @notice Uses `ArbSys` L2 block number specific to the Arbitrum Rollup.
+    function getCreationBlock() external override virtual view returns (uint256){
+        return arbCreationBlock;
+    }
+
+    /// @return The block number in which the contract has been deployed.
+    /// @notice Uses original L1 block number.
+    function getL1CreationBlock() external view returns (uint256){
+        return creationBlock;
+    }
 
     /// @notice Includes the 'storage gas' specific to the Arbitrum Rollup.
     /// @inheritdoc IRelayHub

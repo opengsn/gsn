@@ -329,7 +329,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     error('missing param: must have relayHubAddress')
   }
   if (config.coldRestartLogsFromBlock == null) {
-    const block = await contractInteractor.getCreationBlockFromRegistrar()
+    const block = await contractInteractor.getCreationBlockFromRelayHub()
     config.coldRestartLogsFromBlock = block.toNumber()
   }
   if (config.url == null) error('missing param: url')
