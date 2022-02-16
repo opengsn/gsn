@@ -316,8 +316,9 @@ export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
   return c
 }
 
-export function formatTokenAmount (balance: BN, tokenDecimals: BN, tokenSymbol: string): string {
+export function formatTokenAmount (balance: BN, decimals: BN | number, tokenSymbol: string): string {
   let shiftedBalance: BN
+  const tokenDecimals = toBN(decimals.toString())
   if (tokenDecimals.eqn(18)) {
     shiftedBalance = balance
   } else if (tokenDecimals.ltn(18)) {

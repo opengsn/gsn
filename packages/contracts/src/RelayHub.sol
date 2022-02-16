@@ -68,6 +68,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         require(token.length == minimumStake.length, "setMinimumStakes: wrong length");
         for (uint256 i = 0; i < token.length; i++) {
             minimumStakePerToken[token[i]] = minimumStake[i];
+            emit StakingTokenDataChanged(address(token[i]), minimumStake[i]);
         }
     }
 
@@ -98,7 +99,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     /// @inheritdoc IRelayHub
-    function getCreationBlock() external override view returns (uint256){
+    function getCreationBlock() external override virtual view returns (uint256){
         return creationBlock;
     }
 

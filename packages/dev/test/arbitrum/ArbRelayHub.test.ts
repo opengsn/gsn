@@ -42,7 +42,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
     forwarder = await Forwarder.new()
     stakeManager = await StakeManager.new(Number.MAX_SAFE_INTEGER, constants.BURN_ADDRESS)
     const testArbSys = await TestArbSys.new()
-    relayRegistrar = await RelayRegistrar.new(true)
+    relayRegistrar = await RelayRegistrar.new()
     arbRelayHub = await ArbRelayHub.new(testArbSys.address, stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, relayRegistrar.address, environments.arbitrum.relayHubConfiguration)
     await arbRelayHub.setMinimumStakes([testToken.address], [stake])
   })
@@ -51,6 +51,14 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
     it('should return gas left both for execution and for L2 storage', async function () {
       const aggregateGasleft = await arbRelayHub.aggregateGasleft({ gas: 1000000 })
       assert.closeTo(aggregateGasleft.toNumber(), 100000000, 5000000)
+    })
+  })
+
+  context('#getCreationBlock()', function () {
+    it('should return separate L1 and L2 creation blocks', async function () {
+      const l1CreationBlock = await arbRelayHub.getL1CreationBlock()
+      const l2CreationBlock = await arbRelayHub.getCreationBlock()
+      assert.equal(l1CreationBlock.muln(17).toString(), l2CreationBlock.toString())
     })
   })
 

@@ -26,22 +26,15 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     /// @notice Mapping from `RelayHub` address to an array of Relay Managers that are registered on that `RelayHub`.
     mapping(address => address[]) internal indexedValues;
 
-    bool internal immutable isUsingStorageRegistry;
     uint256 private immutable creationBlock;
 
-    constructor(bool _isUsingStorageRegistry) {
+    constructor() {
         creationBlock = block.number;
-        isUsingStorageRegistry = _isUsingStorageRegistry;
     }
 
     /// @inheritdoc IRelayRegistrar
     function getCreationBlock() external override view returns (uint256){
         return creationBlock;
-    }
-
-    /// @inheritdoc IRelayRegistrar
-    function getIsUsingStorageRegistry() external override view returns (bool){
-        return isUsingStorageRegistry;
     }
 
     /// @inheritdoc IERC165
@@ -60,9 +53,7 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         address relayManager = msg.sender;
         IRelayHub(relayHub).verifyCanRegister(relayManager);
         emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);
-        if (isUsingStorageRegistry) {
-            storeRelayServerRegistration(relayHub, relayManager, baseRelayFee, pctRelayFee, url);
-        }
+        storeRelayServerRegistration(relayHub, relayManager, baseRelayFee, pctRelayFee, url);
     }
 
     function addItem(address relayHub, address relayManager) internal returns (RelayInfo storage) {

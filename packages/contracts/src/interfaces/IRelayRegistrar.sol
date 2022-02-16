@@ -9,8 +9,6 @@ import "@openzeppelin/contracts/interfaces/IERC165.sol";
  *
  * @notice The client can use an implementation of a `RelayRegistrar` to find relay registration info.
  *
- * @notice Clients can use either events or on-chain querying mechanism depending on which one is more accessible.
- * The on-chain querying may be switched off and can be checked by a call to `isUsingStorageRegistry()` function.
  */
 interface IRelayRegistrar is IERC165 {
 
@@ -61,12 +59,6 @@ interface IRelayRegistrar is IERC165 {
      * @return The block number in which the contract has been deployed.
      */
     function getCreationBlock() external view returns (uint256);
-
-    /**
-     * @return `true` if this `RelayRegistrar` keeps registrations on-chain in storage in addition to emitting events.
-     * `false` if only events are emitted as part of Relay Server registration on this `RelayRegistrar`.
-     */
-    function getIsUsingStorageRegistry() external returns (bool);
 
     /**
      * @param relayManager An address of a Relay Manager.
