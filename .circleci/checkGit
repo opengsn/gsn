@@ -4,10 +4,13 @@ branch=`git branch | sed -ne 's/[*] *//p'`
 
 title=`git log --format="%h %ad, %an, %s"|head -1 `
 
-#do nothing on non-master branch
-#test branch != 'master' && exit 0
-
 echo branch: $branch commit: $title
+#do nothing on non-master branch
+if [ $branch != 'master' ]; then
+  echo not master branch. not checking for jira ref.
+  exit 0
+fi
+
 echo ''
 echo $title | grep -E  '\w\w-[0-9][0-9]|dependabot'
 
