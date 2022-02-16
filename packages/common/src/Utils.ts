@@ -333,7 +333,7 @@ export function formatTokenAmount (balance: BN, tokenDecimals: BN, tokenSymbol: 
 export function splitRelayUrlForRegistrar (url: string, partsCount: number = 3): string[] {
   const maxLength = 32 * partsCount
   if (url.length > maxLength) {
-    throw new Error(`The URL does not fit to the RelayRegistrar. Please shorten it to less than ${maxLength} characters`)
+    throw new Error(`The URL does not fit to the RelayRegistrar. Please shorten it to less than ${maxLength} characters. The provided URL is: ${url}`)
   }
   const parts = url.match(/.{1,32}/g) ?? []
   const result: string[] = []
