@@ -38,8 +38,8 @@ interface IRelayRegistrar is IERC165 {
      */
     event RelayServerRegistered(
         address indexed relayManager,
-        uint80 baseRelayFee,
-        uint16 pctRelayFee,
+        uint256 baseRelayFee,
+        uint256 pctRelayFee,
         bytes32[3] relayUrl
     );
 
