@@ -1,4 +1,4 @@
-import { constants, ether } from '@opengsn/common'
+import { ether } from '@opengsn/common'
 
 import { CommandsLogic, RegisterOptions } from '../CommandsLogic'
 import { getNetworkUrl, gsnCommander, getMnemonic } from '../utils'
@@ -24,7 +24,8 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     '--sleepCount <sleepCount>',
     'number of times to sleep before timeout', '5'
   )
-  .option('-t, --token <address>', 'token to be used as a stake, default to 0 meaning native blockchain currency', constants.ZERO_ADDRESS)
+  .option('-t, --token <address>', 'Token to be used as a stake, defaults to first registered token')
+  .option('--wrap', 'When using default "Wrapped ETH" token: Wrap owner eth if current balance for stake is not enough')
 
   .parse(process.argv);
 
@@ -40,12 +41,15 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     sleepCount: parseInt(commander.sleepCount),
     from: commander.from ?? await logic.findWealthyAccount(),
     token: commander.token,
-    mintToken: false,
-    stake: ether(commander.stake),
+    stake: commander.stake,
+    wrap: commander.wrap,
     funds: ether(commander.funds),
     gasPrice: commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : undefined,
     relayUrl: commander.relayUrl,
     unstakeDelay: commander.unstakeDelay
+  }
+  if (registerOptions.wrap === (registerOptions.token != null)) {
+    console.log('must specify --token or --wrap but not both')
   }
   if (registerOptions.from == null) {
     console.error('Failed to find a wealthy "from" address')

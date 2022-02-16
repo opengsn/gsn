@@ -75,7 +75,7 @@ export interface ServerConfigParams {
   requiredVersionRange?: string
 
   // when server starts, it will look for relevant Relay Hub, Stake Manager events starting at this block
-  coldRestartLogsFromBlock: number
+  coldRestartLogsFromBlock?: number
   // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
   pastEventsQueryMaxPageSize: number
 
@@ -145,7 +145,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
 
   requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
   runPaymasterReputations: true,
-  coldRestartLogsFromBlock: 1,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   recentActionAvoidRepeatDistanceBlocks: 10
 }
@@ -313,7 +312,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
 
   // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
   const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
-  const contractInteractor = new ContractInteractor({
+  const contractInteractor: ContractInteractor = new ContractInteractor({
     maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
     provider: web3provider,
     logger,
@@ -322,14 +321,16 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     },
     environment
   })
+  await contractInteractor._resolveDeployment()
   await contractInteractor._initializeContracts()
   await contractInteractor._initializeNetworkParams()
 
   if (config.relayHubAddress == null) {
     error('missing param: must have relayHubAddress')
   }
-  if (!await contractInteractor.isContractDeployed(config.relayHubAddress)) {
-    error(`RelayHub: no contract at address ${config.relayHubAddress}`)
+  if (config.coldRestartLogsFromBlock == null) {
+    const block = await contractInteractor.getCreationBlockFromRelayHub()
+    config.coldRestartLogsFromBlock = block.toNumber()
   }
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')

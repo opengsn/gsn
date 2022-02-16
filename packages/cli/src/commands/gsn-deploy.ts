@@ -21,10 +21,12 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('--relayRegistrar <address>', 'relayRegistrar')
   .option('--environmentName <string>', `name of one of the GSN supported environments: (${Object.keys(EnvironmentsKeys).toString()}; default: ethereumMainnet)`, EnvironmentsKeys.ethereumMainnet)
   .option('--burnAddress <string>', 'address to transfer burned stake tokens into', constants.BURN_ADDRESS)
+  .option('--stakingToken <string>', 'default staking token to use. (wrapped eth)')
+  .option('--minimumTokenStake <number>', 'minimum staking value', '1')
   .option('--yes, --skipConfirmation', 'skip con')
+  .option('--testToken', 'deploy test weth token', false)
   .option('--testPaymaster', 'deploy test paymaster (accepts everything, avoid on main-nets)', false)
-  .option('--testToken', 'deploy test token (public mint function)', false)
-  .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
+  .option('-c, --config <path>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
   .parse(process.argv);
 
 (async () => {
@@ -46,14 +48,20 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await logic.getGasPrice())
   const gasLimit = commander.gasLimit
 
+  if (commander.testToken === (commander.stakingToken != null)) {
+    throw new Error('must specify either --testToken or --stakingToken')
+  }
+
   const deploymentResult = await logic.deployGsnContracts({
     from,
     gasPrice,
     gasLimit,
     relayHubConfiguration,
     penalizerConfiguration,
-    deployTestToken: commander.testToken,
+    stakingTokenAddress: commander.stakingToken,
+    minimumTokenStake: commander.minimumTokenStake,
     deployPaymaster: commander.testPaymaster,
+    deployTestToken: commander.testToken,
     verbose: true,
     skipConfirmation: commander.skipConfirmation,
     forwarderAddress: commander.forwarder,
