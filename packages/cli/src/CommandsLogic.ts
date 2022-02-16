@@ -549,10 +549,6 @@ export class CommandsLogic {
       stakingTokenAddress = ttInstance.options.address
     }
 
-    if (stakingTokenAddress == null) {
-      const ttInstance = await this.getContractInstance(WrappedEthToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
-      stakingTokenAddress = ttInstance.options.address
-    }
     const stakingContact = await this.contractInteractor._createERC20(stakingTokenAddress)
     const tokenDecimals = await stakingContact.decimals()
     const tokenSymbol = await stakingContact.symbol()
