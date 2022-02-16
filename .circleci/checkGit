@@ -9,6 +9,6 @@ title=`git log --format="%h %ad, %an, %s"|head -1 `
 
 echo branch: $branch commit: $title
 echo ''
-echo $title | ggrep -E  '\w\w-[0-9][0-9]|dependabot'
+echo $title | grep -E  '\w\w-[0-9][0-9]|dependabot'
 
 
