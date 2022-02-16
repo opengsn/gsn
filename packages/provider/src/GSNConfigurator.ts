@@ -47,8 +47,8 @@ export const defaultGsnConfig: GSNConfig = {
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,
   maxPaymasterDataLength: 0,
-  gsnUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
-  useGsnDocsConfig: true
+  openGsnConfigUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
+  useOpenGsnConfig: true
 }
 
 export interface LoggerConfiguration {

@@ -470,10 +470,10 @@ export class RelayClient {
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     let configFromServer = {}
     const chainId = await getChainId(provider)
-    const useGsnDocsConfig = config.useGsnDocsConfig ?? defaultGsnConfig.useGsnDocsConfig
-    if (useGsnDocsConfig) {
+    const useOpenGsnConfig = config.useOpenGsnConfig ?? defaultGsnConfig.useOpenGsnConfig
+    if (useOpenGsnConfig) {
       this.logger.debug('Reading config from docs')
-      configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.gsnUrl)
+      configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.openGsnConfigUrl)
     }
     return {
       ...defaultGsnConfig,
@@ -482,10 +482,10 @@ export class RelayClient {
     }
   }
 
-  async _resolveConfigurationFromServer (chainId: number, gsnUrl: string): Promise<Partial<GSNConfig>> {
+  async _resolveConfigurationFromServer (chainId: number, openGsnConfigUrl: string): Promise<Partial<GSNConfig>> {
     try {
       const httpClient = new HttpClient(new HttpWrapper(), this.logger)
-      const jsonConfig = await httpClient.getNetworkConfiguration(gsnUrl)
+      const jsonConfig = await httpClient.getNetworkConfiguration(openGsnConfigUrl)
       if (jsonConfig.networks[chainId] == null) {
         return {}
       }
