@@ -472,7 +472,7 @@ export class RelayClient {
     const chainId = await getChainId(provider)
     const useOpenGsnConfig = config.useOpenGsnConfig ?? defaultGsnConfig.useOpenGsnConfig
     if (useOpenGsnConfig) {
-      this.logger.debug('Reading config from docs')
+      this.logger.debug(`Reading config from docs for chainId ${chainId.toString()}`)
       configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.openGsnConfigUrl)
     }
     return {
