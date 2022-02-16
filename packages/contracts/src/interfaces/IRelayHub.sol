@@ -67,7 +67,7 @@ interface IRelayHub is IERC165 {
     );
 
     /// @notice Emitted for each token configured for staking in setMinimumStakes
-    event StakingTokenDataChanged(
+    event StakingDataTokenChanged(
         address token,
         uint minimumStake
     );

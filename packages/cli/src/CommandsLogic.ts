@@ -543,8 +543,12 @@ export class CommandsLogic {
       stakingTokenAddress = ttInstance.options.address
     }
     const stakingContact = await this.contractInteractor._createERC20(stakingTokenAddress)
+    const tokenDecimals = await stakingContact.decimals()
+    const tokenSymbol = await stakingContact.symbol()
 
-    console.log(`Setting minimum stake of ${deployOptions.minimumTokenStake} of ${await stakingContact.symbol()}`)
+    const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, tokenSymbol)
+
+    console.log(`Setting minimum stake of ${formatToken(deployOptions.minimumTokenStake)}}`)
     await rInstance.methods.setMinimumStakes([stakingTokenAddress], [deployOptions.minimumTokenStake]).send({ ...options })
 
     this.deployment = {
