@@ -242,7 +242,7 @@ export class CommandsLogic {
       let isDefaultToken = false
       let stakingToken = options.token
       if (stakingToken == null) {
-        stakingToken = await this._findFirstToken(relayHub)
+        stakingToken = await this._findFirstToken(relayHubAddress)
         isDefaultToken = true
       }
 
