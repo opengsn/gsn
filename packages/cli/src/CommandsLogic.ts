@@ -5,7 +5,7 @@ import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
 import { HttpProvider } from 'web3-core'
-import { fromWei, toBN, toHex } from 'web3-utils'
+import { fromWei, toBN, toHex, toNumber } from 'web3-utils'
 import ow from 'ow'
 
 import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
@@ -43,6 +43,7 @@ export interface RegisterOptions {
   token?: Address
   gasPrice?: string | BN
   stake: string
+  wrap: boolean
   funds: string | BN
   relayUrl: string
   unstakeDelay: string
@@ -320,7 +321,7 @@ export class CommandsLogic {
           stake.toString() === '0' ? '' : ` (already has ${formatToken(stake)})`)
 
         const tokenBalance = await stakingTokenContract.balanceOf(options.from)
-        if (tokenBalance.lt(stakeValue) && isDefaultToken) {
+        if (tokenBalance.lt(stakeValue) && isDefaultToken && options.wrap) {
           // default token is wrapped eth, so deposit eth to make then into tokens.
           console.log(`Wrapping ${formatToken(stakeValue)}`)
           let gas: number
@@ -384,15 +385,17 @@ export class CommandsLogic {
     }
   }
 
-  async _findFirstToken(relayHub: any): Promise<string> {
+  async _findFirstToken (relayHubAddress: string): Promise<string> {
+    const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
     const fromBlock = await relayHub.getCreationBlock()
-    const toBlock = Math.min(fromBlock.toNumber() + 5000, await this.contractInteractor.getBlockNumber())
+    const toBlock = Math.min(toNumber(fromBlock) + 5000, await this.contractInteractor.getBlockNumber())
     const tokens = await this.contractInteractor.getPastEventsForHub([], { fromBlock, toBlock }, ['StakingToken'])
     if (tokens.length === 0) {
-      throw new Error(`no registered StakingTokens tokens on relayhub ${relayHub.address}`)
+      throw new Error(`no registered StakingTokens tokens on relayhub ${relayHubAddress}`)
     }
     return tokens[0].returnValues.token
   }
+
   async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
     const relayManager = keyManager.getAddress(0)
     console.log('relayManager is', relayManager)

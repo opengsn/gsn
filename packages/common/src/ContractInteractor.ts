@@ -140,7 +140,6 @@ export class ContractInteractor {
   private paymasterVersion?: SemVerString
   readonly environment: Environment
   transactionType: TransactionType = TransactionType.LEGACY
-  private cachedTokenMetaData?: ERC20TokenMetadata
 
   constructor (
     {
@@ -383,9 +382,6 @@ export class ContractInteractor {
   }
 
   async getErc20TokenMetadata (): Promise<ERC20TokenMetadata> {
-    if (this.cachedTokenMetaData != null) {
-      return this.cachedTokenMetaData
-    }
     let tokenName: string
     try {
       tokenName = await this.erc20Token.name()
@@ -404,8 +400,7 @@ export class ContractInteractor {
     } catch (_) {
       tokenDecimals = toBN(0)
     }
-    this.cachedTokenMetaData = { tokenName, tokenSymbol, tokenDecimals }
-    return this.cachedTokenMetaData
+    return { tokenName, tokenSymbol, tokenDecimals }
   }
 
   async isTrustedForwarder (recipientAddress: Address, forwarder: Address): Promise<boolean> {

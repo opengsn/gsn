@@ -3,9 +3,8 @@ import { RelayRegistrarInstance, TestRelayHubForRegistrarInstance } from '@openg
 import { cleanValue } from './chaiHelper'
 import { evmMine, evmMineMany, revert, snapshot } from '../TestUtils'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
-import { splitRelayUrlForRegistrar } from '@opengsn/common'
+import { splitRelayUrlForRegistrar, constants } from '@opengsn/common'
 
-import { constants } from '@opengsn/common'
 const TestRelayHubForRegistrar = artifacts.require('TestRelayHubForRegistrar')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
