@@ -11,7 +11,7 @@ jobs: # a collection of steps
 
       - run:
           name: git info
-          command: test `git branch|sed -ne 's/[*]//p'` = 'master' || git log --format="%ad %an, %s"|head -1 | grep -e  '(\w\w+-\d\d+|dependabot)'
+          command: test `git branch|sed -ne 's/[*]//p'` = 'master' || git log --format="%ad, %an, %s"|head -1 | grep -E  '(\w\w+-\d\d+|dependabot)'
           
       - run:
           name: package-json-all-deps
