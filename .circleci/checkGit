@@ -7,6 +7,10 @@ title=`git log --format="%h %ad, %an, %s"|head -1 `
 #do nothing on non-master branch
 #test branch != 'master' && exit 0
 
+grep --version
+grep --help
+
 echo branch: $branch commit: $title
 echo $title | grep OG-[0-9]
 #echo $title | grep -E  '(\w\w+-\d\d+|dependabot)'
+
