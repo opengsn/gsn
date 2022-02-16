@@ -241,6 +241,9 @@ export class ContractInteractor {
     if (this.deployment.paymasterAddress != null) {
       await this._resolveDeploymentFromPaymaster(this.deployment.paymasterAddress)
     } else if (this.deployment.relayHubAddress != null) {
+      if (!await this.isContractDeployed(this.deployment.relayHubAddress)) {
+        throw new Error(`RelayHub: no contract at address ${this.deployment.relayHubAddress}`)
+      }
       // TODO: this branch shouldn't exist as it's only used by the Server and can lead to broken Client configuration
       await this._resolveDeploymentFromRelayHub(this.deployment.relayHubAddress)
     } else {
@@ -1144,6 +1147,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
         relayUrl: packRelayUrlForRegistrar(info.urlParts)
       }
     })
+  }
+
+  async getCreationBlockFromRelayHub (): Promise<BN> {
+    return await this.relayHubInstance.getCreationBlock()
   }
 
   async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {

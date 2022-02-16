@@ -314,7 +314,7 @@ export async function deployHub (
     ...configOverride
   }
   const HubContract: RelayHubContract = hubContract ?? RelayHub
-  const relayRegistrar = await RelayRegistrar.new(true)
+  const relayRegistrar = await RelayRegistrar.new()
   const hub: RelayHubInstance = await HubContract.new(
     stakeManager,
     penalizer,

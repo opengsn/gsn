@@ -53,10 +53,11 @@ class GsnTestEnvironmentClass {
     const deploymentResult = await commandsLogic.deployGsnContracts({
       from,
       burnAddress: constants.BURN_ADDRESS,
+      minimumTokenStake: 1,
       gasPrice: 1e9.toString(),
       gasLimit: 5000000,
-      deployPaymaster: true,
       deployTestToken: true,
+      deployPaymaster: true,
       skipConfirmation: true,
       penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
       relayHubConfiguration: defaultEnvironment.relayHubConfiguration
@@ -74,12 +75,12 @@ class GsnTestEnvironmentClass {
     }
 
     const registerOptions: RegisterOptions = {
-      token: deploymentResult.managerStakeTokenAddress ?? constants.ZERO_ADDRESS,
-      mintToken: true,
+      // force using default (wrapped eth) token
+      wrap: true,
       from,
       sleepMs: 100,
       sleepCount: 5,
-      stake: ether('1'),
+      stake: '1',
       funds: ether('5'),
       relayUrl: relayUrl,
       gasPrice: 1e9.toString(),
@@ -183,6 +184,7 @@ class GsnTestEnvironmentClass {
       reputationManager
     }
     const relayServerParams: Partial<ServerConfigParams> = {
+      coldRestartLogsFromBlock: 1,
       devMode: true,
       url: relayUrl,
       relayHubAddress: deploymentResult.relayHubAddress,

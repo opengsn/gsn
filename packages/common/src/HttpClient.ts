@@ -6,6 +6,7 @@ import { LoggerInterface } from './LoggerInterface'
 import { HttpWrapper } from './HttpWrapper'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { AuditRequest, AuditResponse } from './types/AuditRequest'
+import { ConfigResponse } from './ConfigResponse'
 
 export class HttpClient {
   private readonly httpWrapper: HttpWrapper
@@ -43,5 +44,11 @@ export class HttpClient {
     const auditResponse: AuditResponse = await this.httpWrapper.sendPromise(relayUrl + '/audit', auditRequest)
     this.logger.info(`auditTransaction response: ${JSON.stringify(auditResponse)}`)
     return auditResponse
+  }
+
+  async getNetworkConfiguration (clientDefaultConfigUrl: string): Promise<ConfigResponse> {
+    const configResponse: ConfigResponse = await this.httpWrapper.sendPromise(clientDefaultConfigUrl)
+    this.logger.info(`Config response: ${JSON.stringify(configResponse)}`)
+    return configResponse
   }
 }
