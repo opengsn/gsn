@@ -1,6 +1,7 @@
 /* global describe it web3 */
 // @ts-ignore
 import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
+import { HashZero } from 'ethers/constants'
 import chaiAsPromised from 'chai-as-promised'
 import chai, { expect } from 'chai'
 
@@ -17,7 +18,7 @@ import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '@ope
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encodeRevertReason } from '../TestUtils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
-import { removeNullValues } from '@opengsn/common'
+import { packRelayUrlForRegistrar, removeNullValues, splitRelayUrlForRegistrar } from '@opengsn/common'
 import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
@@ -206,6 +207,26 @@ contract('Utils', function (accounts) {
     it('should remove nulls recursively', async () => {
       expect(removeNullValues({ a: 1, b: 'string', c: null, d: { e: null, f: 3 }, arr: [10, null, 30], bn: toBN(123) }, true)).to.deep
         .equal({ a: 1, b: 'string', d: { f: 3 }, arr: [10, null, 30], bn: toBN(123) })
+    })
+  })
+
+  describe('#splitRelayUrlForRegistrar() and #packRelayUrlForRegistrar()', function () {
+    it('should separate and concatenate strings into reversible chunks', function () {
+      expect(splitRelayUrlForRegistrar('1')).to.eql(['0x31'.padEnd(66, '0'), HashZero, HashZero])
+      expect(splitRelayUrlForRegistrar('1'.repeat(32))).to.eql(['0x' + '31'.repeat(32), HashZero, HashZero])
+      expect(splitRelayUrlForRegistrar('1'.repeat(33))).to.eql(['0x' + '31'.repeat(32), '0x31'.padEnd(66, '0'), HashZero])
+
+      expect(packRelayUrlForRegistrar(splitRelayUrlForRegistrar('1'.repeat(33)))).to.eql('1'.repeat(33))
+
+      const str = 'this is a long string to split. it should fit into several items. this should fit into 3 words'
+      expect(packRelayUrlForRegistrar(splitRelayUrlForRegistrar(str))).to.eql(str)
+
+      expect(packRelayUrlForRegistrar(splitRelayUrlForRegistrar('short string'))).to.eql('short string')
+      expect(packRelayUrlForRegistrar(splitRelayUrlForRegistrar('1'))).to.eql('1')
+    })
+
+    it('should throw for strings that are too long', function () {
+      expect(() => splitRelayUrlForRegistrar('1'.repeat(97))).to.throw('The URL does not fit to the RelayRegistrar. Please shorten it to less than 96 characters')
     })
   })
 })

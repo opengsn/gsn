@@ -5,7 +5,7 @@ import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { deployHub, evmMine, setNextBlockTimestamp } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
-import { defaultEnvironment, getEip712Signature, constants } from '@opengsn/common/dist'
+import { defaultEnvironment, getEip712Signature, constants, splitRelayUrlForRegistrar } from '@opengsn/common/dist'
 import {
   ForwarderInstance,
   PenalizerInstance,
@@ -93,7 +93,7 @@ contract('RelayHub Configuration',
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-      await relayRegistrar.registerRelayServer(0, pctRelayFee, '', { from: relayManager })
+      await relayRegistrar.registerRelayServer(relayHub.address, 0, pctRelayFee, splitRelayUrlForRegistrar(''), { from: relayManager })
       encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
       relayRequest = {
         request: {

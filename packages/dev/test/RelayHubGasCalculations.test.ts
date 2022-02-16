@@ -23,7 +23,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { constants, ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
+import { constants, ContractInteractor, GSNContractsDeployment, splitRelayUrlForRegistrar } from '@opengsn/common'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
@@ -110,7 +110,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayRegistrar.registerRelayServer(0, fee, '', { from: relayManager })
+    await relayRegistrar.registerRelayServer(relayHub.address, 0, fee, splitRelayUrlForRegistrar(''), { from: relayManager })
 
     encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
     relayRequest = {

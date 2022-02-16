@@ -9,6 +9,7 @@ import RelayRegistrarABI from '@opengsn/common/dist/interfaces/IRelayRegistrar.j
 import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { PrefixedHexString } from 'ethereumjs-util'
+import { packRelayUrlForRegistrar } from '@opengsn/common'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
@@ -43,7 +44,7 @@ export async function assertRelayAdded (transactionHashes: PrefixedHexString[], 
   assert.equal(registeredLogs[0].args.relayManager.toLowerCase(), server.managerAddress.toLowerCase())
   assert.equal(registeredLogs[0].args.baseRelayFee, server.config.baseRelayFee)
   assert.equal(registeredLogs[0].args.pctRelayFee, server.config.pctRelayFee)
-  assert.equal(registeredLogs[0].args.relayUrl, server.config.url)
+  assert.equal(packRelayUrlForRegistrar(registeredLogs[0].args.relayUrl), server.config.url)
 
   if (checkWorkers) {
     const workersAddedReceipt = receipts.find(r => {

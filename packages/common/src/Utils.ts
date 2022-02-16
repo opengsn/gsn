@@ -330,3 +330,24 @@ export function formatTokenAmount (balance: BN, decimals: BN | number, tokenSymb
   }
   return `${fromWei(shiftedBalance)} ${tokenSymbol}`
 }
+
+export function splitRelayUrlForRegistrar (url: string, partsCount: number = 3): string[] {
+  const maxLength = 32 * partsCount
+  if (url.length > maxLength) {
+    throw new Error(`The URL does not fit to the RelayRegistrar. Please shorten it to less than ${maxLength} characters`)
+  }
+  const parts = url.match(/.{1,32}/g) ?? []
+  const result: string[] = []
+  for (let i = 0; i < partsCount; i++) {
+    result.push(`0x${Buffer.from(parts[i] ?? '').toString('hex').padEnd(64, '0')}`)
+  }
+  return result
+}
+
+export function packRelayUrlForRegistrar (parts: string[]): string {
+  let result = ''
+  for (const part of parts) {
+    result += Buffer.from(removeHexPrefix(part), 'hex').filter(it => it !== 0).toString()
+  }
+  return result
+}

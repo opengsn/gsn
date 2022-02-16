@@ -2,13 +2,13 @@
 pragma solidity >=0.6.0;
 
 /**
- * @title The Relay Recipient Base Abstract Class - Declarations
+ * @title The ERC-2771 Recipient Base Abstract Class - Declarations
  *
  * @notice A contract must implement this interface in order to support relayed transaction.
  *
- * @notice It is recommended that your contract inherits from the BaseRelayRecipient contract.
+ * @notice It is recommended that your contract inherits from the ERC2771Recipient contract.
  */
-abstract contract IRelayRecipient {
+abstract contract IERC2771Recipient {
 
     /**
      * :warning: **Warning** :warning: The Forwarder can have a full control over your Recipient. Only trust verified Forwarder.
