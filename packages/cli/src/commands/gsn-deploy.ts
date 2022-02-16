@@ -10,7 +10,7 @@ import {
 } from '../utils'
 import { toHex, toWei } from 'web3-utils'
 import { createCommandsLogger } from '../CommandsWinstonLogger'
-import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
+import { constants, Environment, environments, EnvironmentsKeys } from '@opengsn/common'
 
 gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
@@ -18,12 +18,12 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('--stakeManager <address>', 'stakeManager')
   .option('--relayHub <address>', 'relayHub')
   .option('--penalizer <address>', 'penalizer')
-  .option('--versionRegistrar <address>', 'versionRegistry')
   .option('--relayRegistrar <address>', 'relayRegistrar')
-  .option('--registryHubId <string>', 'save the address of the relayHub to the registry, with this hub-id')
   .option('--environmentName <string>', `name of one of the GSN supported environments: (${Object.keys(EnvironmentsKeys).toString()}; default: ethereumMainnet)`, EnvironmentsKeys.ethereumMainnet)
+  .option('--burnAddress <string>', 'address to transfer burned stake tokens into', constants.BURN_ADDRESS)
   .option('--yes, --skipConfirmation', 'skip con')
   .option('--testPaymaster', 'deploy test paymaster (accepts everything, avoid on main-nets)', false)
+  .option('--testToken', 'deploy test token (public mint function)', false)
   .option('-c, --config <mnemonic>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
   .parse(process.argv);
 
@@ -52,6 +52,7 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
     gasLimit,
     relayHubConfiguration,
     penalizerConfiguration,
+    deployTestToken: commander.testToken,
     deployPaymaster: commander.testPaymaster,
     verbose: true,
     skipConfirmation: commander.skipConfirmation,
@@ -59,9 +60,8 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
     stakeManagerAddress: commander.stakeManager,
     relayHubAddress: commander.relayHub,
     penalizerAddress: commander.penalizer,
-    versionRegistryAddress: commander.versionRegistrar,
     relayRegistryAddress: commander.relayRegistrar,
-    registryHubId: commander.registryHubId
+    burnAddress: commander.burnAddress
   })
   const paymasterName = 'Default'
 

@@ -2,18 +2,19 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@opengsn/contracts/src/test/TestToken.sol";
+
 import "../interfaces/IUniswap.sol";
-import "./TestToken.sol";
 
 // naive, no-calculation swapper.
 //- the exchange rate is fixed at construction
 //- mints new tokens at will...
 contract TestUniswap is IUniswap {
     IERC20 public token;
-    uint public rateMult;
-    uint public rateDiv;
+    uint256 public rateMult;
+    uint256 public rateDiv;
 
-    constructor(uint _rateMult, uint _rateDiv) payable {
+    constructor(uint256 _rateMult, uint256 _rateDiv) payable {
         token = new TestToken();
         rateMult = _rateMult;
         rateDiv = _rateDiv;
@@ -30,7 +31,7 @@ contract TestUniswap is IUniswap {
 
     function tokenToEthSwapOutput(uint256 ethBought, uint256 maxTokens, uint256 deadline) public override returns (uint256 out) {
         (maxTokens, deadline);
-        uint tokensToSell = getTokenToEthOutputPrice(ethBought);
+        uint256 tokensToSell = getTokenToEthOutputPrice(ethBought);
         require(address(this).balance > ethBought, "not enough liquidity");
 
         token.transferFrom(msg.sender, address(this), tokensToSell);
@@ -46,7 +47,7 @@ contract TestUniswap is IUniswap {
         (maxTokens, deadline, recipient);
         require(address(this).balance > ethBought, "not enough liquidity");
 
-        uint tokensToSell = getTokenToEthOutputPrice(ethBought);
+        uint256 tokensToSell = getTokenToEthOutputPrice(ethBought);
 
         token.transferFrom(msg.sender, address(this), tokensToSell);
         recipient.transfer(ethBought);

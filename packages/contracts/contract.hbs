@@ -1,0 +1,84 @@
+## `{{name}}`
+{{{natspec.title}}}
+
+{{{natspec.userdoc}}}
+
+{{{natspec.devdoc}}}
+
+## Functions
+{{#each ownFunctions}}
+### `{{name}}({{args}})`
+{{#if outputs}}` → {{outputs}}`{{/if}} ({{visibility}})
+
+{{{natspec.userdoc}}}
+
+{{{natspec.devdoc}}}
+
+{{#each natspec.params}}
+{{param}}: {{description}}
+{{/each}}
+
+{{#if natspec.returns}}#### Return values{{/if}}
+
+{{#each natspec.returns}}
+{{return}} {{description}}
+{{/each}}
+
+---
+{{/each}}
+
+{{#if ownEvents}}
+## Events
+{{#each ownEvents}}
+### `{{name}}({{args}})`
+
+{{{natspec.userdoc}}}
+
+{{{natspec.devdoc}}}
+
+---
+{{/each}}
+{{/if}}
+
+{{#if ownStructs}}
+## Structs
+{{#each ownStructs}}
+### `{{name}}`
+
+{{#each members}}
+
+{{type}} {{name}}
+
+{{/each}}
+
+---
+{{/each}}
+{{/if}}
+
+{{#if ownEnums}}
+## Enums
+{{#each ownEnums}}
+### `{{name}}`
+
+{{#each members}}
+
+{{name}}
+
+{{/each}}
+
+---
+{{/each}}
+{{/if}}
+
+{{#if ownModifiers}}
+## Modifiers
+{{#each ownModifiers}}
+### `{{name}}({{args}})`
+
+{{{natspec.userdoc}}}
+
+{{{natspec.devdoc}}}
+
+---
+{{/each}}
+{{/if}}

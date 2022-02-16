@@ -240,7 +240,7 @@ export class StatisticsManager {
 
     const isRegistered = stakeStatus === RelayServerStakeStatus.STAKE_LOCKED && relayRegisteredEvents.length !== 0
     const relayHubEarningsBalance = (await this.contractInteractor.hubBalanceOf(managerAddress)).toString()
-    const stakeInfo = await this.contractInteractor.stakeManagerStakeInfo(managerAddress)
+    const stakeInfo = await this.contractInteractor.getStakeInfo(managerAddress)
     const ownerBalance = await this.contractInteractor.getBalance(stakeInfo.owner)
     const managerBalance = await this.contractInteractor.getBalance(managerAddress)
     if (isRegistered) {
@@ -380,8 +380,7 @@ export class StatisticsManager {
       gasReserve: hubConfig.gasReserve.toString(),
       postOverhead: hubConfig.postOverhead.toString(),
       gasOverhead: hubConfig.gasOverhead.toString(),
-      minimumUnstakeDelay: hubConfig.minimumUnstakeDelay.toString(),
-      minimumStake: hubConfig.minimumStake.toString()
+      minimumUnstakeDelay: hubConfig.minimumUnstakeDelay.toString()
     }
   }
 }

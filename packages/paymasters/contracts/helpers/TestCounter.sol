@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 contract TestCounter {
-    uint public count;
+    uint256 public count;
 
     constructor () {
         count = 0;
@@ -12,7 +12,7 @@ contract TestCounter {
         count = count + 1;
     }
 
-    function get() public view returns (uint) {
+    function get() public view returns (uint256) {
         return count;
     }
 

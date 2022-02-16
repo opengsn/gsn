@@ -17,13 +17,12 @@ import RelayRegistrar from './compiled/RelayRegistrar.json'
 import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
-import VersionRegistryAbi from './compiled/VersionRegistry.json'
+import TestToken from './compiled/TestToken.json'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { constants } from '@opengsn/common/dist/Constants'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-import { string32 } from '@opengsn/common/dist/VersionRegistry'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
@@ -31,7 +30,7 @@ import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeploym
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { resolveConfigRelayHubAddress, ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
 
 export interface RegisterOptions {
@@ -40,11 +39,14 @@ export interface RegisterOptions {
   /** number of times to sleep before timeout */
   sleepCount: number
   from: Address
+  token: Address
   gasPrice?: string | BN
   stake: string | BN
   funds: string | BN
   relayUrl: string
   unstakeDelay: string
+  /** for testing with mintable tokens only **/
+  mintToken: boolean
 }
 
 export interface WithdrawOptions {
@@ -61,13 +63,13 @@ interface DeployOptions {
   gasPrice: string
   gasLimit: number | IntString
   deployPaymaster?: boolean
+  deployTestToken?: boolean
   forwarderAddress?: string
   relayHubAddress?: string
   relayRegistryAddress?: string
   stakeManagerAddress?: string
   penalizerAddress?: string
-  versionRegistryAddress?: string
-  registryHubId?: string
+  burnAddress?: string
   verbose?: boolean
   skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
@@ -232,14 +234,18 @@ export class CommandsLogic {
       const relayHubAddress = response.relayHubAddress
 
       const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
-      const stakeManagerAddress = await relayHub.stakeManager()
+      const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
-      const { stake, unstakeDelay, owner } = await stakeManager.getStakeInfo(relayAddress)
+      const { stake, unstakeDelay, owner, token } = (await stakeManager.getStakeInfo(relayAddress))[0]
 
-      console.log('current stake=', fromWei(stake, 'ether'))
+      if (!(isSameAddress(token, options.token) || isSameAddress(token, constants.ZERO_ADDRESS))) {
+        throw new Error(`Cannot use specified token for staking. Specified token address: ${options.token} Currently used token: ${token}`)
+      }
+
+      const currentStakeFormatted = await this.contractInteractor.formatTokenAmount(stake)
+      console.log('current stake= ', currentStakeFormatted)
 
       if (owner !== constants.ZERO_ADDRESS && !isSameAddress(owner, options.from)) {
-        // throw new Error(`Already owned by ${owner}, our account=${options.from}`)
         throw new Error(`Already owned by ${owner}, our account=${options.from}`)
       }
 
@@ -270,7 +276,7 @@ export class CommandsLogic {
         while (true) {
           console.debug(`Waiting ${options.sleepMs}ms ${i}/${options.sleepCount} for relayer to set ${options.from} as owner`)
           await sleep(options.sleepMs)
-          const newStakeInfo = await stakeManager.getStakeInfo(relayAddress)
+          const newStakeInfo = (await stakeManager.getStakeInfo(relayAddress))[0]
           if (newStakeInfo.owner !== constants.ZERO_ADDRESS && isSameAddress(newStakeInfo.owner, options.from)) {
             console.log('RelayServer successfully set its owner on the StakeManager')
             break
@@ -286,19 +292,39 @@ export class CommandsLogic {
         console.log('Relayer already staked')
       } else {
         const config = await relayHub.getConfiguration()
-        if (config.minimumStake.gt(toBN(options.stake.toString()))) {
-          throw new Error(`Given minimum stake ${options.stake.toString()} too low for the given hub ${config.minimumStake.toString()}`)
+        const minimumStakeForToken = await relayHub.getMinimumStakePerToken(options.token)
+        if (minimumStakeForToken.gt(toBN(options.stake.toString()))) {
+          throw new Error(`Given minimum stake ${options.stake.toString()} too low for the given hub ${minimumStakeForToken.toString()} and token ${options.token}`)
+        }
+        if (minimumStakeForToken.eqn(0)) {
+          throw new Error(`Selected token (${options.token}) is not allowed in the current RelayHub`)
         }
         if (config.minimumUnstakeDelay.gt(toBN(options.unstakeDelay))) {
           throw new Error(`Given minimum unstake delay ${options.unstakeDelay.toString()} too low for the given hub ${config.minimumUnstakeDelay.toString()}`)
         }
         const stakeValue = toBN(options.stake.toString()).sub(stake)
-        console.log(`Staking relayer ${fromWei(stakeValue, 'ether')} eth`,
-          stake.toString() === '0' ? '' : ` (already has ${fromWei(stake, 'ether')} eth)`)
+        const stakeValueFormatted = await this.contractInteractor.formatTokenAmount(stakeValue)
+        console.log(`Staking relayer ${stakeValueFormatted}`,
+          stake.toString() === '0' ? '' : ` (already has ${currentStakeFormatted})`)
+
+        if (options.mintToken) {
+          console.log('Minting 100 tokens')
+          const mintTx = await this.contractInteractor.erc20Token.mint(100e18.toString(), {
+            from: options.from
+          })
+          // @ts-ignore
+          transactions.push(mintTx.transactionHash)
+        }
+
+        console.log(`Approving ${stakeValueFormatted} to StakeManager`)
+        const approveTx = await this.contractInteractor.erc20Token.approve(stakeManager.address, stakeValue, {
+          from: options.from
+        })
+        // @ts-ignore
+        transactions.push(approveTx.transactionHash)
 
         const stakeTx = await stakeManager
-          .stakeForRelayManager(relayAddress, options.unstakeDelay.toString(), {
-            value: stakeValue,
+          .stakeForRelayManager(options.token, relayAddress, options.unstakeDelay.toString(), stakeValue, {
             from: options.from,
             gasPrice
           })
@@ -306,9 +332,11 @@ export class CommandsLogic {
         transactions.push(stakeTx.transactionHash)
       }
 
-      if (await stakeManager.isRelayManagerStaked(relayAddress, relayHubAddress, 0, 0)) {
+      try {
+        await relayHub.verifyRelayManagerStaked(relayAddress)
         console.log('Relayer already authorized')
-      } else {
+      } catch (e) {
+        console.log('verifyRelayManagerStaked reverted with:', e.message)
         console.log('Authorizing relayer for hub')
         const authorizeTx = await stakeManager
           .authorizeHubByOwner(relayAddress, relayHubAddress, {
@@ -338,8 +366,7 @@ export class CommandsLogic {
   async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
     const relayManager = keyManager.getAddress(0)
     console.log('relayManager is', relayManager)
-    const relayHubAddress = await resolveConfigRelayHubAddress(config, this.contractInteractor)
-    const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+    const relayHub = await this.contractInteractor._createRelayHub(config.relayHubAddress)
     const accountBalance = toBN(await this.contractInteractor.getBalance(relayManager))
     console.log(`Relay manager account balance is ${fromWei(accountBalance)}eth`)
     const hubBalance = await relayHub.balanceOf(relayManager)
@@ -352,11 +379,10 @@ export class CommandsLogic {
       console.log('Withdrawing from GSN relayer to owner')
       const relayManager = options.keyManager.getAddress(0)
       console.log('relayManager is', relayManager)
-      const relayHubAddress = await resolveConfigRelayHubAddress(options.config, this.contractInteractor)
-      const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
-      const stakeManagerAddress = await relayHub.stakeManager()
+      const relayHub = await this.contractInteractor._createRelayHub(options.config.relayHubAddress)
+      const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
-      const { owner } = await stakeManager.getStakeInfo(relayManager)
+      const { owner } = (await stakeManager.getStakeInfo(relayManager))[0]
       if (owner.toLowerCase() !== options.config.ownerAddress.toLowerCase()) {
         throw new Error(`Owner in relayHub ${owner} is different than in server config ${options.config.ownerAddress}`)
       }
@@ -392,7 +418,7 @@ export class CommandsLogic {
         const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
         const encodedCall = method.encodeABI()
         txToSign = new Transaction({
-          to: relayHubAddress,
+          to: options.config.relayHubAddress,
           value: 0,
           gasLimit,
           gasPrice,
@@ -402,7 +428,7 @@ export class CommandsLogic {
         console.log('Calling in view mode')
         await method.call({
           from: relayManager,
-          to: relayHubAddress,
+          to: options.config.relayHubAddress,
           value: 0,
           gas: gasLimit,
           gasPrice
@@ -445,7 +471,7 @@ export class CommandsLogic {
     }
 
     const sInstance = await this.getContractInstance(StakeManager, {
-      arguments: [defaultEnvironment.maxUnstakeDelay]
+      arguments: [defaultEnvironment.maxUnstakeDelay, deployOptions.burnAddress]
     }, deployOptions.stakeManagerAddress, { ...options }, deployOptions.skipConfirmation)
     const pInstance = await this.getContractInstance(Penalizer, {
       arguments: [
@@ -469,21 +495,22 @@ export class CommandsLogic {
       arguments: [rInstance.options.address, true]
     }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
 
-    if (!isSameAddress(await rInstance.methods.relayRegistrar().call(), rrInstance.options.address)) {
+    if (!isSameAddress(await rInstance.methods.getRelayRegistrar().call(), rrInstance.options.address)) {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
-    }
-
-    const regInstance = await this.getContractInstance(VersionRegistryAbi, {}, deployOptions.versionRegistryAddress, { ...options }, deployOptions.skipConfirmation)
-    if (deployOptions.registryHubId != null) {
-      await regInstance.methods.addVersion(string32(deployOptions.registryHubId), string32('1'), rInstance.options.address).send({ ...options })
-      console.log(`== Saved RelayHub address at HubId:"${deployOptions.registryHubId}" to VersionRegistry`)
     }
 
     let pmInstance: Contract | undefined
     if (deployOptions.deployPaymaster ?? false) {
-      pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, deployOptions.from, fInstance, deployOptions.skipConfirmation)
+      pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, fInstance, deployOptions.skipConfirmation)
     }
     await registerForwarderForGsn(fInstance, options)
+
+    let ttInstance: Contract | undefined
+    if (deployOptions.deployTestToken ?? false) {
+      ttInstance = await this.getContractInstance(TestToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
+      console.log('Setting minimum stake of 1 TestToken on Hub')
+      await rInstance.methods.setMinimumStakes([ttInstance.options.address], [1e18.toString()]).send({ ...options })
+    }
 
     this.deployment = {
       relayHubAddress: rInstance.options.address,
@@ -491,7 +518,7 @@ export class CommandsLogic {
       penalizerAddress: pInstance.options.address,
       relayRegistrarAddress: rrInstance.options.address,
       forwarderAddress: fInstance.options.address,
-      versionRegistryAddress: regInstance.options.address,
+      managerStakeTokenAddress: ttInstance?.options.address ?? constants.ZERO_ADDRESS,
       paymasterAddress: pmInstance?.options.address ?? constants.ZERO_ADDRESS
     }
 
@@ -518,6 +545,10 @@ export class CommandsLogic {
       deployPromise.on('transactionHash', function (hash) {
         console.log(`Transaction broadcast: ${hash}`)
       })
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      deployPromise.on('error', function (err: Error) {
+        console.debug(`tx error: ${err.message}`)
+      })
       contractInstance = await deployPromise
       console.log(`Deployed ${contractName} at address ${contractInstance.options.address}\n\n`)
     } else {
@@ -527,7 +558,7 @@ export class CommandsLogic {
     return contractInstance
   }
 
-  async deployPaymaster (options: Required<SendOptions>, hub: Address, from: string, fInstance: Contract, skipConfirmation: boolean | undefined): Promise<Contract> {
+  async deployPaymaster (options: Required<SendOptions>, hub: Address, fInstance: Contract, skipConfirmation: boolean | undefined): Promise<Contract> {
     const pmInstance = await this.getContractInstance(Paymaster, {}, undefined, { ...options }, skipConfirmation)
     await pmInstance.methods.setRelayHub(hub).send(options)
     await pmInstance.methods.setTrustedForwarder(fInstance.options.address).send(options)

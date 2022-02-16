@@ -46,8 +46,8 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
         return "2.2.3+opengsn.permit-erc20-uniswap-v3.irelayrecipient";
     }
 
-    function trustedForwarder() override(BasePaymaster, BaseRelayRecipient) public view returns (address forwarder){
-        forwarder = BaseRelayRecipient.trustedForwarder();
+    function getTrustedForwarder() override(BasePaymaster, BaseRelayRecipient) public view returns (address forwarder){
+        forwarder = BaseRelayRecipient.getTrustedForwarder();
     }
 
     function setTrustedForwarder(address _forwarder) public override onlyOwner {
@@ -170,7 +170,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
     // as this Paymaster already has a permission from a user to operate the tokens on behalf of the gasless account,
     // it makes this same Paymaster a great recipient of a transaction if its only action is a pure token transfer
     function transferToken(address target, uint256 value) external {
-        require(msg.sender == trustedForwarder(), "must be a meta-tx");
+        require(msg.sender == getTrustedForwarder(), "must be a meta-tx");
         require(token.transferFrom(_msgSender(), target, value), "transferToken failed");
     }
 

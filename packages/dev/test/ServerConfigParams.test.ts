@@ -11,15 +11,12 @@ import {
 import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import {
-  RelayHubInstance,
-  VersionRegistryInstance
+  RelayHubInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { string32 } from '@opengsn/common/dist/VersionRegistry'
 import { constants } from '@opengsn/common/dist'
 import { deployHub } from './TestUtils'
 
 require('source-map-support').install({ errorFormatterForce: true })
-const VersionRegistryContract = artifacts.require('VersionRegistry')
 
 function expectThrow (func: () => void, match: string): void {
   try {
@@ -123,6 +120,12 @@ context('#ServerConfigParams', () => {
         { baseRelayFee: 222, config: tmpConfigfile, pctRelayFee: 123, port: 111 })
     })
 
+    it('should parse numeric params', async function () {
+      fs.writeFileSync(tmpConfigfile, JSON.stringify({ gasPriceFactor: 1.2 }))
+      assert.deepEqual(
+        parseServerConfig(['--config', tmpConfigfile], {}),
+        { config: tmpConfigfile, gasPriceFactor: 1.2 })
+    })
     it('should accept all known params in config file', async function () {
       fs.writeFileSync(tmpConfigfile, JSON.stringify(serverDefaultConfiguration))
       try {
@@ -208,7 +211,7 @@ context('#ServerConfigParams', () => {
   context('#resolveServerConfig', () => {
     const provider = web3.currentProvider
     it('should fail on missing hub/oracle', async () => {
-      await expectRevert(resolveServerConfig({}, provider), 'missing param: must have either relayHubAddress or versionRegistryAddress')
+      await expectRevert(resolveServerConfig({}, provider), 'missing param: must have relayHubAddress')
     })
 
     it('should fail on invalid relayhub address', async () => {
@@ -223,44 +226,10 @@ context('#ServerConfigParams', () => {
         'RelayHub: no contract at address 0x1111111111111111111111111111111111111111')
     })
 
-    it('should fail on missing hubid for VersionRegistry', async () => {
-      const config = { versionRegistryAddress: addr(1) }
-      await expectRevert(resolveServerConfig(config, provider), 'missing param: relayHubId to read from VersionRegistry')
-    })
-
-    it('should fail on no-contract VersionRegistry address', async () => {
-      const config = { versionRegistryAddress: addr(1), relayHubId: 'hubid' }
-      await expectRevert(resolveServerConfig(config, provider),
-        'Invalid param versionRegistryAddress: no contract at address 0x1111111111111111111111111111111111111111')
-    })
-
-    contract('with VersionRegistry', () => {
-      let oracle: VersionRegistryInstance
-
-      before(async () => {
-        oracle = await VersionRegistryContract.new()
-        await oracle.addVersion(string32('hub-invalidaddr'), string32('1.0'), 'garbagevalue')
-        await oracle.addVersion(string32('hub-nocontract'), string32('1.0'), addr(2))
-        await oracle.addVersion(string32('hub-wrongcontract'), string32('1.0'), oracle.address)
-      })
-
-      it('should fail on invalid hub address in oracle', async () => {
-        const config = { versionRegistryAddress: oracle.address, relayHubId: 'hub-invalidaddr' }
-        await expectRevert(resolveServerConfig(config, provider),
-          'Invalid param relayHubId hub-invalidaddr @ 1.0: not an address: garbagevalue')
-      })
-
-      it('should fail on no contract at hub address in oracle', async () => {
-        const config = { versionRegistryAddress: oracle.address, relayHubId: 'hub-nocontract' }
-        await expectRevert(resolveServerConfig(config, provider),
-          'RelayHub: no contract at address 0x2222222222222222222222222222222222222222')
-      })
-    })
-
     contract('Mandatory parameters', () => {
       let hub: RelayHubInstance
       before(async () => {
-        hub = await deployHub(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS)
+        hub = await deployHub(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')
       })
 
       it('should fail on missing url', async () => {
@@ -290,6 +259,7 @@ context('#ServerConfigParams', () => {
 
       it('should succeed on valid config', async () => {
         const config = {
+          managerStakeTokenAddress: '0x1111111111111111111111111111111111111111',
           relayHubAddress: hub.address,
           url: 'fake.url.com',
           workdir: '/path/to/somewhere/',

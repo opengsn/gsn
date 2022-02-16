@@ -26,6 +26,7 @@ import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
+const TestRelayHub = artifacts.require('TestRelayHub')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
 contract('RelayServer', function (accounts: Truffle.Accounts) {
@@ -44,7 +45,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     }
 
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
-    await env.init(relayClientConfig)
+    await env.init(relayClientConfig, undefined, undefined, TestRelayHub)
     const overrideParams: Partial<ServerConfigParams> = {
       alertedBlockDelay,
       baseRelayFee
@@ -61,7 +62,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   describe('#init()', function () {
     it('should initialize relay params', async function () {
       const env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
-      await env.init({})
+      await env.init({}, undefined, undefined, TestRelayHub)
       env.newServerInstanceNoFunding()
       const relayServerToInit = env.relayServer
       const chainId = await env.web3.eth.getChainId()
@@ -289,13 +290,13 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
       it('should fail to relay request too close to expiration', async function () {
         const req = await env.createRelayHttpRequest()
-        req.relayRequest.request.validUntil = '1010'
+        req.relayRequest.request.validUntilTime = '1234567890'
         try {
           env.relayServer.validateInput(req, 1000)
           assert.fail()
         } catch (e) {
           assert.include(e.message,
-            'expired in 10 blocks')
+            'Request expired (or too close): expired at (Fri, 13 Feb 2009 23:31:30 GMT), we expect it to be valid until')
         }
       })
 

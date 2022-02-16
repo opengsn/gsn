@@ -115,12 +115,13 @@ export interface HubAuthorizedEventInfo extends GNSContractsEvent {
 export interface HubUnauthorizedEventInfo extends GNSContractsEvent {
   relayManager: Address
   relayHub: Address
-  removalBlock: IntString
+  removalTime: IntString
 }
 
 export interface StakeInfo {
   stake: BN
   unstakeDelay: BN
-  withdrawBlock: BN
+  withdrawTime: BN
   owner: Address
+  token: Address
 }

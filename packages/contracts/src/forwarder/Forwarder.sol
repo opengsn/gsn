@@ -1,14 +1,21 @@
+// solhint-disable not-rely-on-time
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+
 import "./IForwarder.sol";
 
-contract Forwarder is IForwarder {
+/**
+ * @title The Forwarder Implementation
+ * @notice This implementation of the `IForwarder` interface uses ERC-712 signatures and stored nonces for verification.
+ */
+contract Forwarder is IForwarder, ERC165 {
     using ECDSA for bytes32;
 
-    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil";
+    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntilTime";
 
     string public constant EIP712_DOMAIN_TYPE = "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
 
@@ -21,6 +28,7 @@ contract Forwarder is IForwarder {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
+    /// @inheritdoc IForwarder
     function getNonce(address from)
     public view override
     returns (uint256) {
@@ -28,11 +36,17 @@ contract Forwarder is IForwarder {
     }
 
     constructor() {
-
         string memory requestType = string(abi.encodePacked("ForwardRequest(", GENERIC_PARAMS, ")"));
         registerRequestTypeInternal(requestType);
     }
 
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
+        return interfaceId == type(IForwarder).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
+    /// @inheritdoc IForwarder
     function verify(
         ForwardRequest calldata req,
         bytes32 domainSeparator,
@@ -40,11 +54,11 @@ contract Forwarder is IForwarder {
         bytes calldata suffixData,
         bytes calldata sig)
     external override view {
-
         _verifyNonce(req);
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
     }
 
+    /// @inheritdoc IForwarder
     function execute(
         ForwardRequest calldata req,
         bytes32 domainSeparator,
@@ -58,9 +72,9 @@ contract Forwarder is IForwarder {
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
         _verifyAndUpdateNonce(req);
 
-        require(req.validUntil == 0 || req.validUntil > block.number, "FWD: request expired");
+        require(req.validUntilTime == 0 || req.validUntilTime > block.timestamp, "FWD: request expired");
 
-        uint gasForTransfer = 0;
+        uint256 gasForTransfer = 0;
         if ( req.value != 0 ) {
             gasForTransfer = 40000; //buffer in case we need to move eth after the transaction.
         }
@@ -76,7 +90,6 @@ contract Forwarder is IForwarder {
         return (success,ret);
     }
 
-
     function _verifyNonce(ForwardRequest calldata req) internal view {
         require(nonces[req.from] == req.nonce, "FWD: nonce mismatch");
     }
@@ -85,9 +98,10 @@ contract Forwarder is IForwarder {
         require(nonces[req.from]++ == req.nonce, "FWD: nonce mismatch");
     }
 
+    /// @inheritdoc IForwarder
     function registerRequestType(string calldata typeName, string calldata typeSuffix) external override {
 
-        for (uint i = 0; i < bytes(typeName).length; i++) {
+        for (uint256 i = 0; i < bytes(typeName).length; i++) {
             bytes1 c = bytes(typeName)[i];
             require(c != "(" && c != ")", "FWD: invalid typename");
         }
@@ -96,6 +110,7 @@ contract Forwarder is IForwarder {
         registerRequestTypeInternal(requestType);
     }
 
+    /// @inheritdoc IForwarder
     function registerDomainSeparator(string calldata name, string calldata version) external override {
         uint256 chainId;
         /* solhint-disable-next-line no-inline-assembly */
@@ -140,6 +155,9 @@ contract Forwarder is IForwarder {
         require(digest.recover(sig) == req.from, "FWD: signature mismatch");
     }
 
+    /**
+     * @notice Creates a byte array that is a valid ABI encoding of a request of a `RequestType` type. See `execute()`.
+     */
     function _getEncoded(
         ForwardRequest calldata req,
         bytes32 requestTypeHash,
@@ -161,7 +179,7 @@ contract Forwarder is IForwarder {
             req.gas,
             req.nonce,
             keccak256(req.data),
-            req.validUntil,
+            req.validUntilTime,
             suffixData
         );
     }

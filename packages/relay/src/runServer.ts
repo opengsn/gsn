@@ -148,7 +148,10 @@ async function run (): Promise<void> {
     environment,
     maxPageSize: config.pastEventsQueryMaxPageSize,
     versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
-    deployment: { relayHubAddress: config.relayHubAddress }
+    deployment: {
+      relayHubAddress: config.relayHubAddress,
+      managerStakeTokenAddress: config.managerStakeTokenAddress
+    }
   })
   console.log('Initializing interactor...\n')
   await contractInteractor.init()

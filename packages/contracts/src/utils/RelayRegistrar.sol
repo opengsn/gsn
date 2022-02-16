@@ -2,6 +2,8 @@
 pragma solidity ^0.8.6;
 /* solhint-disable no-inline-assembly */
 
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+
 import "./MinLibBytes.sol";
 import "../interfaces/IRelayHub.sol";
 import "../interfaces/IRelayRegistrar.sol";
@@ -12,7 +14,7 @@ import "../interfaces/IRelayRegistrar.sol";
  * - provide view functions to read the list of registered relayers (and filter out invalid ones)
  * - protect the list from spamming entries: only staked relayers are added.
  */
-contract RelayRegistrar is IRelayRegistrar {
+contract RelayRegistrar is IRelayRegistrar, ERC165 {
     using MinLibBytes for bytes;
 
     struct RelayStorageInfo {
@@ -27,14 +29,27 @@ contract RelayRegistrar is IRelayRegistrar {
     address[] public indexedValues;
 
     bool public immutable override isUsingStorageRegistry;
+    uint256 private immutable creationBlock;
 
     IRelayHub public immutable relayHub;
 
     constructor(IRelayHub _relayHub, bool _isUsingStorageRegistry) {
+        creationBlock = block.number;
         relayHub = _relayHub;
         isUsingStorageRegistry = _isUsingStorageRegistry;
     }
 
+    function getCreationBlock() external override view returns (uint256){
+        return creationBlock;
+    }
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
+        return interfaceId == type(IRelayRegistrar).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
+    /// @inheritdoc IRelayRegistrar
     function registerRelayServer(uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) external override {
         address relayManager = msg.sender;
         if (address(relayHub) != address(0)) {
@@ -54,7 +69,7 @@ contract RelayRegistrar is IRelayRegistrar {
         return storageInfo;
     }
 
-    function storeRelayServerRegistration(address relayManager, uint baseRelayFee, uint pctRelayFee, string calldata url) internal {
+    function storeRelayServerRegistration(address relayManager, uint256 baseRelayFee, uint256 pctRelayFee, string calldata url) internal {
         RelayStorageInfo storage storageInfo = addItem(relayManager);
         if (storageInfo.stakeBlockNumber==0) {
             storageInfo.stakeBlockNumber = uint32(block.number);
@@ -66,7 +81,9 @@ contract RelayRegistrar is IRelayRegistrar {
         storageInfo.urlParts = parts;
     }
 
-    function getRelayInfo(address relayManager) public view override returns (RelayInfo memory info) {
+    /// @inheritdoc IRelayRegistrar
+    function getRelayInfo(address relayManager) public view override returns (RelayInfo memory) {
+        RelayInfo memory info;
         RelayStorageInfo storage storageInfo = values[relayManager];
         require(storageInfo.lastBlockNumber != 0, "relayManager not found");
         info.lastBlockNumber = storageInfo.lastBlockNumber;
@@ -75,34 +92,40 @@ contract RelayRegistrar is IRelayRegistrar {
         info.pctRelayFee = storageInfo.pctRelayFee;
         info.relayManager = relayManager;
         info.url = packString(storageInfo.urlParts);
+        return info;
     }
 
-    /**
-     * read relay info of registered relays
-     * @param maxCount - return at most that many relays
-     * @param oldestBlock - return only relays registered from this block on.
-     * @return info - list of RelayInfo for registered relays
-     * @return filled - # of entries filled in info (last entries in returned array might be empty)
-     */
-    function readRelayInfos(uint oldestBlock, uint maxCount) public view override returns (RelayInfo[] memory info, uint filled) {
+    /// @inheritdoc IRelayRegistrar
+    function readRelayInfos(uint256 oldestBlock, uint256 maxCount) public view override returns (RelayInfo[] memory info, uint256 filled) {
         address[] storage items = indexedValues;
         filled = 0;
         info = new RelayInfo[](items.length < maxCount ? items.length : maxCount);
-        for (uint i = 0; i < items.length; i++) {
+        for (uint256 i = 0; i < items.length; i++) {
             address relayManager = items[i];
             RelayInfo memory relayInfo = getRelayInfo(relayManager);
             if (relayInfo.lastBlockNumber < oldestBlock) {
                 continue;
             }
-            if (address(relayHub) == address(0) || IRelayHub(relayHub).isRelayManagerStaked(relayManager)) {
-                info[filled++] = relayInfo;
-                if (filled >= maxCount)
-                    break;
+            if (address(relayHub) != address(0)) {
+                // solhint-disable-next-line no-empty-blocks
+                try IRelayHub(relayHub).verifyRelayManagerStaked(relayManager) {
+                } catch (bytes memory /*lowLevelData*/) {
+                    continue;
+                }
             }
+            info[filled++] = relayInfo;
+            if (filled >= maxCount)
+                break;
         }
     }
 
-    function splitString(string calldata str) public pure returns (bytes32[3] memory parts) {
+    /**
+     * @notice Splits the variable size string array into static size bytes array. See `packString` for reverse.
+     * @param str The string to be split.
+     * @return The same string split into parts.
+     */
+    function splitString(string calldata str) public pure returns (bytes32[3] memory) {
+        bytes32[3] memory parts;
         bytes calldata url = bytes(str);
         require(url.length <= 96, "url too long");
         parts[0] = bytes32(url[0 :]);
@@ -117,12 +140,18 @@ contract RelayRegistrar is IRelayRegistrar {
             parts[1] = 0;
             parts[2] = 0;
         }
+        return parts;
     }
 
+    /**
+     * @notice Packs a string back after being split in `splitString`.
+     * @param parts The string split into parts.
+     * @return str The same string joined back together.
+     */
     function packString(bytes32[3] memory parts) public pure returns (string memory str) {
         bytes memory ret = bytes.concat(parts[0], parts[1], parts[2]);
         //trim trailing zeros
-        uint len = ret.length - 1;
+        uint256 len = ret.length - 1;
         while (len > 0 && ret[len] == 0) len--;
         assembly {
             mstore(ret, add(len, 1))

@@ -17,10 +17,9 @@ const commander = gsnCommander(['g'])
   const config = getServerConfig(commander.serverConfig)
   const host = config.ethereumNodeUrl
   const logger = createCommandsLogger(commander.loglevel)
-  const logic = await new CommandsLogic(host, logger, { versionRegistryAddress: config.versionRegistryAddress }).init()
+  const logic = await new CommandsLogic(host, logger, { relayHubAddress: config.relayHubAddress }).init()
   const keystorePath = getKeystorePath(commander.keystorePath)
   const keyManager = new KeyManager(1, keystorePath)
-  config.relayHubId = config.relayHubId ?? 'hub'
 
   if (commander.ethAccountAmount == null && commander.hubBalanceAmount == null) {
     await logic.displayManagerBalances(config, keyManager)

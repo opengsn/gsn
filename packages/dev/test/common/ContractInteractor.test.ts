@@ -7,7 +7,9 @@ import {
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
-  TestPaymasterConfigurableMisbehaviorInstance
+  TestPaymasterConfigurableMisbehaviorInstance,
+  TestTokenInstance,
+  TestDecimalsTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
@@ -29,10 +31,13 @@ import { toHex } from 'web3-utils'
 import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contracts'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
+import { ether } from '@openzeppelin/test-helpers'
 
 const { expect } = chai.use(chaiAsPromised)
 
+const TestDecimalsToken = artifacts.require('TestDecimalsToken')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
+const TestToken = artifacts.require('TestToken')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
@@ -44,23 +49,29 @@ contract('ContractInteractor', function (accounts) {
   const logger = createClientLogger({ logLevel: 'error' })
   const workerAddress = accounts[2]
   const maxPageSize = Number.MAX_SAFE_INTEGER
+  const stake = ether('1')
 
   let rh: RelayHubInstance
   let sm: StakeManagerInstance
   let pen: PenalizerInstance
+  let tt: TestTokenInstance
   let pm: TestPaymasterConfigurableMisbehaviorInstance
 
   before(async () => {
-    sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    tt = await TestToken.new()
+    sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     pen = await Penalizer.new(
       defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
       defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    rh = await deployHub(sm.address, pen.address, constants.ZERO_ADDRESS)
+    rh = await deployHub(sm.address, pen.address, constants.ZERO_ADDRESS, tt.address, stake.toString())
     pm = await TestPaymasterConfigurableMisbehavior.new()
     await pm.setRelayHub(rh.address)
     const mgrAddress = accounts[1]
+
+    await tt.mint(stake)
+    await tt.approve(sm.address, stake)
     await sm.setRelayManagerOwner(accounts[0], { from: mgrAddress })
-    await sm.stakeForRelayManager(mgrAddress, 1000, { value: 1e18.toString() })
+    await sm.stakeForRelayManager(tt.address, mgrAddress, 15000, stake)
     await sm.authorizeHubByOwner(mgrAddress, rh.address)
     await rh.addRelayWorkers([workerAddress], { from: mgrAddress })
   })
@@ -135,7 +146,7 @@ contract('ContractInteractor', function (accounts) {
           nonce: '1',
           value: '0',
           gas: '50000',
-          validUntil: '0'
+          validUntilTime: '0'
         },
         relayData: {
           maxFeePerGas: '11',
@@ -173,7 +184,7 @@ contract('ContractInteractor', function (accounts) {
       const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
       assert.deepEqual(ret, {
         paymasterAccepted: false,
-        returnValue: 'view call to \'relayCall\' reverted in client: with reason string \'Paymaster balance too low\'',
+        returnValue: 'view call to \'relayCall\' reverted in client: Paymaster balance too low',
         reverted: true
       })
     })
@@ -201,7 +212,7 @@ contract('ContractInteractor', function (accounts) {
           nonce: '1',
           value: '0',
           gas: '50000',
-          validUntil: '0'
+          validUntilTime: '0'
         },
         relayData: {
           maxFeePerGas: '1',
@@ -344,7 +355,6 @@ contract('ContractInteractor', function (accounts) {
       assert.equal(deploymentOut.relayHubAddress, rh.address)
       assert.equal(deploymentOut.stakeManagerAddress, sm.address)
       assert.equal(deploymentOut.penalizerAddress, pen.address)
-      assert.equal(deploymentOut.versionRegistryAddress, undefined)
     })
 
     it('should throw if no contract at paymaster address', async () => {
@@ -411,6 +421,73 @@ contract('ContractInteractor', function (accounts) {
       const splitRange = contractInteractor.splitRange(100, 200, 21)
       assert.equal(splitRange.length, 21)
       assert.deepEqual(splitRange[20], { fromBlock: 200, toBlock: 200 })
+    })
+  })
+
+  context('#formatTokenAmount()', function () {
+    let contractInteractor: ContractInteractor
+    let testDecimalsToken: TestDecimalsTokenInstance
+    before(async function () {
+      testDecimalsToken = await TestDecimalsToken.new()
+      await testDecimalsToken.mint('123456789123456789123', { from: accounts[1] })
+      const deployment: GSNContractsDeployment = { managerStakeTokenAddress: testDecimalsToken.address }
+      contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+      await contractInteractor.init()
+    })
+
+    it('should display amount correctly with 24 decimals', async function () {
+      await testDecimalsToken.setDecimals(24)
+      const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
+      assert.equal(balanceFormatted, '0.000123456789123456 DEC')
+    })
+
+    it('should display amount correctly with 18 decimals', async function () {
+      await testDecimalsToken.setDecimals(18)
+      const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
+      assert.equal(balanceFormatted, '123.456789123456789123 DEC')
+    })
+
+    it('should display amount correctly with 18 decimals but 0 total balance', async function () {
+      await testDecimalsToken.setDecimals(18)
+      const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[3])
+      assert.equal(balanceFormatted, '0 DEC')
+    })
+
+    it('should display amount correctly with 6 decimals', async function () {
+      await testDecimalsToken.setDecimals(6)
+      const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
+      assert.equal(balanceFormatted, '123456789123456.789123 DEC')
+    })
+
+    it('should display amount correctly with 2 decimals', async function () {
+      await testDecimalsToken.setDecimals(2)
+      const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
+      assert.equal(balanceFormatted, '1234567891234567891.23 DEC')
+    })
+
+    it('should display amount correctly with 0 decimals', async function () {
+      await testDecimalsToken.setDecimals(0)
+      const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
+      assert.equal(balanceFormatted, '123456789123456789123 DEC')
+    })
+  })
+
+  context('#isRelayManagerStakedOnHub()', function () {
+    let contractInteractor: ContractInteractor
+    before(async function () {
+      const deployment: GSNContractsDeployment = { paymasterAddress: pm.address }
+      contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+      await contractInteractor.init()
+    })
+
+    it('should return false and an error message if not staked', async function () {
+      const res = await contractInteractor.isRelayManagerStakedOnHub(accounts[0])
+      assert.deepEqual(res, { isStaked: false, errorMessage: 'relay manager not staked' })
+    })
+
+    it('should return true and no error message if staked', async function () {
+      const res = await contractInteractor.isRelayManagerStakedOnHub(accounts[1])
+      assert.deepEqual(res, { isStaked: true, errorMessage: null })
     })
   })
 
@@ -537,7 +614,8 @@ contract('ContractInteractor', function (accounts) {
       expect(await lightreg.getRelayInfo(accounts[1]))
         .to.eql(await relayReg.getRelayInfo(accounts[1]))
     })
-    it('should get matching mixed return values', async () => {
+    // note: this is no longer true - we retype tuples to BN in LightTruffleContracts while actual Truffle doesn't do so
+    it.skip('should get matching mixed return values', async () => {
       expect(await lightreg.readRelayInfos(0, 100))
         .to.eql(await relayReg.readRelayInfos(0, 100))
     })

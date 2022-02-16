@@ -100,10 +100,6 @@ export function getRelayHubAddress (defaultAddress?: string): string | undefined
   return getAddressFromFile('build/gsn/RelayHub.json', defaultAddress)
 }
 
-export function getRegistryAddress (defaultAddress?: string): string | undefined {
-  return getAddressFromFile('build/gsn/VersionRegistry.json', defaultAddress)
-}
-
 function getAddressFromFile (path: string, defaultAddress?: string): string | undefined {
   if (defaultAddress == null) {
     if (fs.existsSync(path)) {
@@ -128,7 +124,6 @@ export function saveDeployment (deploymentResult: GSNContractsDeployment, workdi
   saveContractToFile(deploymentResult.relayHubAddress, workdir, 'RelayHub.json')
   saveContractToFile(deploymentResult.paymasterAddress, workdir, 'Paymaster.json')
   saveContractToFile(deploymentResult.forwarderAddress, workdir, 'Forwarder.json')
-  saveContractToFile(deploymentResult.versionRegistryAddress, workdir, 'VersionRegistry.json')
 }
 
 export function showDeployment (deploymentResult: GSNContractsDeployment, title: string | undefined, paymasterTitle: string | undefined = undefined): void {
@@ -140,8 +135,8 @@ export function showDeployment (deploymentResult: GSNContractsDeployment, title:
   RelayRegistrar: ${deploymentResult.relayRegistrarAddress}
   StakeManager: ${deploymentResult.stakeManagerAddress}
   Penalizer: ${deploymentResult.penalizerAddress}
-  VersionRegistry: ${deploymentResult.versionRegistryAddress}
   Forwarder: ${deploymentResult.forwarderAddress}
+  TestToken (test only): ${deploymentResult.managerStakeTokenAddress}
   Paymaster ${paymasterTitle != null ? '(' + paymasterTitle + ')' : ''}: ${deploymentResult.paymasterAddress}`)
 }
 
@@ -156,7 +151,6 @@ export function loadDeployment (workdir: string): GSNContractsDeployment {
     stakeManagerAddress: getAddress('StakeManager'),
     penalizerAddress: getAddress('Penalizer'),
     forwarderAddress: getAddress('Forwarder'),
-    versionRegistryAddress: getAddress('VersionRegistry'),
     paymasterAddress: getAddress('Paymaster')
   }
 }

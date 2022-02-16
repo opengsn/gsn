@@ -10,7 +10,7 @@ contract PayableWithEmit is BaseRelayRecipient {
 
   string public override versionRecipient = "2.2.3+opengsn.payablewithemit.irelayrecipient";
 
-  event Received(address sender, uint value, uint gasleft);
+  event Received(address sender, uint256 value, uint256 gasleft);
 
   receive () external payable {
 
@@ -21,11 +21,11 @@ contract PayableWithEmit is BaseRelayRecipient {
   //helper: send value to another contract
   function doSend(address payable target) public payable {
 
-    uint before = gasleft();
+    uint256 before = gasleft();
     // solhint-disable-next-line check-send-result
     bool success = target.send(msg.value);
-    uint gasAfter = gasleft();
+    uint256 gasAfter = gasleft();
     emit GasUsed(before-gasAfter, success);
   }
-  event GasUsed(uint gasUsed, bool success);
+  event GasUsed(uint256 gasUsed, bool success);
 }

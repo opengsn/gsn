@@ -5,8 +5,11 @@ pragma solidity >=0.6.9;
 import "./interfaces/IRelayRecipient.sol";
 
 /**
- * A base contract to be inherited by any contract that want to receive relayed transactions
- * A subclass must use "_msgSender()" instead of "msg.sender"
+ * @title The Relay Recipient Base Abstract Class - Implementation
+ *
+ * @notice A base contract to be inherited by any contract that want to receive relayed transactions.
+ *
+ * @notice A subclass must use `_msgSender()` instead of `msg.sender`.
  */
 abstract contract BaseRelayRecipient is IRelayRecipient {
 
@@ -15,7 +18,12 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
      */
     address private _trustedForwarder;
 
-    function trustedForwarder() public virtual view returns (address){
+    /**
+     * :warning: **Warning** :warning: The Forwarder can have a full control over your Recipient. Only trust verified Forwarder.
+     * @notice Method is not a required method to allow Recipients to trust multiple Forwarders. Not recommended yet.
+     * @return forwarder The address of the Forwarder contract that is being used.
+     */
+    function getTrustedForwarder() public virtual view returns (address forwarder){
         return _trustedForwarder;
     }
 
@@ -23,16 +31,12 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
         _trustedForwarder = _forwarder;
     }
 
+    /// @inheritdoc IRelayRecipient
     function isTrustedForwarder(address forwarder) public virtual override view returns(bool) {
         return forwarder == _trustedForwarder;
     }
 
-    /**
-     * return the sender of this call.
-     * if the call came through our trusted forwarder, return the original sender.
-     * otherwise, return `msg.sender`.
-     * should be used in the contract anywhere instead of msg.sender
-     */
+    /// @inheritdoc IRelayRecipient
     function _msgSender() internal override virtual view returns (address ret) {
         if (msg.data.length >= 20 && isTrustedForwarder(msg.sender)) {
             // At this point we know that the sender is a trusted forwarder,
@@ -46,13 +50,7 @@ abstract contract BaseRelayRecipient is IRelayRecipient {
         }
     }
 
-    /**
-     * return the msg.data of this call.
-     * if the call came through our trusted forwarder, then the real sender was appended as the last 20 bytes
-     * of the msg.data - so this method will strip those 20 bytes off.
-     * otherwise (if the call was made directly and not through the forwarder), return `msg.data`
-     * should be used in the contract instead of msg.data, where this difference matters.
-     */
+    /// @inheritdoc IRelayRecipient
     function _msgData() internal override virtual view returns (bytes calldata ret) {
         if (msg.data.length >= 20 && isTrustedForwarder(msg.sender)) {
             return msg.data[0:msg.data.length-20];

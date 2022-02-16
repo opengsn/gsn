@@ -22,6 +22,7 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const BatchForwarder = artifacts.require('BatchForwarder')
 const TestRecipient = artifacts.require('TestRecipient')
+const TestToken = artifacts.require('TestToken')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
@@ -33,16 +34,20 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
   const chainId = defaultEnvironment.chainId
 
   before(async () => {
+    const stake = ether('2')
     const paymasterDeposit = 1e18.toString()
 
-    const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    const testToken = await TestToken.new()
+    const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    hub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
-    const relayRegistrar = await RelayRegistrar.at(await hub.relayRegistrar())
+    hub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
+    const relayRegistrar = await RelayRegistrar.at(await hub.getRelayRegistrar())
     const relayHub = hub
+
+    await testToken.mint(stake, { from: relayOwner })
+    await testToken.approve(stakeManager.address, stake, { from: relayOwner })
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForRelayManager(relayManager, 2000, {
-      value: ether('2'),
+    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 15000, stake, {
       from: relayOwner
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
@@ -71,7 +76,7 @@ contract('BatchForwarder', ([from, relayManager, relayWorker, relayOwner]) => {
         nonce: '1',
         value: '0',
         gas: 1e6.toString(),
-        validUntil: '0'
+        validUntilTime: '0'
       },
       relayData: {
         pctRelayFee: '1',

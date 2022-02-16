@@ -1,7 +1,6 @@
 import * as fs from 'fs'
 import parseArgs from 'minimist'
 
-import { VersionRegistry } from '@opengsn/common/dist/VersionRegistry'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { constants } from '@opengsn/common/dist/Constants'
 import { Address, NpmLogLevel } from '@opengsn/common/dist/types/Aliases'
@@ -29,9 +28,6 @@ export interface ServerConfigParams {
   pctRelayFee: number
   url: string
   port: number
-  versionRegistryAddress: string
-  versionRegistryDelayPeriod?: number
-  relayHubId?: string
   relayHubAddress: string
   ethereumNodeUrl: string
   workdir: string
@@ -61,6 +57,7 @@ export interface ServerConfigParams {
   workerTargetBalance: number
   managerMinBalance: number
   managerMinStake: string
+  managerStakeTokenAddress: string
   managerTargetBalance: number
   minHubWithdrawalBalance: number
   withdrawToOwnerOnBalance?: number
@@ -72,7 +69,7 @@ export interface ServerConfigParams {
   maxGasPrice: string
   defaultPriorityFee: string
   defaultGasLimit: number
-  requestMinValidBlocks: number
+  requestMinValidSeconds: number
 
   runPenalizer: boolean
   runPaymasterReputations: boolean
@@ -122,6 +119,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
   managerMinStake: '1', // 1 wei
+  managerStakeTokenAddress: constants.ZERO_ADDRESS,
   managerTargetBalance: 0.3e18,
   minHubWithdrawalBalance: 0.1e18,
   checkInterval: 10000,
@@ -138,7 +136,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   url: 'http://localhost:8090',
   ethereumNodeUrl: '',
   port: 8090,
-  versionRegistryAddress: constants.ZERO_ADDRESS,
   workdir: '',
   refreshStateTimeoutBlocks: 5,
   pendingTransactionTimeoutBlocks: 30, // around 5 minutes with 10 seconds block times
@@ -149,7 +146,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   maxGasPrice: 500e9.toString(),
   defaultPriorityFee: 1e9.toString(),
 
-  requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
+  requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
   runPaymasterReputations: true,
   coldRestartLogsFromBlock: 1,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
@@ -163,9 +160,6 @@ const ConfigParamsTypes = {
   pctRelayFee: 'number',
   url: 'string',
   port: 'number',
-  versionRegistryAddress: 'string',
-  versionRegistryDelayPeriod: 'number',
-  relayHubId: 'string',
   relayHubAddress: 'string',
   gasPriceFactor: 'number',
   gasPriceOracleUrl: 'string',
@@ -192,11 +186,12 @@ const ConfigParamsTypes = {
   workerTargetBalance: 'number',
   managerMinBalance: 'number',
   managerMinStake: 'string',
+  managerStakeTokenAddress: 'string',
   managerTargetBalance: 'number',
   minHubWithdrawalBalance: 'number',
   withdrawToOwnerOnBalance: 'number',
   defaultGasLimit: 'number',
-  requestMinValidBlocks: 'number',
+  requestMinValidSeconds: 'number',
 
   trustedPaymasters: 'list',
   blacklistedPaymasters: 'list',
@@ -225,9 +220,6 @@ const ConfigParamsTypes = {
   environmentName: 'string',
   recentActionAvoidRepeatDistanceBlocks: 'number'
 } as any
-
-// by default: no waiting period - use VersionRegistry entries immediately.
-const DefaultRegistryDelayPeriod = 0
 
 // helper function: throw and never return..
 function error (err: string): never {
@@ -264,7 +256,7 @@ function explicitType ([key, val]: [string, any]): any {
       if (val === 'false' || val === false) return [key, false]
       break
     case 'number': {
-      const v = parseInt(val)
+      const v = parseFloat(val)
       if (!isNaN(v)) {
         return [key, v]
       }
@@ -307,32 +299,6 @@ export function parseServerConfig (args: string[], env: any): any {
   return entriesToObj(Object.entries(config).map(explicitType))
 }
 
-export async function resolveConfigRelayHubAddress (config: Partial<ServerConfigParams>, contractInteractor: ContractInteractor): Promise<string> {
-  let relayHubAddress: string
-  if (config.versionRegistryAddress != null) {
-    if (config.relayHubAddress != null) {
-      error('missing param: must have either relayHubAddress or versionRegistryAddress')
-    }
-    const relayHubId = config.relayHubId ?? error('missing param: relayHubId to read from VersionRegistry')
-    contractInteractor.validateAddress(config.versionRegistryAddress, 'Invalid param versionRegistryAddress: ')
-    if (!await contractInteractor.isContractDeployed(config.versionRegistryAddress)) {
-      error('Invalid param versionRegistryAddress: no contract at address ' + config.versionRegistryAddress)
-    }
-    const versionRegistry = new VersionRegistry(config.coldRestartLogsFromBlock ?? 1, contractInteractor)
-    const { version, value, time } = await versionRegistry.getVersion(relayHubId, config.versionRegistryDelayPeriod ?? DefaultRegistryDelayPeriod)
-    contractInteractor.validateAddress(value, `Invalid param relayHubId ${relayHubId} @ ${version}: not an address:`)
-    console.log(`Using RelayHub ID:${relayHubId} version:${version} address:${value} . created at: ${new Date(time * 1000).toString()}`)
-    relayHubAddress = value
-  } else {
-    if (config.relayHubAddress == null) {
-      error('missing param: must have either relayHubAddress or versionRegistryAddress')
-    }
-    contractInteractor.validateAddress(config.relayHubAddress, 'invalid param: "relayHubAddress" is not a valid address:')
-    relayHubAddress = config.relayHubAddress
-  }
-  return relayHubAddress
-}
-
 // resolve params, and validate the resulting struct
 export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<{
   config: ServerConfigParams
@@ -356,17 +322,15 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     provider: web3provider,
     logger,
     deployment: {
-      relayHubAddress: config.relayHubAddress,
-      versionRegistryAddress: config.versionRegistryAddress
+      relayHubAddress: config.relayHubAddress
     },
     environment
   })
   await contractInteractor._initializeContracts()
   await contractInteractor._initializeNetworkParams()
-  config.relayHubAddress = await resolveConfigRelayHubAddress(config, contractInteractor)
 
   if (config.relayHubAddress == null) {
-    error('relayHubAddress is still null')
+    error('missing param: must have relayHubAddress')
   }
   if (!await contractInteractor.isContractDeployed(config.relayHubAddress)) {
     error(`RelayHub: no contract at address ${config.relayHubAddress}`)
@@ -374,6 +338,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
   if (config.ownerAddress == null || config.ownerAddress === constants.ZERO_ADDRESS) error('missing param: ownerAddress')
+  if (config.managerStakeTokenAddress == null || config.managerStakeTokenAddress === constants.ZERO_ADDRESS) error('missing param: managerStakeTokenAddress')
   const finalConfig = { ...serverDefaultConfiguration, ...config }
   validateBalanceParams(finalConfig)
   return {

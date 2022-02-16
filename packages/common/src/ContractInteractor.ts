@@ -15,30 +15,31 @@ import forwarderAbi from './interfaces/IForwarder.json'
 import stakeManagerAbi from './interfaces/IStakeManager.json'
 import penalizerAbi from './interfaces/IPenalizer.json'
 import gsnRecipientAbi from './interfaces/IRelayRecipient.json'
-import versionRegistryAbi from './interfaces/IVersionRegistry.json'
 import relayRegistrarAbi from './interfaces/IRelayRegistrar.json'
+import iErc20TokenAbi from './interfaces/IERC20Token.json'
 
 import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
 import { LoggerInterface } from './LoggerInterface'
 import {
+  PaymasterGasAndDataLimits,
   address2topic,
   calculateCalldataBytesZeroNonzero,
   decodeRevertReason,
   errorAsBoolean,
   event2topic,
-  PaymasterGasAndDataLimits
+  formatTokenAmount
 } from './Utils'
 import {
   BaseRelayRecipientInstance,
+  IERC20TokenInstance,
   IForwarderInstance,
   IPaymasterInstance,
   IPenalizerInstance,
   IRelayHubInstance,
   IRelayRecipientInstance,
   IRelayRegistrarInstance,
-  IStakeManagerInstance,
-  IVersionRegistryInstance
+  IStakeManagerInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
@@ -91,6 +92,17 @@ export function asRelayCallAbi (r: RelayTransactionRequest): RelayCallABI {
   }
 }
 
+interface ManagerStakeStatus {
+  isStaked: boolean
+  errorMessage: string | null
+}
+
+export interface ERC20TokenMetadata {
+  tokenName: string
+  tokenSymbol: string
+  tokenDecimals: BN
+}
+
 export class ContractInteractor {
   private readonly IPaymasterContract: Contract<IPaymasterInstance>
   private readonly IRelayHubContract: Contract<IRelayHubInstance>
@@ -98,8 +110,8 @@ export class ContractInteractor {
   private readonly IStakeManager: Contract<IStakeManagerInstance>
   private readonly IPenalizer: Contract<IPenalizerInstance>
   private readonly IRelayRecipient: Contract<BaseRelayRecipientInstance>
-  private readonly IVersionRegistry: Contract<IVersionRegistryInstance>
   private readonly IRelayRegistrar: Contract<IRelayRegistrarInstance>
+  private readonly IERC20Token: Contract<IERC20TokenInstance>
 
   private paymasterInstance!: IPaymasterInstance
   relayHubInstance!: IRelayHubInstance
@@ -107,9 +119,9 @@ export class ContractInteractor {
   private forwarderInstance!: IForwarderInstance
   private stakeManagerInstance!: IStakeManagerInstance
   penalizerInstance!: IPenalizerInstance
-  versionRegistry!: IVersionRegistryInstance
   private relayRecipientInstance?: BaseRelayRecipientInstance
   relayRegistrar!: IRelayRegistrarInstance
+  erc20Token!: IERC20TokenInstance
   private readonly relayCallMethod: any
 
   readonly web3: Web3
@@ -175,14 +187,13 @@ export class ContractInteractor {
       contractName: 'IRelayRecipient',
       abi: gsnRecipientAbi
     })
-    // @ts-ignore
-    this.IVersionRegistry = TruffleContract({
-      contractName: 'IVersionRegistry',
-      abi: versionRegistryAbi
-    })
     this.IRelayRegistrar = TruffleContract({
       contractName: 'IRelayRegistrar',
       abi: relayRegistrarAbi
+    })
+    this.IERC20Token = TruffleContract({
+      contractName: 'IERC20Token',
+      abi: iErc20TokenAbi
     })
     this.IStakeManager.setProvider(this.provider, undefined)
     this.IRelayHubContract.setProvider(this.provider, undefined)
@@ -190,8 +201,8 @@ export class ContractInteractor {
     this.IForwarderContract.setProvider(this.provider, undefined)
     this.IPenalizer.setProvider(this.provider, undefined)
     this.IRelayRecipient.setProvider(this.provider, undefined)
-    this.IVersionRegistry.setProvider(this.provider, undefined)
     this.IRelayRegistrar.setProvider(this.provider, undefined)
+    this.IERC20Token.setProvider(this.provider, undefined)
 
     this.relayCallMethod = this.IRelayHubContract.createContract('').methods.relayCall
   }
@@ -246,8 +257,8 @@ export class ContractInteractor {
     const [
       relayHubAddress, forwarderAddress, paymasterVersion
     ] = await Promise.all([
-      this.paymasterInstance.getHubAddr().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
-      this.paymasterInstance.trustedForwarder().catch(
+      this.paymasterInstance.getRelayHub().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
+      this.paymasterInstance.getTrustedForwarder().catch(
         (e: Error) => { throw new Error(`paymaster has no trustedForwarder(): ${e.message}`) }),
       this.paymasterInstance.versionPaymaster().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }).then(
         (version: string) => {
@@ -312,8 +323,8 @@ export class ContractInteractor {
     if (this.deployment.penalizerAddress != null) {
       this.penalizerInstance = await this._createPenalizer(this.deployment.penalizerAddress)
     }
-    if (this.deployment.versionRegistryAddress != null) {
-      this.versionRegistry = await this._createVersionRegistry(this.deployment.versionRegistryAddress)
+    if (this.deployment.managerStakeTokenAddress != null) {
+      this.erc20Token = await this._createERC20(this.deployment.managerStakeTokenAddress)
     }
   }
 
@@ -353,12 +364,48 @@ export class ContractInteractor {
     return await this.IPenalizer.at(address)
   }
 
-  async _createVersionRegistry (address: Address): Promise<IVersionRegistryInstance> {
-    return await this.IVersionRegistry.at(address)
-  }
-
   async _createRelayRegistrar (address: Address): Promise<IRelayRegistrarInstance> {
     return await this.IRelayRegistrar.at(address)
+  }
+
+  async _createERC20 (address: Address): Promise<IERC20TokenInstance> {
+    return await this.IERC20Token.at(address)
+  }
+
+  /**
+   * Queries the balance of the token and displays it in a human-readable format, taking 'decimals' into account.
+   * Note: does not round up the fraction and truncates it.
+   */
+  async getTokenBalanceFormatted (address: Address): Promise<string> {
+    const balance = await this.erc20Token.balanceOf(address)
+    return await this.formatTokenAmount(balance)
+  }
+
+  async formatTokenAmount (balance: BN): Promise<string> {
+    const { tokenSymbol, tokenDecimals } = await this.getErc20TokenMetadata()
+    return formatTokenAmount(balance, tokenDecimals, tokenSymbol)
+  }
+
+  async getErc20TokenMetadata (): Promise<ERC20TokenMetadata> {
+    let tokenName: string
+    try {
+      tokenName = await this.erc20Token.name()
+    } catch (_) {
+      tokenName = `ERC-20 token ${this.erc20Token.address}`
+    }
+    let tokenSymbol: string
+    try {
+      tokenSymbol = await this.erc20Token.symbol()
+    } catch (_) {
+      tokenSymbol = `ERC-20 token ${this.erc20Token.address}`
+    }
+    let tokenDecimals: BN
+    try {
+      tokenDecimals = await this.erc20Token.decimals()
+    } catch (_) {
+      tokenDecimals = toBN(0)
+    }
+    return { tokenName, tokenSymbol, tokenDecimals }
   }
 
   async isTrustedForwarder (recipientAddress: Address, forwarder: Address): Promise<boolean> {
@@ -495,7 +542,8 @@ export class ContractInteractor {
       matchGanache = res?.error?.message?.toString().match(/: revert(?:ed)? (.*)/)
     }
     if (matchGanache != null) {
-      return matchGanache[1]
+      // also cleaning up Hardhat Node's verbose revert errors
+      return matchGanache[1].replace('with reason string ', '').replace(/^'|'$/g, '')
     }
     const errorData = err?.data ?? res?.error?.data
     const m = errorData?.toString().match(/(0x08c379a0\S*)/)
@@ -531,10 +579,6 @@ export class ContractInteractor {
 
   async getPastEventsForPenalizer (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
     return await this._getPastEventsPaginated(this.penalizerInstance.contract, names, extraTopics, options)
-  }
-
-  async getPastEventsForVersionRegistry (names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<EventData[]> {
-    return await this._getPastEventsPaginated(this.versionRegistry.contract, names, extraTopics, options)
   }
 
   getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): number {
@@ -864,18 +908,8 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return code !== '0x'
   }
 
-  async getStakeInfo (managerAddress: Address): Promise<{
-    stake: BN
-    unstakeDelay: BN
-    withdrawBlock: BN
-    owner: string
-  }> {
-    const stakeManager = await this.stakeManagerInstance
-    return await stakeManager.getStakeInfo(managerAddress)
-  }
-
   async workerToManager (worker: Address): Promise<string> {
-    return await this.relayHubInstance.workerToManager(worker)
+    return await this.relayHubInstance.getWorkerManager(worker)
   }
 
   /**
@@ -888,18 +922,41 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   /**
    * Gets stake of an address on the current StakeManager.
-   * @param address - must be a Relay Manger
+   * @param managerAddress
    */
-  async stakeManagerStakeInfo (address: Address): Promise<StakeInfo> {
-    return await this.stakeManagerInstance.getStakeInfo(address)
+  async getStakeInfo (managerAddress: Address): Promise<StakeInfo> {
+    const getStakeInfoResult = await this.stakeManagerInstance.getStakeInfo(managerAddress)
+    // @ts-ignore - TypeChain generates incorrect type declarations for tuples
+    return getStakeInfoResult[0]
   }
 
-  async isRelayManagerStakedOnHub (relayManager: Address): Promise<boolean> {
-    return await this.relayHubInstance.isRelayManagerStaked(relayManager)
-  }
-
-  async isRelayManagerStakedOnSM (relayManager: Address, minAmount: number, minUnstakeDelay: number): Promise<boolean> {
-    return await this.stakeManagerInstance.isRelayManagerStaked(relayManager, this.relayHubInstance.address, minAmount, minUnstakeDelay)
+  async isRelayManagerStakedOnHub (relayManager: Address): Promise<ManagerStakeStatus> {
+    const res: ManagerStakeStatus = await new Promise((resolve) => {
+      const rpcPayload = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_call',
+        params: [
+          {
+            to: this.relayHubInstance.address,
+            data: this.relayHubInstance.contract.methods.verifyRelayManagerStaked(relayManager).encodeABI()
+          },
+          'latest'
+        ]
+      }
+      // @ts-ignore
+      this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string, error: any }) => {
+        if (res.error != null) {
+          err = res.error
+        }
+        const errorMessage = this._decodeRevertFromResponse(err, res)
+        resolve({
+          isStaked: res.result === '0x',
+          errorMessage
+        })
+      })
+    })
+    return res
   }
 
   async initDeployment (deployment: GSNContractsDeployment): Promise<void> {
@@ -1012,7 +1069,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   private async _hubStakeManagerAddress (): Promise<Address> {
-    return await this.relayHubInstance.stakeManager()
+    return await this.relayHubInstance.getStakeManager()
   }
 
   stakeManagerAddress (): Address {
@@ -1020,11 +1077,11 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   private async _hubPenalizerAddress (): Promise<Address> {
-    return await this.relayHubInstance.penalizer()
+    return await this.relayHubInstance.getPenalizer()
   }
 
   private async _hubRelayRegistrarAddress (): Promise<Address> {
-    return await this.relayHubInstance.relayRegistrar()
+    return await this.relayHubInstance.getRelayRegistrar()
   }
 
   penalizerAddress (): Address {
@@ -1099,16 +1156,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const topics = address2topic(managerAddress)
     const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])
     return workersAddedEvents.map(it => it.returnValues.newRelayWorkers).flat()
-  }
-
-  /* Version Registry methods */
-
-  async addVersionInVersionRegistry (id: string, version: string, value: string, transactionDetails: TransactionDetails): Promise<void> {
-    await this.versionRegistry.addVersion(id, version, value, transactionDetails)
-  }
-
-  async cancelVersionInVersionRegistry (id: string, version: string, cancelReason: string, transactionDetails: TransactionDetails): Promise<void> {
-    await this.versionRegistry.cancelVersion(id, version, cancelReason, transactionDetails)
   }
 }
 

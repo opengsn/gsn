@@ -12,7 +12,7 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     }
 
     event SampleRecipientPreCall();
-    event SampleRecipientPostCall(bool success, uint actualCharge);
+    event SampleRecipientPostCall(bool success, uint256 actualCharge);
 
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,

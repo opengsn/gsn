@@ -17,10 +17,10 @@ export interface Environment {
 }
 
 /**
- * With about 6000 blocks per day, maximum unstake delay is defined at around 5 years for the mainnet.
+ * Maximum unstake delay is defined at around 3 years for the mainnet.
  * This is done to prevent mistakenly setting an unstake delay to millions of years.
  */
-const defaultStakeManagerMaxUnstakeDelay: number = 10000000
+const defaultStakeManagerMaxUnstakeDelay: number = 100000000
 
 const defaultPenalizerConfiguration: PenalizerConfiguration = {
   penalizeBlockDelay: 5,
@@ -32,8 +32,7 @@ const defaultRelayHubConfiguration: RelayHubConfiguration = {
   postOverhead: 19040,
   gasReserve: 100000,
   maxWorkerCount: 10,
-  minimumStake: 1e18.toString(),
-  minimumUnstakeDelay: 1000,
+  minimumUnstakeDelay: 15000,
   devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
   devFee: 0
 }
@@ -80,8 +79,7 @@ const ganacheLocal: Environment = {
 /* begin Arbitrum-specific Environment */
 const arbitrumRelayHubConfigurationOverride: Partial<RelayHubConfiguration> = {
   gasOverhead: 1000000,
-  postOverhead: 0,
-  minimumStake: 1e16.toString()
+  postOverhead: 0
 }
 
 const arbitrumRelayHubConfiguration: RelayHubConfiguration =

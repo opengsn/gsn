@@ -47,7 +47,7 @@ export interface GSNConfig {
   paymasterAddress?: Address
   clientId: IntString
   auditorsCount: number
-  requestValidBlocks: IntString
+  requestValidSeconds: number
   maxViewableGasLimit: IntString
   environment: Environment
   maxApprovalDataLength: number

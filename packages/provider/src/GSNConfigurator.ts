@@ -44,7 +44,7 @@ export const defaultGsnConfig: GSNConfig = {
   jsonStringifyRequest: true,
   auditorsCount: 0,
   clientId: '1',
-  requestValidBlocks: '6000',
+  requestValidSeconds: 172800, // 2 days
   maxViewableGasLimit: '12000000',
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,

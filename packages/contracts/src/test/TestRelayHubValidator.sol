@@ -8,7 +8,7 @@ contract TestRelayHubValidator {
 
     //for testing purposes, we must be called from a method with same param signature as RelayCall
     function dummyRelayCall(
-        uint, //paymasterMaxAcceptanceBudget,
+        uint256, //paymasterMaxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData
@@ -17,7 +17,7 @@ contract TestRelayHubValidator {
     }
 
     // helper method for verifyTransactionPacking
-    function dynamicParamSize(bytes calldata buf) external pure returns (uint) {
+    function dynamicParamSize(bytes calldata buf) external pure returns (uint256) {
         return RelayHubValidator.dynamicParamSize(buf);
     }
 }

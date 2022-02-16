@@ -133,10 +133,7 @@ export class RelayServer extends EventEmitter {
 
   async pingHandler (paymaster?: string): Promise<PingResponse> {
     if (this.config.runPaymasterReputations && paymaster != null) {
-      const status = await this.reputationManager.getPaymasterStatus(paymaster, this.lastScannedBlock)
-      if (status === PaymasterStatus.BLOCKED || status === PaymasterStatus.ABUSED) {
-        throw new Error(`This paymaster will not be served, status: ${status}`)
-      }
+      await this.validatePaymasterReputation(paymaster, this.lastScannedBlock)
     }
     return {
       relayWorkerAddress: this.workerAddress,
@@ -190,10 +187,12 @@ export class RelayServer extends EventEmitter {
     }
 
     // validate the validUntil is not too close
-    const expiredInBlocks = parseInt(req.relayRequest.request.validUntil) - currentBlockNumber
-    if (expiredInBlocks < this.config.requestMinValidBlocks) {
+    const secondsNow = Math.round(Date.now() / 1000)
+    const expiredInSeconds = parseInt(req.relayRequest.request.validUntilTime) - secondsNow
+    if (expiredInSeconds < this.config.requestMinValidSeconds) {
+      const expirationDate = new Date(parseInt(req.relayRequest.request.validUntilTime) * 1000)
       throw new Error(
-        `Request expired (or too close): expired in ${expiredInBlocks} blocks, we expect it to be valid for ${this.config.requestMinValidBlocks}`)
+        `Request expired (or too close): expired at (${expirationDate.toUTCString()}), we expect it to be valid until ${new Date(secondsNow + this.config.requestMinValidSeconds).toUTCString()} `)
     }
   }
 
@@ -239,6 +238,9 @@ export class RelayServer extends EventEmitter {
   }
 
   async validatePaymasterReputation (paymaster: Address, currentBlockNumber: number): Promise<void> {
+    if (this._isTrustedPaymaster(paymaster)) {
+      return
+    }
     const status = await this.reputationManager.getPaymasterStatus(paymaster, currentBlockNumber)
     if (status === PaymasterStatus.GOOD) {
       return
@@ -618,7 +620,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _worker (blockNumber: number): Promise<PrefixedHexString[]> {
-    if (!this.initialized) {
+    if (!this.initialized || this.registrationManager.balanceRequired == null) {
       throw new Error('Please run init() first')
     }
     if (blockNumber <= this.lastScannedBlock) {

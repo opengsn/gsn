@@ -2,35 +2,40 @@
 pragma solidity >=0.6.0;
 
 /**
- * a contract must implement this interface in order to support relayed transaction.
- * It is better to inherit the BaseRelayRecipient as its implementation.
+ * @title The Relay Recipient Base Abstract Class - Declarations
+ *
+ * @notice A contract must implement this interface in order to support relayed transaction.
+ *
+ * @notice It is recommended that your contract inherits from the BaseRelayRecipient contract.
  */
 abstract contract IRelayRecipient {
 
     /**
-     * return if the forwarder is trusted to forward relayed transactions to us.
-     * the forwarder is required to verify the sender's signature, and verify
-     * the call is not a replay.
+     * :warning: **Warning** :warning: The Forwarder can have a full control over your Recipient. Only trust verified Forwarder.
+     * @param forwarder The address of the Forwarder contract that is being used.
+     * @return isTrustedForwarder `true` if the Forwarder is trusted to forward relayed transactions by this Recipient.
      */
     function isTrustedForwarder(address forwarder) public virtual view returns(bool);
 
     /**
-     * return the sender of this call.
-     * if the call came through our trusted forwarder, then the real sender is appended as the last 20 bytes
-     * of the msg.data.
-     * otherwise, return `msg.sender`
-     * should be used in the contract anywhere instead of msg.sender
+     * @notice Use this method the contract anywhere instead of msg.sender to support relayed transactions.
+     * @return sender The real sender of this call.
+     * For a call that came through the Forwarder the real sender is extracted from the last 20 bytes of the `msg.data`.
+     * Otherwise simply returns `msg.sender`.
      */
     function _msgSender() internal virtual view returns (address);
 
     /**
-     * return the msg.data of this call.
-     * if the call came through our trusted forwarder, then the real sender was appended as the last 20 bytes
-     * of the msg.data - so this method will strip those 20 bytes off.
-     * otherwise (if the call was made directly and not through the forwarder), return `msg.data`
-     * should be used in the contract instead of msg.data, where this difference matters.
+     * @notice Use this method in the contract instead of `msg.data` when difference matters (hashing, signature, etc.)
+     * @return data The real `msg.data` of this call.
+     * For a call that came through the Forwarder, the real sender address was appended as the last 20 bytes
+     * of the `msg.data` - so this method will strip those 20 bytes off.
+     * Otherwise (if the call was made directly and not through the forwarder) simply returns `msg.data`.
      */
     function _msgData() internal virtual view returns (bytes calldata);
 
+    /**
+     * @return version The SemVer string of this Recipient's version.
+     */
     function versionRecipient() external virtual view returns (string memory);
 }

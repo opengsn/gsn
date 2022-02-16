@@ -5,7 +5,12 @@ import path from 'path'
 
 import { ether } from '@openzeppelin/test-helpers'
 
-import { IStakeManagerInstance, RelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
+import {
+  StakeManagerInstance,
+  RelayHubContract,
+  RelayHubInstance,
+  TestTokenInstance
+} from '@opengsn/contracts/types/truffle-contracts'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
@@ -15,7 +20,7 @@ import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { Environment } from '@opengsn/common'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
@@ -32,7 +37,8 @@ const localhostOne = 'http://localhost:8090'
 //
 export async function startRelay (
   relayHubAddress: string,
-  stakeManager: IStakeManagerInstance,
+  testToken: TestTokenInstance,
+  stakeManager: StakeManagerInstance,
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
 
@@ -51,6 +57,7 @@ export async function startRelay (
   }
   args.push('--logLevel', 'debug')
   args.push('--relayHubAddress', relayHubAddress)
+  args.push('--managerStakeTokenAddress', testToken.address)
   const configFile = path.resolve(__dirname, './server-config.json')
   args.push('--config', configFile)
   args.push('--ownerAddress', options.relayOwner)
@@ -154,7 +161,7 @@ export async function startRelay (
   while (true) {
     await sleep(100)
     const newStakeInfo = await stakeManager.getStakeInfo(relayManagerAddress)
-    if (isSameAddress(newStakeInfo.owner, options.relayOwner)) {
+    if (isSameAddress(newStakeInfo[0].owner, options.relayOwner)) {
       console.log('RelayServer successfully set its owner on the StakeManager')
       break
     }
@@ -163,9 +170,9 @@ export async function startRelay (
     }
   }
 
-  await stakeManager.stakeForRelayManager(relayManagerAddress, options.delay || 2000, {
-    from: options.relayOwner,
-    value: options.stake || ether('1')
+  const amount = options.stake || ether('1')
+  await stakeManager.stakeForRelayManager(testToken.address, relayManagerAddress, options.delay || 15000, amount, {
+    from: options.relayOwner
   })
   await sleep(500)
   await stakeManager.authorizeHubByOwner(relayManagerAddress, relayHubAddress, {
@@ -205,6 +212,23 @@ export async function increaseTime (time: number): Promise<void> {
       evmMine()
         .then((r: any) => resolve(r))
         .catch((e: Error) => reject(e))
+    })
+  })
+}
+export async function setNextBlockTimestamp (time: number | BN): Promise<void> {
+  return await new Promise((resolve, reject) => {
+    // @ts-ignore
+    web3.currentProvider.send({
+      jsonrpc: '2.0',
+      method: 'evm_setNextBlockTimestamp',
+      params: [parseInt(time.toString())],
+      id: Date.now()
+    }, (e: Error | null, r: any) => {
+      if (e) {
+        reject(e)
+      } else {
+        resolve(r)
+      }
     })
   })
 }
@@ -276,13 +300,17 @@ export async function deployHub (
   stakeManager: string,
   penalizer: string,
   batchGateway: string,
+  testToken: string,
+  testTokenMinimumStake: IntString,
   configOverride: Partial<RelayHubConfiguration> = {},
-  environment: Environment = defaultEnvironment): Promise<RelayHubInstance> {
+  environment: Environment = defaultEnvironment,
+  hubContract: any = undefined): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
     ...environment.relayHubConfiguration,
     ...configOverride
   }
-  const hub: RelayHubInstance = await RelayHub.new(
+  const HubContract: RelayHubContract = hubContract ?? RelayHub
+  const hub: RelayHubInstance = await HubContract.new(
     stakeManager,
     penalizer,
     batchGateway,
@@ -290,6 +318,7 @@ export async function deployHub (
 
   const relayRegistrar = await RelayRegistrar.new(hub.address, true)
   await hub.setRegistrar(relayRegistrar.address)
+  await hub.setMinimumStakes([testToken], [testTokenMinimumStake])
 
   return hub
 }

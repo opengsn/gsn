@@ -9,14 +9,15 @@ import "../forwarder/IForwarder.sol";
 import "./GsnUtils.sol";
 
 /**
- * Bridge Library to map GSN RelayRequest into a call of a Forwarder
+ * @title The ERC-712 Library for GSN
+ * @notice Bridge Library to convert a GSN RelayRequest into a valid `ForwardRequest` for a `Forwarder`.
  */
 library GsnEip712Library {
     // maximum length of return value/revert reason for 'execute' method. Will truncate result if exceeded.
     uint256 private constant MAX_RETURN_SIZE = 1024;
 
     //copied from Forwarder (can't reference string constants even from another library)
-    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntil";
+    string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntilTime";
 
     bytes public constant RELAYDATA_TYPE = "RelayData(uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 pctRelayFee,uint256 baseRelayFee,address relayWorker,address paymaster,address forwarder,bytes paymasterData,uint256 clientId)";
 

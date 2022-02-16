@@ -1,12 +1,12 @@
 import { PrefixedHexString } from 'ethereumjs-util'
-import { constants } from '@openzeppelin/test-helpers'
+import { constants, ether } from '@openzeppelin/test-helpers'
 import { toWei } from 'web3-utils'
 
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
-import { IStakeManagerInstance, TokenGasCalculatorInstance } from '@opengsn/paymasters/types/truffle-contracts'
+import { StakeManagerInstance, TokenGasCalculatorInstance } from '@opengsn/paymasters/types/truffle-contracts'
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
-import { RelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
+import { RelayHubInstance, TestTokenInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { defaultEnvironment } from '@opengsn/common'
 
@@ -25,15 +25,18 @@ export async function revertReason (func: Promise<any>): Promise<string> {
   }
 }
 
-export async function registerAsRelayServer (stakeManager: IStakeManagerInstance, relay: string, relayOwner: string, hub: RelayHubInstance): Promise<void> {
+export async function registerAsRelayServer (testToken: TestTokenInstance, stakeManager: StakeManagerInstance, relay: string, relayOwner: string, hub: RelayHubInstance): Promise<void> {
+  const stake = ether('2')
+  await testToken.mint(stake, { from: relayOwner })
+  await testToken.approve(stakeManager.address, stake, { from: relayOwner })
   await stakeManager.setRelayManagerOwner(relayOwner, { from: relay })
-  await stakeManager.stakeForRelayManager(relay, 7 * 24 * 3600, {
-    from: relayOwner,
-    value: (2e18).toString()
+  await stakeManager.stakeForRelayManager(testToken.address, relay, 7 * 24 * 3600, stake.toString(), {
+    from: relayOwner
   })
   await stakeManager.authorizeHubByOwner(relay, hub.address, { from: relayOwner })
+  await hub.setMinimumStakes([testToken.address], [stake])
   await hub.addRelayWorkers([relay], { from: relay })
-  const relayRegistrar = await RelayRegistrar.at(await hub.relayRegistrar())
+  const relayRegistrar = await RelayRegistrar.at(await hub.getRelayRegistrar())
   await relayRegistrar.registerRelayServer(2e16.toString(), '10', 'url', { from: relay })
 }
 

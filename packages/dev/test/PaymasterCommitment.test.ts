@@ -1,3 +1,5 @@
+/* eslint-disable no-global-assign */
+
 import BN from 'bn.js'
 import { HttpProvider } from 'web3-core'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
@@ -13,7 +15,7 @@ import {
   StakeManagerInstance,
   TestRecipientInstance,
   ForwarderInstance,
-  TestPaymasterConfigurableMisbehaviorInstance, RelayRegistrarInstance
+  TestPaymasterConfigurableMisbehaviorInstance, RelayRegistrarInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { constants, ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
@@ -24,6 +26,7 @@ import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUt
 
 import { deployHub, encodeRevertReason } from './TestUtils'
 
+const TestToken = artifacts.require('TestToken')
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -31,6 +34,12 @@ const TestUtil = artifacts.require('TestUtil')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
+
+const contractOrig = contract
+if (process.env.GAS_CALCULATIONS == null) {
+  // @ts-ignore
+  contract = contract.skip
+}
 
 interface PartialRelayRequest {
   request?: Partial<ForwardRequest>
@@ -108,6 +117,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
   let penalizer: PenalizerInstance
   let relayHubInstance: RelayHubInstance
   let relayRegistrar: RelayRegistrarInstance
+  let testToken: TestTokenInstance
 
   let recipientContract: TestRecipientInstance
   let paymasterContract: TestPaymasterConfigurableMisbehaviorInstance
@@ -120,10 +130,12 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
   const pctRelayFee = '0'
 
   before(async function () {
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay)
+    const stake = ether('2')
+    testToken = await TestToken.new()
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-    relayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS)
-    relayRegistrar = await RelayRegistrar.at(await relayHubInstance.relayRegistrar())
+    relayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
+    relayRegistrar = await RelayRegistrar.at(await relayHubInstance.getRelayRegistrar())
 
     forwarderInstance = await Forwarder.new()
     forwarder = forwarderInstance.address
@@ -137,9 +149,12 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     target = recipientContract.address
     relayHub = relayHubInstance.address
 
+    await testToken.mint(stake, { from: relayOwner })
+    await testToken.approve(stakeManager.address, stake, { from: relayOwner })
+    // await relayHubInstance.setMinimumStakes([testToken.address], [stake])
+
     await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-    await stakeManager.stakeForRelayManager(relayManager, 1000, {
-      value: ether('2'),
+    await stakeManager.stakeForRelayManager(testToken.address, relayManager, 15000, stake, {
       from: relayOwner
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
@@ -176,7 +191,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
           nonce: senderNonce,
           value: '0',
           gas: gasLimit,
-          validUntil: '0'
+          validUntilTime: '0'
         },
         relayData: {
           pctRelayFee,
@@ -504,3 +519,6 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     })
   })
 })
+
+// @ts-ignore
+contract = contractOrig

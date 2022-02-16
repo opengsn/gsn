@@ -14,5 +14,4 @@ commander
   .command('paymaster-balance', 'query a paymaster GSN balance')
   .command('send-request', 'send a GSN meta-transaction request to a server using a GSN provider')
   .command('status', 'status of the GSN network')
-  .command('registry', 'VersionRegistry management')
   .parse(process.argv)
