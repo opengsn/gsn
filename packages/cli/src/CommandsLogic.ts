@@ -388,9 +388,9 @@ export class CommandsLogic {
     const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
     const fromBlock = await relayHub.getCreationBlock()
     const toBlock = Math.min(toNumber(fromBlock) + 5000, await this.contractInteractor.getBlockNumber())
-    const tokens = await this.contractInteractor.getPastEventsForHub([], { fromBlock, toBlock }, ['StakingToken'])
+    const tokens = await this.contractInteractor.getPastEventsForHub([], { fromBlock, toBlock }, ['StakingTokenDataChanged'])
     if (tokens.length === 0) {
-      throw new Error(`no registered StakingTokens tokens on relayhub ${relayHubAddress}`)
+      throw new Error(`no registered staking tokens on relayhub ${relayHubAddress}`)
     }
     return tokens[0].returnValues.token
   }

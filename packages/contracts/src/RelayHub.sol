@@ -68,7 +68,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         require(token.length == minimumStake.length, "setMinimumStakes: wrong length");
         for (uint256 i = 0; i < token.length; i++) {
             minimumStakePerToken[token[i]] = minimumStake[i];
-            emit StakingToken(address(token[i]), minimumStake[i]);
+            emit StakingDataTokenChanged(address(token[i]), minimumStake[i]);
         }
     }
 
