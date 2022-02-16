@@ -3,14 +3,14 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "./forwarder/Forwarder.sol";
-import "./BaseRelayRecipient.sol";
+import "./ERC2771Recipient.sol";
 import "./utils/GsnUtils.sol";
 
 /**
  * batch forwarder support calling a method sendBatch in the forwarder itself.
  * NOTE: the "target" of the request should be the BatchForwarder itself
  */
-contract BatchForwarder is Forwarder, BaseRelayRecipient {
+contract BatchForwarder is Forwarder, ERC2771Recipient {
 
     string public override versionRecipient = "2.2.3+opengsn.batched.irelayrecipient";
 

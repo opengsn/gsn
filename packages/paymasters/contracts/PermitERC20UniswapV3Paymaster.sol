@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "@opengsn/contracts/src/forwarder/IForwarder.sol";
-import "@opengsn/contracts/src/BaseRelayRecipient.sol";
+import "@opengsn/contracts/src/ERC2771Recipient.sol";
 import "@opengsn/contracts/src/BasePaymaster.sol";
 import "@opengsn/contracts/src/utils/GsnUtils.sol";
 
@@ -22,7 +22,7 @@ import "./helpers/PermitInterfaceDAI.sol";
  * A paymaster allowing addresses holding ERC20 tokens with 'permit' functionality
  * to pay for a GSN transaction.
  */
-contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
+contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     using SafeMath for uint256;
 
     event Received(address indexed sender, uint256 eth);
@@ -46,20 +46,20 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, BaseRelayRecipient {
         return "2.2.3+opengsn.permit-erc20-uniswap-v3.irelayrecipient";
     }
 
-    function getTrustedForwarder() override(BasePaymaster, BaseRelayRecipient) public view returns (address forwarder){
-        forwarder = BaseRelayRecipient.getTrustedForwarder();
+    function getTrustedForwarder() override(BasePaymaster, ERC2771Recipient) public view returns (address forwarder){
+        forwarder = ERC2771Recipient.getTrustedForwarder();
     }
 
     function setTrustedForwarder(address _forwarder) public override onlyOwner {
         _setTrustedForwarder(_forwarder);
     }
 
-    function _msgSender() internal view override(Context, BaseRelayRecipient) returns (address sender) {
-        sender = BaseRelayRecipient._msgSender();
+    function _msgSender() internal view override(Context, ERC2771Recipient) returns (address sender) {
+        sender = ERC2771Recipient._msgSender();
     }
 
-    function _msgData() internal view override(Context, BaseRelayRecipient) returns (bytes memory) {
-        return BaseRelayRecipient._msgData();
+    function _msgData() internal view override(Context, ERC2771Recipient) returns (bytes memory) {
+        return ERC2771Recipient._msgData();
     }
 
     constructor(
