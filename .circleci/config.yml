@@ -10,11 +10,7 @@ jobs: # a collection of steps
 
       - run:
           name: git info
-          command: git log --format="%ad, %an, %s" | head -1  ; echo $?
-
-      - run:
-          name: git test
-          command: test `git branch|sed -ne 's/[*]//p'` = 'master' || git log --format="%ad, %an, %s"|head -1 | grep -E  '(\w\w+-\d\d+|dependabot)'
+          command: /.circleci/checkGit
           
       - run:
           name: package-json-all-deps

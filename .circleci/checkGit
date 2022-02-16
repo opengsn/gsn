@@ -1,0 +1,11 @@
+#!/bin/bash -xe
+
+branch=`git branch | sed -ne 's/[*] *//p'`
+
+title=`git log --format="%h %ad, %an, %s"|head -1 `
+
+#do nothing on non-master branch
+#test branch != 'master' && exit 0
+
+echo branch: $branch commit: $title
+echo $title | grep -E  '(\w\w+-\d\d+|dependabot)'
