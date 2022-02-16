@@ -539,7 +539,7 @@ export class CommandsLogic {
     }
     await registerForwarderForGsn(fInstance, options)
 
-    let stakingTokenAddress = deployOptions.stakeManagerAddress
+    let stakingTokenAddress = deployOptions.stakeManagerAddress ?? ''
 
     let ttInstance: Contract | undefined
     if (deployOptions.deployTestToken ?? false) {
