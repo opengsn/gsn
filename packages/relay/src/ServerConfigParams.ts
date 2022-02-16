@@ -330,7 +330,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   }
   if (config.coldRestartLogsFromBlock == null) {
     const block = await contractInteractor.getCreationBlockFromRegistrar()
-    config.coldRestartLogsFromBlock = block.toNumber();
+    config.coldRestartLogsFromBlock = block.toNumber()
   }
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')
