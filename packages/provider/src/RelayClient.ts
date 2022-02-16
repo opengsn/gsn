@@ -1,8 +1,9 @@
+import Web3 from 'web3'
 import { EventEmitter } from 'events'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
-import { ContractInteractor, asRelayCallAbi, getChainId } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, asRelayCallAbi } from '@opengsn/common/dist/ContractInteractor'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
@@ -469,11 +470,11 @@ export class RelayClient {
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     let configFromServer = {}
-    const chainId = await getChainId(provider)
-    const useOpenGsnConfig = config.useOpenGsnConfig ?? defaultGsnConfig.useOpenGsnConfig
-    if (useOpenGsnConfig) {
-      this.logger.debug(`Reading config from docs for chainId ${chainId.toString()}`)
-      configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.openGsnConfigUrl)
+    const chainId = await new Web3(provider as any).eth.getChainId()
+    const useClientDefaultConfigUrl = config.useClientDefaultConfigUrl ?? defaultGsnConfig.useClientDefaultConfigUrl
+    if (useClientDefaultConfigUrl) {
+      this.logger.debug(`Reading default client config for chainId ${chainId.toString()}`)
+      configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.clientDefaultConfigUrl)
     }
     return {
       ...defaultGsnConfig,
@@ -482,10 +483,10 @@ export class RelayClient {
     }
   }
 
-  async _resolveConfigurationFromServer (chainId: number, openGsnConfigUrl: string): Promise<Partial<GSNConfig>> {
+  async _resolveConfigurationFromServer (chainId: number, clientDefaultConfigUrl: string): Promise<Partial<GSNConfig>> {
     try {
       const httpClient = new HttpClient(new HttpWrapper(), this.logger)
-      const jsonConfig = await httpClient.getNetworkConfiguration(openGsnConfigUrl)
+      const jsonConfig = await httpClient.getNetworkConfiguration(clientDefaultConfigUrl)
       if (jsonConfig.networks[chainId] == null) {
         return {}
       }

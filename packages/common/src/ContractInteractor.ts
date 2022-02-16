@@ -1174,8 +1174,3 @@ export function getRawTxOptions (chainId: number, networkId: number, chain?: str
       }, 'london')
   }
 }
-
-export async function getChainId (provider: Web3ProviderBaseInterface): Promise<number> {
-  const web3 = new Web3(provider as any)
-  return await web3.eth.getChainId()
-}

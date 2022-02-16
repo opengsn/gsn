@@ -49,6 +49,6 @@ export interface GSNConfig {
   environment: Environment
   maxApprovalDataLength: number
   maxPaymasterDataLength: number
-  openGsnConfigUrl: string
-  useOpenGsnConfig: boolean
+  clientDefaultConfigUrl: string
+  useClientDefaultConfigUrl: boolean
 }

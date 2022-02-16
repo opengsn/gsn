@@ -46,8 +46,8 @@ export class HttpClient {
     return auditResponse
   }
 
-  async getNetworkConfiguration (openGsnConfigUrl: string): Promise<ConfigResponse> {
-    const configResponse: ConfigResponse = await this.httpWrapper.sendPromise(openGsnConfigUrl)
+  async getNetworkConfiguration (clientDefaultConfigUrl: string): Promise<ConfigResponse> {
+    const configResponse: ConfigResponse = await this.httpWrapper.sendPromise(clientDefaultConfigUrl)
     this.logger.info(`Config response: ${JSON.stringify(configResponse)}`)
     return configResponse
   }
