@@ -791,10 +791,10 @@ contract('RelayClient', function (accounts) {
       assert.equal(resolvedConfig.methodSuffix, defaultGsnConfig.methodSuffix)
       sinon.restore()
     })
-    it('should not use website configuration if useOpenGsnConfig is false', async function () {
+    it('should not use website configuration if useClientDefaultConfigUrl is false', async function () {
       const spy = sinon.spy(relayClient, '_resolveConfigurationFromServer')
       const config: Partial<GSNConfig> = {
-        useOpenGsnConfig: false
+        useClientDefaultConfigUrl: false
       }
       const resolvedConfig = await relayClient._resolveConfiguration({
         provider: relayClient.getUnderlyingProvider(),
@@ -808,13 +808,12 @@ contract('RelayClient', function (accounts) {
       let supportedNetworks: number[]
       let jsonConfig: ConfigResponse
       before('get all supported networks', async function () {
-        jsonConfig = await relayClient.dependencies.httpClient.getNetworkConfiguration(defaultGsnConfig.openGsnConfigUrl)
+        jsonConfig = await relayClient.dependencies.httpClient.getNetworkConfiguration(defaultGsnConfig.clientDefaultConfigUrl)
         supportedNetworks = Object.keys(jsonConfig.networks).map(k => parseInt(k))
       })
       it('should get configuration from opengsn for all supported networks', async function () {
         for (const network of supportedNetworks) {
-          console.log(`Network ${jsonConfig.networks[network].name}`)
-          const config = await relayClient._resolveConfigurationFromServer(network, defaultGsnConfig.openGsnConfigUrl)
+          const config = await relayClient._resolveConfigurationFromServer(network, defaultGsnConfig.clientDefaultConfigUrl)
           const GSNConfigKeys = Object.keys(defaultGsnConfig)
           Object.keys(config).forEach(key => assert.isTrue(GSNConfigKeys.includes(key), `key ${key} not found in GSConfig`))
         }
