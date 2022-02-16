@@ -7,6 +7,8 @@ import "./interfaces/IERC2771Recipient.sol";
 /**
  * @title The ERC-2771 Recipient Base Abstract Class - Implementation
  *
+ * @notice Note that this contract was called `BaseRelayRecipient` in the previous revision of the GSN.
+ *
  * @notice A base contract to be inherited by any contract that want to receive relayed transactions.
  *
  * @notice A subclass must use `_msgSender()` instead of `msg.sender`.
