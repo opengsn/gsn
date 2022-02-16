@@ -5,7 +5,13 @@ import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { deployHub, evmMine, setNextBlockTimestamp } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
-import { defaultEnvironment, getEip712Signature, constants, splitRelayUrlForRegistrar } from '@opengsn/common/dist'
+import {
+  constants,
+  defaultEnvironment,
+  getEip712Signature,
+  splitRelayUrlForRegistrar,
+  toNumber
+} from '@opengsn/common/dist'
 import {
   ForwarderInstance,
   PenalizerInstance,
@@ -152,7 +158,7 @@ contract('RelayHub Configuration',
 
       it('should let owner re-set deprecation only before it\'s due block', async function () {
         // Setting deprecation time
-        let deprecationTime = parseInt((await web3.eth.getBlock('latest')).timestamp.toString()) + deprecationTimeInSeconds
+        let deprecationTime = toNumber((await web3.eth.getBlock('latest')).timestamp) + deprecationTimeInSeconds
         let res = await relayHub.deprecateHub(deprecationTime, { from: relayHubOwner })
         expectEvent(
           res,
@@ -162,7 +168,7 @@ contract('RelayHub Configuration',
         await evmMine()
 
         // Resetting deprecation time before it's due
-        deprecationTime = parseInt((await web3.eth.getBlock('latest')).timestamp.toString()) + deprecationTimeInSeconds
+        deprecationTime = toNumber((await web3.eth.getBlock('latest')).timestamp) + deprecationTimeInSeconds
         res = await relayHub.deprecateHub(deprecationTime, { from: relayHubOwner })
         expectEvent(
           res,
@@ -189,7 +195,7 @@ contract('RelayHub Configuration',
         assert.equal(deprecationTime.toString(16), maxUint256)
 
         // After deprecation time set but not yet passed
-        const newDeprecationTime = parseInt((await web3.eth.getBlock('latest')).timestamp.toString()) + deprecationTimeInSeconds
+        const newDeprecationTime = toNumber((await web3.eth.getBlock('latest')).timestamp) + deprecationTimeInSeconds
         await relayHub.deprecateHub(newDeprecationTime)
         isDeprecated = await relayHub.isDeprecated()
         assert.isFalse(isDeprecated)
@@ -206,7 +212,7 @@ contract('RelayHub Configuration',
 
     describe('#relayCall', function () {
       it('should revert if deprecationBlock set and passed', async function () {
-        const deprecationTime = parseInt((await web3.eth.getBlock('latest')).timestamp.toString()) + deprecationTimeInSeconds
+        const deprecationTime = toNumber((await web3.eth.getBlock('latest')).timestamp) + deprecationTimeInSeconds
         await relayHub.deprecateHub(deprecationTime)
         await setNextBlockTimestamp(deprecationTime)
 
@@ -229,7 +235,7 @@ contract('RelayHub Configuration',
       })
 
       it('should not revert before deprecationBlock passed', async function () {
-        const newDeprecationTime = parseInt((await web3.eth.getBlock('latest')).timestamp.toString()) + deprecationTimeInSeconds
+        const newDeprecationTime = toNumber((await web3.eth.getBlock('latest')).timestamp) + deprecationTimeInSeconds
         await relayHub.deprecateHub(newDeprecationTime)
         const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
           from: relayWorker,

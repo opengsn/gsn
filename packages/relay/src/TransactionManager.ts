@@ -11,7 +11,12 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { TxStoreManager } from './TxStoreManager'
 import { KeyManager, SignedTransaction } from './KeyManager'
 import { ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import { createStoredTransaction, ServerAction, StoredTransaction, StoredTransactionMetadata } from './StoredTransaction'
+import {
+  createStoredTransaction,
+  ServerAction,
+  StoredTransaction,
+  StoredTransactionMetadata
+} from './StoredTransaction'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { isSameAddress } from '@opengsn/common/dist/Utils'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -34,6 +39,7 @@ export interface SendTransactionDetails {
   maxFeePerGas?: IntString
   maxPriorityFeePerGas?: IntString
   creationBlockNumber: number
+  creationBlockTimestamp: number
 }
 
 export class TransactionManager {
@@ -199,7 +205,8 @@ data                     | ${transaction.data}
         from: txDetails.signer,
         attempts: 1,
         serverAction: txDetails.serverAction,
-        creationBlockNumber: txDetails.creationBlockNumber
+        creationBlockNumber: txDetails.creationBlockNumber,
+        creationBlockTimestamp: txDetails.creationBlockTimestamp
       }
       storedTx = createStoredTransaction(signedTransaction.signedEthJsTx, metadata)
       this.nonces[txDetails.signer]++
@@ -216,13 +223,20 @@ data                     | ${transaction.data}
     await this.txStoreManager.putTx(storedTx, true)
   }
 
-  async updateTransactionWithAttempt (txToUpdate: TypedTransaction, tx: StoredTransaction, currentBlock: number): Promise<StoredTransaction> {
+  async updateTransactionWithAttempt (
+    txToUpdate: TypedTransaction,
+    tx: StoredTransaction,
+    currentBlockNumber: number,
+    currentBlockTimestamp: number
+  ): Promise<StoredTransaction> {
     const metadata: StoredTransactionMetadata = {
       attempts: tx.attempts + 1,
-      boostBlockNumber: currentBlock,
+      boostBlockNumber: currentBlockNumber,
+      boostBlockTimestamp: currentBlockTimestamp,
       from: tx.from,
       serverAction: tx.serverAction,
       creationBlockNumber: tx.creationBlockNumber,
+      creationBlockTimestamp: tx.creationBlockTimestamp,
       minedBlockNumber: tx.minedBlockNumber
     }
     const storedTx = createStoredTransaction(txToUpdate, metadata)
@@ -230,7 +244,13 @@ data                     | ${transaction.data}
     return storedTx
   }
 
-  async resendTransaction (tx: StoredTransaction, currentBlock: number, newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean): Promise<SignedTransactionDetails> {
+  async resendTransaction (
+    tx: StoredTransaction,
+    currentBlockNumber: number,
+    currentBlockTimestamp: number,
+    newMaxFee: number,
+    newMaxPriorityFee: number,
+    isMaxGasPriceReached: boolean): Promise<SignedTransactionDetails> {
     await this.validateBalance(tx.from, newMaxFee, tx.gas)
     let txToSign: TypedTransaction
     if (this.transactionType === TransactionType.TYPE_TWO) {
@@ -259,7 +279,8 @@ data                     | ${transaction.data}
     }
     const keyManager = this.managerKeyManager.isSigner(tx.from) ? this.managerKeyManager : this.workersKeyManager
     const signedTransaction = keyManager.signTransaction(tx.from, txToSign)
-    const storedTx = await this.updateTransactionWithAttempt(signedTransaction.signedEthJsTx, tx, currentBlock)
+    const storedTx =
+      await this.updateTransactionWithAttempt(signedTransaction.signedEthJsTx, tx, currentBlockNumber, currentBlockTimestamp)
     // Print boosted-log only if transaction is boosted (might be resent without boosting)
     if (tx.maxFeePerGas < storedTx.maxFeePerGas || tx.maxPriorityFeePerGas < storedTx.maxPriorityFeePerGas) {
       this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.maxFeePerGas, tx.maxPriorityFeePerGas, isMaxGasPriceReached)
@@ -359,10 +380,15 @@ data                     | ${transaction.data}
   }
 
   /**
-   * This methods uses the oldest pending transaction for reference. If it was not mined in a reasonable time,
-   * it is boosted. All consequent transactions with gas price lower then that are boosted as well.
+   * This method uses the oldest pending transaction for reference. If it was not mined in a reasonable time,
+   * it is boosted. All consequent transactions with gas price lower than that are boosted as well.
    */
-  async boostUnderpricedPendingTransactionsForSigner (signer: string, currentBlockHeight: number, minMaxPriorityFee: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+  async boostUnderpricedPendingTransactionsForSigner (
+    signer: string,
+    currentBlockNumber: number,
+    currentBlockTimestamp: number,
+    minMaxPriorityFee: number
+  ): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const boostedTransactions = new Map<PrefixedHexString, SignedTransactionDetails>()
 
     // Load unconfirmed transactions from store again
@@ -383,25 +409,30 @@ data                     | ${transaction.data}
       throw new Error(`Boosting: missing nonce ${nonce}. Lowest stored tx nonce: ${oldestPendingTx.nonce}`)
     }
 
-    const lastSentAtBlockHeight = oldestPendingTx.boostBlockNumber ?? oldestPendingTx.creationBlockNumber
+    const lastSentAtBlockTimestamp = oldestPendingTx.boostBlockTimestamp ?? oldestPendingTx.creationBlockTimestamp
     // If the tx is still pending, check how long ago we sent it, and resend it if needed
-    if (currentBlockHeight - lastSentAtBlockHeight < this.config.pendingTransactionTimeoutBlocks) {
+    if (currentBlockTimestamp - lastSentAtBlockTimestamp < this.config.pendingTransactionTimeoutSeconds) {
       this.logger.debug(`${signer} : awaiting transaction with ID: ${oldestPendingTx.txId} to be mined. creationBlockNumber: ${oldestPendingTx.creationBlockNumber} nonce: ${nonce}`)
       return boostedTransactions
     }
 
     // Calculate new gas price as a % increase over the previous one, with a minimum value
     const gasFees = await this.contractInteractor.getGasFees()
-    const { newMaxFee, newMaxPriorityFee, isMaxGasPriceReached } = this._resolveNewGasPrice(oldestPendingTx.maxFeePerGas, oldestPendingTx.maxPriorityFeePerGas, minMaxPriorityFee, parseInt(gasFees.baseFeePerGas))
+    const {
+      newMaxFee,
+      newMaxPriorityFee,
+      isMaxGasPriceReached
+    } = this._resolveNewGasPrice(oldestPendingTx.maxFeePerGas, oldestPendingTx.maxPriorityFeePerGas, minMaxPriorityFee, parseInt(gasFees.baseFeePerGas))
     for (const transaction of sortedTxs) {
       // The tx is underpriced, boost it
       if (transaction.maxFeePerGas < newMaxFee || transaction.maxPriorityFeePerGas < newMaxPriorityFee) {
-        const boostedTransactionDetails = await this.resendTransaction(transaction, currentBlockHeight, newMaxFee, newMaxPriorityFee, isMaxGasPriceReached)
+        const boostedTransactionDetails =
+          await this.resendTransaction(transaction, currentBlockNumber, currentBlockTimestamp, newMaxFee, newMaxPriorityFee, isMaxGasPriceReached)
         boostedTransactions.set(transaction.txId, boostedTransactionDetails)
         this.logger.debug(`Replaced transaction: nonce: ${transaction.nonce} sender: ${signer} | ${transaction.txId} => ${boostedTransactionDetails.transactionHash}`)
       } else { // The tx is ok, just rebroadcast it
         try {
-          await this.resendTransaction(transaction, currentBlockHeight, transaction.maxFeePerGas, transaction.maxPriorityFeePerGas, transaction.maxFeePerGas > parseInt(this.config.maxGasPrice))
+          await this.resendTransaction(transaction, currentBlockNumber, currentBlockTimestamp, transaction.maxFeePerGas, transaction.maxPriorityFeePerGas, transaction.maxFeePerGas > parseInt(this.config.maxGasPrice))
         } catch (e) {
           this.logger.error(`Rebroadcasting existing transaction: ${(e as Error).message}`)
         }

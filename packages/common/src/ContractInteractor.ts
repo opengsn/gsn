@@ -30,7 +30,8 @@ import {
   event2topic,
   formatTokenAmount,
   packRelayUrlForRegistrar,
-  splitRelayUrlForRegistrar
+  splitRelayUrlForRegistrar,
+  toNumber
 } from './Utils'
 import {
   IERC20TokenInstance,
@@ -772,12 +773,12 @@ export class ContractInteractor {
         .muln(msgDataLength)
         .toNumber()
     const calldataCost = this.calculateCalldataCost(_.msgData)
-    const result = parseInt(this.relayHubConfiguration.gasOverhead.toString()) +
+    const result = toNumber(this.relayHubConfiguration.gasOverhead) +
       msgDataGasCostInsideTransaction +
       calldataCost +
       parseInt(_.relayCallGasLimit) +
-      parseInt(_.gasAndDataLimits.preRelayedCallGasLimit.toString()) +
-      parseInt(_.gasAndDataLimits.postRelayedCallGasLimit.toString())
+      toNumber(_.gasAndDataLimits.preRelayedCallGasLimit) +
+      toNumber(_.gasAndDataLimits.postRelayedCallGasLimit)
     this.logger.debug(`
 input:\n${JSON.stringify(_)}
 msgDataLength: ${msgDataLength}
@@ -1085,15 +1086,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   /**
    * discover registered relays
-   * @param subset if set, then filter only to these relays
+   * @param relayRegistrationMaximumAge - the oldest registrations to be counted
    */
-  async getRegisteredRelays (subset?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
-    const infoFromStorage = await this.getRegisteredRelaysFromRegistrar()
-    if (infoFromStorage != null) {
-      return infoFromStorage.filter(info => subset == null || subset.includes(info.relayManager))
-    } else {
-      return await this.getRegisteredRelaysFromEvents(subset, fromBlock)
-    }
+  async getRegisteredRelays (relayRegistrationMaximumAge: number): Promise<RelayRegisteredEventInfo[]> {
+    return await this.getRegisteredRelaysFromRegistrar(relayRegistrationMaximumAge)
   }
 
   async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
@@ -1125,15 +1121,20 @@ calculateTransactionMaxPossibleGas: result: ${result}
    * get registered relayers from registrar
    * (output format matches event info)
    */
-  async getRegisteredRelaysFromRegistrar (): Promise<null | RelayRegisteredEventInfo[]> {
+  async getRegisteredRelaysFromRegistrar (relayRegistrationMaximumAge: number): Promise<RelayRegisteredEventInfo[]> {
     if (this.relayRegistrar == null) {
-      return null
+      throw new Error('Relay Registrar is not initialized')
     }
     const relayHub = this.relayHubInstance.address
     if (relayHub == null) {
       throw new Error('RelayHub is not initialized!')
     }
-    const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub, 0, 100)
+    let oldestBlockTimestamp = 0
+    if (relayRegistrationMaximumAge !== 0) {
+      const block = await this.getBlock('latest')
+      oldestBlockTimestamp = Math.max(0, toNumber(block.timestamp) - relayRegistrationMaximumAge)
+    }
+    const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub, 0, oldestBlockTimestamp, 100)
 
     return relayInfos.map(info => {
       return {

@@ -87,8 +87,7 @@ contract('KnownRelaysManager', function (
       relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, ether('1').toString())
       config = configureGSN({
         loggerConfiguration: { logLevel: 'error' },
-        pastEventsQueryMaxPageSize,
-        relayLookupWindowBlocks
+        pastEventsQueryMaxPageSize
       })
       logger = createClientLogger(config.loggerConfiguration)
       const maxPageSize = Number.MAX_SAFE_INTEGER

@@ -20,10 +20,14 @@ interface IRelayRegistrar is IERC165 {
     struct RelayInfo {
         //last registration block number
         uint32 lastSeenBlockNumber;
+        //last registration block timestamp
+        uint40 lastSeenTimestamp;
         //stake (first registration) block number
         uint32 firstSeenBlockNumber;
-        uint96 baseRelayFee;
-        uint96 pctRelayFee;
+        //stake (first registration) block timestamp
+        uint40 firstSeenTimestamp;
+        uint80 baseRelayFee;
+        uint16 pctRelayFee;
         bytes32[3] urlParts;
         address relayManager;
     }
@@ -34,8 +38,8 @@ interface IRelayRegistrar is IERC165 {
      */
     event RelayServerRegistered(
         address indexed relayManager,
-        uint96 baseRelayFee,
-        uint96 pctRelayFee,
+        uint256 baseRelayFee,
+        uint256 pctRelayFee,
         bytes32[3] relayUrl
     );
 
@@ -48,8 +52,8 @@ interface IRelayRegistrar is IERC165 {
      */
     function registerRelayServer(
         address relayHub,
-        uint96 baseRelayFee,
-        uint96 pctRelayFee,
+        uint80 baseRelayFee,
+        uint16 pctRelayFee,
         bytes32[3] calldata url
     ) external;
 
@@ -75,12 +79,14 @@ interface IRelayRegistrar is IERC165 {
      * @notice Read relay info of registered Relay Server from an on-chain storage.
      * @param relayHub The address of the `RelayHub` contract for which this action is performed.
      * @param maxCount The maximum amount of relays to be returned by this function.
-     * @param oldestBlock The latest block number in which a Relay Server may be registered in order to be returned.
+     * @param oldestBlockNumber The latest block number in which a Relay Server may be registered.
+     * @param oldestBlockTimestamp The latest block timestamp in which a Relay Server may be registered.
      * @return info The list of `RelayInfo`s of registered Relay Servers
      */
     function readRelayInfos(
         address relayHub,
-        uint256 oldestBlock,
+        uint256 oldestBlockNumber,
+        uint256 oldestBlockTimestamp,
         uint256 maxCount
     ) external view returns (
         RelayInfo[] memory info
