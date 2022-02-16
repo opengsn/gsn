@@ -56,6 +56,7 @@ class GsnTestEnvironmentClass {
       minimumTokenStake: 1,
       gasPrice: 1e9.toString(),
       gasLimit: 5000000,
+      deployTestToken: true,
       deployPaymaster: true,
       skipConfirmation: true,
       penalizerConfiguration: defaultEnvironment.penalizerConfiguration,

@@ -540,6 +540,15 @@ export class CommandsLogic {
     await registerForwarderForGsn(fInstance, options)
 
     let stakingTokenAddress = deployOptions.stakeManagerAddress
+
+    let ttInstance: Contract | undefined
+    if (deployOptions.deployTestToken ?? false) {
+      ttInstance = await this.getContractInstance(WrappedEthToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
+      console.log('Setting minimum stake of 1 TestWeth on Hub')
+      await rInstance.methods.setMinimumStakes([ttInstance.options.address], [1e18.toString()]).send({ ...options })
+      stakingTokenAddress = ttInstance.options.address
+    }
+
     if (stakingTokenAddress == null) {
       const ttInstance = await this.getContractInstance(WrappedEthToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
       stakingTokenAddress = ttInstance.options.address
@@ -550,7 +559,7 @@ export class CommandsLogic {
 
     const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, tokenSymbol)
 
-    console.log(`Setting minimum stake of ${formatToken(deployOptions.minimumTokenStake)}}`)
+    console.log(`Setting minimum stake of ${formatToken(deployOptions.minimumTokenStake)}`)
     await rInstance.methods.setMinimumStakes([stakingTokenAddress], [deployOptions.minimumTokenStake]).send({ ...options })
 
     this.deployment = {

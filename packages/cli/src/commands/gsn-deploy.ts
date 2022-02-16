@@ -1,4 +1,4 @@
-import commander, { command } from 'commander'
+import commander from 'commander'
 import { CommandsLogic } from '../CommandsLogic'
 import {
   getMnemonic,
