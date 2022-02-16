@@ -49,7 +49,7 @@ export const defaultGsnConfig: GSNConfig = {
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,
   maxPaymasterDataLength: 0,
-  gsnUrl: `https://opengsn.github.io/client-config/${gsnRuntimeVersion}/client-config.json`,
+  gsnUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
   useGsnDocsConfig: true
 }
 
