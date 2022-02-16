@@ -6,16 +6,17 @@ import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { KnownRelaysManager } from './KnownRelaysManager'
 import { RelayedTransactionValidator } from './RelayedTransactionValidator'
 import {
-  Address,
   AsyncDataCallback,
   AsyncScoreCalculator,
-  IntString,
   NpmLogLevel,
   PingFilter,
   RelayFilter
 } from '@opengsn/common/dist/types/Aliases'
 import { gsnRequiredVersion } from '@opengsn/common/dist/Version'
-import { defaultEnvironment, Environment } from '@opengsn/common/dist/Environments'
+import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { GSNConfig } from '@opengsn/common/dist/ConfigResponse'
+import { gsnRuntimeVersion } from '@opengsn/common/dist'
+export type { GSNConfig } from '@opengsn/common/dist/ConfigResponse'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -45,7 +46,9 @@ export const defaultGsnConfig: GSNConfig = {
   maxViewableGasLimit: '12000000',
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,
-  maxPaymasterDataLength: 0
+  maxPaymasterDataLength: 0,
+  clientDefaultConfigUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
+  useClientDefaultConfigUrl: true
 }
 
 export interface LoggerConfiguration {
@@ -53,39 +56,6 @@ export interface LoggerConfiguration {
   loggerUrl?: string
   userId?: string
   applicationId?: string
-}
-
-/**
- * @field methodSuffix - allows use of versioned methods, i.e. 'eth_signTypedData_v4'. Should be '_v4' for Metamask
- * @field jsonStringifyRequest - should be 'true' for Metamask, false for ganache
- */
-export interface GSNConfig {
-  preferredRelays: string[]
-  // in order to avoid pinging relays that are long dead, the client can filter out older registrations
-  // must match Relay Server's "registrationRateSeconds" to be able to discover relays consistently
-  relayRegistrationMaximumAge: number
-  // in case querying large block ranges is restricted, set limit and use pagination
-  pastEventsQueryMaxPageSize: number
-
-  methodSuffix: string
-  jsonStringifyRequest: boolean
-  requiredVersionRange?: string
-  relayTimeoutGrace: number
-  sliceSize: number
-  loggerConfiguration?: LoggerConfiguration
-  gasPriceFactorPercent: number
-  gasPriceOracleUrl: string
-  gasPriceOraclePath: string
-  minMaxPriorityFeePerGas: number
-  maxRelayNonceGap: number
-  paymasterAddress?: Address
-  clientId: IntString
-  auditorsCount: number
-  requestValidSeconds: number
-  maxViewableGasLimit: IntString
-  environment: Environment
-  maxApprovalDataLength: number
-  maxPaymasterDataLength: number
 }
 
 export interface GSNDependencies {
