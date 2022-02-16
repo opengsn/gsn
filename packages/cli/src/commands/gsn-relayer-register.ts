@@ -24,7 +24,7 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     '--sleepCount <sleepCount>',
     'number of times to sleep before timeout', '5'
   )
-  .option('-t, --token <address>', 'token to be used as a stake, default to 0 meaning native blockchain currency', constants.ZERO_ADDRESS)
+  .option('-t, --token <address>', 'Token to be used as a stake, defaults to native blockchain currency')
 
   .parse(process.argv);
 
@@ -40,7 +40,7 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     sleepCount: parseInt(commander.sleepCount),
     from: commander.from ?? await logic.findWealthyAccount(),
     token: commander.token,
-    stake: ether(commander.stake),
+    stake: commander.stake,
     funds: ether(commander.funds),
     gasPrice: commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : undefined,
     relayUrl: commander.relayUrl,

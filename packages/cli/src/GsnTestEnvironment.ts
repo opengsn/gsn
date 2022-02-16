@@ -79,7 +79,7 @@ class GsnTestEnvironmentClass {
       from,
       sleepMs: 100,
       sleepCount: 5,
-      stake: ether('1'),
+      stake: '1',
       funds: ether('5'),
       relayUrl: relayUrl,
       gasPrice: 1e9.toString(),
