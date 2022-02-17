@@ -15,7 +15,6 @@ import { deployments, ethers } from 'hardhat'
 const { AddressZero } = ethers.constants
 
 const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const deployRegistrar = true
   const deployTestPaymaster = true
 
   // TODO: there should be type extensions to support these...
@@ -64,10 +63,6 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   console.log('loading env ( based on chainId', chainId, ')', envname ?? 'DefaultEnvironment')
   const env = envname != null ? environments[envname as EnvironmentsKeys] : defaultEnvironment
 
-  const isUsingRegistryStorage: boolean = (process.env.USE_STORAGE ?? 'true').match(/^[t1y]/i) != null
-
-  console.log('isUsingRegistryStorage=', isUsingRegistryStorage, '(set with', chalk.yellow('USE_STORAGE'), ')')
-
   const deployedForwarder = await deploy('Forwarder', { from: deployer })
 
   if (deployedForwarder.newlyDeployed) {
@@ -94,6 +89,10 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
     args: [env.maxUnstakeDelay, burnAddress]
   })
 
+  const relayRegistrar = await deploy('RelayRegistrar', {
+    from: deployer
+  })
+
   const hubConfig = env.relayHubConfiguration
   let relayHub: DeployResult
   let hubContractName: string
@@ -107,6 +106,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
         stakeManager.address,
         penalizer.address,
         AddressZero, // batch gateway
+        relayRegistrar.address,
         hubConfig
       ]
     })
@@ -118,6 +118,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
         stakeManager.address,
         penalizer.address,
         AddressZero, // batch gateway
+        relayRegistrar.address,
         hubConfig
       ]
     })
@@ -127,23 +128,6 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   if (relayHub.newlyDeployed) {
     console.log('adding allowed token', TestWEth.address)
     await hub.setMinimumStakes([TestWEth.address], [parseEther('0.1')])
-  }
-  if (deployRegistrar) {
-    const relayRegistrar = await deploy('RelayRegistrar', {
-      from: deployer,
-      args: [relayHub.address, isUsingRegistryStorage]
-    })
-
-    const currentRegistrar = await hub.getRelayRegistrar() as string
-
-    if (currentRegistrar !== getAddress(relayRegistrar.address)) {
-      if (currentRegistrar !== ethers.constants.AddressZero) {
-        console.error(chalk.red(`fatal: unable to modify registrar in hub. currently set: ${currentRegistrar}`))
-      } else {
-        const ret = await hub.setRegistrar(relayRegistrar.address)
-        await ret.wait()
-      }
-    }
   }
 
   let deployedPm: DeployResult
