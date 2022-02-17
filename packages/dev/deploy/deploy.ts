@@ -63,6 +63,26 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   console.log('loading env ( based on chainId', chainId, ')', envname ?? 'DefaultEnvironment')
   const env = envname != null ? environments[envname as EnvironmentsKeys] : defaultEnvironment
 
+  let stakingTokenAddress = process.env.TOKEN
+  if (stakingTokenAddress == null) {
+    console.error('must specify TOKEN address (or "test" to deploy TestWeth')
+    process.exit(1)
+  }
+  let stakingTokenValue = process.env.TOKEN_STAKE
+
+  if (stakingTokenAddress === 'test') {
+    const TestWEth = await deploy('TestWEth', {
+      from: deployer
+    })
+    stakingTokenAddress = TestWEth.address
+    stakingTokenValue = stakingTokenValue ?? '0.1'
+  } else {
+    if (stakingTokenValue == null) {
+      console.error('must specify TOKEN_STAKE for staking token (defaults to 0.1 f')
+      process.exit(1)
+    }
+  }
+
   const deployedForwarder = await deploy('Forwarder', { from: deployer })
 
   if (deployedForwarder.newlyDeployed) {
@@ -78,9 +98,6 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
       env.penalizerConfiguration.penalizeBlockDelay,
       env.penalizerConfiguration.penalizeBlockDelay
     ]
-  })
-  const TestWEth = await deploy('TestWEth', {
-    from: deployer
   })
 
   const burnAddress = '0x'.padEnd(42, 'f')
@@ -126,8 +143,8 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const hub = new ethers.Contract(relayHub.address, relayHub.abi, ethers.provider.getSigner())
 
   if (relayHub.newlyDeployed) {
-    console.log('adding allowed token', TestWEth.address)
-    await hub.setMinimumStakes([TestWEth.address], [parseEther('0.1')])
+    console.log('Adding stake token', stakingTokenAddress, 'stake=', stakingTokenValue)
+    await hub.setMinimumStakes([stakingTokenAddress], [parseEther(stakingTokenValue)])
   }
 
   let deployedPm: DeployResult

@@ -63,11 +63,7 @@ const config: HardhatUserConfig = {
 
     goerli: getInfuraNetwork('goarli'),
     kovan: getInfuraNetwork('kovan'),
-
-    mainnet: {
-      url: infuraUrl('mainnet'),
-      tags: ['NoRegistrarStorage']
-    }
+    mainnet: getInfuraNetwork('mainnet')
   },
 
   etherscan: { apiKey: process.env.ETHERSCAN_API_KEY }
