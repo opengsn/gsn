@@ -347,11 +347,10 @@ export function splitRelayUrlForRegistrar (url: string, partsCount: number = 3):
 }
 
 export function packRelayUrlForRegistrar (parts: string[]): string {
-  let result = ''
-  for (const part of parts) {
-    result += Buffer.from(removeHexPrefix(part), 'hex').filter(it => it !== 0).toString()
-  }
-  return result
+  return Buffer.from(
+    parts.join('')
+      .replace(/0x/g,'')
+      .replace(/(00)+$/g,''),'hex').toString()
 }
 
 function isBigNumber (object: Object): boolean {
