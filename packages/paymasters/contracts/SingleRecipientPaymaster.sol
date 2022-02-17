@@ -20,7 +20,7 @@ contract SingleRecipientPaymaster is BasePaymaster {
     }
 
     function versionPaymaster() external view override virtual returns (string memory){
-        return "3.0.0-alpha.2+opengsn.recipient.ipaymaster";
+        return "3.0.0-alpha.3+opengsn.recipient.ipaymaster";
     }
 
     function setTarget(address _target) external onlyOwner {

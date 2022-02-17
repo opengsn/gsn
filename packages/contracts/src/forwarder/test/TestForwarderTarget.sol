@@ -5,7 +5,7 @@ import "../../ERC2771Recipient.sol";
 
 contract TestForwarderTarget is ERC2771Recipient {
 
-    string public override versionRecipient = "3.0.0-alpha.2+opengsn.test.recipient";
+    string public override versionRecipient = "3.0.0-alpha.3+opengsn.test.recipient";
 
     constructor(address forwarder) {
         _setTrustedForwarder(forwarder);
