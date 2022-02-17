@@ -56,6 +56,7 @@ class GsnTestEnvironmentClass {
       minimumTokenStake: 1,
       gasPrice: 1e9.toString(),
       gasLimit: 5000000,
+      deployTestToken: true,
       deployPaymaster: true,
       skipConfirmation: true,
       penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
@@ -75,11 +76,11 @@ class GsnTestEnvironmentClass {
 
     const registerOptions: RegisterOptions = {
       // force using default (wrapped eth) token
-      token: constants.ZERO_ADDRESS,
+      wrap: true,
       from,
       sleepMs: 100,
       sleepCount: 5,
-      stake: ether('1'),
+      stake: '1',
       funds: ether('5'),
       relayUrl: relayUrl,
       gasPrice: 1e9.toString(),
@@ -183,6 +184,7 @@ class GsnTestEnvironmentClass {
       reputationManager
     }
     const relayServerParams: Partial<ServerConfigParams> = {
+      coldRestartLogsFromBlock: 1,
       devMode: true,
       url: relayUrl,
       relayHubAddress: deploymentResult.relayHubAddress,

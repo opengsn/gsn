@@ -21,6 +21,7 @@ contract('StoredTransaction', function (accounts) {
       from: '0x7C2fffBCcFe1f109A960F55c325438F83b974Ab8',
       serverAction: ServerAction.VALUE_TRANSFER,
       creationBlockNumber: 0,
+      creationBlockTimestamp: 0,
       minedBlockNumber: 0,
       attempts: 1
     }

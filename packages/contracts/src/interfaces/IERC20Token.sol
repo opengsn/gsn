@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
  * @notice Extended ERC-20 token interface used internally in OpenGSN modules.
- * @dev Renamed to avoid conflict with OZ namespace. Includes IERC20, ERC20Metadata.
+ * Renamed to avoid conflict with OZ namespace. Includes IERC20, ERC20Metadata.
  * added semi-standard "wrapped eth" access methods deposit() and "withdraw()"
  */
 interface IERC20Token is IERC20, IERC20Metadata {

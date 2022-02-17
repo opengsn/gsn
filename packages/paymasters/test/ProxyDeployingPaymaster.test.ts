@@ -123,6 +123,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
       stakeManager.address,
       constants.ZERO_ADDRESS,
       constants.ZERO_ADDRESS,
+      constants.ZERO_ADDRESS,
       defaultEnvironment.relayHubConfiguration,
       { gas: 10000000 })
     relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')

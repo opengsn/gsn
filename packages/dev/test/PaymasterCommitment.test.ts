@@ -17,7 +17,7 @@ import {
   ForwarderInstance,
   TestPaymasterConfigurableMisbehaviorInstance, RelayRegistrarInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { constants, ContractInteractor, GSNContractsDeployment } from '@opengsn/common'
+import { constants, ContractInteractor, GSNContractsDeployment, splitRelayUrlForRegistrar } from '@opengsn/common'
 import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
 import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
@@ -160,7 +160,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
 
     await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayRegistrar.registerRelayServer(baseRelayFee, pctRelayFee, 'url', { from: relayManager })
+    await relayRegistrar.registerRelayServer(relayHub, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar('url'), { from: relayManager })
   })
 
   describe('paymaster commitments', function () {

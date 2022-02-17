@@ -3,10 +3,10 @@
 pragma solidity ^0.8.0;
 
 import "../utils/GsnUtils.sol";
-import "../BaseRelayRecipient.sol";
+import "../ERC2771Recipient.sol";
 import "./TestPaymasterConfigurableMisbehavior.sol";
 
-contract TestRecipient is BaseRelayRecipient {
+contract TestRecipient is ERC2771Recipient {
 
     string public override versionRecipient = "3.0.0-alpha.2+opengsn.test.irelayrecipient";
 

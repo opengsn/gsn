@@ -6,11 +6,11 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@opengsn/contracts/src/BaseRelayRecipient.sol";
+import "@opengsn/contracts/src/ERC2771Recipient.sol";
 
 import "../interfaces/IERC725.sol";
 
-contract ProxyIdentity is IERC725, BaseRelayRecipient, Initializable {
+contract ProxyIdentity is IERC725, ERC2771Recipient, Initializable {
     string public override versionRecipient = "3.0.0-alpha.2+opengsn.erc725.irelayrecipient";
 
     uint256 private constant OPERATION_CALL = 0;

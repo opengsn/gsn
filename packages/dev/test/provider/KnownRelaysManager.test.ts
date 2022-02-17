@@ -22,7 +22,7 @@ import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { toBN } from 'web3-utils'
-import { constants } from '@opengsn/common'
+import { constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -46,7 +46,7 @@ export async function stake (testToken: TestTokenInstance, stakeManager: StakeMa
 export async function register (relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
   await relayHub.addRelayWorkers([worker], { from: manager })
   const relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
-  await relayRegistrar.registerRelayServer(baseRelayFee ?? '0', pctRelayFee ?? '0', url, { from: manager })
+  await relayRegistrar.registerRelayServer(relayHub.address, baseRelayFee ?? '0', pctRelayFee ?? '0', splitRelayUrlForRegistrar(url), { from: manager })
 }
 
 contract('KnownRelaysManager', function (
@@ -87,8 +87,7 @@ contract('KnownRelaysManager', function (
       relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, ether('1').toString())
       config = configureGSN({
         loggerConfiguration: { logLevel: 'error' },
-        pastEventsQueryMaxPageSize,
-        relayLookupWindowBlocks
+        pastEventsQueryMaxPageSize
       })
       logger = createClientLogger(config.loggerConfiguration)
       const maxPageSize = Number.MAX_SAFE_INTEGER
@@ -135,13 +134,13 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerPaymasterRejected], {
         from: activePaymasterRejected
       })
-      await relayRegistrar.registerRelayServer('0', '0', '', { from: activeTransactionRelayed })
-      await relayRegistrar.registerRelayServer('0', '0', '', { from: activePaymasterRejected })
-      await relayRegistrar.registerRelayServer('0', '0', '', { from: activeRelayWorkersAdded })
+      await relayRegistrar.registerRelayServer(relayHub.address, '0', '0', splitRelayUrlForRegistrar(''), { from: activeTransactionRelayed })
+      await relayRegistrar.registerRelayServer(relayHub.address, '0', '0', splitRelayUrlForRegistrar(''), { from: activePaymasterRejected })
+      await relayRegistrar.registerRelayServer(relayHub.address, '0', '0', splitRelayUrlForRegistrar(''), { from: activeRelayWorkersAdded })
 
       await evmMineMany(relayLookupWindowBlocks)
       /** events that are supposed to be visible to the manager */
-      await relayRegistrar.registerRelayServer('0', '0', '', { from: activeRelayServerRegistered })
+      await relayRegistrar.registerRelayServer(relayHub.address, '0', '0', splitRelayUrlForRegistrar(''), { from: activeRelayServerRegistered })
       await relayHub.addRelayWorkers([workerRelayWorkersAdded2], {
         from: activeRelayWorkersAdded
       })

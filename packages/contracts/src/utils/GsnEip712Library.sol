@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "../utils/GsnTypes.sol";
-import "../interfaces/IRelayRecipient.sol";
+import "../interfaces/IERC2771Recipient.sol";
 import "../forwarder/IForwarder.sol";
 
 import "./GsnUtils.sol";
@@ -59,7 +59,7 @@ library GsnEip712Library {
     function verifyForwarderTrusted(GsnTypes.RelayRequest calldata relayRequest) internal view {
         (bool success, bytes memory ret) = relayRequest.request.to.staticcall(
             abi.encodeWithSelector(
-                IRelayRecipient.isTrustedForwarder.selector, relayRequest.relayData.forwarder
+                IERC2771Recipient.isTrustedForwarder.selector, relayRequest.relayData.forwarder
             )
         );
         require(success, "isTrustedForwarder: reverted");

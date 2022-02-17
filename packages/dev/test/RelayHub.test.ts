@@ -22,7 +22,7 @@ import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUt
 
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { constants } from '@opengsn/common'
+import { constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -91,10 +91,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
   it('should retrieve version number', async function () {
     const version = await relayHubInstance.versionHub()
     assert.match(version, /2\.\d*\.\d*-?.*\+opengsn\.hub\.irelayhub/)
-  })
-
-  it('should reject setRegistrar for an address that does not implement IPaymaster', async function () {
-    await expectRevert(relayHubInstance.setRegistrar(relayHub), 'target is not a valid IRegistrar')
   })
 
   describe('balances', function () {
@@ -383,7 +379,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         encodedFunction = recipientContract.contract.methods.emitMessage(message).encodeABI()
 
         await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
-        await relayRegistrar.registerRelayServer(baseRelayFee, pctRelayFee, url, { from: relayManager })
+        await relayRegistrar.registerRelayServer(relayHub, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar(url), { from: relayManager })
         relayRequest = cloneRelayRequest(sharedRelayRequestData)
         relayRequest.request.data = encodedFunction
         const dataToSign = new TypedRequestData(

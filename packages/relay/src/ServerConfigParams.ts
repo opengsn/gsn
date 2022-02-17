@@ -34,12 +34,10 @@ export interface ServerConfigParams {
   checkInterval: number
   devMode: boolean
   loggingProvider: LoggingProviderMode
-  // if set, must match clients' "relayRegistrationLookupBlocks" parameter for relay to be discoverable
-  registrationBlockRate: number
-  // if set, must match clients' "relayLookupWindowBlocks" parameter for relay to be discoverable
-  activityBlockRate: number
+  // if set, must match clients' "relayRegistrationMaximumAge" parameter for relay to remain discoverable
+  registrationRateSeconds: number
   maxAcceptanceBudget: number
-  alertedBlockDelay: number
+  alertedDelaySeconds: number
   minAlertedDelayMS: number
   maxAlertedDelayMS: number
   trustedPaymasters: Address[]
@@ -62,7 +60,7 @@ export interface ServerConfigParams {
   minHubWithdrawalBalance: number
   withdrawToOwnerOnBalance?: number
   refreshStateTimeoutBlocks: number
-  pendingTransactionTimeoutBlocks: number
+  pendingTransactionTimeoutSeconds: number
   confirmationsNeeded: number
   dbAutoCompactionInterval: number
   retryGasPriceFactor: number
@@ -77,7 +75,7 @@ export interface ServerConfigParams {
   requiredVersionRange?: string
 
   // when server starts, it will look for relevant Relay Hub, Stake Manager events starting at this block
-  coldRestartLogsFromBlock: number
+  coldRestartLogsFromBlock?: number
   // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
   pastEventsQueryMaxPageSize: number
 
@@ -99,13 +97,13 @@ export interface ServerDependencies {
 
 export const serverDefaultConfiguration: ServerConfigParams = {
   ownerAddress: constants.ZERO_ADDRESS,
-  alertedBlockDelay: 0,
+  alertedDelaySeconds: 0,
   minAlertedDelayMS: 0,
   maxAlertedDelayMS: 0,
   // set to paymasters' default acceptanceBudget + RelayHub.calldataGasCost(<paymasters' default calldataSizeLimit>)
   maxAcceptanceBudget:
     defaultEnvironment.paymasterConfiguration.acceptanceBudget +
-    parseInt(defaultEnvironment.dataOnChainHandlingGasCostPerByte.toString()) *
+    defaultEnvironment.dataOnChainHandlingGasCostPerByte *
     defaultEnvironment.paymasterConfiguration.calldataSizeLimit,
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
@@ -113,8 +111,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   gasPriceFactor: 1,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
-  registrationBlockRate: 0,
-  activityBlockRate: 0,
+  registrationRateSeconds: 0,
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
@@ -138,7 +135,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   port: 8090,
   workdir: '',
   refreshStateTimeoutBlocks: 5,
-  pendingTransactionTimeoutBlocks: 30, // around 5 minutes with 10 seconds block times
+  pendingTransactionTimeoutSeconds: 300,
   confirmationsNeeded: 12,
   dbAutoCompactionInterval: 604800000, // Week in ms: 1000*60*60*24*7
   retryGasPriceFactor: 1.2,
@@ -148,7 +145,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
 
   requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
   runPaymasterReputations: true,
-  coldRestartLogsFromBlock: 1,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   recentActionAvoidRepeatDistanceBlocks: 10
 }
@@ -177,10 +173,9 @@ const ConfigParamsTypes = {
   customerToken: 'string',
   hostOverride: 'string',
   userId: 'string',
-  registrationBlockRate: 'number',
-  activityBlockRate: 'number',
+  registrationRateSeconds: 'number',
   maxAcceptanceBudget: 'number',
-  alertedBlockDelay: 'number',
+  alertedDelaySeconds: 'number',
 
   workerMinBalance: 'number',
   workerTargetBalance: 'number',
@@ -209,7 +204,7 @@ const ConfigParamsTypes = {
   retryGasPriceFactor: 'number',
   runPaymasterReputations: 'boolean',
   refreshStateTimeoutBlocks: 'number',
-  pendingTransactionTimeoutBlocks: 'number',
+  pendingTransactionTimeoutSeconds: 'number',
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
   maxGasPrice: 'string',
@@ -317,7 +312,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
 
   // TODO: avoid functions that are not parts of objects! Refactor this so there is a configured logger before we start blockchain interactions.
   const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
-  const contractInteractor = new ContractInteractor({
+  const contractInteractor: ContractInteractor = new ContractInteractor({
     maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
     provider: web3provider,
     logger,
@@ -326,14 +321,16 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     },
     environment
   })
+  await contractInteractor._resolveDeployment()
   await contractInteractor._initializeContracts()
   await contractInteractor._initializeNetworkParams()
 
   if (config.relayHubAddress == null) {
     error('missing param: must have relayHubAddress')
   }
-  if (!await contractInteractor.isContractDeployed(config.relayHubAddress)) {
-    error(`RelayHub: no contract at address ${config.relayHubAddress}`)
+  if (config.coldRestartLogsFromBlock == null) {
+    const block = await contractInteractor.getCreationBlockFromRelayHub()
+    config.coldRestartLogsFromBlock = block.toNumber()
   }
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')

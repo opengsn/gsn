@@ -5,7 +5,7 @@ import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
 import { HttpProvider } from 'web3-core'
-import { fromWei, toBN, toHex } from 'web3-utils'
+import { fromWei, toBN, toHex, toNumber } from 'web3-utils'
 import ow from 'ow'
 
 import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
@@ -40,9 +40,10 @@ export interface RegisterOptions {
   /** number of times to sleep before timeout */
   sleepCount: number
   from: Address
-  token: Address
+  token?: Address
   gasPrice?: string | BN
-  stake: string | BN
+  stake: string
+  wrap: boolean
   funds: string | BN
   relayUrl: string
   unstakeDelay: string
@@ -66,6 +67,7 @@ interface DeployOptions {
   relayHubAddress?: string
   relayRegistryAddress?: string
   stakeManagerAddress?: string
+  deployTestToken?: boolean
   stakingTokenAddress?: string
   minimumTokenStake: number| IntString
   penalizerAddress?: string
@@ -238,38 +240,31 @@ export class CommandsLogic {
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { stake, unstakeDelay, owner, token } = (await stakeManager.getStakeInfo(relayAddress))[0]
 
-      var isDefaultToken = false
+      let isDefaultToken = false
       let stakingToken = options.token
-      if (stakingToken === constants.ZERO_ADDRESS) {
-        const fromBlock = await relayHub.getCreationBlock().then(b => b.toNumber())
-        const toBlock = Math.min(fromBlock + 5000, await this.contractInteractor.getBlockNumber())
-        const tokenEvents = await relayHub.contract.getPastEvents('StakingToken', { fromBlock, toBlock })
-        if (tokenEvents.length === 0) {
-          throw new Error(`no registered StakingTokens tokens on relayhub ${relayHubAddress}`)
-        }
-        stakingToken = tokenEvents[0].returnValues.token
+      if (stakingToken == null) {
+        stakingToken = await this._findFirstToken(relayHubAddress)
         isDefaultToken = true
       }
 
       if (!(isSameAddress(token, stakingToken) || isSameAddress(token, constants.ZERO_ADDRESS))) {
-        throw new Error(`Cannot use token ${stakingToken}. Relay already using token: ${token}`)
+        throw new Error(`Cannot use token ${stakingToken}. Relayer already uses token: ${token}`)
       }
-
       const stakingTokenContract = await this.contractInteractor._createERC20(stakingToken)
+      const tokenDecimals = await stakingTokenContract.decimals()
       const tokenSymbol = await stakingTokenContract.symbol()
-      const tokenDecimals = await stakingTokenContract.decimals();
 
-      const tokenFormatter = async (balance: BN): Promise<string> => formatTokenAmount(balance, tokenDecimals, tokenSymbol)
+      const stakeParam = toBN(toNumber(options.stake) * Math.pow(10, tokenDecimals.toNumber()))
 
-      const currentStakeFormatted = await tokenFormatter(stake)
-      console.log('current stake= ', currentStakeFormatted)
+      const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, tokenSymbol)
+
+      console.log('current stake= ', formatToken(stake))
 
       if (owner !== constants.ZERO_ADDRESS && !isSameAddress(owner, options.from)) {
         throw new Error(`Already owned by ${owner}, our account=${options.from}`)
       }
 
       const bal = await this.contractInteractor.getBalance(relayAddress)
-      console.log( 'current relayer balance', bal.toString())
       if (toBN(bal).gt(toBN(options.funds.toString()))) {
         console.log('Relayer already funded')
       } else {
@@ -307,14 +302,14 @@ export class CommandsLogic {
         }
       }
       if (unstakeDelay.gte(toBN(options.unstakeDelay)) &&
-        stake.gte(toBN(options.stake.toString()))
+        stake.gte(stakeParam)
       ) {
         console.log('Relayer already staked')
       } else {
         const config = await relayHub.getConfiguration()
         const minimumStakeForToken = await relayHub.getMinimumStakePerToken(stakingToken)
-        if (minimumStakeForToken.gt(toBN(options.stake.toString()))) {
-          throw new Error(`Given minimum stake ${options.stake.toString()} too low for the given hub ${minimumStakeForToken.toString()} and token ${stakingToken}`)
+        if (minimumStakeForToken.gt(toBN(stakeParam.toString()))) {
+          throw new Error(`Given stake ${formatToken(stakeParam)} too low for the given hub ${formatToken(minimumStakeForToken)} and token ${stakingToken}`)
         }
         if (minimumStakeForToken.eqn(0)) {
           throw new Error(`Selected token (${stakingToken}) is not allowed in the current RelayHub`)
@@ -322,23 +317,27 @@ export class CommandsLogic {
         if (config.minimumUnstakeDelay.gt(toBN(options.unstakeDelay))) {
           throw new Error(`Given minimum unstake delay ${options.unstakeDelay.toString()} too low for the given hub ${config.minimumUnstakeDelay.toString()}`)
         }
-        const stakeValue = toBN(options.stake.toString()).sub(stake)
-        const stakeValueFormatted = await tokenFormatter(stakeValue)
-        console.log(`Staking relayer ${stakeValueFormatted}`,
-          stake.toString() === '0' ? '' : ` (already has ${currentStakeFormatted})`)
+        const stakeValue = stakeParam.sub(stake)
+        console.log(`Staking relayer ${formatToken(stakeValue)}`,
+          stake.toString() === '0' ? '' : ` (already has ${formatToken(stake)})`)
 
         const tokenBalance = await stakingTokenContract.balanceOf(options.from)
-        console.log( 'owner token balance=', tokenFormatter(tokenBalance), 'needed', tokenFormatter(stakeValue), 'default=', isDefaultToken)
-        if (tokenBalance.lt(stakeValue) && isDefaultToken) {
-          console.log(`Wrapping ${formatTokenAmount(stakeValue, 18, 'eth')}`)
+        if (tokenBalance.lt(stakeValue) && isDefaultToken && options.wrap) {
           // default token is wrapped eth, so deposit eth to make then into tokens.
-          const depositTx = await stakingTokenContract.deposit({ from: options.from, value: stakeValue }) as any
+          console.log(`Wrapping ${formatToken(stakeValue)}`)
+          let depositTx: any
+          try {
+            depositTx = await stakingTokenContract.deposit({ from: options.from, value: stakeValue }) as any
+          } catch (e) {
+            throw new Error('No deposit() method on default token. is it wrapped ETH?')
+          }
           transactions.push(depositTx.transactionHash)
         }
 
         const currentAllowance = await stakingTokenContract.allowance(options.from, stakeManager.address)
+        console.log('Current allowance', formatToken(currentAllowance))
         if (currentAllowance.lt(stakeValue)) {
-          console.log(`Approving ${stakeValueFormatted} to StakeManager`)
+          console.log(`Approving ${formatToken(stakeValue)} to StakeManager`)
           const approveTx = await stakingTokenContract.approve(stakeManager.address, stakeValue, {
             from: options.from
           })
@@ -384,6 +383,17 @@ export class CommandsLogic {
         error: error.message
       }
     }
+  }
+
+  async _findFirstToken (relayHubAddress: string): Promise<string> {
+    const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+    const fromBlock = await relayHub.getCreationBlock()
+    const toBlock = Math.min(toNumber(fromBlock) + 5000, await this.contractInteractor.getBlockNumber())
+    const tokens = await this.contractInteractor.getPastEventsForHub([], { fromBlock, toBlock }, ['StakingTokenDataChanged'])
+    if (tokens.length === 0) {
+      throw new Error(`no registered staking tokens on relayhub ${relayHubAddress}`)
+    }
+    return tokens[0].returnValues.token
   }
 
   async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
@@ -486,6 +496,7 @@ export class CommandsLogic {
 
   async deployGsnContracts (deployOptions: DeployOptions): Promise<GSNContractsDeployment> {
     ow(deployOptions, ow.object.partialShape(DeployOptionsPartialShape))
+
     const options: Required<SendOptions> = {
       from: deployOptions.from,
       gas: deployOptions.gasLimit,
@@ -493,6 +504,9 @@ export class CommandsLogic {
       gasPrice: deployOptions.gasPrice
     }
 
+    const rrInstance = await this.getContractInstance(RelayRegistrar, {
+      arguments: []
+    }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
     const sInstance = await this.getContractInstance(StakeManager, {
       arguments: [defaultEnvironment.maxUnstakeDelay, deployOptions.burnAddress]
     }, deployOptions.stakeManagerAddress, { ...options }, deployOptions.skipConfirmation)
@@ -510,13 +524,10 @@ export class CommandsLogic {
         sInstance.options.address,
         pInstance.options.address,
         batchGatewayAddress,
+        rrInstance.options.address,
         deployOptions.relayHubConfiguration
       ]
     }, deployOptions.relayHubAddress, { ...options }, deployOptions.skipConfirmation)
-
-    const rrInstance = await this.getContractInstance(RelayRegistrar, {
-      arguments: [rInstance.options.address, true]
-    }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
 
     if (!isSameAddress(await rInstance.methods.getRelayRegistrar().call(), rrInstance.options.address)) {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
@@ -528,14 +539,23 @@ export class CommandsLogic {
     }
     await registerForwarderForGsn(fInstance, options)
 
-    let stakingTokenAddress = deployOptions.stakeManagerAddress
-    if (stakingTokenAddress == null) {
-      const ttInstance = await this.getContractInstance(WrappedEthToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
+    let stakingTokenAddress = deployOptions.stakeManagerAddress ?? ''
+
+    let ttInstance: Contract | undefined
+    if (deployOptions.deployTestToken ?? false) {
+      ttInstance = await this.getContractInstance(WrappedEthToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
+      console.log('Setting minimum stake of 1 TestWeth on Hub')
+      await rInstance.methods.setMinimumStakes([ttInstance.options.address], [1e18.toString()]).send({ ...options })
       stakingTokenAddress = ttInstance.options.address
     }
-    const stakingContact = await this.contractInteractor._createERC20(stakingTokenAddress)
 
-    console.log(`Setting minimum stake of ${deployOptions.minimumTokenStake} of ${await stakingContact.symbol()}`)
+    const stakingContact = await this.contractInteractor._createERC20(stakingTokenAddress)
+    const tokenDecimals = await stakingContact.decimals()
+    const tokenSymbol = await stakingContact.symbol()
+
+    const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, tokenSymbol)
+
+    console.log(`Setting minimum stake of ${formatToken(deployOptions.minimumTokenStake)}`)
     await rInstance.methods.setMinimumStakes([stakingTokenAddress], [deployOptions.minimumTokenStake]).send({ ...options })
 
     this.deployment = {

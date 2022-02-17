@@ -22,8 +22,9 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('--environmentName <string>', `name of one of the GSN supported environments: (${Object.keys(EnvironmentsKeys).toString()}; default: ethereumMainnet)`, EnvironmentsKeys.ethereumMainnet)
   .option('--burnAddress <string>', 'address to transfer burned stake tokens into', constants.BURN_ADDRESS)
   .option('--stakingToken <string>', 'default staking token to use. (wrapped eth)')
-  .option('--minimumTokenStake <number>', 'minimum staking eth value (in wrapped eth staking token)', '1')
+  .option('--minimumTokenStake <number>', 'minimum staking value', '1')
   .option('--yes, --skipConfirmation', 'skip con')
+  .option('--testToken', 'deploy test weth token', false)
   .option('--testPaymaster', 'deploy test paymaster (accepts everything, avoid on main-nets)', false)
   .option('-c, --config <path>', 'config JSON file to change the configuration of the RelayHub being deployed (optional)')
   .parse(process.argv);
@@ -46,6 +47,10 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
 
   const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await logic.getGasPrice())
   const gasLimit = commander.gasLimit
+
+  if (commander.testToken === (commander.stakingToken != null)) {
+    throw new Error('must specify either --testToken or --stakingToken')
+  }
 
   const deploymentResult = await logic.deployGsnContracts({
     from,

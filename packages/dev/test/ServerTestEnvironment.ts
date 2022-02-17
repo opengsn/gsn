@@ -8,13 +8,13 @@ import { toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import {
+  IERC2771RecipientInstance,
   IForwarderInstance,
   IPenalizerInstance,
   IRelayHubInstance,
-  IRelayRecipientInstance,
   StakeManagerInstance,
-  TestTokenInstance,
-  TestPaymasterEverythingAcceptedInstance
+  TestPaymasterEverythingAcceptedInstance,
+  TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './ServerTestUtils'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
@@ -77,7 +77,7 @@ export class ServerTestEnvironment {
   relayHub!: IRelayHubInstance
   forwarder!: IForwarderInstance
   paymaster!: TestPaymasterEverythingAcceptedInstance
-  recipient!: IRelayRecipientInstance
+  recipient!: IERC2771RecipientInstance
 
   relayOwner!: Address
   gasLess!: Address
@@ -206,6 +206,7 @@ export class ServerTestEnvironment {
 
   newServerInstanceNoFunding (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): void {
     const shared: Partial<ServerConfigParams> = {
+      coldRestartLogsFromBlock: 1,
       runPaymasterReputations: false,
       ownerAddress: this.relayOwner,
       relayHubAddress: this.relayHub.address,
