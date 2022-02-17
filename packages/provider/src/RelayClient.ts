@@ -492,7 +492,7 @@ export class RelayClient {
       }
       return jsonConfig.networks[chainId].gsnConfig
     } catch (e) {
-      this.logger.error(`Could not fetch configuration from docs: ${(e as Error).message}`)
+      this.logger.error(`Could not fetch default configuration: ${(e as Error).message}`)
       return {}
     }
   }
