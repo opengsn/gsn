@@ -78,7 +78,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
     stakingTokenValue = stakingTokenValue ?? '0.1'
   } else {
     if (stakingTokenValue == null) {
-      console.error('must specify TOKEN_STAKE for staking token (defaults to 0.1 f')
+      console.error('must specify TOKEN_STAKE for staking token')
       process.exit(1)
     }
   }
@@ -155,10 +155,11 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
     await setField('TestPaymasterEverythingAccepted', 'getTrustedForwarder', 'setTrustedForwarder', deployedForwarder.address)
 
     const val = await deployments.read(hubContractName, 'balanceOf', deployedPm.address)
-    console.log('current balance=', val.toString())
+    console.log('current paymaster balance=', formatEther(val))
     const depositValue = parseEther('0.01')
 
     if (val.toString() === '0') {
+      console.log('depositing in paymaster', formatEther(depositValue))
       await deployments.execute(hubContractName, {
         from: deployer,
         value: depositValue,
