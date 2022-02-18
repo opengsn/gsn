@@ -15,6 +15,8 @@ import "./IForwarder.sol";
 contract Forwarder is IForwarder, ERC165 {
     using ECDSA for bytes32;
 
+    address private constant DRY_RUN_ADDRESS = 0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaD;
+
     string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntilTime";
 
     string public constant EIP712_DOMAIN_TYPE = "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
@@ -146,6 +148,10 @@ contract Forwarder is IForwarder, ERC165 {
     virtual
     view
     {
+        // solhint-disable-next-line avoid-tx-origin
+        if (tx.origin == DRY_RUN_ADDRESS){
+            return;
+        }
         require(domains[domainSeparator], "FWD: unregistered domain sep.");
         require(typeHashes[requestTypeHash], "FWD: unregistered typehash");
         bytes32 digest = keccak256(abi.encodePacked(
