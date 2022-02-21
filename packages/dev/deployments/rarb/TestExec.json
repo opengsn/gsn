@@ -1,0 +1,283 @@
+{
+  "address": "0x72da187896669E4591AEb3B6deE70Ac3D39C6932",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "contract IRelayHub",
+          "name": "_hub",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "success",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "pmAccepted",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "res",
+          "type": "bytes"
+        }
+      ],
+      "name": "Exec",
+      "type": "event"
+    },
+    {
+      "stateMutability": "nonpayable",
+      "type": "fallback"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "target",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "callData",
+          "type": "bytes"
+        }
+      ],
+      "name": "exec",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "hub",
+      "outputs": [
+        {
+          "internalType": "contract IRelayHub",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "maxAcceptanceBudget",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "address",
+                  "name": "from",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "to",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "value",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "gas",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "nonce",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bytes",
+                  "name": "data",
+                  "type": "bytes"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "validUntil",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct IForwarder.ForwardRequest",
+              "name": "request",
+              "type": "tuple"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "maxFeePerGas",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "maxPriorityFeePerGas",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "pctRelayFee",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "baseRelayFee",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "transactionCalldataGasUsed",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "address",
+                  "name": "relayWorker",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "paymaster",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "forwarder",
+                  "type": "address"
+                },
+                {
+                  "internalType": "bytes",
+                  "name": "paymasterData",
+                  "type": "bytes"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "clientId",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct GsnTypes.RelayData",
+              "name": "relayData",
+              "type": "tuple"
+            }
+          ],
+          "internalType": "struct GsnTypes.RelayRequest",
+          "name": "relayRequest",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes",
+          "name": "signature",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "approvalData",
+          "type": "bytes"
+        }
+      ],
+      "name": "relayCall",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "paymasterAccepted",
+          "type": "bool"
+        },
+        {
+          "internalType": "bytes",
+          "name": "returnValue",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IRelayHub",
+          "name": "_hub",
+          "type": "address"
+        }
+      ],
+      "name": "setRelayHub",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x9a8991670a954b1f5e98d780553a7ce0ab912e8e596b1dc773dd3e3a5dfb036d",
+  "receipt": {
+    "to": null,
+    "from": "0xd21934eD8eAf27a67f0A70042Af50A1D6d195E81",
+    "contractAddress": "0x72da187896669E4591AEb3B6deE70Ac3D39C6932",
+    "transactionIndex": 0,
+    "gasUsed": "5586156",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0xa53337a805f88cbc3efbcc8ecf6e5a749d358b1d20e31de128b8b721bc4c4648",
+    "transactionHash": "0x9a8991670a954b1f5e98d780553a7ce0ab912e8e596b1dc773dd3e3a5dfb036d",
+    "logs": [],
+    "blockNumber": 7985249,
+    "cumulativeGasUsed": "258896",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0xA920cF363cDF18FBf9edD1eAEe89e601476357eE"
+  ],
+  "numDeployments": 2,
+  "solcInputHash": "ad4381fa1d3f9a61a55ec15510c12837",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.7+commit.e28d00a7\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"contract IRelayHub\",\"name\":\"_hub\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"pmAccepted\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"res\",\"type\":\"bytes\"}],\"name\":\"Exec\",\"type\":\"event\"},{\"stateMutability\":\"nonpayable\",\"type\":\"fallback\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"callData\",\"type\":\"bytes\"}],\"name\":\"exec\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"hub\",\"outputs\":[{\"internalType\":\"contract IRelayHub\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"maxAcceptanceBudget\",\"type\":\"uint256\"},{\"components\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"validUntil\",\"type\":\"uint256\"}],\"internalType\":\"struct IForwarder.ForwardRequest\",\"name\":\"request\",\"type\":\"tuple\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"maxFeePerGas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxPriorityFeePerGas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"pctRelayFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"baseRelayFee\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"transactionCalldataGasUsed\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"relayWorker\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"paymaster\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"forwarder\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"paymasterData\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"clientId\",\"type\":\"uint256\"}],\"internalType\":\"struct GsnTypes.RelayData\",\"name\":\"relayData\",\"type\":\"tuple\"}],\"internalType\":\"struct GsnTypes.RelayRequest\",\"name\":\"relayRequest\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"signature\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"approvalData\",\"type\":\"bytes\"}],\"name\":\"relayCall\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"paymasterAccepted\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"returnValue\",\"type\":\"bytes\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract IRelayHub\",\"name\":\"_hub\",\"type\":\"address\"}],\"name\":\"setRelayHub\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"notice\":\"As there is no way to run Arbitrum chain locally, tests currently need to run on simple hardhat node. If some behavior is needed from ArbSys, it has to be stubbed here.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts-link/test/TestExec.sol\":\"TestExec\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/utils/math/SafeMath.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/math/SafeMath.sol)\\n\\npragma solidity ^0.8.0;\\n\\n// CAUTION\\n// This version of SafeMath should only be used with Solidity 0.8 or later,\\n// because it relies on the compiler's built in overflow checks.\\n\\n/**\\n * @dev Wrappers over Solidity's arithmetic operations.\\n *\\n * NOTE: `SafeMath` is generally not needed starting with Solidity 0.8, since the compiler\\n * now has built in overflow checking.\\n */\\nlibrary SafeMath {\\n    /**\\n     * @dev Returns the addition of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryAdd(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            uint256 c = a + b;\\n            if (c < a) return (false, 0);\\n            return (true, c);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the substraction of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function trySub(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b > a) return (false, 0);\\n            return (true, a - b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryMul(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            // Gas optimization: this is cheaper than requiring 'a' not being zero, but the\\n            // benefit is lost if 'b' is also tested.\\n            // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522\\n            if (a == 0) return (true, 0);\\n            uint256 c = a * b;\\n            if (c / a != b) return (false, 0);\\n            return (true, c);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the division of two unsigned integers, with a division by zero flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryDiv(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b == 0) return (false, 0);\\n            return (true, a / b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryMod(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b == 0) return (false, 0);\\n            return (true, a % b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the addition of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `+` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Addition cannot overflow.\\n     */\\n    function add(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a + b;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting on\\n     * overflow (when the result is negative).\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a - b;\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `*` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Multiplication cannot overflow.\\n     */\\n    function mul(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a * b;\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers, reverting on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a / b;\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * reverting when dividing by zero.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a % b;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on\\n     * overflow (when the result is negative).\\n     *\\n     * CAUTION: This function is deprecated because it requires allocating memory for the error\\n     * message unnecessarily. For custom revert reasons use {trySub}.\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b <= a, errorMessage);\\n            return a - b;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers, reverting with custom message on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator. Note: this function uses a\\n     * `revert` opcode (which leaves remaining gas untouched) while Solidity\\n     * uses an invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b > 0, errorMessage);\\n            return a / b;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * reverting with custom message when dividing by zero.\\n     *\\n     * CAUTION: This function is deprecated because it requires allocating memory for the error\\n     * message unnecessarily. For custom revert reasons use {tryMod}.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b > 0, errorMessage);\\n            return a % b;\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0xa2f576be637946f767aa56601c26d717f48a0aff44f82e46f13807eea1009a21\",\"license\":\"MIT\"},\"contracts-link/forwarder/IForwarder.sol\":{\"content\":\"// SPDX-License-Identifier: GPL-3.0-only\\npragma solidity >=0.7.6;\\npragma abicoder v2;\\n\\ninterface IForwarder {\\n\\n    struct ForwardRequest {\\n        address from;\\n        address to;\\n        uint256 value;\\n        uint256 gas;\\n        uint256 nonce;\\n        bytes data;\\n        uint256 validUntil;\\n    }\\n\\n    event DomainRegistered(bytes32 indexed domainSeparator, bytes domainValue);\\n\\n    event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);\\n\\n    function getNonce(address from)\\n    external view\\n    returns(uint256);\\n\\n    /**\\n     * verify the transaction would execute.\\n     * validate the signature and the nonce of the request.\\n     * revert if either signature or nonce are incorrect.\\n     * also revert if domainSeparator or requestTypeHash are not registered.\\n     */\\n    function verify(\\n        ForwardRequest calldata forwardRequest,\\n        bytes32 domainSeparator,\\n        bytes32 requestTypeHash,\\n        bytes calldata suffixData,\\n        bytes calldata signature\\n    ) external view;\\n\\n    /**\\n     * execute a transaction\\n     * @param forwardRequest - all transaction parameters\\n     * @param domainSeparator - domain used when signing this request\\n     * @param requestTypeHash - request type used when signing this request.\\n     * @param suffixData - the extension data used when signing this request.\\n     * @param signature - signature to validate.\\n     *\\n     * the transaction is verified, and then executed.\\n     * the success and ret of \\\"call\\\" are returned.\\n     * This method would revert only verification errors. target errors\\n     * are reported using the returned \\\"success\\\" and ret string\\n     */\\n    function execute(\\n        ForwardRequest calldata forwardRequest,\\n        bytes32 domainSeparator,\\n        bytes32 requestTypeHash,\\n        bytes calldata suffixData,\\n        bytes calldata signature\\n    )\\n    external payable\\n    returns (bool success, bytes memory ret);\\n\\n    /**\\n     * Register a new Request typehash.\\n     * @param typeName - the name of the request type.\\n     * @param typeSuffix - any extra data after the generic params.\\n     *  (must add at least one param. The generic ForwardRequest type is always registered by the constructor)\\n     */\\n    function registerRequestType(string calldata typeName, string calldata typeSuffix) external;\\n\\n    /**\\n     * Register a new domain separator.\\n     * The domain separator must have the following fields: name,version,chainId, verifyingContract.\\n     * the chainId is the current network's chainId, and the verifyingContract is this forwarder.\\n     * This method is given the domain name and version to create and register the domain separator value.\\n     * @param name the domain's display name\\n     * @param version the domain/protocol version\\n     */\\n    function registerDomainSeparator(string calldata name, string calldata version) external;\\n}\\n\",\"keccak256\":\"0xca05fe8ee1d0bbdd9edd83f16b8481fa67704f0ed5a42d5c0f76c8a3a47d73f4\",\"license\":\"GPL-3.0-only\"},\"contracts-link/interfaces/IRelayHub.sol\":{\"content\":\"// SPDX-License-Identifier: GPL-3.0-only\\npragma solidity >=0.7.6;\\npragma abicoder v2;\\n\\nimport \\\"../utils/GsnTypes.sol\\\";\\nimport \\\"./IStakeManager.sol\\\";\\n\\ninterface IRelayHub {\\n    struct RelayHubConfig {\\n        // maximum number of worker accounts allowed per manager\\n        uint256 maxWorkerCount;\\n        // Gas set aside for all relayCall() instructions to prevent unexpected out-of-gas exceptions\\n        uint256 gasReserve;\\n        // Gas overhead to calculate gasUseWithoutPost\\n        uint256 postOverhead;\\n        // Gas cost of all relayCall() instructions after actual 'calculateCharge()'\\n        // Assume that relay has non-zero balance (costs 15'000 more otherwise).\\n        uint256 gasOverhead;\\n        // Maximum funds that can be deposited at once. Prevents user error by disallowing large deposits.\\n        uint256 maximumRecipientDeposit;\\n        // Minimum unstake delay blocks of a relay manager's stake on the StakeManager\\n        uint256 minimumUnstakeDelay;\\n        // Minimum stake a relay can have. An attack on the network will never cost less than half this value.\\n        uint256 minimumStake;\\n    }\\n\\n    event RelayHubConfigured(RelayHubConfig config);\\n\\n    /// Emitted when relays are added by a relayManager\\n    event RelayWorkersAdded(\\n        address indexed relayManager,\\n        address[] newRelayWorkers,\\n        uint256 workersCount\\n    );\\n\\n    /// Emitted when an account withdraws funds from RelayHub.\\n    event Withdrawn(\\n        address indexed account,\\n        address indexed dest,\\n        uint256 amount\\n    );\\n\\n    /// Emitted when depositFor is called, including the amount and account that was funded.\\n    event Deposited(\\n        address indexed paymaster,\\n        address indexed from,\\n        uint256 amount\\n    );\\n\\n    /// Emitted when an attempt to relay a call fails and Paymaster does not accept the transaction.\\n    /// The actual relayed call was not executed, and the recipient not charged.\\n    /// @param reason contains a revert reason returned from preRelayedCall or forwarder.\\n    event TransactionRejectedByPaymaster(\\n        address indexed relayManager,\\n        address indexed paymaster,\\n        address indexed from,\\n        address to,\\n        address relayWorker,\\n        bytes4 selector,\\n        uint256 innerGasUsed,\\n        bytes reason\\n    );\\n\\n    /// Emitted when a transaction is relayed. Note that the actual encoded function might be reverted: this will be\\n    /// indicated in the status field.\\n    /// Useful when monitoring a relay's operation and relayed calls to a contract.\\n    /// Charge is the ether value deducted from the recipient's balance, paid to the relay's manager.\\n    event TransactionRelayed(\\n        address indexed relayManager,\\n        address indexed relayWorker,\\n        address indexed from,\\n        address to,\\n        address paymaster,\\n        bytes4 selector,\\n        RelayCallStatus status,\\n        uint256 charge\\n    );\\n\\n    event TransactionResult(\\n        RelayCallStatus status,\\n        bytes returnValue\\n    );\\n\\n    event HubDeprecated(uint256 fromBlock);\\n\\n    /// Reason error codes for the TransactionRelayed event\\n    /// @param OK - the transaction was successfully relayed and execution successful - never included in the event\\n    /// @param RelayedCallFailed - the transaction was relayed, but the relayed call failed\\n    /// @param RejectedByPreRelayed - the transaction was not relayed due to preRelatedCall reverting\\n    /// @param RejectedByForwarder - the transaction was not relayed due to forwarder check (signature,nonce)\\n    /// @param PostRelayedFailed - the transaction was relayed and reverted due to postRelatedCall reverting\\n    /// @param PaymasterBalanceChanged - the transaction was relayed and reverted due to the paymaster balance change\\n    enum RelayCallStatus {\\n        OK,\\n        RelayedCallFailed,\\n        RejectedByPreRelayed,\\n        RejectedByForwarder,\\n        RejectedByRecipientRevert,\\n        PostRelayedFailed,\\n        PaymasterBalanceChanged\\n    }\\n\\n    /// Add new worker addresses controlled by sender who must be a staked Relay Manager address.\\n    /// Emits a RelayWorkersAdded event.\\n    /// This function can be called multiple times, emitting new events\\n    function addRelayWorkers(address[] calldata newRelayWorkers) external;\\n\\n    function verifyCanRegister(address relayManager) external;\\n\\n    // Balance management\\n\\n    /// Deposits ether for a contract, so that it can receive (and pay for) relayed transactions. Unused balance can only\\n    /// be withdrawn by the contract itself, by calling withdraw.\\n    /// Emits a Deposited event.\\n    function depositFor(address target) external payable;\\n\\n    /// Withdraws from an account's balance, sending it back to it. Relay managers call this to retrieve their revenue, and\\n    /// contracts can also use it to reduce their funding.\\n    /// Emits a Withdrawn event.\\n    function withdraw(uint256 amount, address payable dest) external;\\n\\n    // Relaying\\n\\n\\n    /// Relays a transaction. For this to succeed, multiple conditions must be met:\\n    ///  - Paymaster's \\\"preRelayCall\\\" method must succeed and not revert\\n    ///  - the sender must be a registered Relay Worker that the user signed\\n    ///  - the transaction's gas price must be equal or larger than the one that was signed by the sender\\n    ///  - the transaction must have enough gas to run all internal transactions if they use all gas available to them\\n    ///  - the Paymaster must have enough balance to pay the Relay Worker for the scenario when all gas is spent\\n    ///\\n    /// If all conditions are met, the call will be relayed and the recipient charged.\\n    ///\\n    /// Arguments:\\n    /// @param maxAcceptanceBudget - max valid value for paymaster.getGasLimits().acceptanceBudget\\n    /// @param relayRequest - all details of the requested relayed call\\n    /// @param signature - client's EIP-712 signature over the relayRequest struct\\n    /// @param approvalData: dapp-specific data forwarded to preRelayedCall.\\n    ///        This value is *not* verified by the Hub. For example, it can be used to pass a signature to the Paymaster\\n    ///\\n    /// Emits a TransactionRelayed event.\\n    function relayCall(\\n        uint maxAcceptanceBudget,\\n        GsnTypes.RelayRequest calldata relayRequest,\\n        bytes calldata signature,\\n        bytes calldata approvalData\\n    )\\n    external\\n    returns (bool paymasterAccepted, bytes memory returnValue);\\n\\n    function penalize(address relayWorker, address payable beneficiary) external;\\n\\n    function setConfiguration(RelayHubConfig memory _config) external;\\n\\n    // Deprecate hub (reverting relayCall()) from block number 'fromBlock'\\n    // Can only be called by owner\\n    function deprecateHub(uint256 fromBlock) external;\\n\\n    /// The fee is expressed as a base fee in wei plus percentage on actual charge.\\n    /// E.g. a value of 40 stands for a 40% fee, so the recipient will be\\n    /// charged for 1.4 times the spent amount.\\n    function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) external view returns (uint256);\\n\\n    /* getters */\\n\\n    /// Returns the whole hub configuration\\n    function getConfiguration() external view returns (RelayHubConfig memory config);\\n\\n    function workerToManager(address worker) external view returns(address);\\n\\n    function workerCount(address manager) external view returns(uint256);\\n\\n    /// Returns an account's deposits. It can be either a deposit of a paymaster, or a revenue of a relay manager.\\n    function balanceOf(address target) external view returns (uint256);\\n\\n    function stakeManager() external view returns (IStakeManager);\\n\\n    function penalizer() external view returns (address);\\n\\n    function relayRegistrar() external view returns (address);\\n\\n    /// Uses StakeManager info to decide if the Relay Manager can be considered staked\\n    /// @return true if stake size and delay satisfy all requirements\\n    function isRelayManagerStaked(address relayManager) external view returns(bool);\\n\\n    // Checks hubs' deprecation status\\n    function isDeprecated() external view returns (bool);\\n\\n    // Returns the block number from which the hub no longer allows relaying calls.\\n    function deprecationBlock() external view returns (uint256);\\n\\n    /// @return a SemVer-compliant version of the hub contract\\n    function versionHub() external view returns (string memory);\\n\\n    /// @return a total measurable amount of gas left to current execution; same as 'gasleft()' for pure EVMs\\n    function aggregateGasleft() external view returns (uint256);\\n}\\n\\n\",\"keccak256\":\"0xb2533c027af0986e095693900e38807ea5096a57b8d4e9fd281bc98ccdbffeab\",\"license\":\"GPL-3.0-only\"},\"contracts-link/interfaces/IStakeManager.sol\":{\"content\":\"// SPDX-License-Identifier: GPL-3.0-only\\npragma solidity >=0.7.6;\\npragma abicoder v2;\\n\\nimport \\\"@openzeppelin/contracts/utils/math/SafeMath.sol\\\";\\n\\ninterface IStakeManager {\\n\\n    /// Emitted when a stake or unstakeDelay are initialized or increased\\n    event StakeAdded(\\n        address indexed relayManager,\\n        address indexed owner,\\n        uint256 stake,\\n        uint256 unstakeDelay\\n    );\\n\\n    /// Emitted once a stake is scheduled for withdrawal\\n    event StakeUnlocked(\\n        address indexed relayManager,\\n        address indexed owner,\\n        uint256 withdrawBlock\\n    );\\n\\n    /// Emitted when owner withdraws relayManager funds\\n    event StakeWithdrawn(\\n        address indexed relayManager,\\n        address indexed owner,\\n        uint256 amount\\n    );\\n\\n    /// Emitted when an authorized Relay Hub penalizes a relayManager\\n    event StakePenalized(\\n        address indexed relayManager,\\n        address indexed beneficiary,\\n        uint256 reward\\n    );\\n\\n    event HubAuthorized(\\n        address indexed relayManager,\\n        address indexed relayHub\\n    );\\n\\n    event HubUnauthorized(\\n        address indexed relayManager,\\n        address indexed relayHub,\\n        uint256 removalBlock\\n    );\\n\\n    event OwnerSet(\\n        address indexed relayManager,\\n        address indexed owner\\n    );\\n\\n    /// @param stake - amount of ether staked for this relay\\n    /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'\\n    /// @param withdrawBlock - first block number 'withdraw' will be callable, or zero if the unlock has not been called\\n    /// @param owner - address that receives revenue and manages relayManager's stake\\n    struct StakeInfo {\\n        uint256 stake;\\n        uint256 unstakeDelay;\\n        uint256 withdrawBlock;\\n        address payable owner;\\n    }\\n\\n    struct RelayHubInfo {\\n        uint256 removalBlock;\\n    }\\n\\n    /// Set the owner of a Relay Manager. Called only by the RelayManager itself.\\n    /// Note that owners cannot transfer ownership - if the entry already exists, reverts.\\n    /// @param owner - owner of the relay (as configured off-chain)\\n    function setRelayManagerOwner(address payable owner) external;\\n\\n    /// Only the owner can call this function. If the entry does not exist, reverts.\\n    /// @param relayManager - address that represents a stake entry and controls relay registrations on relay hubs\\n    /// @param unstakeDelay - number of blocks to elapse before the owner can retrieve the stake after calling 'unlock'\\n    function stakeForRelayManager(address relayManager, uint256 unstakeDelay) external payable;\\n\\n    function unlockStake(address relayManager) external;\\n\\n    function withdrawStake(address relayManager) external;\\n\\n    function authorizeHubByOwner(address relayManager, address relayHub) external;\\n\\n    function authorizeHubByManager(address relayHub) external;\\n\\n    function unauthorizeHubByOwner(address relayManager, address relayHub) external;\\n\\n    function unauthorizeHubByManager(address relayHub) external;\\n\\n    function isRelayManagerStaked(address relayManager, address relayHub, uint256 minAmount, uint256 minUnstakeDelay)\\n    external\\n    view\\n    returns (bool);\\n\\n    /// Slash the stake of the relay relayManager. In order to prevent stake kidnapping, burns half of stake on the way.\\n    /// @param relayManager - entry to penalize\\n    /// @param beneficiary - address that receives half of the penalty amount\\n    /// @param amount - amount to withdraw from stake\\n    function penalizeRelayManager(address relayManager, address payable beneficiary, uint256 amount) external;\\n\\n    function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo);\\n\\n    function maxUnstakeDelay() external view returns (uint256);\\n\\n    function versionSM() external view returns (string memory);\\n}\\n\",\"keccak256\":\"0x834859879435b9032dc629a03baaa0d7ce645c184997985a7b8da944086753bb\",\"license\":\"GPL-3.0-only\"},\"contracts-link/test/TestExec.sol\":{\"content\":\"// SPDX-License-Identifier: GPL-3.0-only\\npragma solidity ^0.8.0;\\n\\nimport \\\"../interfaces/IRelayHub.sol\\\";\\n/**\\n* As there is no way to run Arbitrum chain locally, tests currently need to run on simple hardhat node.\\n* If some behavior is needed from ArbSys, it has to be stubbed here.\\n */\\ncontract TestExec {\\n\\n    event Exec(bool success, bool pmAccepted, bytes res);\\n\\n    IRelayHub public hub;\\n\\n    constructor(IRelayHub _hub) {\\n        setRelayHub(_hub);\\n    }\\n\\n    function setRelayHub(IRelayHub _hub) public {\\n        hub = _hub;\\n    }\\n\\n    function exec(\\n        address target,\\n        bytes calldata callData) public {\\n\\n        (bool success, bytes memory res) = target.call(callData);\\n        emit Exec(success, false, res);\\n    }\\n\\n    function relayCall(\\n        uint maxAcceptanceBudget,\\n        GsnTypes.RelayRequest calldata relayRequest,\\n        bytes calldata signature,\\n        bytes calldata approvalData\\n    ) public returns (bool paymasterAccepted, bytes memory returnValue) {\\n        try hub.relayCall(maxAcceptanceBudget, relayRequest, signature, approvalData)\\n        returns (bool paymasterAccepted, bytes memory returnValue) {\\n\\n            emit Exec(true, paymasterAccepted, returnValue);\\n            return (paymasterAccepted, returnValue);\\n        } catch Error(string memory revertReason) {\\n            emit Exec(false, false, bytes(revertReason));\\n            return (false, bytes(revertReason));\\n        } catch (bytes memory rawError){\\n            emit Exec(false, false, rawError);\\n            return (false, rawError);\\n        }\\n    }\\n\\n    fallback() external {\\n        IRelayHub hub1 = hub;\\n        assembly {\\n        // Copy msg.data. We take full control of memory in this inline assembly\\n        // block because it will not return to Solidity code. We overwrite the\\n        // Solidity scratch pad at memory position 0.\\n            calldatacopy(0, 0, calldatasize())\\n\\n        // Call the implementation.\\n        // out and outsize are 0 because we don't know the size yet.\\n            let result := call(gas(), hub1, 0, 0, calldatasize(), 0, 0)\\n\\n        // Copy the returned data.\\n            returndatacopy(0, 0, returndatasize())\\n\\n            switch result\\n            // delegatecall returns 0 on error.\\n            case 0 {\\n                revert(0, returndatasize())\\n            }\\n            default {\\n                return(0, returndatasize())\\n            }\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0x1c5d50408ce4ac91de651866389b2f08ee359dcf6d0e92c9f472780589891907\",\"license\":\"GPL-3.0-only\"},\"contracts-link/utils/GsnTypes.sol\":{\"content\":\"// SPDX-License-Identifier: GPL-3.0-only\\npragma solidity ^0.8.0;\\n\\nimport \\\"../forwarder/IForwarder.sol\\\";\\n\\ninterface GsnTypes {\\n    /// @notice maxFeePerGas, maxPriorityFeePerGas, pctRelayFee and baseRelayFee must be validated inside of the paymaster's preRelayedCall in order not to overpay\\n    struct RelayData {\\n        uint256 maxFeePerGas;\\n        uint256 maxPriorityFeePerGas;\\n        uint256 pctRelayFee;\\n        uint256 baseRelayFee;\\n        uint256 transactionCalldataGasUsed;\\n        address relayWorker;\\n        address paymaster;\\n        address forwarder;\\n        bytes paymasterData;\\n        uint256 clientId;\\n    }\\n\\n    //note: must start with the ForwardRequest to be an extension of the generic forwarder\\n    struct RelayRequest {\\n        IForwarder.ForwardRequest request;\\n        RelayData relayData;\\n    }\\n}\\n\",\"keccak256\":\"0xa3e6ccdc89830d08063cc47fc68ddac2ff6d5855213def9e1a4881138f2f5ed9\",\"license\":\"GPL-3.0-only\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50604051610a41380380610a4183398101604081905261002f91610050565b600080546001600160a01b0319166001600160a01b03831617905550610080565b60006020828403121561006257600080fd5b81516001600160a01b038116811461007957600080fd5b9392505050565b6109b28061008f6000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c8063365a86fc1461007e5780637bb05264146100ae578063be6002c2146100e0578063d17da3e8146100f3575b600080546001600160a01b0316903690803760008036600080855af13d6000803e808015610079573d6000f35b3d6000fd5b600054610091906001600160a01b031681565b6040516001600160a01b0390911681526020015b60405180910390f35b6100de6100bc366004610485565b600080546001600160a01b0319166001600160a01b0392909216919091179055565b005b6100de6100ee36600461037d565b610114565b6101066101013660046104a9565b6101a9565b6040516100a5929190610699565b600080846001600160a01b0316848460405161013192919061065d565b6000604051808303816000865af19150503d806000811461016e576040519150601f19603f3d011682016040523d82523d6000602084013e610173565b606091505b509150915060008051602061095d8339815191528260008360405161019a9392919061066d565b60405180910390a15050505050565b60008054604051631a2fb47d60e31b81526060916001600160a01b03169063d17da3e8906101e5908b908b908b908b908b908b906004016106bc565b600060405180830381600087803b1580156101ff57600080fd5b505af192505050801561023457506040513d6000823e601f3d908101601f1916820160405261023191908101906103d2565b60015b6102e95761024061089e565b806308c379a0141561029557506102556108ba565b806102605750610297565b60008051602061095d833981519152600080836040516102829392919061066d565b60405180910390a1600092509050610319565b505b3d8080156102c1576040519150601f19603f3d011682016040523d82523d6000602084013e6102c6565b606091505b5060008051602061095d833981519152600080836040516102829392919061066d565b60008051602061095d8339815191526001838360405161030b9392919061066d565b60405180910390a190925090505b965096945050505050565b803561032f81610944565b919050565b60008083601f84011261034657600080fd5b50813567ffffffffffffffff81111561035e57600080fd5b60208301915083602082850101111561037657600080fd5b9250929050565b60008060006040848603121561039257600080fd5b833561039d81610944565b9250602084013567ffffffffffffffff8111156103b957600080fd5b6103c586828701610334565b9497909650939450505050565b600080604083850312156103e557600080fd5b825180151581146103f557600080fd5b602084015190925067ffffffffffffffff8082111561041357600080fd5b818501915085601f83011261042757600080fd5b81518181111561043957610439610888565b6040519150610452601f8201601f19166020018361085b565b80825286602082850101111561046757600080fd5b61047881602084016020860161082b565b5080925050509250929050565b60006020828403121561049757600080fd5b81356104a281610944565b9392505050565b600080600080600080608087890312156104c257600080fd5b86359550602087013567ffffffffffffffff808211156104e157600080fd5b908801906040828b0312156104f557600080fd5b9095506040880135908082111561050b57600080fd5b6105178a838b01610334565b9096509450606089013591508082111561053057600080fd5b5061053d89828a01610334565b979a9699509497509295939492505050565b81835281816020850137506000828201602090810191909152601f909101601f19169091010190565b6000815180845261059081602086016020860161082b565b601f01601f19169290920160200192915050565b600061014082358452602083013560208501526040830135604085015260608301356060850152608083013560808501526105e160a08401610324565b6001600160a01b031660a08501526105fb60c08401610324565b6001600160a01b031660c085015261061560e08401610324565b6001600160a01b031660e0850152610100610632848201856107c5565b8383880152610644848801828461054f565b6101209687013597909601969096525092949350505050565b8183823760009101908152919050565b831515815282151560208201526060604082015260006106906060830184610578565b95945050505050565b82151581526040602082015260006106b46040830184610578565b949350505050565b868152608060208201526000863560de198836030181126106dc57600080fd5b60406080840152870180356106f081610944565b6001600160a01b0390811660c085015260208201359061070f82610944565b1660e084015260408101356101008401526060810135610120840152608081013561014084015261074360a08201826107c5565b60e061016086015261075a6101a08601828461054f565b91505060c082013561018085015261077560208a018a61080b565b848203607f190160a0860152915061078d81836105a4565b91505082810360408401526107a381878961054f565b905082810360608401526107b881858761054f565b9998505050505050505050565b6000808335601e198436030181126107dc57600080fd5b830160208101925035905067ffffffffffffffff8111156107fc57600080fd5b80360383131561037657600080fd5b6000823561013e1983360301811261082257600080fd5b90910192915050565b60005b8381101561084657818101518382015260200161082e565b83811115610855576000848401525b50505050565b601f8201601f1916810167ffffffffffffffff8111828210171561088157610881610888565b6040525050565b634e487b7160e01b600052604160045260246000fd5b600060033d11156108b75760046000803e5060005160e01c5b90565b600060443d10156108c85790565b6040516003193d81016004833e81513d67ffffffffffffffff81602484011181841117156108f857505050505090565b82850191508151818111156109105750505050505090565b843d870101602082850101111561092a5750505050505090565b6109396020828601018761085b565b509095945050505050565b6001600160a01b038116811461095957600080fd5b5056fe1869f9c0fd47ee5bd5e76dfffedb3e8452078e7c6f4c4d011f74d79014fbe2d2a2646970667358221220ab0f45b4565012012b5239c083f2361333da29fd824a6fb89440bf958e41b2c964736f6c63430008070033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061004c5760003560e01c8063365a86fc1461007e5780637bb05264146100ae578063be6002c2146100e0578063d17da3e8146100f3575b600080546001600160a01b0316903690803760008036600080855af13d6000803e808015610079573d6000f35b3d6000fd5b600054610091906001600160a01b031681565b6040516001600160a01b0390911681526020015b60405180910390f35b6100de6100bc366004610485565b600080546001600160a01b0319166001600160a01b0392909216919091179055565b005b6100de6100ee36600461037d565b610114565b6101066101013660046104a9565b6101a9565b6040516100a5929190610699565b600080846001600160a01b0316848460405161013192919061065d565b6000604051808303816000865af19150503d806000811461016e576040519150601f19603f3d011682016040523d82523d6000602084013e610173565b606091505b509150915060008051602061095d8339815191528260008360405161019a9392919061066d565b60405180910390a15050505050565b60008054604051631a2fb47d60e31b81526060916001600160a01b03169063d17da3e8906101e5908b908b908b908b908b908b906004016106bc565b600060405180830381600087803b1580156101ff57600080fd5b505af192505050801561023457506040513d6000823e601f3d908101601f1916820160405261023191908101906103d2565b60015b6102e95761024061089e565b806308c379a0141561029557506102556108ba565b806102605750610297565b60008051602061095d833981519152600080836040516102829392919061066d565b60405180910390a1600092509050610319565b505b3d8080156102c1576040519150601f19603f3d011682016040523d82523d6000602084013e6102c6565b606091505b5060008051602061095d833981519152600080836040516102829392919061066d565b60008051602061095d8339815191526001838360405161030b9392919061066d565b60405180910390a190925090505b965096945050505050565b803561032f81610944565b919050565b60008083601f84011261034657600080fd5b50813567ffffffffffffffff81111561035e57600080fd5b60208301915083602082850101111561037657600080fd5b9250929050565b60008060006040848603121561039257600080fd5b833561039d81610944565b9250602084013567ffffffffffffffff8111156103b957600080fd5b6103c586828701610334565b9497909650939450505050565b600080604083850312156103e557600080fd5b825180151581146103f557600080fd5b602084015190925067ffffffffffffffff8082111561041357600080fd5b818501915085601f83011261042757600080fd5b81518181111561043957610439610888565b6040519150610452601f8201601f19166020018361085b565b80825286602082850101111561046757600080fd5b61047881602084016020860161082b565b5080925050509250929050565b60006020828403121561049757600080fd5b81356104a281610944565b9392505050565b600080600080600080608087890312156104c257600080fd5b86359550602087013567ffffffffffffffff808211156104e157600080fd5b908801906040828b0312156104f557600080fd5b9095506040880135908082111561050b57600080fd5b6105178a838b01610334565b9096509450606089013591508082111561053057600080fd5b5061053d89828a01610334565b979a9699509497509295939492505050565b81835281816020850137506000828201602090810191909152601f909101601f19169091010190565b6000815180845261059081602086016020860161082b565b601f01601f19169290920160200192915050565b600061014082358452602083013560208501526040830135604085015260608301356060850152608083013560808501526105e160a08401610324565b6001600160a01b031660a08501526105fb60c08401610324565b6001600160a01b031660c085015261061560e08401610324565b6001600160a01b031660e0850152610100610632848201856107c5565b8383880152610644848801828461054f565b6101209687013597909601969096525092949350505050565b8183823760009101908152919050565b831515815282151560208201526060604082015260006106906060830184610578565b95945050505050565b82151581526040602082015260006106b46040830184610578565b949350505050565b868152608060208201526000863560de198836030181126106dc57600080fd5b60406080840152870180356106f081610944565b6001600160a01b0390811660c085015260208201359061070f82610944565b1660e084015260408101356101008401526060810135610120840152608081013561014084015261074360a08201826107c5565b60e061016086015261075a6101a08601828461054f565b91505060c082013561018085015261077560208a018a61080b565b848203607f190160a0860152915061078d81836105a4565b91505082810360408401526107a381878961054f565b905082810360608401526107b881858761054f565b9998505050505050505050565b6000808335601e198436030181126107dc57600080fd5b830160208101925035905067ffffffffffffffff8111156107fc57600080fd5b80360383131561037657600080fd5b6000823561013e1983360301811261082257600080fd5b90910192915050565b60005b8381101561084657818101518382015260200161082e565b83811115610855576000848401525b50505050565b601f8201601f1916810167ffffffffffffffff8111828210171561088157610881610888565b6040525050565b634e487b7160e01b600052604160045260246000fd5b600060033d11156108b75760046000803e5060005160e01c5b90565b600060443d10156108c85790565b6040516003193d81016004833e81513d67ffffffffffffffff81602484011181841117156108f857505050505090565b82850191508151818111156109105750505050505090565b843d870101602082850101111561092a5750505050505090565b6109396020828601018761085b565b509095945050505050565b6001600160a01b038116811461095957600080fd5b5056fe1869f9c0fd47ee5bd5e76dfffedb3e8452078e7c6f4c4d011f74d79014fbe2d2a2646970667358221220ab0f45b4565012012b5239c083f2361333da29fd824a6fb89440bf958e41b2c964736f6c63430008070033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "notice": "As there is no way to run Arbitrum chain locally, tests currently need to run on simple hardhat node. If some behavior is needed from ArbSys, it has to be stubbed here.",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 5666,
+        "contract": "contracts-link/test/TestExec.sol:TestExec",
+        "label": "hub",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_contract(IRelayHub)5333"
+      }
+    ],
+    "types": {
+      "t_contract(IRelayHub)5333": {
+        "encoding": "inplace",
+        "label": "contract IRelayHub",
+        "numberOfBytes": "20"
+      }
+    }
+  }
+}

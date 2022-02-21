@@ -1,0 +1,572 @@
+{
+  "address": "0x57104d907A75FbF222639a7D47ED4396dCE02a96",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "domainSeparator",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "domainValue",
+          "type": "bytes"
+        }
+      ],
+      "name": "DomainRegistered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "typeHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "typeStr",
+          "type": "string"
+        }
+      ],
+      "name": "RequestTypeRegistered",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "EIP712_DOMAIN_TYPE",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "GENERIC_PARAMS",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "gas",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "validUntilTime",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IForwarder.ForwardRequest",
+          "name": "req",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "requestTypeHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "suffixData",
+          "type": "bytes"
+        }
+      ],
+      "name": "_getEncoded",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "domains",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "gas",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "validUntilTime",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IForwarder.ForwardRequest",
+          "name": "req",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "domainSeparator",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "requestTypeHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "suffixData",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "sig",
+          "type": "bytes"
+        }
+      ],
+      "name": "execute",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "success",
+          "type": "bool"
+        },
+        {
+          "internalType": "bytes",
+          "name": "ret",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        }
+      ],
+      "name": "getNonce",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "version",
+          "type": "string"
+        }
+      ],
+      "name": "registerDomainSeparator",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "typeName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "typeSuffix",
+          "type": "string"
+        }
+      ],
+      "name": "registerRequestType",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes4",
+          "name": "interfaceId",
+          "type": "bytes4"
+        }
+      ],
+      "name": "supportsInterface",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "typeHashes",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "gas",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "validUntilTime",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IForwarder.ForwardRequest",
+          "name": "req",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "domainSeparator",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "requestTypeHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "suffixData",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "sig",
+          "type": "bytes"
+        }
+      ],
+      "name": "verify",
+      "outputs": [],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ],
+  "transactionHash": "0x89cebce994c385877c057c5e5bbf731dbc4407c283234c57d92ab6bd0964aec3",
+  "receipt": {
+    "to": null,
+    "from": "0xd21934eD8eAf27a67f0A70042Af50A1D6d195E81",
+    "contractAddress": "0x57104d907A75FbF222639a7D47ED4396dCE02a96",
+    "transactionIndex": 0,
+    "gasUsed": "42768041",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000004000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000002000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000040000000000000000000000000000000",
+    "blockHash": "0x41d58923e7a858912ef9762b04fc9175169bd43f3f830aad32e0f7f07802e7b2",
+    "transactionHash": "0x89cebce994c385877c057c5e5bbf731dbc4407c283234c57d92ab6bd0964aec3",
+    "logs": [
+      {
+        "transactionIndex": 0,
+        "blockNumber": 20594,
+        "transactionHash": "0x89cebce994c385877c057c5e5bbf731dbc4407c283234c57d92ab6bd0964aec3",
+        "address": "0x57104d907A75FbF222639a7D47ED4396dCE02a96",
+        "topics": [
+          "0x64d6bce64323458c44643c51fe45113efc882082f7b7fd5f09f0d69d2eedb202",
+          "0xb91ae508e6f0e8e33913dec60d2fdcb39fe037ce56198c70a7927d7cd813fd96"
+        ],
+        "data": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000071466f72776172645265717565737428616464726573732066726f6d2c6164647265737320746f2c75696e743235362076616c75652c75696e74323536206761732c75696e74323536206e6f6e63652c627974657320646174612c75696e743235362076616c6964556e74696c54696d6529000000000000000000000000000000",
+        "logIndex": 0,
+        "blockHash": "0x41d58923e7a858912ef9762b04fc9175169bd43f3f830aad32e0f7f07802e7b2"
+      }
+    ],
+    "blockNumber": 20594,
+    "cumulativeGasUsed": "32209201",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 2,
+  "solcInputHash": "ed54ecf1e58c2e0b82a21139c2bc4bdb",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.7+commit.e28d00a7\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"domainSeparator\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"domainValue\",\"type\":\"bytes\"}],\"name\":\"DomainRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"typeHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"typeStr\",\"type\":\"string\"}],\"name\":\"RequestTypeRegistered\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"EIP712_DOMAIN_TYPE\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"GENERIC_PARAMS\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"validUntilTime\",\"type\":\"uint256\"}],\"internalType\":\"struct IForwarder.ForwardRequest\",\"name\":\"req\",\"type\":\"tuple\"},{\"internalType\":\"bytes32\",\"name\":\"requestTypeHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"suffixData\",\"type\":\"bytes\"}],\"name\":\"_getEncoded\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"domains\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"validUntilTime\",\"type\":\"uint256\"}],\"internalType\":\"struct IForwarder.ForwardRequest\",\"name\":\"req\",\"type\":\"tuple\"},{\"internalType\":\"bytes32\",\"name\":\"domainSeparator\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"requestTypeHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"suffixData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"sig\",\"type\":\"bytes\"}],\"name\":\"execute\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"ret\",\"type\":\"bytes\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"}],\"name\":\"getNonce\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"version\",\"type\":\"string\"}],\"name\":\"registerDomainSeparator\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"typeName\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"typeSuffix\",\"type\":\"string\"}],\"name\":\"registerRequestType\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"typeHashes\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gas\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"validUntilTime\",\"type\":\"uint256\"}],\"internalType\":\"struct IForwarder.ForwardRequest\",\"name\":\"req\",\"type\":\"tuple\"},{\"internalType\":\"bytes32\",\"name\":\"domainSeparator\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"requestTypeHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"suffixData\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"sig\",\"type\":\"bytes\"}],\"name\":\"verify\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"execute((address,address,uint256,uint256,uint256,bytes,uint256),bytes32,bytes32,bytes,bytes)\":{\"params\":{\"domainSeparator\":\"The domain used when signing this request.\",\"forwardRequest\":\"All requested transaction parameters.\",\"requestTypeHash\":\"The request type used when signing this request.\",\"signature\":\"The client signature to be validated.\",\"suffixData\":\"The ABI-encoded extension data for the current `RequestType` used when signing this request.\"},\"returns\":{\"ret\":\"The byte array returned by the underlying `CALL` to the target address.\",\"success\":\"The success flag of the underlying `CALL` to the target address.\"}},\"getNonce(address)\":{\"params\":{\"from\":\"The address of a sender.\"},\"returns\":{\"_0\":\"The nonce for this address.\"}},\"registerDomainSeparator(string,string)\":{\"params\":{\"name\":\"The domain's display name.\",\"version\":\"The domain/protocol version.\"}},\"registerRequestType(string,string)\":{\"params\":{\"typeName\":\"The name of the request type.\",\"typeSuffix\":\"Any extra data after the generic params. Must contain add at least one param. The generic ForwardRequest type is always registered by the constructor.\"}},\"supportsInterface(bytes4)\":{\"details\":\"Returns true if this contract implements the interface defined by `interfaceId`. See the corresponding https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section] to learn more about how these ids are created. This function call must use less than 30 000 gas.\"}},\"title\":\"The Forwarder Implementation\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"_getEncoded((address,address,uint256,uint256,uint256,bytes,uint256),bytes32,bytes)\":{\"notice\":\"Creates a byte array that is a valid ABI encoding of a request of a `RequestType` type. See `execute()`.\"},\"execute((address,address,uint256,uint256,uint256,bytes,uint256),bytes32,bytes32,bytes,bytes)\":{\"notice\":\"Executes a transaction specified by the `ForwardRequest`. The transaction is first verified and then executed. The success flag and returned bytes array of the `CALL` are returned as-is. This method would revert only in case of a verification error. All the target errors are reported using the returned success flag and returned bytes array.\"},\"registerDomainSeparator(string,string)\":{\"notice\":\"Register a new domain separator.This is necessary for the Forwarder to be able to verify the signatures conforming to the ERC-712.The domain separator must have the following fields: `name`, `version`, `chainId`, `verifyingContract`. The `chainId` is the current network's `chainId`, and the `verifyingContract` is this Forwarder's address. This method accepts the domain name and version to create and register the domain separator value.\"},\"registerRequestType(string,string)\":{\"notice\":\"Register a new Request typehash.This is necessary for the Forwarder to be able to verify the signatures conforming to the ERC-712.\"},\"verify((address,address,uint256,uint256,uint256,bytes,uint256),bytes32,bytes32,bytes,bytes)\":{\"notice\":\"Verify the transaction is valid and can be executed. Implementations must validate the signature and the nonce of the request are correct. Does not revert and returns successfully if the input is valid. Reverts if any validation has failed. For instance, if either signature or nonce are incorrect. Reverts if `domainSeparator` or `requestTypeHash` are not registered as well.\"}},\"notice\":\"This implementation of the `IForwarder` interface uses ERC-712 signatures and stored nonces for verification.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts-link/forwarder/Forwarder.sol\":\"Forwarder\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/interfaces/IERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (interfaces/IERC165.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"../utils/introspection/IERC165.sol\\\";\\n\",\"keccak256\":\"0xd04b0f06e0666f29cf7cccc82894de541e19bb30a765b107b1e40bb7fe5f7d7a\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/Strings.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/Strings.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev String operations.\\n */\\nlibrary Strings {\\n    bytes16 private constant _HEX_SYMBOLS = \\\"0123456789abcdef\\\";\\n\\n    /**\\n     * @dev Converts a `uint256` to its ASCII `string` decimal representation.\\n     */\\n    function toString(uint256 value) internal pure returns (string memory) {\\n        // Inspired by OraclizeAPI's implementation - MIT licence\\n        // https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol\\n\\n        if (value == 0) {\\n            return \\\"0\\\";\\n        }\\n        uint256 temp = value;\\n        uint256 digits;\\n        while (temp != 0) {\\n            digits++;\\n            temp /= 10;\\n        }\\n        bytes memory buffer = new bytes(digits);\\n        while (value != 0) {\\n            digits -= 1;\\n            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));\\n            value /= 10;\\n        }\\n        return string(buffer);\\n    }\\n\\n    /**\\n     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation.\\n     */\\n    function toHexString(uint256 value) internal pure returns (string memory) {\\n        if (value == 0) {\\n            return \\\"0x00\\\";\\n        }\\n        uint256 temp = value;\\n        uint256 length = 0;\\n        while (temp != 0) {\\n            length++;\\n            temp >>= 8;\\n        }\\n        return toHexString(value, length);\\n    }\\n\\n    /**\\n     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.\\n     */\\n    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {\\n        bytes memory buffer = new bytes(2 * length + 2);\\n        buffer[0] = \\\"0\\\";\\n        buffer[1] = \\\"x\\\";\\n        for (uint256 i = 2 * length + 1; i > 1; --i) {\\n            buffer[i] = _HEX_SYMBOLS[value & 0xf];\\n            value >>= 4;\\n        }\\n        require(value == 0, \\\"Strings: hex length insufficient\\\");\\n        return string(buffer);\\n    }\\n}\\n\",\"keccak256\":\"0x32c202bd28995dd20c4347b7c6467a6d3241c74c8ad3edcbb610cd9205916c45\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/cryptography/ECDSA.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/cryptography/ECDSA.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"../Strings.sol\\\";\\n\\n/**\\n * @dev Elliptic Curve Digital Signature Algorithm (ECDSA) operations.\\n *\\n * These functions can be used to verify that a message was signed by the holder\\n * of the private keys of a given address.\\n */\\nlibrary ECDSA {\\n    enum RecoverError {\\n        NoError,\\n        InvalidSignature,\\n        InvalidSignatureLength,\\n        InvalidSignatureS,\\n        InvalidSignatureV\\n    }\\n\\n    function _throwError(RecoverError error) private pure {\\n        if (error == RecoverError.NoError) {\\n            return; // no error: do nothing\\n        } else if (error == RecoverError.InvalidSignature) {\\n            revert(\\\"ECDSA: invalid signature\\\");\\n        } else if (error == RecoverError.InvalidSignatureLength) {\\n            revert(\\\"ECDSA: invalid signature length\\\");\\n        } else if (error == RecoverError.InvalidSignatureS) {\\n            revert(\\\"ECDSA: invalid signature 's' value\\\");\\n        } else if (error == RecoverError.InvalidSignatureV) {\\n            revert(\\\"ECDSA: invalid signature 'v' value\\\");\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the address that signed a hashed message (`hash`) with\\n     * `signature` or error string. This address can then be used for verification purposes.\\n     *\\n     * The `ecrecover` EVM opcode allows for malleable (non-unique) signatures:\\n     * this function rejects them by requiring the `s` value to be in the lower\\n     * half order, and the `v` value to be either 27 or 28.\\n     *\\n     * IMPORTANT: `hash` _must_ be the result of a hash operation for the\\n     * verification to be secure: it is possible to craft signatures that\\n     * recover to arbitrary addresses for non-hashed data. A safe way to ensure\\n     * this is by receiving a hash of the original message (which may otherwise\\n     * be too long), and then calling {toEthSignedMessageHash} on it.\\n     *\\n     * Documentation for signature generation:\\n     * - with https://web3js.readthedocs.io/en/v1.3.4/web3-eth-accounts.html#sign[Web3.js]\\n     * - with https://docs.ethers.io/v5/api/signer/#Signer-signMessage[ethers]\\n     *\\n     * _Available since v4.3._\\n     */\\n    function tryRecover(bytes32 hash, bytes memory signature) internal pure returns (address, RecoverError) {\\n        // Check the signature length\\n        // - case 65: r,s,v signature (standard)\\n        // - case 64: r,vs signature (cf https://eips.ethereum.org/EIPS/eip-2098) _Available since v4.1._\\n        if (signature.length == 65) {\\n            bytes32 r;\\n            bytes32 s;\\n            uint8 v;\\n            // ecrecover takes the signature parameters, and the only way to get them\\n            // currently is to use assembly.\\n            assembly {\\n                r := mload(add(signature, 0x20))\\n                s := mload(add(signature, 0x40))\\n                v := byte(0, mload(add(signature, 0x60)))\\n            }\\n            return tryRecover(hash, v, r, s);\\n        } else if (signature.length == 64) {\\n            bytes32 r;\\n            bytes32 vs;\\n            // ecrecover takes the signature parameters, and the only way to get them\\n            // currently is to use assembly.\\n            assembly {\\n                r := mload(add(signature, 0x20))\\n                vs := mload(add(signature, 0x40))\\n            }\\n            return tryRecover(hash, r, vs);\\n        } else {\\n            return (address(0), RecoverError.InvalidSignatureLength);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the address that signed a hashed message (`hash`) with\\n     * `signature`. This address can then be used for verification purposes.\\n     *\\n     * The `ecrecover` EVM opcode allows for malleable (non-unique) signatures:\\n     * this function rejects them by requiring the `s` value to be in the lower\\n     * half order, and the `v` value to be either 27 or 28.\\n     *\\n     * IMPORTANT: `hash` _must_ be the result of a hash operation for the\\n     * verification to be secure: it is possible to craft signatures that\\n     * recover to arbitrary addresses for non-hashed data. A safe way to ensure\\n     * this is by receiving a hash of the original message (which may otherwise\\n     * be too long), and then calling {toEthSignedMessageHash} on it.\\n     */\\n    function recover(bytes32 hash, bytes memory signature) internal pure returns (address) {\\n        (address recovered, RecoverError error) = tryRecover(hash, signature);\\n        _throwError(error);\\n        return recovered;\\n    }\\n\\n    /**\\n     * @dev Overload of {ECDSA-tryRecover} that receives the `r` and `vs` short-signature fields separately.\\n     *\\n     * See https://eips.ethereum.org/EIPS/eip-2098[EIP-2098 short signatures]\\n     *\\n     * _Available since v4.3._\\n     */\\n    function tryRecover(\\n        bytes32 hash,\\n        bytes32 r,\\n        bytes32 vs\\n    ) internal pure returns (address, RecoverError) {\\n        bytes32 s;\\n        uint8 v;\\n        assembly {\\n            s := and(vs, 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)\\n            v := add(shr(255, vs), 27)\\n        }\\n        return tryRecover(hash, v, r, s);\\n    }\\n\\n    /**\\n     * @dev Overload of {ECDSA-recover} that receives the `r and `vs` short-signature fields separately.\\n     *\\n     * _Available since v4.2._\\n     */\\n    function recover(\\n        bytes32 hash,\\n        bytes32 r,\\n        bytes32 vs\\n    ) internal pure returns (address) {\\n        (address recovered, RecoverError error) = tryRecover(hash, r, vs);\\n        _throwError(error);\\n        return recovered;\\n    }\\n\\n    /**\\n     * @dev Overload of {ECDSA-tryRecover} that receives the `v`,\\n     * `r` and `s` signature fields separately.\\n     *\\n     * _Available since v4.3._\\n     */\\n    function tryRecover(\\n        bytes32 hash,\\n        uint8 v,\\n        bytes32 r,\\n        bytes32 s\\n    ) internal pure returns (address, RecoverError) {\\n        // EIP-2 still allows signature malleability for ecrecover(). Remove this possibility and make the signature\\n        // unique. Appendix F in the Ethereum Yellow paper (https://ethereum.github.io/yellowpaper/paper.pdf), defines\\n        // the valid range for s in (301): 0 < s < secp256k1n \\u00f7 2 + 1, and for v in (302): v \\u2208 {27, 28}. Most\\n        // signatures from current libraries generate a unique signature with an s-value in the lower half order.\\n        //\\n        // If your library generates malleable signatures, such as s-values in the upper range, calculate a new s-value\\n        // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or\\n        // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept\\n        // these malleable signatures as well.\\n        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {\\n            return (address(0), RecoverError.InvalidSignatureS);\\n        }\\n        if (v != 27 && v != 28) {\\n            return (address(0), RecoverError.InvalidSignatureV);\\n        }\\n\\n        // If the signature is valid (and not malleable), return the signer address\\n        address signer = ecrecover(hash, v, r, s);\\n        if (signer == address(0)) {\\n            return (address(0), RecoverError.InvalidSignature);\\n        }\\n\\n        return (signer, RecoverError.NoError);\\n    }\\n\\n    /**\\n     * @dev Overload of {ECDSA-recover} that receives the `v`,\\n     * `r` and `s` signature fields separately.\\n     */\\n    function recover(\\n        bytes32 hash,\\n        uint8 v,\\n        bytes32 r,\\n        bytes32 s\\n    ) internal pure returns (address) {\\n        (address recovered, RecoverError error) = tryRecover(hash, v, r, s);\\n        _throwError(error);\\n        return recovered;\\n    }\\n\\n    /**\\n     * @dev Returns an Ethereum Signed Message, created from a `hash`. This\\n     * produces hash corresponding to the one signed with the\\n     * https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]\\n     * JSON-RPC method as part of EIP-191.\\n     *\\n     * See {recover}.\\n     */\\n    function toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32) {\\n        // 32 is the length in bytes of hash,\\n        // enforced by the type signature above\\n        return keccak256(abi.encodePacked(\\\"\\\\x19Ethereum Signed Message:\\\\n32\\\", hash));\\n    }\\n\\n    /**\\n     * @dev Returns an Ethereum Signed Message, created from `s`. This\\n     * produces hash corresponding to the one signed with the\\n     * https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]\\n     * JSON-RPC method as part of EIP-191.\\n     *\\n     * See {recover}.\\n     */\\n    function toEthSignedMessageHash(bytes memory s) internal pure returns (bytes32) {\\n        return keccak256(abi.encodePacked(\\\"\\\\x19Ethereum Signed Message:\\\\n\\\", Strings.toString(s.length), s));\\n    }\\n\\n    /**\\n     * @dev Returns an Ethereum Signed Typed Data, created from a\\n     * `domainSeparator` and a `structHash`. This produces hash corresponding\\n     * to the one signed with the\\n     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]\\n     * JSON-RPC method as part of EIP-712.\\n     *\\n     * See {recover}.\\n     */\\n    function toTypedDataHash(bytes32 domainSeparator, bytes32 structHash) internal pure returns (bytes32) {\\n        return keccak256(abi.encodePacked(\\\"\\\\x19\\\\x01\\\", domainSeparator, structHash));\\n    }\\n}\\n\",\"keccak256\":\"0xe9e291de7ffe06e66503c6700b1bb84ff6e0989cbb974653628d8994e7c97f03\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/introspection/ERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/introspection/ERC165.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"./IERC165.sol\\\";\\n\\n/**\\n * @dev Implementation of the {IERC165} interface.\\n *\\n * Contracts that want to implement ERC165 should inherit from this contract and override {supportsInterface} to check\\n * for the additional interface id that will be supported. For example:\\n *\\n * ```solidity\\n * function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {\\n *     return interfaceId == type(MyInterface).interfaceId || super.supportsInterface(interfaceId);\\n * }\\n * ```\\n *\\n * Alternatively, {ERC165Storage} provides an easier to use but more expensive implementation.\\n */\\nabstract contract ERC165 is IERC165 {\\n    /**\\n     * @dev See {IERC165-supportsInterface}.\\n     */\\n    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {\\n        return interfaceId == type(IERC165).interfaceId;\\n    }\\n}\\n\",\"keccak256\":\"0xd10975de010d89fd1c78dc5e8a9a7e7f496198085c151648f20cba166b32582b\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/introspection/IERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/introspection/IERC165.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev Interface of the ERC165 standard, as defined in the\\n * https://eips.ethereum.org/EIPS/eip-165[EIP].\\n *\\n * Implementers can declare support of contract interfaces, which can then be\\n * queried by others ({ERC165Checker}).\\n *\\n * For an implementation, see {ERC165}.\\n */\\ninterface IERC165 {\\n    /**\\n     * @dev Returns true if this contract implements the interface defined by\\n     * `interfaceId`. See the corresponding\\n     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]\\n     * to learn more about how these ids are created.\\n     *\\n     * This function call must use less than 30 000 gas.\\n     */\\n    function supportsInterface(bytes4 interfaceId) external view returns (bool);\\n}\\n\",\"keccak256\":\"0x447a5f3ddc18419d41ff92b3773fb86471b1db25773e07f877f548918a185bf1\",\"license\":\"MIT\"},\"contracts-link/forwarder/Forwarder.sol\":{\"content\":\"pragma solidity ^0.8.0;\\npragma abicoder v2;\\n\\n// solhint-disable not-rely-on-time\\n// SPDX-License-Identifier: GPL-3.0-only\\n\\nimport \\\"@openzeppelin/contracts/utils/cryptography/ECDSA.sol\\\";\\nimport \\\"@openzeppelin/contracts/utils/introspection/ERC165.sol\\\";\\n\\nimport \\\"./IForwarder.sol\\\";\\n\\n/**\\n * @title The Forwarder Implementation\\n * @notice This implementation of the `IForwarder` interface uses ERC-712 signatures and stored nonces for verification.\\n */\\ncontract Forwarder is IForwarder, ERC165 {\\n    using ECDSA for bytes32;\\n\\n    string public constant GENERIC_PARAMS = \\\"address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntilTime\\\";\\n\\n    string public constant EIP712_DOMAIN_TYPE = \\\"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)\\\";\\n\\n    mapping(bytes32 => bool) public typeHashes;\\n    mapping(bytes32 => bool) public domains;\\n\\n    // Nonces of senders, used to prevent replay attacks\\n    mapping(address => uint256) private nonces;\\n\\n    // solhint-disable-next-line no-empty-blocks\\n    receive() external payable {}\\n\\n    /// @inheritdoc IForwarder\\n    function getNonce(address from)\\n    public view override\\n    returns (uint256) {\\n        return nonces[from];\\n    }\\n\\n    constructor() {\\n        string memory requestType = string(abi.encodePacked(\\\"ForwardRequest(\\\", GENERIC_PARAMS, \\\")\\\"));\\n        registerRequestTypeInternal(requestType);\\n    }\\n\\n    /// @inheritdoc IERC165\\n    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {\\n        return interfaceId == type(IForwarder).interfaceId ||\\n            super.supportsInterface(interfaceId);\\n    }\\n\\n    /// @inheritdoc IForwarder\\n    function verify(\\n        ForwardRequest calldata req,\\n        bytes32 domainSeparator,\\n        bytes32 requestTypeHash,\\n        bytes calldata suffixData,\\n        bytes calldata sig)\\n    external override view {\\n        _verifyNonce(req);\\n        _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);\\n    }\\n\\n    /// @inheritdoc IForwarder\\n    function execute(\\n        ForwardRequest calldata req,\\n        bytes32 domainSeparator,\\n        bytes32 requestTypeHash,\\n        bytes calldata suffixData,\\n        bytes calldata sig\\n    )\\n    external payable\\n    override\\n    returns (bool success, bytes memory ret) {\\n        _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);\\n        _verifyAndUpdateNonce(req);\\n\\n        require(req.validUntilTime == 0 || req.validUntilTime > block.timestamp, \\\"FWD: request expired\\\");\\n\\n        uint256 gasForTransfer = 0;\\n        if ( req.value != 0 ) {\\n            gasForTransfer = 40000; //buffer in case we need to move eth after the transaction.\\n        }\\n        bytes memory callData = abi.encodePacked(req.data, req.from);\\n        require(gasleft()*63/64 >= req.gas + gasForTransfer, \\\"FWD: insufficient gas\\\");\\n        // solhint-disable-next-line avoid-low-level-calls\\n        (success,ret) = req.to.call{gas : req.gas, value : req.value}(callData);\\n        if ( req.value != 0 && address(this).balance>0 ) {\\n            // can't fail: req.from signed (off-chain) the request, so it must be an EOA...\\n            payable(req.from).transfer(address(this).balance);\\n        }\\n\\n        return (success,ret);\\n    }\\n\\n    function _verifyNonce(ForwardRequest calldata req) internal view {\\n        require(nonces[req.from] == req.nonce, \\\"FWD: nonce mismatch\\\");\\n    }\\n\\n    function _verifyAndUpdateNonce(ForwardRequest calldata req) internal {\\n        require(nonces[req.from]++ == req.nonce, \\\"FWD: nonce mismatch\\\");\\n    }\\n\\n    /// @inheritdoc IForwarder\\n    function registerRequestType(string calldata typeName, string calldata typeSuffix) external override {\\n\\n        for (uint256 i = 0; i < bytes(typeName).length; i++) {\\n            bytes1 c = bytes(typeName)[i];\\n            require(c != \\\"(\\\" && c != \\\")\\\", \\\"FWD: invalid typename\\\");\\n        }\\n\\n        string memory requestType = string(abi.encodePacked(typeName, \\\"(\\\", GENERIC_PARAMS, \\\",\\\", typeSuffix));\\n        registerRequestTypeInternal(requestType);\\n    }\\n\\n    /// @inheritdoc IForwarder\\n    function registerDomainSeparator(string calldata name, string calldata version) external override {\\n        uint256 chainId;\\n        /* solhint-disable-next-line no-inline-assembly */\\n        assembly { chainId := chainid() }\\n\\n        bytes memory domainValue = abi.encode(\\n            keccak256(bytes(EIP712_DOMAIN_TYPE)),\\n            keccak256(bytes(name)),\\n            keccak256(bytes(version)),\\n            chainId,\\n            address(this));\\n\\n        bytes32 domainHash = keccak256(domainValue);\\n\\n        domains[domainHash] = true;\\n        emit DomainRegistered(domainHash, domainValue);\\n    }\\n\\n    function registerRequestTypeInternal(string memory requestType) internal {\\n\\n        bytes32 requestTypehash = keccak256(bytes(requestType));\\n        typeHashes[requestTypehash] = true;\\n        emit RequestTypeRegistered(requestTypehash, requestType);\\n    }\\n\\n    function _verifySig(\\n        ForwardRequest calldata req,\\n        bytes32 domainSeparator,\\n        bytes32 requestTypeHash,\\n        bytes calldata suffixData,\\n        bytes calldata sig)\\n    internal\\n    virtual\\n    view\\n    {\\n        require(domains[domainSeparator], \\\"FWD: unregistered domain sep.\\\");\\n        require(typeHashes[requestTypeHash], \\\"FWD: unregistered typehash\\\");\\n        bytes32 digest = keccak256(abi.encodePacked(\\n                \\\"\\\\x19\\\\x01\\\", domainSeparator,\\n                keccak256(_getEncoded(req, requestTypeHash, suffixData))\\n            ));\\n        require(digest.recover(sig) == req.from, \\\"FWD: signature mismatch\\\");\\n    }\\n\\n    /**\\n     * @notice Creates a byte array that is a valid ABI encoding of a request of a `RequestType` type. See `execute()`.\\n     */\\n    function _getEncoded(\\n        ForwardRequest calldata req,\\n        bytes32 requestTypeHash,\\n        bytes calldata suffixData\\n    )\\n    public\\n    pure\\n    returns (\\n        bytes memory\\n    ) {\\n        // we use encodePacked since we append suffixData as-is, not as dynamic param.\\n        // still, we must make sure all first params are encoded as abi.encode()\\n        // would encode them - as 256-bit-wide params.\\n        return abi.encodePacked(\\n            requestTypeHash,\\n            uint256(uint160(req.from)),\\n            uint256(uint160(req.to)),\\n            req.value,\\n            req.gas,\\n            req.nonce,\\n            keccak256(req.data),\\n            req.validUntilTime,\\n            suffixData\\n        );\\n    }\\n}\",\"keccak256\":\"0x1f1cc60b2d5ff7be6035f4ac2ddc41b3ea3cab2ade065b30fbe0ec7582aecf2a\",\"license\":\"GPL-3.0-only\"},\"contracts-link/forwarder/IForwarder.sol\":{\"content\":\"pragma solidity >=0.7.6;\\npragma abicoder v2;\\n\\n// SPDX-License-Identifier: GPL-3.0-only\\n\\nimport \\\"@openzeppelin/contracts/interfaces/IERC165.sol\\\";\\n\\n/**\\n * @title The Forwarder Interface\\n * @notice The contracts implementing this interface take a role of authorization, authentication and replay protection\\n * for contracts that choose to trust a `Forwarder`, instead of relying on a mechanism built into the Ethereum protocol.\\n *\\n * @notice if the `Forwarder` contract decides that an incoming `ForwardRequest` is valid, it must append 20 bytes that\\n * represent the caller to the `data` field of the request and send this new data to the target address (the `to` field)\\n *\\n * :warning: **Warning** :warning: The Forwarder can have a full control over a `Recipient` contract.\\n * Any vulnerability in a `Forwarder` implementation can make all of its `Recipient` contracts susceptible!\\n * Recipient contracts should only trust forwarders that passed through security audit,\\n * otherwise they are susceptible to identity theft.\\n */\\ninterface IForwarder is IERC165 {\\n\\n    /**\\n     * @notice A representation of a request for a `Forwarder` to send `data` on behalf of a `from` to a target (`to`).\\n     */\\n    struct ForwardRequest {\\n        address from;\\n        address to;\\n        uint256 value;\\n        uint256 gas;\\n        uint256 nonce;\\n        bytes data;\\n        uint256 validUntilTime;\\n    }\\n\\n    event DomainRegistered(bytes32 indexed domainSeparator, bytes domainValue);\\n\\n    event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);\\n\\n    /**\\n     * @param from The address of a sender.\\n     * @return The nonce for this address.\\n     */\\n    function getNonce(address from)\\n    external view\\n    returns(uint256);\\n\\n    /**\\n     * @notice Verify the transaction is valid and can be executed.\\n     * Implementations must validate the signature and the nonce of the request are correct.\\n     * Does not revert and returns successfully if the input is valid.\\n     * Reverts if any validation has failed. For instance, if either signature or nonce are incorrect.\\n     * Reverts if `domainSeparator` or `requestTypeHash` are not registered as well.\\n     */\\n    function verify(\\n        ForwardRequest calldata forwardRequest,\\n        bytes32 domainSeparator,\\n        bytes32 requestTypeHash,\\n        bytes calldata suffixData,\\n        bytes calldata signature\\n    ) external view;\\n\\n    /**\\n     * @notice Executes a transaction specified by the `ForwardRequest`.\\n     * The transaction is first verified and then executed.\\n     * The success flag and returned bytes array of the `CALL` are returned as-is.\\n     *\\n     * This method would revert only in case of a verification error.\\n     *\\n     * All the target errors are reported using the returned success flag and returned bytes array.\\n     *\\n     * @param forwardRequest All requested transaction parameters.\\n     * @param domainSeparator The domain used when signing this request.\\n     * @param requestTypeHash The request type used when signing this request.\\n     * @param suffixData The ABI-encoded extension data for the current `RequestType` used when signing this request.\\n     * @param signature The client signature to be validated.\\n     *\\n     * @return success The success flag of the underlying `CALL` to the target address.\\n     * @return ret The byte array returned by the underlying `CALL` to the target address.\\n     */\\n    function execute(\\n        ForwardRequest calldata forwardRequest,\\n        bytes32 domainSeparator,\\n        bytes32 requestTypeHash,\\n        bytes calldata suffixData,\\n        bytes calldata signature\\n    )\\n    external payable\\n    returns (bool success, bytes memory ret);\\n\\n    /**\\n     * @notice Register a new Request typehash.\\n     *\\n     * @notice This is necessary for the Forwarder to be able to verify the signatures conforming to the ERC-712.\\n     *\\n     * @param typeName The name of the request type.\\n     * @param typeSuffix Any extra data after the generic params. Must contain add at least one param.\\n     * The generic ForwardRequest type is always registered by the constructor.\\n     */\\n    function registerRequestType(string calldata typeName, string calldata typeSuffix) external;\\n\\n    /**\\n     * @notice Register a new domain separator.\\n     *\\n     * @notice This is necessary for the Forwarder to be able to verify the signatures conforming to the ERC-712.\\n     *\\n     * @notice The domain separator must have the following fields: `name`, `version`, `chainId`, `verifyingContract`.\\n     * The `chainId` is the current network's `chainId`, and the `verifyingContract` is this Forwarder's address.\\n     * This method accepts the domain name and version to create and register the domain separator value.\\n     * @param name The domain's display name.\\n     * @param version The domain/protocol version.\\n     */\\n    function registerDomainSeparator(string calldata name, string calldata version) external;\\n}\",\"keccak256\":\"0xef3d770001c3245db4408cdd0afdfc622695ccfe31f28b74571d05158bbf83f8\",\"license\":\"GPL-3.0-only\"}},\"version\":1}",
+  "bytecode": "0x60806040523480156200001157600080fd5b5060006040518060a00160405280606181526020016200155a60619139604051602001620000409190620000c8565b60408051601f1981840301815291905290506200005d8162000064565b5062000174565b8051602080830191909120600081815291829052604091829020805460ff19166001179055905181907f64d6bce64323458c44643c51fe45113efc882082f7b7fd5f09f0d69d2eedb20290620000bc9085906200010c565b60405180910390a25050565b6e08cdee4eec2e4c8a4cae2eacae6e85608b1b815260008251620000f481600f85016020870162000141565b602960f81b600f939091019283015250601001919050565b60208152600082518060208401526200012d81604085016020870162000141565b601f01601f19169190910160400192915050565b60005b838110156200015e57818101518382015260200162000144565b838111156200016e576000848401525b50505050565b6113d680620001846000396000f3fe6080604052600436106100a05760003560e01c8063ad9f99c711610064578063ad9f99c714610199578063c3f28abd146101b9578063c722f177146101ce578063d9210be5146101fe578063e024dc7f1461021e578063e2b62f2d1461023f57600080fd5b806301ffc9a7146100ac578063066a310c146100e157806321fe98df146101035780632d0335ab146101335780639c7b45921461017757600080fd5b366100a757005b600080fd5b3480156100b857600080fd5b506100cc6100c7366004610ed3565b61025f565b60405190151581526020015b60405180910390f35b3480156100ed57600080fd5b506100f6610296565b6040516100d891906111ad565b34801561010f57600080fd5b506100cc61011e366004610eba565b60006020819052908152604090205460ff1681565b34801561013f57600080fd5b5061016961014e366004610e8a565b6001600160a01b031660009081526002602052604090205490565b6040519081526020016100d8565b34801561018357600080fd5b50610197610192366004610efd565b6102b2565b005b3480156101a557600080fd5b506101976101b4366004610f69565b6103a9565b3480156101c557600080fd5b506100f66103ca565b3480156101da57600080fd5b506100cc6101e9366004610eba565b60016020526000908152604090205460ff1681565b34801561020a57600080fd5b50610197610219366004610efd565b6103e6565b61023161022c366004610f69565b6104e9565b6040516100d892919061118a565b34801561024b57600080fd5b506100f661025a366004611011565b610700565b60006001600160e01b031982166309788f9960e21b148061029057506301ffc9a760e01b6001600160e01b03198316145b92915050565b6040518060a00160405280606181526020016112ee6061913981565b6000469050600060405180608001604052806052815260200161134f605291398051906020012086866040516102e99291906110e6565b604051809103902085856040516103019291906110e6565b6040805191829003822060208301949094528101919091526060810191909152608081018390523060a082015260c00160408051601f198184030181528282528051602080830191909120600081815260019283905293909320805460ff1916909117905592509081907f4bc68689cbe89a4a6333a3ab0a70093874da3e5bfb71e93102027f3f073687d8906103989085906111ad565b60405180910390a250505050505050565b6103b28761079a565b6103c187878787878787610817565b50505050505050565b60405180608001604052806052815260200161134f6052913981565b60005b83811015610494576000858583818110610405576104056112d7565b909101356001600160f81b031916915050600560fb1b81148015906104385750602960f81b6001600160f81b0319821614155b6104815760405162461bcd60e51b81526020600482015260156024820152744657443a20696e76616c696420747970656e616d6560581b60448201526064015b60405180910390fd5b508061048c81611290565b9150506103e9565b50600084846040518060a00160405280606181526020016112ee6061913985856040516020016104c8959493929190611138565b60405160208183030381529060405290506104e2816109df565b5050505050565b600060606104fc89898989898989610817565b61050589610a41565b60c089013515806105195750428960c00135115b61055c5760405162461bcd60e51b81526020600482015260146024820152731195d10e881c995c5d595cdd08195e1c1a5c995960621b6044820152606401610478565b600060408a01351561056d5750619c405b600061057c60a08c018c6111c0565b61058960208e018e610e8a565b60405160200161059b939291906110f6565b60408051601f1981840301815291905290506105bb8260608d0135611207565b60405a6105c990603f611241565b6105d3919061121f565b10156106195760405162461bcd60e51b81526020600482015260156024820152744657443a20696e73756666696369656e742067617360581b6044820152606401610478565b61062960408c0160208d01610e8a565b6001600160a01b03168b606001358c604001358360405161064a919061111c565b600060405180830381858888f193505050503d8060008114610688576040519150601f19603f3d011682016040523d82523d6000602084013e61068d565b606091505b50909450925060408b0135158015906106a65750600047115b156106f2576106b860208c018c610e8a565b6001600160a01b03166108fc479081150290604051600060405180830381858888f193505050501580156106f0573d6000803e3d6000fd5b505b505097509795505050505050565b6060836107106020870187610e8a565b6001600160a01b03166107296040880160208901610e8a565b6001600160a01b03166040880135606089013560808a013561074e60a08c018c6111c0565b60405161075c9291906110e6565b6040519081900381206107819796959493929160c08e0135908c908c90602001611094565b6040516020818303038152906040529050949350505050565b6080810135600260006107b06020850185610e8a565b6001600160a01b03166001600160a01b0316815260200190815260200160002054146108145760405162461bcd60e51b815260206004820152601360248201527208cae887440dcdedcc6ca40dad2e6dac2e8c6d606b1b6044820152606401610478565b50565b60008681526001602052604090205460ff166108755760405162461bcd60e51b815260206004820152601d60248201527f4657443a20756e7265676973746572656420646f6d61696e207365702e0000006044820152606401610478565b60008581526020819052604090205460ff166108d35760405162461bcd60e51b815260206004820152601a60248201527f4657443a20756e726567697374657265642074797065686173680000000000006044820152606401610478565b6000866108e289888888610700565b805160209182012060405161090e93920161190160f01b81526002810192909252602282015260420190565b60408051601f198184030181529190528051602091820120915061093490890189610e8a565b6001600160a01b031661097f84848080601f0160208091040260200160405190810160405280939291908181526020018383808284376000920191909152508693925050610ac59050565b6001600160a01b0316146109d55760405162461bcd60e51b815260206004820152601760248201527f4657443a207369676e6174757265206d69736d617463680000000000000000006044820152606401610478565b5050505050505050565b8051602080830191909120600081815291829052604091829020805460ff19166001179055905181907f64d6bce64323458c44643c51fe45113efc882082f7b7fd5f09f0d69d2eedb20290610a359085906111ad565b60405180910390a25050565b608081013560026000610a576020850185610e8a565b6001600160a01b0316815260208101919091526040016000908120805491610a7e83611290565b91905055146108145760405162461bcd60e51b815260206004820152601360248201527208cae887440dcdedcc6ca40dad2e6dac2e8c6d606b1b6044820152606401610478565b6000806000610ad48585610ae9565b91509150610ae181610b59565b509392505050565b600080825160411415610b205760208301516040840151606085015160001a610b1487828585610d14565b94509450505050610b52565b825160401415610b4a5760208301516040840151610b3f868383610e01565b935093505050610b52565b506000905060025b9250929050565b6000816004811115610b6d57610b6d6112c1565b1415610b765750565b6001816004811115610b8a57610b8a6112c1565b1415610bd85760405162461bcd60e51b815260206004820152601860248201527f45434453413a20696e76616c6964207369676e617475726500000000000000006044820152606401610478565b6002816004811115610bec57610bec6112c1565b1415610c3a5760405162461bcd60e51b815260206004820152601f60248201527f45434453413a20696e76616c6964207369676e6174757265206c656e677468006044820152606401610478565b6003816004811115610c4e57610c4e6112c1565b1415610ca75760405162461bcd60e51b815260206004820152602260248201527f45434453413a20696e76616c6964207369676e6174757265202773272076616c604482015261756560f01b6064820152608401610478565b6004816004811115610cbb57610cbb6112c1565b14156108145760405162461bcd60e51b815260206004820152602260248201527f45434453413a20696e76616c6964207369676e6174757265202776272076616c604482015261756560f01b6064820152608401610478565b6000807f7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0831115610d4b5750600090506003610df8565b8460ff16601b14158015610d6357508460ff16601c14155b15610d745750600090506004610df8565b6040805160008082526020820180845289905260ff881692820192909252606081018690526080810185905260019060a0016020604051602081039080840390855afa158015610dc8573d6000803e3d6000fd5b5050604051601f1901519150506001600160a01b038116610df157600060019250925050610df8565b9150600090505b94509492505050565b6000806001600160ff1b03831660ff84901c601b01610e2287828885610d14565b935093505050935093915050565b60008083601f840112610e4257600080fd5b50813567ffffffffffffffff811115610e5a57600080fd5b602083019150836020828501011115610b5257600080fd5b600060e08284031215610e8457600080fd5b50919050565b600060208284031215610e9c57600080fd5b81356001600160a01b0381168114610eb357600080fd5b9392505050565b600060208284031215610ecc57600080fd5b5035919050565b600060208284031215610ee557600080fd5b81356001600160e01b031981168114610eb357600080fd5b60008060008060408587031215610f1357600080fd5b843567ffffffffffffffff80821115610f2b57600080fd5b610f3788838901610e30565b90965094506020870135915080821115610f5057600080fd5b50610f5d87828801610e30565b95989497509550505050565b600080600080600080600060a0888a031215610f8457600080fd5b873567ffffffffffffffff80821115610f9c57600080fd5b610fa88b838c01610e72565b985060208a0135975060408a0135965060608a0135915080821115610fcc57600080fd5b610fd88b838c01610e30565b909650945060808a0135915080821115610ff157600080fd5b50610ffe8a828b01610e30565b989b979a50959850939692959293505050565b6000806000806060858703121561102757600080fd5b843567ffffffffffffffff8082111561103f57600080fd5b61104b88838901610e72565b9550602087013594506040870135915080821115610f5057600080fd5b60008151808452611080816020860160208601611260565b601f01601f19169290920160200192915050565b8a81528960208201528860408201528760608201528660808201528560a08201528460c08201528360e082015260006101008385828501376000929093019092019081529a9950505050505050505050565b8183823760009101908152919050565b8284823760609190911b6bffffffffffffffffffffffff19169101908152601401919050565b6000825161112e818460208701611260565b9190910192915050565b84868237600085820160008152600560fb1b8152855161115f816001840160208a01611260565b600b60fa1b600192909101918201528385600283013760009301600201928352509095945050505050565b82151581526040602082015260006111a56040830184611068565b949350505050565b602081526000610eb36020830184611068565b6000808335601e198436030181126111d757600080fd5b83018035915067ffffffffffffffff8211156111f257600080fd5b602001915036819003821315610b5257600080fd5b6000821982111561121a5761121a6112ab565b500190565b60008261123c57634e487b7160e01b600052601260045260246000fd5b500490565b600081600019048311821515161561125b5761125b6112ab565b500290565b60005b8381101561127b578181015183820152602001611263565b8381111561128a576000848401525b50505050565b60006000198214156112a4576112a46112ab565b5060010190565b634e487b7160e01b600052601160045260246000fd5b634e487b7160e01b600052602160045260246000fd5b634e487b7160e01b600052603260045260246000fdfe616464726573732066726f6d2c6164647265737320746f2c75696e743235362076616c75652c75696e74323536206761732c75696e74323536206e6f6e63652c627974657320646174612c75696e743235362076616c6964556e74696c54696d65454950373132446f6d61696e28737472696e67206e616d652c737472696e672076657273696f6e2c75696e7432353620636861696e49642c6164647265737320766572696679696e67436f6e747261637429a2646970667358221220a58f6ca2de94f3c585422c7a03008ae28cc2b11389c1e8000e6d13e324c8ee4464736f6c63430008070033616464726573732066726f6d2c6164647265737320746f2c75696e743235362076616c75652c75696e74323536206761732c75696e74323536206e6f6e63652c627974657320646174612c75696e743235362076616c6964556e74696c54696d65",
+  "deployedBytecode": "0x6080604052600436106100a05760003560e01c8063ad9f99c711610064578063ad9f99c714610199578063c3f28abd146101b9578063c722f177146101ce578063d9210be5146101fe578063e024dc7f1461021e578063e2b62f2d1461023f57600080fd5b806301ffc9a7146100ac578063066a310c146100e157806321fe98df146101035780632d0335ab146101335780639c7b45921461017757600080fd5b366100a757005b600080fd5b3480156100b857600080fd5b506100cc6100c7366004610ed3565b61025f565b60405190151581526020015b60405180910390f35b3480156100ed57600080fd5b506100f6610296565b6040516100d891906111ad565b34801561010f57600080fd5b506100cc61011e366004610eba565b60006020819052908152604090205460ff1681565b34801561013f57600080fd5b5061016961014e366004610e8a565b6001600160a01b031660009081526002602052604090205490565b6040519081526020016100d8565b34801561018357600080fd5b50610197610192366004610efd565b6102b2565b005b3480156101a557600080fd5b506101976101b4366004610f69565b6103a9565b3480156101c557600080fd5b506100f66103ca565b3480156101da57600080fd5b506100cc6101e9366004610eba565b60016020526000908152604090205460ff1681565b34801561020a57600080fd5b50610197610219366004610efd565b6103e6565b61023161022c366004610f69565b6104e9565b6040516100d892919061118a565b34801561024b57600080fd5b506100f661025a366004611011565b610700565b60006001600160e01b031982166309788f9960e21b148061029057506301ffc9a760e01b6001600160e01b03198316145b92915050565b6040518060a00160405280606181526020016112ee6061913981565b6000469050600060405180608001604052806052815260200161134f605291398051906020012086866040516102e99291906110e6565b604051809103902085856040516103019291906110e6565b6040805191829003822060208301949094528101919091526060810191909152608081018390523060a082015260c00160408051601f198184030181528282528051602080830191909120600081815260019283905293909320805460ff1916909117905592509081907f4bc68689cbe89a4a6333a3ab0a70093874da3e5bfb71e93102027f3f073687d8906103989085906111ad565b60405180910390a250505050505050565b6103b28761079a565b6103c187878787878787610817565b50505050505050565b60405180608001604052806052815260200161134f6052913981565b60005b83811015610494576000858583818110610405576104056112d7565b909101356001600160f81b031916915050600560fb1b81148015906104385750602960f81b6001600160f81b0319821614155b6104815760405162461bcd60e51b81526020600482015260156024820152744657443a20696e76616c696420747970656e616d6560581b60448201526064015b60405180910390fd5b508061048c81611290565b9150506103e9565b50600084846040518060a00160405280606181526020016112ee6061913985856040516020016104c8959493929190611138565b60405160208183030381529060405290506104e2816109df565b5050505050565b600060606104fc89898989898989610817565b61050589610a41565b60c089013515806105195750428960c00135115b61055c5760405162461bcd60e51b81526020600482015260146024820152731195d10e881c995c5d595cdd08195e1c1a5c995960621b6044820152606401610478565b600060408a01351561056d5750619c405b600061057c60a08c018c6111c0565b61058960208e018e610e8a565b60405160200161059b939291906110f6565b60408051601f1981840301815291905290506105bb8260608d0135611207565b60405a6105c990603f611241565b6105d3919061121f565b10156106195760405162461bcd60e51b81526020600482015260156024820152744657443a20696e73756666696369656e742067617360581b6044820152606401610478565b61062960408c0160208d01610e8a565b6001600160a01b03168b606001358c604001358360405161064a919061111c565b600060405180830381858888f193505050503d8060008114610688576040519150601f19603f3d011682016040523d82523d6000602084013e61068d565b606091505b50909450925060408b0135158015906106a65750600047115b156106f2576106b860208c018c610e8a565b6001600160a01b03166108fc479081150290604051600060405180830381858888f193505050501580156106f0573d6000803e3d6000fd5b505b505097509795505050505050565b6060836107106020870187610e8a565b6001600160a01b03166107296040880160208901610e8a565b6001600160a01b03166040880135606089013560808a013561074e60a08c018c6111c0565b60405161075c9291906110e6565b6040519081900381206107819796959493929160c08e0135908c908c90602001611094565b6040516020818303038152906040529050949350505050565b6080810135600260006107b06020850185610e8a565b6001600160a01b03166001600160a01b0316815260200190815260200160002054146108145760405162461bcd60e51b815260206004820152601360248201527208cae887440dcdedcc6ca40dad2e6dac2e8c6d606b1b6044820152606401610478565b50565b60008681526001602052604090205460ff166108755760405162461bcd60e51b815260206004820152601d60248201527f4657443a20756e7265676973746572656420646f6d61696e207365702e0000006044820152606401610478565b60008581526020819052604090205460ff166108d35760405162461bcd60e51b815260206004820152601a60248201527f4657443a20756e726567697374657265642074797065686173680000000000006044820152606401610478565b6000866108e289888888610700565b805160209182012060405161090e93920161190160f01b81526002810192909252602282015260420190565b60408051601f198184030181529190528051602091820120915061093490890189610e8a565b6001600160a01b031661097f84848080601f0160208091040260200160405190810160405280939291908181526020018383808284376000920191909152508693925050610ac59050565b6001600160a01b0316146109d55760405162461bcd60e51b815260206004820152601760248201527f4657443a207369676e6174757265206d69736d617463680000000000000000006044820152606401610478565b5050505050505050565b8051602080830191909120600081815291829052604091829020805460ff19166001179055905181907f64d6bce64323458c44643c51fe45113efc882082f7b7fd5f09f0d69d2eedb20290610a359085906111ad565b60405180910390a25050565b608081013560026000610a576020850185610e8a565b6001600160a01b0316815260208101919091526040016000908120805491610a7e83611290565b91905055146108145760405162461bcd60e51b815260206004820152601360248201527208cae887440dcdedcc6ca40dad2e6dac2e8c6d606b1b6044820152606401610478565b6000806000610ad48585610ae9565b91509150610ae181610b59565b509392505050565b600080825160411415610b205760208301516040840151606085015160001a610b1487828585610d14565b94509450505050610b52565b825160401415610b4a5760208301516040840151610b3f868383610e01565b935093505050610b52565b506000905060025b9250929050565b6000816004811115610b6d57610b6d6112c1565b1415610b765750565b6001816004811115610b8a57610b8a6112c1565b1415610bd85760405162461bcd60e51b815260206004820152601860248201527f45434453413a20696e76616c6964207369676e617475726500000000000000006044820152606401610478565b6002816004811115610bec57610bec6112c1565b1415610c3a5760405162461bcd60e51b815260206004820152601f60248201527f45434453413a20696e76616c6964207369676e6174757265206c656e677468006044820152606401610478565b6003816004811115610c4e57610c4e6112c1565b1415610ca75760405162461bcd60e51b815260206004820152602260248201527f45434453413a20696e76616c6964207369676e6174757265202773272076616c604482015261756560f01b6064820152608401610478565b6004816004811115610cbb57610cbb6112c1565b14156108145760405162461bcd60e51b815260206004820152602260248201527f45434453413a20696e76616c6964207369676e6174757265202776272076616c604482015261756560f01b6064820152608401610478565b6000807f7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0831115610d4b5750600090506003610df8565b8460ff16601b14158015610d6357508460ff16601c14155b15610d745750600090506004610df8565b6040805160008082526020820180845289905260ff881692820192909252606081018690526080810185905260019060a0016020604051602081039080840390855afa158015610dc8573d6000803e3d6000fd5b5050604051601f1901519150506001600160a01b038116610df157600060019250925050610df8565b9150600090505b94509492505050565b6000806001600160ff1b03831660ff84901c601b01610e2287828885610d14565b935093505050935093915050565b60008083601f840112610e4257600080fd5b50813567ffffffffffffffff811115610e5a57600080fd5b602083019150836020828501011115610b5257600080fd5b600060e08284031215610e8457600080fd5b50919050565b600060208284031215610e9c57600080fd5b81356001600160a01b0381168114610eb357600080fd5b9392505050565b600060208284031215610ecc57600080fd5b5035919050565b600060208284031215610ee557600080fd5b81356001600160e01b031981168114610eb357600080fd5b60008060008060408587031215610f1357600080fd5b843567ffffffffffffffff80821115610f2b57600080fd5b610f3788838901610e30565b90965094506020870135915080821115610f5057600080fd5b50610f5d87828801610e30565b95989497509550505050565b600080600080600080600060a0888a031215610f8457600080fd5b873567ffffffffffffffff80821115610f9c57600080fd5b610fa88b838c01610e72565b985060208a0135975060408a0135965060608a0135915080821115610fcc57600080fd5b610fd88b838c01610e30565b909650945060808a0135915080821115610ff157600080fd5b50610ffe8a828b01610e30565b989b979a50959850939692959293505050565b6000806000806060858703121561102757600080fd5b843567ffffffffffffffff8082111561103f57600080fd5b61104b88838901610e72565b9550602087013594506040870135915080821115610f5057600080fd5b60008151808452611080816020860160208601611260565b601f01601f19169290920160200192915050565b8a81528960208201528860408201528760608201528660808201528560a08201528460c08201528360e082015260006101008385828501376000929093019092019081529a9950505050505050505050565b8183823760009101908152919050565b8284823760609190911b6bffffffffffffffffffffffff19169101908152601401919050565b6000825161112e818460208701611260565b9190910192915050565b84868237600085820160008152600560fb1b8152855161115f816001840160208a01611260565b600b60fa1b600192909101918201528385600283013760009301600201928352509095945050505050565b82151581526040602082015260006111a56040830184611068565b949350505050565b602081526000610eb36020830184611068565b6000808335601e198436030181126111d757600080fd5b83018035915067ffffffffffffffff8211156111f257600080fd5b602001915036819003821315610b5257600080fd5b6000821982111561121a5761121a6112ab565b500190565b60008261123c57634e487b7160e01b600052601260045260246000fd5b500490565b600081600019048311821515161561125b5761125b6112ab565b500290565b60005b8381101561127b578181015183820152602001611263565b8381111561128a576000848401525b50505050565b60006000198214156112a4576112a46112ab565b5060010190565b634e487b7160e01b600052601160045260246000fd5b634e487b7160e01b600052602160045260246000fd5b634e487b7160e01b600052603260045260246000fdfe616464726573732066726f6d2c6164647265737320746f2c75696e743235362076616c75652c75696e74323536206761732c75696e74323536206e6f6e63652c627974657320646174612c75696e743235362076616c6964556e74696c54696d65454950373132446f6d61696e28737472696e67206e616d652c737472696e672076657273696f6e2c75696e7432353620636861696e49642c6164647265737320766572696679696e67436f6e747261637429a2646970667358221220a58f6ca2de94f3c585422c7a03008ae28cc2b11389c1e8000e6d13e324c8ee4464736f6c63430008070033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "execute((address,address,uint256,uint256,uint256,bytes,uint256),bytes32,bytes32,bytes,bytes)": {
+        "params": {
+          "domainSeparator": "The domain used when signing this request.",
+          "forwardRequest": "All requested transaction parameters.",
+          "requestTypeHash": "The request type used when signing this request.",
+          "signature": "The client signature to be validated.",
+          "suffixData": "The ABI-encoded extension data for the current `RequestType` used when signing this request."
+        },
+        "returns": {
+          "ret": "The byte array returned by the underlying `CALL` to the target address.",
+          "success": "The success flag of the underlying `CALL` to the target address."
+        }
+      },
+      "getNonce(address)": {
+        "params": {
+          "from": "The address of a sender."
+        },
+        "returns": {
+          "_0": "The nonce for this address."
+        }
+      },
+      "registerDomainSeparator(string,string)": {
+        "params": {
+          "name": "The domain's display name.",
+          "version": "The domain/protocol version."
+        }
+      },
+      "registerRequestType(string,string)": {
+        "params": {
+          "typeName": "The name of the request type.",
+          "typeSuffix": "Any extra data after the generic params. Must contain add at least one param. The generic ForwardRequest type is always registered by the constructor."
+        }
+      },
+      "supportsInterface(bytes4)": {
+        "details": "Returns true if this contract implements the interface defined by `interfaceId`. See the corresponding https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section] to learn more about how these ids are created. This function call must use less than 30 000 gas."
+      }
+    },
+    "title": "The Forwarder Implementation",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "_getEncoded((address,address,uint256,uint256,uint256,bytes,uint256),bytes32,bytes)": {
+        "notice": "Creates a byte array that is a valid ABI encoding of a request of a `RequestType` type. See `execute()`."
+      },
+      "execute((address,address,uint256,uint256,uint256,bytes,uint256),bytes32,bytes32,bytes,bytes)": {
+        "notice": "Executes a transaction specified by the `ForwardRequest`. The transaction is first verified and then executed. The success flag and returned bytes array of the `CALL` are returned as-is. This method would revert only in case of a verification error. All the target errors are reported using the returned success flag and returned bytes array."
+      },
+      "registerDomainSeparator(string,string)": {
+        "notice": "Register a new domain separator.This is necessary for the Forwarder to be able to verify the signatures conforming to the ERC-712.The domain separator must have the following fields: `name`, `version`, `chainId`, `verifyingContract`. The `chainId` is the current network's `chainId`, and the `verifyingContract` is this Forwarder's address. This method accepts the domain name and version to create and register the domain separator value."
+      },
+      "registerRequestType(string,string)": {
+        "notice": "Register a new Request typehash.This is necessary for the Forwarder to be able to verify the signatures conforming to the ERC-712."
+      },
+      "verify((address,address,uint256,uint256,uint256,bytes,uint256),bytes32,bytes32,bytes,bytes)": {
+        "notice": "Verify the transaction is valid and can be executed. Implementations must validate the signature and the nonce of the request are correct. Does not revert and returns successfully if the input is valid. Reverts if any validation has failed. For instance, if either signature or nonce are incorrect. Reverts if `domainSeparator` or `requestTypeHash` are not registered as well."
+      }
+    },
+    "notice": "This implementation of the `IForwarder` interface uses ERC-712 signatures and stored nonces for verification.",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 6128,
+        "contract": "contracts-link/forwarder/Forwarder.sol:Forwarder",
+        "label": "typeHashes",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_mapping(t_bytes32,t_bool)"
+      },
+      {
+        "astId": 6132,
+        "contract": "contracts-link/forwarder/Forwarder.sol:Forwarder",
+        "label": "domains",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_mapping(t_bytes32,t_bool)"
+      },
+      {
+        "astId": 6136,
+        "contract": "contracts-link/forwarder/Forwarder.sol:Forwarder",
+        "label": "nonces",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_mapping(t_address,t_uint256)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_address,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_mapping(t_bytes32,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

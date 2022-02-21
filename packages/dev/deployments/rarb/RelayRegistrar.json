@@ -1,0 +1,482 @@
+{
+  "address": "0x098B6FE8d90C2178C0311fBA952c14f4Fa3031D6",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "relayManager",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "baseRelayFee",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "pctRelayFee",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32[3]",
+          "name": "relayUrl",
+          "type": "bytes32[3]"
+        }
+      ],
+      "name": "RelayServerRegistered",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "getCreationBlock",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "relayHub",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "relayManager",
+          "type": "address"
+        }
+      ],
+      "name": "getRelayInfo",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint32",
+              "name": "lastSeenBlockNumber",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint40",
+              "name": "lastSeenTimestamp",
+              "type": "uint40"
+            },
+            {
+              "internalType": "uint32",
+              "name": "firstSeenBlockNumber",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint40",
+              "name": "firstSeenTimestamp",
+              "type": "uint40"
+            },
+            {
+              "internalType": "uint80",
+              "name": "baseRelayFee",
+              "type": "uint80"
+            },
+            {
+              "internalType": "uint16",
+              "name": "pctRelayFee",
+              "type": "uint16"
+            },
+            {
+              "internalType": "bytes32[3]",
+              "name": "urlParts",
+              "type": "bytes32[3]"
+            },
+            {
+              "internalType": "address",
+              "name": "relayManager",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct IRelayRegistrar.RelayInfo",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "relayHub",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "oldestBlockNumber",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "oldestBlockTimestamp",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxCount",
+          "type": "uint256"
+        }
+      ],
+      "name": "readRelayInfos",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint32",
+              "name": "lastSeenBlockNumber",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint40",
+              "name": "lastSeenTimestamp",
+              "type": "uint40"
+            },
+            {
+              "internalType": "uint32",
+              "name": "firstSeenBlockNumber",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint40",
+              "name": "firstSeenTimestamp",
+              "type": "uint40"
+            },
+            {
+              "internalType": "uint80",
+              "name": "baseRelayFee",
+              "type": "uint80"
+            },
+            {
+              "internalType": "uint16",
+              "name": "pctRelayFee",
+              "type": "uint16"
+            },
+            {
+              "internalType": "bytes32[3]",
+              "name": "urlParts",
+              "type": "bytes32[3]"
+            },
+            {
+              "internalType": "address",
+              "name": "relayManager",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct IRelayRegistrar.RelayInfo[]",
+          "name": "info",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "relayHub",
+          "type": "address"
+        },
+        {
+          "internalType": "uint80",
+          "name": "baseRelayFee",
+          "type": "uint80"
+        },
+        {
+          "internalType": "uint16",
+          "name": "pctRelayFee",
+          "type": "uint16"
+        },
+        {
+          "internalType": "bytes32[3]",
+          "name": "url",
+          "type": "bytes32[3]"
+        }
+      ],
+      "name": "registerRelayServer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes4",
+          "name": "interfaceId",
+          "type": "bytes4"
+        }
+      ],
+      "name": "supportsInterface",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xf93e2b928e05166ceff5434258c4a82883e9c5deb78ae4bae7a0b5fef8b39f50",
+  "receipt": {
+    "to": null,
+    "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "contractAddress": "0x098B6FE8d90C2178C0311fBA952c14f4Fa3031D6",
+    "transactionIndex": 0,
+    "gasUsed": "9259979",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x1a0307dc2ae2536b0fc813db4ee29d79f41e275ed2aa4ce4121e9a73dff0a5ee",
+    "transactionHash": "0xf93e2b928e05166ceff5434258c4a82883e9c5deb78ae4bae7a0b5fef8b39f50",
+    "logs": [],
+    "blockNumber": 9589562,
+    "cumulativeGasUsed": "4179279",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 3,
+  "solcInputHash": "ed54ecf1e58c2e0b82a21139c2bc4bdb",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.7+commit.e28d00a7\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"relayManager\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"baseRelayFee\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"pctRelayFee\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32[3]\",\"name\":\"relayUrl\",\"type\":\"bytes32[3]\"}],\"name\":\"RelayServerRegistered\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"getCreationBlock\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"relayHub\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"relayManager\",\"type\":\"address\"}],\"name\":\"getRelayInfo\",\"outputs\":[{\"components\":[{\"internalType\":\"uint32\",\"name\":\"lastSeenBlockNumber\",\"type\":\"uint32\"},{\"internalType\":\"uint40\",\"name\":\"lastSeenTimestamp\",\"type\":\"uint40\"},{\"internalType\":\"uint32\",\"name\":\"firstSeenBlockNumber\",\"type\":\"uint32\"},{\"internalType\":\"uint40\",\"name\":\"firstSeenTimestamp\",\"type\":\"uint40\"},{\"internalType\":\"uint80\",\"name\":\"baseRelayFee\",\"type\":\"uint80\"},{\"internalType\":\"uint16\",\"name\":\"pctRelayFee\",\"type\":\"uint16\"},{\"internalType\":\"bytes32[3]\",\"name\":\"urlParts\",\"type\":\"bytes32[3]\"},{\"internalType\":\"address\",\"name\":\"relayManager\",\"type\":\"address\"}],\"internalType\":\"struct IRelayRegistrar.RelayInfo\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"relayHub\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"oldestBlockNumber\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"oldestBlockTimestamp\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maxCount\",\"type\":\"uint256\"}],\"name\":\"readRelayInfos\",\"outputs\":[{\"components\":[{\"internalType\":\"uint32\",\"name\":\"lastSeenBlockNumber\",\"type\":\"uint32\"},{\"internalType\":\"uint40\",\"name\":\"lastSeenTimestamp\",\"type\":\"uint40\"},{\"internalType\":\"uint32\",\"name\":\"firstSeenBlockNumber\",\"type\":\"uint32\"},{\"internalType\":\"uint40\",\"name\":\"firstSeenTimestamp\",\"type\":\"uint40\"},{\"internalType\":\"uint80\",\"name\":\"baseRelayFee\",\"type\":\"uint80\"},{\"internalType\":\"uint16\",\"name\":\"pctRelayFee\",\"type\":\"uint16\"},{\"internalType\":\"bytes32[3]\",\"name\":\"urlParts\",\"type\":\"bytes32[3]\"},{\"internalType\":\"address\",\"name\":\"relayManager\",\"type\":\"address\"}],\"internalType\":\"struct IRelayRegistrar.RelayInfo[]\",\"name\":\"info\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"relayHub\",\"type\":\"address\"},{\"internalType\":\"uint80\",\"name\":\"baseRelayFee\",\"type\":\"uint80\"},{\"internalType\":\"uint16\",\"name\":\"pctRelayFee\",\"type\":\"uint16\"},{\"internalType\":\"bytes32[3]\",\"name\":\"url\",\"type\":\"bytes32[3]\"}],\"name\":\"registerRelayServer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"getCreationBlock()\":{\"returns\":{\"_0\":\"The block number in which the contract has been deployed.\"}},\"getRelayInfo(address,address)\":{\"params\":{\"relayHub\":\"The address of the `RelayHub` contract for which this action is performed.\",\"relayManager\":\"An address of a Relay Manager.\"},\"returns\":{\"_0\":\"All the details of the given Relay Manager's registration. Throws if relay not found for `RelayHub`.\"}},\"readRelayInfos(address,uint256,uint256,uint256)\":{\"params\":{\"maxCount\":\"The maximum amount of relays to be returned by this function.\",\"oldestBlockNumber\":\"The latest block number in which a Relay Server may be registered.\",\"oldestBlockTimestamp\":\"The latest block timestamp in which a Relay Server may be registered.\",\"relayHub\":\"The address of the `RelayHub` contract for which this action is performed.\"},\"returns\":{\"info\":\"The list of `RelayInfo`s of registered Relay Servers\"}},\"registerRelayServer(address,uint80,uint16,bytes32[3])\":{\"params\":{\"baseRelayFee\":\"The base fee the Relay Server charges for a single transaction in Ether, in wei.\",\"pctRelayFee\":\"The percent of the total charge to add as a Relay Server fee to the total charge.\",\"relayHub\":\"The address of the `RelayHub` contract for which this action is performed.\",\"url\":\"The URL of the Relay Server that is listening to the clients' requests.\"}},\"supportsInterface(bytes4)\":{\"details\":\"Returns true if this contract implements the interface defined by `interfaceId`. See the corresponding https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section] to learn more about how these ids are created. This function call must use less than 30 000 gas.\"}},\"title\":\"The RelayRegistrar Implementation\",\"version\":1},\"userdoc\":{\"events\":{\"RelayServerRegistered(address,uint256,uint256,bytes32[3])\":{\"notice\":\"Emitted when a relay server registers or updates its details. Looking up these events allows a client to discover registered Relay Servers.\"}},\"kind\":\"user\",\"methods\":{\"readRelayInfos(address,uint256,uint256,uint256)\":{\"notice\":\"Read relay info of registered Relay Server from an on-chain storage.\"},\"registerRelayServer(address,uint80,uint16,bytes32[3])\":{\"notice\":\"This function is called by Relay Servers in order to register or to update their registration.\"}},\"notice\":\"Keeps a list of registered relayers.Provides view functions to read the list of registered relayers and filters out invalid ones.Protects the list from spamming entries: only staked relayers are added.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts-link/utils/RelayRegistrar.sol\":\"RelayRegistrar\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/interfaces/IERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (interfaces/IERC165.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"../utils/introspection/IERC165.sol\\\";\\n\",\"keccak256\":\"0xd04b0f06e0666f29cf7cccc82894de541e19bb30a765b107b1e40bb7fe5f7d7a\",\"license\":\"MIT\"},\"@openzeppelin/contracts/token/ERC20/IERC20.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (token/ERC20/IERC20.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev Interface of the ERC20 standard as defined in the EIP.\\n */\\ninterface IERC20 {\\n    /**\\n     * @dev Returns the amount of tokens in existence.\\n     */\\n    function totalSupply() external view returns (uint256);\\n\\n    /**\\n     * @dev Returns the amount of tokens owned by `account`.\\n     */\\n    function balanceOf(address account) external view returns (uint256);\\n\\n    /**\\n     * @dev Moves `amount` tokens from the caller's account to `recipient`.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transfer(address recipient, uint256 amount) external returns (bool);\\n\\n    /**\\n     * @dev Returns the remaining number of tokens that `spender` will be\\n     * allowed to spend on behalf of `owner` through {transferFrom}. This is\\n     * zero by default.\\n     *\\n     * This value changes when {approve} or {transferFrom} are called.\\n     */\\n    function allowance(address owner, address spender) external view returns (uint256);\\n\\n    /**\\n     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * IMPORTANT: Beware that changing an allowance with this method brings the risk\\n     * that someone may use both the old and the new allowance by unfortunate\\n     * transaction ordering. One possible solution to mitigate this race\\n     * condition is to first reduce the spender's allowance to 0 and set the\\n     * desired value afterwards:\\n     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729\\n     *\\n     * Emits an {Approval} event.\\n     */\\n    function approve(address spender, uint256 amount) external returns (bool);\\n\\n    /**\\n     * @dev Moves `amount` tokens from `sender` to `recipient` using the\\n     * allowance mechanism. `amount` is then deducted from the caller's\\n     * allowance.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transferFrom(\\n        address sender,\\n        address recipient,\\n        uint256 amount\\n    ) external returns (bool);\\n\\n    /**\\n     * @dev Emitted when `value` tokens are moved from one account (`from`) to\\n     * another (`to`).\\n     *\\n     * Note that `value` may be zero.\\n     */\\n    event Transfer(address indexed from, address indexed to, uint256 value);\\n\\n    /**\\n     * @dev Emitted when the allowance of a `spender` for an `owner` is set by\\n     * a call to {approve}. `value` is the new allowance.\\n     */\\n    event Approval(address indexed owner, address indexed spender, uint256 value);\\n}\\n\",\"keccak256\":\"0x61437cb513a887a1bbad006e7b1c8b414478427d33de47c5600af3c748f108da\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/introspection/ERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/introspection/ERC165.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"./IERC165.sol\\\";\\n\\n/**\\n * @dev Implementation of the {IERC165} interface.\\n *\\n * Contracts that want to implement ERC165 should inherit from this contract and override {supportsInterface} to check\\n * for the additional interface id that will be supported. For example:\\n *\\n * ```solidity\\n * function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {\\n *     return interfaceId == type(MyInterface).interfaceId || super.supportsInterface(interfaceId);\\n * }\\n * ```\\n *\\n * Alternatively, {ERC165Storage} provides an easier to use but more expensive implementation.\\n */\\nabstract contract ERC165 is IERC165 {\\n    /**\\n     * @dev See {IERC165-supportsInterface}.\\n     */\\n    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {\\n        return interfaceId == type(IERC165).interfaceId;\\n    }\\n}\\n\",\"keccak256\":\"0xd10975de010d89fd1c78dc5e8a9a7e7f496198085c151648f20cba166b32582b\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/introspection/IERC165.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/introspection/IERC165.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev Interface of the ERC165 standard, as defined in the\\n * https://eips.ethereum.org/EIPS/eip-165[EIP].\\n *\\n * Implementers can declare support of contract interfaces, which can then be\\n * queried by others ({ERC165Checker}).\\n *\\n * For an implementation, see {ERC165}.\\n */\\ninterface IERC165 {\\n    /**\\n     * @dev Returns true if this contract implements the interface defined by\\n     * `interfaceId`. See the corresponding\\n     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]\\n     * to learn more about how these ids are created.\\n     *\\n     * This function call must use less than 30 000 gas.\\n     */\\n    function supportsInterface(bytes4 interfaceId) external view returns (bool);\\n}\\n\",\"keccak256\":\"0x447a5f3ddc18419d41ff92b3773fb86471b1db25773e07f877f548918a185bf1\",\"license\":\"MIT\"},\"contracts-link/forwarder/IForwarder.sol\":{\"content\":\"pragma solidity >=0.7.6;\\npragma abicoder v2;\\n\\n// SPDX-License-Identifier: GPL-3.0-only\\n\\nimport \\\"@openzeppelin/contracts/interfaces/IERC165.sol\\\";\\n\\n/**\\n * @title The Forwarder Interface\\n * @notice The contracts implementing this interface take a role of authorization, authentication and replay protection\\n * for contracts that choose to trust a `Forwarder`, instead of relying on a mechanism built into the Ethereum protocol.\\n *\\n * @notice if the `Forwarder` contract decides that an incoming `ForwardRequest` is valid, it must append 20 bytes that\\n * represent the caller to the `data` field of the request and send this new data to the target address (the `to` field)\\n *\\n * :warning: **Warning** :warning: The Forwarder can have a full control over a `Recipient` contract.\\n * Any vulnerability in a `Forwarder` implementation can make all of its `Recipient` contracts susceptible!\\n * Recipient contracts should only trust forwarders that passed through security audit,\\n * otherwise they are susceptible to identity theft.\\n */\\ninterface IForwarder is IERC165 {\\n\\n    /**\\n     * @notice A representation of a request for a `Forwarder` to send `data` on behalf of a `from` to a target (`to`).\\n     */\\n    struct ForwardRequest {\\n        address from;\\n        address to;\\n        uint256 value;\\n        uint256 gas;\\n        uint256 nonce;\\n        bytes data;\\n        uint256 validUntilTime;\\n    }\\n\\n    event DomainRegistered(bytes32 indexed domainSeparator, bytes domainValue);\\n\\n    event RequestTypeRegistered(bytes32 indexed typeHash, string typeStr);\\n\\n    /**\\n     * @param from The address of a sender.\\n     * @return The nonce for this address.\\n     */\\n    function getNonce(address from)\\n    external view\\n    returns(uint256);\\n\\n    /**\\n     * @notice Verify the transaction is valid and can be executed.\\n     * Implementations must validate the signature and the nonce of the request are correct.\\n     * Does not revert and returns successfully if the input is valid.\\n     * Reverts if any validation has failed. For instance, if either signature or nonce are incorrect.\\n     * Reverts if `domainSeparator` or `requestTypeHash` are not registered as well.\\n     */\\n    function verify(\\n        ForwardRequest calldata forwardRequest,\\n        bytes32 domainSeparator,\\n        bytes32 requestTypeHash,\\n        bytes calldata suffixData,\\n        bytes calldata signature\\n    ) external view;\\n\\n    /**\\n     * @notice Executes a transaction specified by the `ForwardRequest`.\\n     * The transaction is first verified and then executed.\\n     * The success flag and returned bytes array of the `CALL` are returned as-is.\\n     *\\n     * This method would revert only in case of a verification error.\\n     *\\n     * All the target errors are reported using the returned success flag and returned bytes array.\\n     *\\n     * @param forwardRequest All requested transaction parameters.\\n     * @param domainSeparator The domain used when signing this request.\\n     * @param requestTypeHash The request type used when signing this request.\\n     * @param suffixData The ABI-encoded extension data for the current `RequestType` used when signing this request.\\n     * @param signature The client signature to be validated.\\n     *\\n     * @return success The success flag of the underlying `CALL` to the target address.\\n     * @return ret The byte array returned by the underlying `CALL` to the target address.\\n     */\\n    function execute(\\n        ForwardRequest calldata forwardRequest,\\n        bytes32 domainSeparator,\\n        bytes32 requestTypeHash,\\n        bytes calldata suffixData,\\n        bytes calldata signature\\n    )\\n    external payable\\n    returns (bool success, bytes memory ret);\\n\\n    /**\\n     * @notice Register a new Request typehash.\\n     *\\n     * @notice This is necessary for the Forwarder to be able to verify the signatures conforming to the ERC-712.\\n     *\\n     * @param typeName The name of the request type.\\n     * @param typeSuffix Any extra data after the generic params. Must contain add at least one param.\\n     * The generic ForwardRequest type is always registered by the constructor.\\n     */\\n    function registerRequestType(string calldata typeName, string calldata typeSuffix) external;\\n\\n    /**\\n     * @notice Register a new domain separator.\\n     *\\n     * @notice This is necessary for the Forwarder to be able to verify the signatures conforming to the ERC-712.\\n     *\\n     * @notice The domain separator must have the following fields: `name`, `version`, `chainId`, `verifyingContract`.\\n     * The `chainId` is the current network's `chainId`, and the `verifyingContract` is this Forwarder's address.\\n     * This method accepts the domain name and version to create and register the domain separator value.\\n     * @param name The domain's display name.\\n     * @param version The domain/protocol version.\\n     */\\n    function registerDomainSeparator(string calldata name, string calldata version) external;\\n}\",\"keccak256\":\"0xef3d770001c3245db4408cdd0afdfc622695ccfe31f28b74571d05158bbf83f8\",\"license\":\"GPL-3.0-only\"},\"contracts-link/interfaces/IRelayHub.sol\":{\"content\":\"pragma solidity >=0.7.6;\\npragma abicoder v2;\\n\\n// SPDX-License-Identifier: GPL-3.0-only\\n\\nimport \\\"@openzeppelin/contracts/interfaces/IERC165.sol\\\";\\n\\nimport \\\"../utils/GsnTypes.sol\\\";\\nimport \\\"./IStakeManager.sol\\\";\\n\\n/**\\n * @title The RelayHub interface\\n * @notice The implementation of this interface provides all the information the GSN client needs to\\n * create a valid `RelayRequest` and also serves as an entry point for such requests.\\n *\\n * @notice The RelayHub also handles all the related financial records and hold the balances of participants.\\n * The Paymasters keep their Ether deposited in the `RelayHub` in order to pay for the `RelayRequest`s that thay choose\\n * to pay for, and Relay Servers keep their earned Ether in the `RelayHub` until they choose to `withdraw()`\\n *\\n * @notice The RelayHub on each supported network only needs a single instance and there is usually no need for dApp\\n * developers or Relay Server operators to redeploy, reimplement, modify or override the `RelayHub`.\\n */\\ninterface IRelayHub is IERC165 {\\n    /**\\n     * @notice A struct that contains all the parameters of the `RelayHub` that can be modified after the deployment.\\n     */\\n    struct RelayHubConfig {\\n        // maximum number of worker accounts allowed per manager\\n        uint256 maxWorkerCount;\\n        // Gas set aside for all relayCall() instructions to prevent unexpected out-of-gas exceptions\\n        uint256 gasReserve;\\n        // Gas overhead to calculate gasUseWithoutPost\\n        uint256 postOverhead;\\n        // Gas cost of all relayCall() instructions after actual 'calculateCharge()'\\n        // Assume that relay has non-zero balance (costs 15'000 more otherwise).\\n        uint256 gasOverhead;\\n        // Minimum unstake delay seconds of a relay manager's stake on the StakeManager\\n        uint256 minimumUnstakeDelay;\\n        // Developers address\\n        address devAddress;\\n        // 0 < fee < 100, as percentage of total charge from paymaster to relayer\\n        uint8 devFee;\\n\\n    }\\n\\n    /// @notice Emitted when a configuration of the `RelayHub` is changed\\n    event RelayHubConfigured(RelayHubConfig config);\\n\\n    /// @notice Emitted when relays are added by a relayManager\\n    event RelayWorkersAdded(\\n        address indexed relayManager,\\n        address[] newRelayWorkers,\\n        uint256 workersCount\\n    );\\n\\n    /// @notice Emitted when an account withdraws funds from the `RelayHub`.\\n    event Withdrawn(\\n        address indexed account,\\n        address indexed dest,\\n        uint256 amount\\n    );\\n\\n    /// @notice Emitted when `depositFor` is called, including the amount and account that was funded.\\n    event Deposited(\\n        address indexed paymaster,\\n        address indexed from,\\n        uint256 amount\\n    );\\n\\n    /// @notice Emitted for each token configured for staking in setMinimumStakes\\n    event StakingTokenDataChanged(\\n        address token,\\n        uint256 minimumStake\\n    );\\n\\n    /**\\n     * @notice Emitted when an attempt to relay a call fails and the `Paymaster` does not accept the transaction.\\n     * The actual relayed call was not executed, and the recipient not charged.\\n     * @param reason contains a revert reason returned from preRelayedCall or forwarder.\\n     */\\n    event TransactionRejectedByPaymaster(\\n        address indexed relayManager,\\n        address indexed paymaster,\\n        bytes32 indexed relayRequestID,\\n        address from,\\n        address to,\\n        address relayWorker,\\n        bytes4 selector,\\n        uint256 innerGasUsed,\\n        bytes reason\\n    );\\n\\n    /**\\n     * @notice Emitted when a transaction is relayed. Note that the actual internal function call might be reverted.\\n     * The reason for a revert will be indicated in the `status` field of a corresponding `RelayCallStatus` value.\\n     * @notice `charge` is the Ether value deducted from the `Paymaster` balance.\\n     * The amount added to the `relayManager` balance will be lower if there is an activated `devFee` in the `config`.\\n     */\\n    event TransactionRelayed(\\n        address indexed relayManager,\\n        address indexed relayWorker,\\n        bytes32 indexed relayRequestID,\\n        address from,\\n        address to,\\n        address paymaster,\\n        bytes4 selector,\\n        RelayCallStatus status,\\n        uint256 charge\\n    );\\n\\n    /// @notice This event is emitted in case the internal function returns a value or reverts with a revert string.\\n    event TransactionResult(\\n        RelayCallStatus status,\\n        bytes returnValue\\n    );\\n\\n    /// @notice This event is emitted in case this `RelayHub` is deprecated and will stop serving transactions soon.\\n    event HubDeprecated(uint256 deprecationTime);\\n\\n    /**\\n     * Error codes that describe all possible failure reasons reported in the `TransactionRelayed` event `status` field.\\n     *  @param OK The transaction was successfully relayed and execution successful - never included in the event.\\n     *  @param RelayedCallFailed The transaction was relayed, but the relayed call failed.\\n     *  @param RejectedByPreRelayed The transaction was not relayed due to preRelatedCall reverting.\\n     *  @param RejectedByForwarder The transaction was not relayed due to forwarder check (signature,nonce).\\n     *  @param PostRelayedFailed The transaction was relayed and reverted due to postRelatedCall reverting.\\n     *  @param PaymasterBalanceChanged The transaction was relayed and reverted due to the paymaster balance change.\\n     */\\n    enum RelayCallStatus {\\n        OK,\\n        RelayedCallFailed,\\n        RejectedByPreRelayed,\\n        RejectedByForwarder,\\n        RejectedByRecipientRevert,\\n        PostRelayedFailed,\\n        PaymasterBalanceChanged\\n    }\\n\\n    /**\\n     * @notice Add new worker addresses controlled by the sender who must be a staked Relay Manager address.\\n     * Emits a `RelayWorkersAdded` event.\\n     * This function can be called multiple times, emitting new events.\\n     */\\n    function addRelayWorkers(address[] calldata newRelayWorkers) external;\\n\\n    function verifyCanRegister(address relayManager) external;\\n\\n    // Balance management\\n\\n    /**\\n     * @notice Deposits ether for a `Paymaster`, so that it can and pay for relayed transactions.\\n     * :warning: **Warning** :warning: Unused balance can only be withdrawn by the holder itself, by calling `withdraw`.\\n     * Emits a `Deposited` event.\\n     */\\n    function depositFor(address target) external payable;\\n\\n    /**\\n     * @notice Withdraws from an account's balance, sending it back to the caller.\\n     * Relay Managers call this to retrieve their revenue, and `Paymasters` can also use it to reduce their funding.\\n     * Emits a `Withdrawn` event.\\n     */\\n    function withdraw(uint256 amount, address payable dest) external;\\n\\n    // Relaying\\n\\n    /**\\n     * @notice Relays a transaction. For this to succeed, multiple conditions must be met:\\n     *  - `Paymaster`'s `preRelayCall` method must succeed and not revert.\\n     *  - the `msg.sender` must be a registered Relay Worker that the user signed to use.\\n     *  - the transaction's gas fees must be equal or larger than the ones that were signed by the sender.\\n     *  - the transaction must have enough gas to run all internal transactions if they use all gas available to them.\\n     *  - the `Paymaster` must have enough balance to pay the Relay Worker if all gas is spent.\\n     *\\n     * @notice If all conditions are met, the call will be relayed and the `Paymaster` charged.\\n     *\\n     * @param maxAcceptanceBudget The maximum valid value for `paymaster.getGasLimits().acceptanceBudget` to return.\\n     * @param relayRequest All details of the requested relayed call.\\n     * @param signature The client's EIP-712 signature over the `relayRequest` struct.\\n     * @param approvalData The dapp-specific data forwarded to the `Paymaster`'s `preRelayedCall` method.\\n     * This value is **not** verified by the `RelayHub` in any way.\\n     * As an example, it can be used to pass some kind of a third-party signature to the `Paymaster` for verification.\\n     *\\n     * Emits a `TransactionRelayed` event regardless of whether the transaction succeeded or failed.\\n     */\\n    function relayCall(\\n        uint256 maxAcceptanceBudget,\\n        GsnTypes.RelayRequest calldata relayRequest,\\n        bytes calldata signature,\\n        bytes calldata approvalData\\n    )\\n    external\\n    returns (bool paymasterAccepted, bytes memory returnValue);\\n\\n    /**\\n     * @notice In case the Relay Worker has been found to be in violation of some rules by the `Penalizer` contract,\\n     * the `Penalizer` will call this method to execute a penalization.\\n     * The `RelayHub` will look up the Relay Manager of the given Relay Worker and will forward the call to\\n     * the `StakeManager` contract. The `RelayHub` does not perform the actual penalization either.\\n     * @param relayWorker The address of the Relay Worker that committed a penalizable offense.\\n     * @param beneficiary The address that called the `Penalizer` and will receive a reward for it.\\n     */\\n    function penalize(address relayWorker, address payable beneficiary) external;\\n\\n    /**\\n     * @notice Sets or changes the configuration of this `RelayHub`.\\n     * @param _config The new configuration.\\n     */\\n    function setConfiguration(RelayHubConfig memory _config) external;\\n\\n    /**\\n     * @notice Sets or changes the minimum amount of a given `token` that needs to be staked so that the Relay Manager\\n     * is considered to be 'staked' by this `RelayHub`. Zero value means this token is not allowed for staking.\\n     * @param token An array of addresses of ERC-20 compatible tokens.\\n     * @param minimumStake An array of minimal amounts necessary for a corresponding token, in wei.\\n     */\\n    function setMinimumStakes(IERC20[] memory token, uint256[] memory minimumStake) external;\\n\\n    /**\\n     * @notice Deprecate hub by reverting all incoming `relayCall()` calls starting from a given timestamp\\n     * @param _deprecationTime The timestamp in seconds after which the `RelayHub` stops serving transactions.\\n     */\\n    function deprecateHub(uint256 _deprecationTime) external;\\n\\n    /**\\n     * @notice The fee is expressed as a base fee in wei plus percentage of the actual charge.\\n     * For example, a value '40' stands for a 40% fee, so the recipient will be charged for 1.4 times the spent amount.\\n     * @param gasUsed An amount of gas used by the transaction.\\n     * @param relayData The details of a transaction signed by the sender.\\n     * @return The calculated charge, in wei.\\n     */\\n    function calculateCharge(uint256 gasUsed, GsnTypes.RelayData calldata relayData) external view returns (uint256);\\n\\n    /**\\n     * @notice The fee is expressed as a  percentage of the actual charge.\\n     * For example, a value '40' stands for a 40% fee, so the Relay Manager will only get 60% of the `charge`.\\n     * @param charge The amount of Ether in wei the Paymaster will be charged for this transaction.\\n     * @return The calculated devFee, in wei.\\n     */\\n    function calculateDevCharge(uint256 charge) external view returns (uint256);\\n    /* getters */\\n\\n    /// @return config The configuration of the `RelayHub`.\\n    function getConfiguration() external view returns (RelayHubConfig memory config);\\n\\n    /**\\n     * @param token An address of an ERC-20 compatible tokens.\\n     * @return The minimum amount of a given `token` that needs to be staked so that the Relay Manager\\n     * is considered to be 'staked' by this `RelayHub`. Zero value means this token is not allowed for staking.\\n     */\\n    function getMinimumStakePerToken(IERC20 token) external view returns (uint256);\\n\\n    /**\\n     * @param worker An address of the Relay Worker.\\n     * @return The address of its Relay Manager.\\n     */\\n    function getWorkerManager(address worker) external view returns (address);\\n\\n    /**\\n     * @param manager An address of the Relay Manager.\\n     * @return The count of Relay Workers associated with this Relay Manager.\\n     */\\n    function getWorkerCount(address manager) external view returns (uint256);\\n\\n    /// @return An account's balance. It can be either a deposit of a `Paymaster`, or a revenue of a Relay Manager.\\n    function balanceOf(address target) external view returns (uint256);\\n\\n    /// @return The `StakeManager` address for this `RelayHub`.\\n    function getStakeManager() external view returns (IStakeManager);\\n\\n    /// @return The `Penalizer` address for this `RelayHub`.\\n    function getPenalizer() external view returns (address);\\n\\n    /// @return The `RelayRegistrar` address for this `RelayHub`.\\n    function getRelayRegistrar() external view returns (address);\\n\\n    /// @return The `BatchGateway` address for this `RelayHub`.\\n    function getBatchGateway() external view returns (address);\\n\\n    /**\\n     * @notice Uses `StakeManager` to decide if the Relay Manager can be considered staked or not.\\n     * Returns if the stake's token, amount and delay satisfy all requirements, reverts otherwise.\\n     */\\n    function verifyRelayManagerStaked(address relayManager) external view;\\n\\n    /// @return `true` if the `RelayHub` is deprecated, `false` it it is not deprecated and can serve transactions.\\n    function isDeprecated() external view returns (bool);\\n\\n    /// @return The timestamp from which the hub no longer allows relaying calls.\\n    function getDeprecationTime() external view returns (uint256);\\n\\n    /// @return The block number in which the contract has been deployed.\\n    function getCreationBlock() external view returns (uint256);\\n\\n    /// @return a SemVer-compliant version of the `RelayHub` contract.\\n    function versionHub() external view returns (string memory);\\n\\n    /// @return A total measurable amount of gas left to current execution. Same as 'gasleft()' for pure EVMs.\\n    function aggregateGasleft() external view returns (uint256);\\n}\",\"keccak256\":\"0x1deca98ec75598091bf5d5ce7bd2720619d4f1bbede2f0357b08cf5d6ec19318\",\"license\":\"GPL-3.0-only\"},\"contracts-link/interfaces/IRelayRegistrar.sol\":{\"content\":\"pragma solidity ^0.8.6;\\n\\n//SPDX-License-Identifier: GPL-3.0-only\\n\\nimport \\\"@openzeppelin/contracts/interfaces/IERC165.sol\\\";\\n\\n/**\\n * @title The RelayRegistrar Interface\\n * @notice The on-chain registrar for all registered Relay Managers.\\n *\\n * @notice The client can use an implementation of a `RelayRegistrar` to find relay registration info.\\n *\\n */\\ninterface IRelayRegistrar is IERC165 {\\n\\n    /**\\n     * @notice A struct containing all the information necessary to client to interact with the Relay Server.\\n     */\\n    struct RelayInfo {\\n        //last registration block number\\n        uint32 lastSeenBlockNumber;\\n        //last registration block timestamp\\n        uint40 lastSeenTimestamp;\\n        //stake (first registration) block number\\n        uint32 firstSeenBlockNumber;\\n        //stake (first registration) block timestamp\\n        uint40 firstSeenTimestamp;\\n        uint80 baseRelayFee;\\n        uint16 pctRelayFee;\\n        bytes32[3] urlParts;\\n        address relayManager;\\n    }\\n\\n    /**\\n     * @notice Emitted when a relay server registers or updates its details.\\n     * Looking up these events allows a client to discover registered Relay Servers.\\n     */\\n    event RelayServerRegistered(\\n        address indexed relayManager,\\n        uint256 baseRelayFee,\\n        uint256 pctRelayFee,\\n        bytes32[3] relayUrl\\n    );\\n\\n    /**\\n     * @notice This function is called by Relay Servers in order to register or to update their registration.\\n     * @param relayHub The address of the `RelayHub` contract for which this action is performed.\\n     * @param baseRelayFee The base fee the Relay Server charges for a single transaction in Ether, in wei.\\n     * @param pctRelayFee The percent of the total charge to add as a Relay Server fee to the total charge.\\n     * @param url The URL of the Relay Server that is listening to the clients' requests.\\n     */\\n    function registerRelayServer(\\n        address relayHub,\\n        uint80 baseRelayFee,\\n        uint16 pctRelayFee,\\n        bytes32[3] calldata url\\n    ) external;\\n\\n    /**\\n     * @return The block number in which the contract has been deployed.\\n     */\\n    function getCreationBlock() external view returns (uint256);\\n\\n    /**\\n     * @param relayManager An address of a Relay Manager.\\n     * @param relayHub The address of the `RelayHub` contract for which this action is performed.\\n     * @return info All the details of the given Relay Manager's registration. Throws if relay not found for `RelayHub`.\\n     */\\n    function getRelayInfo(address relayHub, address relayManager) external view returns (RelayInfo memory info);\\n\\n    /**\\n     * @notice Read relay info of registered Relay Server from an on-chain storage.\\n     * @param relayHub The address of the `RelayHub` contract for which this action is performed.\\n     * @param maxCount The maximum amount of relays to be returned by this function.\\n     * @param oldestBlockNumber The latest block number in which a Relay Server may be registered.\\n     * @param oldestBlockTimestamp The latest block timestamp in which a Relay Server may be registered.\\n     * @return info The list of `RelayInfo`s of registered Relay Servers\\n     */\\n    function readRelayInfos(\\n        address relayHub,\\n        uint256 oldestBlockNumber,\\n        uint256 oldestBlockTimestamp,\\n        uint256 maxCount\\n    ) external view returns (\\n        RelayInfo[] memory info\\n    );\\n}\",\"keccak256\":\"0x31c700100829a2f388bd552d7f02e9728b6baed4939d95b3b8c1ba9847aff7ff\",\"license\":\"GPL-3.0-only\"},\"contracts-link/interfaces/IStakeManager.sol\":{\"content\":\"pragma solidity >=0.7.6;\\npragma abicoder v2;\\n\\n// SPDX-License-Identifier: GPL-3.0-only\\n\\nimport \\\"@openzeppelin/contracts/token/ERC20/IERC20.sol\\\";\\n\\n/**\\n * @title The StakeManager Interface\\n * @notice In order to prevent an attacker from registering a large number of unresponsive relays, the GSN requires\\n * the Relay Server to maintain a permanently locked stake in the system before being able to register.\\n *\\n * @notice Also, in some cases the behavior of a Relay Server may be found to be illegal by a `Penalizer` contract.\\n * In such case, the stake will never be returned to the Relay Server operator and will be slashed.\\n *\\n * @notice An implementation of this interface is tasked with keeping Relay Servers' stakes, made in any ERC-20 token.\\n * Note that the `RelayHub` chooses which ERC-20 tokens to support and how much stake is needed.\\n */\\ninterface IStakeManager {\\n\\n    /// @notice Emitted when a `stake` or `unstakeDelay` are initialized or increased.\\n    event StakeAdded(\\n        address indexed relayManager,\\n        address indexed owner,\\n        IERC20 token,\\n        uint256 stake,\\n        uint256 unstakeDelay\\n    );\\n\\n    /// @notice Emitted once a stake is scheduled for withdrawal.\\n    event StakeUnlocked(\\n        address indexed relayManager,\\n        address indexed owner,\\n        uint256 withdrawTime\\n    );\\n\\n    /// @notice Emitted when owner withdraws `relayManager` funds.\\n    event StakeWithdrawn(\\n        address indexed relayManager,\\n        address indexed owner,\\n        IERC20 token,\\n        uint256 amount\\n    );\\n\\n    /// @notice Emitted when an authorized `RelayHub` penalizes a `relayManager`.\\n    event StakePenalized(\\n        address indexed relayManager,\\n        address indexed beneficiary,\\n        IERC20 token,\\n        uint256 reward\\n    );\\n\\n    /// @notice Emitted when a `relayManager` adds a new `RelayHub` to a list of authorized.\\n    event HubAuthorized(\\n        address indexed relayManager,\\n        address indexed relayHub\\n    );\\n\\n    /// @notice Emitted when a `relayManager` removes a `RelayHub` from a list of authorized.\\n    event HubUnauthorized(\\n        address indexed relayManager,\\n        address indexed relayHub,\\n        uint256 removalTime\\n    );\\n\\n    /// @notice Emitted when a `relayManager` sets its `owner`. This is necessary to prevent stake hijacking.\\n    event OwnerSet(\\n        address indexed relayManager,\\n        address indexed owner\\n    );\\n\\n    /// @notice Emitted when a `burnAddress` is changed.\\n    event BurnAddressSet(\\n        address indexed burnAddress\\n    );\\n\\n    /**\\n     * @param stake - amount of ether staked for this relay\\n     * @param unstakeDelay - number of seconds to elapse before the owner can retrieve the stake after calling 'unlock'\\n     * @param withdrawTime - timestamp in seconds when 'withdraw' will be callable, or zero if the unlock has not been called\\n     * @param owner - address that receives revenue and manages relayManager's stake\\n     */\\n    struct StakeInfo {\\n        uint256 stake;\\n        uint256 unstakeDelay;\\n        uint256 withdrawTime;\\n        IERC20 token;\\n        address owner;\\n    }\\n\\n    struct RelayHubInfo {\\n        uint256 removalTime;\\n    }\\n\\n    /**\\n     * @notice Set the owner of a Relay Manager. Called only by the RelayManager itself.\\n     * Note that owners cannot transfer ownership - if the entry already exists, reverts.\\n     * @param owner - owner of the relay (as configured off-chain)\\n     */\\n    function setRelayManagerOwner(address owner) external;\\n\\n    /**\\n     * @notice Put a stake for a relayManager and set its unstake delay.\\n     * Only the owner can call this function. If the entry does not exist, reverts.\\n     * The owner must give allowance of the ERC-20 token to the StakeManager before calling this method.\\n     * It is the RelayHub who has a configurable list of minimum stakes per token. StakeManager accepts all tokens.\\n     * @param token The address of an ERC-20 token that is used by the relayManager as a stake\\n     * @param relayManager The address that represents a stake entry and controls relay registrations on relay hubs\\n     * @param unstakeDelay The number of seconds to elapse before an owner can retrieve the stake after calling `unlock`\\n     * @param amount The amount of tokens to be taken from the relayOwner and locked in the StakeManager as a stake\\n     */\\n    function stakeForRelayManager(IERC20 token, address relayManager, uint256 unstakeDelay, uint256 amount) external;\\n\\n    /**\\n     * @notice Schedule the unlocking of the stake. The `unstakeDelay` must pass before owner can call `withdrawStake`.\\n     * @param relayManager The address of a Relay Manager whose stake is to be unlocked.\\n     */\\n    function unlockStake(address relayManager) external;\\n    /**\\n     * @notice Withdraw the unlocked stake.\\n     * @param relayManager The address of a Relay Manager whose stake is to be withdrawn.\\n     */\\n    function withdrawStake(address relayManager) external;\\n\\n    /**\\n     * @notice Add the `RelayHub` to a list of authorized by this Relay Manager.\\n     * This allows the RelayHub to penalize this Relay Manager. The `RelayHub` cannot trust a Relay it cannot penalize.\\n     * @param relayManager The address of a Relay Manager whose stake is to be authorized for the new `RelayHub`.\\n     * @param relayHub The address of a `RelayHub` to be authorized.\\n     */\\n    function authorizeHubByOwner(address relayManager, address relayHub) external;\\n\\n    /**\\n     * @notice Same as `authorizeHubByOwner` but can be called by the RelayManager itself.\\n     */\\n    function authorizeHubByManager(address relayHub) external;\\n\\n    /**\\n     * @notice Remove the `RelayHub` from a list of authorized by this Relay Manager.\\n     * @param relayManager The address of a Relay Manager.\\n     * @param relayHub The address of a `RelayHub` to be unauthorized.\\n     */\\n    function unauthorizeHubByOwner(address relayManager, address relayHub) external;\\n\\n    /**\\n     * @notice Same as `unauthorizeHubByOwner` but can be called by the RelayManager itself.\\n     */\\n    function unauthorizeHubByManager(address relayHub) external;\\n\\n    /**\\n     * Slash the stake of the relay relayManager. In order to prevent stake kidnapping, burns part of stake on the way.\\n     * @param relayManager The address of a Relay Manager to be penalized.\\n     * @param beneficiary The address that receives part of the penalty amount.\\n     * @param amount A total amount of penalty to be withdrawn from stake.\\n     */\\n    function penalizeRelayManager(address relayManager, address beneficiary, uint256 amount) external;\\n\\n    /**\\n     * @notice Get the stake details information for the given Relay Manager.\\n     * @param relayManager The address of a Relay Manager.\\n     * @return stakeInfo The `StakeInfo` structure.\\n     * @return isSenderAuthorizedHub `true` if the `msg.sender` for this call was a `RelayHub` that is authorized now.\\n     * `false` if the `msg.sender` for this call is not authorized.\\n     */\\n    function getStakeInfo(address relayManager) external view returns (StakeInfo memory stakeInfo, bool isSenderAuthorizedHub);\\n\\n    /**\\n     * @return The maximum unstake delay this `StakeManger` allows. This is to prevent locking money forever by mistake.\\n     */\\n    function getMaxUnstakeDelay() external view returns (uint256);\\n\\n    /**\\n     * @notice Change the address that will receive the 'burned' part of the penalized stake.\\n     * This is done to prevent malicious Relay Server from penalizing itself and breaking even.\\n     */\\n    function setBurnAddress(address _burnAddress) external;\\n\\n    /**\\n     * @return The address that will receive the 'burned' part of the penalized stake.\\n     */\\n    function getBurnAddress() external view returns (address);\\n\\n    /**\\n     * @return the block number in which the contract has been deployed.\\n     */\\n    function getCreationBlock() external view returns (uint256);\\n\\n    /**\\n     * @return a SemVer-compliant version of the `StakeManager` contract.\\n     */\\n    function versionSM() external view returns (string memory);\\n}\",\"keccak256\":\"0xfa36dc58dc75bdc830127c1230d0330df20107e1648fe3fc53fa5406eae26ec7\",\"license\":\"GPL-3.0-only\"},\"contracts-link/utils/GsnTypes.sol\":{\"content\":\"pragma solidity ^0.8.0;\\n\\n// SPDX-License-Identifier: GPL-3.0-only\\n\\nimport \\\"../forwarder/IForwarder.sol\\\";\\n\\ninterface GsnTypes {\\n    /// @notice maxFeePerGas, maxPriorityFeePerGas, pctRelayFee and baseRelayFee must be validated inside of the paymaster's preRelayedCall in order not to overpay\\n    struct RelayData {\\n        uint256 maxFeePerGas;\\n        uint256 maxPriorityFeePerGas;\\n        uint256 pctRelayFee;\\n        uint256 baseRelayFee;\\n        uint256 transactionCalldataGasUsed;\\n        address relayWorker;\\n        address paymaster;\\n        address forwarder;\\n        bytes paymasterData;\\n        uint256 clientId;\\n    }\\n\\n    //note: must start with the ForwardRequest to be an extension of the generic forwarder\\n    struct RelayRequest {\\n        IForwarder.ForwardRequest request;\\n        RelayData relayData;\\n    }\\n}\",\"keccak256\":\"0x3724fd8d48d2a89cfa65993cd99115a93828d090597cd8bc197bb2d46bc76315\",\"license\":\"GPL-3.0-only\"},\"contracts-link/utils/MinLibBytes.sol\":{\"content\":\"pragma solidity ^0.8.0;\\n\\n// SPDX-License-Identifier: MIT\\n// minimal bytes manipulation required by GSN\\n// a minimal subset from 0x/LibBytes\\n/* solhint-disable no-inline-assembly */\\n\\nlibrary MinLibBytes {\\n\\n    //truncate the given parameter (in-place) if its length is above the given maximum length\\n    // do nothing otherwise.\\n    //NOTE: solidity warns unless the method is marked \\\"pure\\\", but it DOES modify its parameter.\\n    function truncateInPlace(bytes memory data, uint256 maxlen) internal pure {\\n        if (data.length > maxlen) {\\n            assembly { mstore(data, maxlen) }\\n        }\\n    }\\n\\n    /// @dev Reads an address from a position in a byte array.\\n    /// @param b Byte array containing an address.\\n    /// @param index Index in byte array of address.\\n    /// @return result address from byte array.\\n    function readAddress(\\n        bytes memory b,\\n        uint256 index\\n    )\\n        internal\\n        pure\\n        returns (address result)\\n    {\\n        require (b.length >= index + 20, \\\"readAddress: data too short\\\");\\n\\n        // Add offset to index:\\n        // 1. Arrays are prefixed by 32-byte length parameter (add 32 to index)\\n        // 2. Account for size difference between address length and 32-byte storage word (subtract 12 from index)\\n        index += 20;\\n\\n        // Read address from array memory\\n        assembly {\\n            // 1. Add index to address of bytes array\\n            // 2. Load 32-byte word from memory\\n            // 3. Apply 20-byte mask to obtain address\\n            result := and(mload(add(b, index)), 0xffffffffffffffffffffffffffffffffffffffff)\\n        }\\n        return result;\\n    }\\n\\n    function readBytes32(\\n        bytes memory b,\\n        uint256 index\\n    )\\n        internal\\n        pure\\n        returns (bytes32 result)\\n    {\\n        require(b.length >= index + 32, \\\"readBytes32: data too short\\\" );\\n\\n        // Read the bytes32 from array memory\\n        assembly {\\n            result := mload(add(b, add(index,32)))\\n        }\\n        return result;\\n    }\\n\\n    /// @dev Reads a uint256 value from a position in a byte array.\\n    /// @param b Byte array containing a uint256 value.\\n    /// @param index Index in byte array of uint256 value.\\n    /// @return result uint256 value from byte array.\\n    function readUint256(\\n        bytes memory b,\\n        uint256 index\\n    )\\n        internal\\n        pure\\n        returns (uint256 result)\\n    {\\n        result = uint256(readBytes32(b, index));\\n        return result;\\n    }\\n\\n    function readBytes4(\\n        bytes memory b,\\n        uint256 index\\n    )\\n        internal\\n        pure\\n        returns (bytes4 result)\\n    {\\n        require(b.length >= index + 4, \\\"readBytes4: data too short\\\");\\n\\n        // Read the bytes4 from array memory\\n        assembly {\\n            result := mload(add(b, add(index,32)))\\n            // Solidity does not require us to clean the trailing bytes.\\n            // We do it anyway\\n            result := and(result, 0xFFFFFFFF00000000000000000000000000000000000000000000000000000000)\\n        }\\n        return result;\\n    }\\n}\",\"keccak256\":\"0xa61a3d8fcd89182975d0bd17b86c22b6affd2f7bf26db66b1ddb2ee396f122ab\",\"license\":\"MIT\"},\"contracts-link/utils/RelayRegistrar.sol\":{\"content\":\"pragma solidity ^0.8.6;\\n\\n// solhint-disable not-rely-on-time\\n//SPDX-License-Identifier: GPL-3.0-only\\n\\n/* solhint-disable no-inline-assembly */\\n\\nimport \\\"@openzeppelin/contracts/utils/introspection/ERC165.sol\\\";\\n\\nimport \\\"./MinLibBytes.sol\\\";\\nimport \\\"../interfaces/IRelayHub.sol\\\";\\nimport \\\"../interfaces/IRelayRegistrar.sol\\\";\\n\\n/**\\n * @title The RelayRegistrar Implementation\\n * @notice Keeps a list of registered relayers.\\n *\\n * @notice Provides view functions to read the list of registered relayers and filters out invalid ones.\\n *\\n * @notice Protects the list from spamming entries: only staked relayers are added.\\n */\\ncontract RelayRegistrar is IRelayRegistrar, ERC165 {\\n    using MinLibBytes for bytes;\\n\\n    /// @notice Mapping from `RelayHub` address to a mapping from a Relay Manager address to its registration details.\\n    mapping(address => mapping(address => RelayInfo)) internal values;\\n\\n    /// @notice Mapping from `RelayHub` address to an array of Relay Managers that are registered on that `RelayHub`.\\n    mapping(address => address[]) internal indexedValues;\\n\\n    uint256 private immutable creationBlock;\\n\\n    constructor() {\\n        creationBlock = block.number;\\n    }\\n\\n    /// @inheritdoc IRelayRegistrar\\n    function getCreationBlock() external override view returns (uint256){\\n        return creationBlock;\\n    }\\n\\n    /// @inheritdoc IERC165\\n    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {\\n        return interfaceId == type(IRelayRegistrar).interfaceId ||\\n            super.supportsInterface(interfaceId);\\n    }\\n\\n    /// @inheritdoc IRelayRegistrar\\n    function registerRelayServer(\\n        address relayHub,\\n        uint80 baseRelayFee,\\n        uint16 pctRelayFee,\\n        bytes32[3] calldata url\\n    ) external override {\\n        address relayManager = msg.sender;\\n        IRelayHub(relayHub).verifyCanRegister(relayManager);\\n        emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);\\n        storeRelayServerRegistration(relayHub, relayManager, baseRelayFee, pctRelayFee, url);\\n    }\\n\\n    function addItem(address relayHub, address relayManager) internal returns (RelayInfo storage) {\\n        RelayInfo storage storageInfo = values[relayHub][relayManager];\\n        if (storageInfo.lastSeenBlockNumber == 0) {\\n            indexedValues[relayHub].push(relayManager);\\n        }\\n        return storageInfo;\\n    }\\n\\n    function storeRelayServerRegistration(\\n        address relayHub,\\n        address relayManager,\\n        uint80 baseRelayFee,\\n        uint16 pctRelayFee,\\n        bytes32[3] calldata url\\n    ) internal {\\n        RelayInfo storage storageInfo = addItem(relayHub, relayManager);\\n        if (storageInfo.firstSeenBlockNumber == 0) {\\n            storageInfo.firstSeenBlockNumber = uint32(block.number);\\n            storageInfo.firstSeenTimestamp = uint40(block.timestamp);\\n        }\\n        storageInfo.lastSeenBlockNumber = uint32(block.number);\\n        storageInfo.lastSeenTimestamp = uint40(block.timestamp);\\n        storageInfo.baseRelayFee = baseRelayFee;\\n        storageInfo.pctRelayFee = pctRelayFee;\\n        storageInfo.relayManager = relayManager;\\n        storageInfo.urlParts = url;\\n    }\\n\\n    /// @inheritdoc IRelayRegistrar\\n    function getRelayInfo(address relayHub, address relayManager) public view override returns (RelayInfo memory) {\\n        RelayInfo memory info = values[relayHub][relayManager];\\n        require(info.lastSeenBlockNumber != 0, \\\"relayManager not found\\\");\\n        return info;\\n    }\\n\\n    /// @inheritdoc IRelayRegistrar\\n    function readRelayInfos(\\n        address relayHub,\\n        uint256 oldestBlockNumber,\\n        uint256 oldestBlockTimestamp,\\n        uint256 maxCount\\n    )\\n    public\\n    view\\n    override\\n    returns (\\n        RelayInfo[] memory info\\n    ) {\\n        address[] storage items = indexedValues[relayHub];\\n        uint256 filled = 0;\\n        info = new RelayInfo[](items.length < maxCount ? items.length : maxCount);\\n        for (uint256 i = 0; i < items.length; i++) {\\n            address relayManager = items[i];\\n            RelayInfo memory relayInfo = getRelayInfo(relayHub, relayManager);\\n            if (\\n                relayInfo.lastSeenBlockNumber < oldestBlockNumber ||\\n                relayInfo.lastSeenTimestamp < oldestBlockTimestamp\\n            ) {\\n                continue;\\n            }\\n            // solhint-disable-next-line no-empty-blocks\\n            try IRelayHub(relayHub).verifyRelayManagerStaked(relayManager) {\\n            } catch (bytes memory /*lowLevelData*/) {\\n                continue;\\n            }\\n            info[filled++] = relayInfo;\\n            if (filled >= maxCount)\\n                break;\\n        }\\n        assembly { mstore(info, filled) }\\n    }\\n}\",\"keccak256\":\"0x9ff6fd871be25f4f0068126346d51a2e255df138cacb6ee184febb42f0a73d17\",\"license\":\"GPL-3.0-only\"}},\"version\":1}",
+  "bytecode": "0x60a060405234801561001057600080fd5b5043608052608051610a2d61002f600039600060890152610a2d6000f3fe608060405234801561001057600080fd5b50600436106100575760003560e01c806301ffc9a71461005c57806320ffd56d1461008457806378ae6b87146100b25780639ed1ad6e146100d2578063cb72cb04146100f2575b600080fd5b61006f61006a366004610837565b610107565b60405190151581526020015b60405180910390f35b6040517f0000000000000000000000000000000000000000000000000000000000000000815260200161007b565b6100c56100c0366004610759565b61013d565b60405161007b9190610965565b6100e56100e036600461078c565b610285565b60405161007b9190610916565b6101056101003660046107c5565b61045c565b005b60006001600160e01b03198216621be5b160e71b148061013757506301ffc9a760e01b6001600160e01b03198316145b92915050565b610145610680565b6001600160a01b038381166000908152602081815260408083209386168352928152828220835161010081018552815463ffffffff8082168352640100000000820464ffffffffff90811695840195909552600160481b82041682870152600160681b8104909316606080830191909152600160901b84046001600160501b03166080830152600160e01b90930461ffff1660a08201528451928301948590529293909160c0840191600184019060039082845b8154815260200190600101908083116101f9575050509183525050600491909101546001600160a01b0316602090910152805190915063ffffffff1661027e5760405162461bcd60e51b81526020600482015260166024820152751c995b185e53585b9859d95c881b9bdd08199bdd5b9960521b604482015260640160405180910390fd5b9392505050565b6001600160a01b038416600090815260016020526040812080546060929084116102af57836102b2565b81545b67ffffffffffffffff8111156102ca576102ca6109e1565b60405190808252806020026020018201604052801561030357816020015b6102f0610680565b8152602001906001900390816102e85790505b50925060005b8254811015610450576000838281548110610326576103266109cb565b60009182526020822001546001600160a01b031691506103468a8361013d565b905088816000015163ffffffff16108061036a575087816020015164ffffffffff16105b1561037657505061043e565b604051637371170960e11b81526001600160a01b0383811660048301528b169063e6e22e129060240160006040518083038186803b1580156103b757600080fd5b505afa9250505080156103c8575060015b610404573d8080156103f6576040519150601f19603f3d011682016040523d82523d6000602084013e6103fb565b606091505b5050505061043e565b808685610410816109a2565b965081518110610422576104226109cb565b602002602001018190525086841061043b575050610450565b50505b80610448816109a2565b915050610309565b50825250949350505050565b604051631f1743d360e31b81523360048201819052906001600160a01b0386169063f8ba1e9890602401600060405180830381600087803b1580156104a057600080fd5b505af11580156104b4573d6000803e3d6000fd5b50505050806001600160a01b03167f3745ddb13fe34498822a5f84713df4915362be13f585e80b62487ad744da0ab58585856040516104f593929190610974565b60405180910390a261050a8582868686610511565b5050505050565b600061051d868661060b565b8054909150600160481b900463ffffffff1661057557805471ffffffffffffffffff0000000000000000001916600160481b4363ffffffff160264ffffffffff60681b191617600160681b4264ffffffffff16021781555b80544363ffffffff1668ffffffffffffffffff19909116176401000000004264ffffffffff1602176bffffffffffffffffffffffff60901b1916600160901b6001600160501b0386160261ffff60e01b191617600160e01b61ffff8516021781556004810180546001600160a01b0319166001600160a01b038716179055610602600182018360036106cc565b50505050505050565b6001600160a01b038083166000908152602081815260408083209385168352929052908120805463ffffffff1661027e576001600160a01b03938416600090815260016020818152604083208054928301815583529091200180546001600160a01b0319169390941692909217909255919050565b6040805161010081018252600080825260208201819052918101829052606081018290526080810182905260a081019190915260c081016106bf61070a565b8152600060209091015290565b82600381019282156106fa579160200282015b828111156106fa5782358255916020019190600101906106df565b50610706929150610728565b5090565b60405180606001604052806003906020820280368337509192915050565b5b808211156107065760008155600101610729565b80356001600160a01b038116811461075457600080fd5b919050565b6000806040838503121561076c57600080fd5b6107758361073d565b91506107836020840161073d565b90509250929050565b600080600080608085870312156107a257600080fd5b6107ab8561073d565b966020860135965060408601359560600135945092505050565b60008060008060c085870312156107db57600080fd5b6107e48561073d565b935060208501356001600160501b038116811461080057600080fd5b9250604085013561ffff8116811461081757600080fd5b915060c0850186101561082957600080fd5b509194909350909160600190565b60006020828403121561084957600080fd5b81356001600160e01b03198116811461027e57600080fd5b8060005b6003811015610884578151845260209384019390910190600101610865565b50505050565b63ffffffff808251168352602082015164ffffffffff80821660208601528260408501511660408601528060608501511660608601525050506001600160501b03608082015116608083015260a08101516108eb60a084018261ffff169052565b5060c08101516108fe60c0840182610861565b5060e001516001600160a01b03166101209190910152565b6020808252825182820181905260009190848201906040850190845b818110156109595761094583855161088a565b928401926101409290920191600101610932565b50909695505050505050565b6101408101610137828461088a565b6001600160501b038416815261ffff8316602082015260a08101606083604084013760008152949350505050565b60006000198214156109c457634e487b7160e01b600052601160045260246000fd5b5060010190565b634e487b7160e01b600052603260045260246000fd5b634e487b7160e01b600052604160045260246000fdfea2646970667358221220ca58325705943d915b334c89e2e0e463d75c1ed6ba85f7fa10f50a87ebc0691764736f6c63430008070033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100575760003560e01c806301ffc9a71461005c57806320ffd56d1461008457806378ae6b87146100b25780639ed1ad6e146100d2578063cb72cb04146100f2575b600080fd5b61006f61006a366004610837565b610107565b60405190151581526020015b60405180910390f35b6040517f0000000000000000000000000000000000000000000000000000000000000000815260200161007b565b6100c56100c0366004610759565b61013d565b60405161007b9190610965565b6100e56100e036600461078c565b610285565b60405161007b9190610916565b6101056101003660046107c5565b61045c565b005b60006001600160e01b03198216621be5b160e71b148061013757506301ffc9a760e01b6001600160e01b03198316145b92915050565b610145610680565b6001600160a01b038381166000908152602081815260408083209386168352928152828220835161010081018552815463ffffffff8082168352640100000000820464ffffffffff90811695840195909552600160481b82041682870152600160681b8104909316606080830191909152600160901b84046001600160501b03166080830152600160e01b90930461ffff1660a08201528451928301948590529293909160c0840191600184019060039082845b8154815260200190600101908083116101f9575050509183525050600491909101546001600160a01b0316602090910152805190915063ffffffff1661027e5760405162461bcd60e51b81526020600482015260166024820152751c995b185e53585b9859d95c881b9bdd08199bdd5b9960521b604482015260640160405180910390fd5b9392505050565b6001600160a01b038416600090815260016020526040812080546060929084116102af57836102b2565b81545b67ffffffffffffffff8111156102ca576102ca6109e1565b60405190808252806020026020018201604052801561030357816020015b6102f0610680565b8152602001906001900390816102e85790505b50925060005b8254811015610450576000838281548110610326576103266109cb565b60009182526020822001546001600160a01b031691506103468a8361013d565b905088816000015163ffffffff16108061036a575087816020015164ffffffffff16105b1561037657505061043e565b604051637371170960e11b81526001600160a01b0383811660048301528b169063e6e22e129060240160006040518083038186803b1580156103b757600080fd5b505afa9250505080156103c8575060015b610404573d8080156103f6576040519150601f19603f3d011682016040523d82523d6000602084013e6103fb565b606091505b5050505061043e565b808685610410816109a2565b965081518110610422576104226109cb565b602002602001018190525086841061043b575050610450565b50505b80610448816109a2565b915050610309565b50825250949350505050565b604051631f1743d360e31b81523360048201819052906001600160a01b0386169063f8ba1e9890602401600060405180830381600087803b1580156104a057600080fd5b505af11580156104b4573d6000803e3d6000fd5b50505050806001600160a01b03167f3745ddb13fe34498822a5f84713df4915362be13f585e80b62487ad744da0ab58585856040516104f593929190610974565b60405180910390a261050a8582868686610511565b5050505050565b600061051d868661060b565b8054909150600160481b900463ffffffff1661057557805471ffffffffffffffffff0000000000000000001916600160481b4363ffffffff160264ffffffffff60681b191617600160681b4264ffffffffff16021781555b80544363ffffffff1668ffffffffffffffffff19909116176401000000004264ffffffffff1602176bffffffffffffffffffffffff60901b1916600160901b6001600160501b0386160261ffff60e01b191617600160e01b61ffff8516021781556004810180546001600160a01b0319166001600160a01b038716179055610602600182018360036106cc565b50505050505050565b6001600160a01b038083166000908152602081815260408083209385168352929052908120805463ffffffff1661027e576001600160a01b03938416600090815260016020818152604083208054928301815583529091200180546001600160a01b0319169390941692909217909255919050565b6040805161010081018252600080825260208201819052918101829052606081018290526080810182905260a081019190915260c081016106bf61070a565b8152600060209091015290565b82600381019282156106fa579160200282015b828111156106fa5782358255916020019190600101906106df565b50610706929150610728565b5090565b60405180606001604052806003906020820280368337509192915050565b5b808211156107065760008155600101610729565b80356001600160a01b038116811461075457600080fd5b919050565b6000806040838503121561076c57600080fd5b6107758361073d565b91506107836020840161073d565b90509250929050565b600080600080608085870312156107a257600080fd5b6107ab8561073d565b966020860135965060408601359560600135945092505050565b60008060008060c085870312156107db57600080fd5b6107e48561073d565b935060208501356001600160501b038116811461080057600080fd5b9250604085013561ffff8116811461081757600080fd5b915060c0850186101561082957600080fd5b509194909350909160600190565b60006020828403121561084957600080fd5b81356001600160e01b03198116811461027e57600080fd5b8060005b6003811015610884578151845260209384019390910190600101610865565b50505050565b63ffffffff808251168352602082015164ffffffffff80821660208601528260408501511660408601528060608501511660608601525050506001600160501b03608082015116608083015260a08101516108eb60a084018261ffff169052565b5060c08101516108fe60c0840182610861565b5060e001516001600160a01b03166101209190910152565b6020808252825182820181905260009190848201906040850190845b818110156109595761094583855161088a565b928401926101409290920191600101610932565b50909695505050505050565b6101408101610137828461088a565b6001600160501b038416815261ffff8316602082015260a08101606083604084013760008152949350505050565b60006000198214156109c457634e487b7160e01b600052601160045260246000fd5b5060010190565b634e487b7160e01b600052603260045260246000fd5b634e487b7160e01b600052604160045260246000fdfea2646970667358221220ca58325705943d915b334c89e2e0e463d75c1ed6ba85f7fa10f50a87ebc0691764736f6c63430008070033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "getCreationBlock()": {
+        "returns": {
+          "_0": "The block number in which the contract has been deployed."
+        }
+      },
+      "getRelayInfo(address,address)": {
+        "params": {
+          "relayHub": "The address of the `RelayHub` contract for which this action is performed.",
+          "relayManager": "An address of a Relay Manager."
+        },
+        "returns": {
+          "_0": "All the details of the given Relay Manager's registration. Throws if relay not found for `RelayHub`."
+        }
+      },
+      "readRelayInfos(address,uint256,uint256,uint256)": {
+        "params": {
+          "maxCount": "The maximum amount of relays to be returned by this function.",
+          "oldestBlockNumber": "The latest block number in which a Relay Server may be registered.",
+          "oldestBlockTimestamp": "The latest block timestamp in which a Relay Server may be registered.",
+          "relayHub": "The address of the `RelayHub` contract for which this action is performed."
+        },
+        "returns": {
+          "info": "The list of `RelayInfo`s of registered Relay Servers"
+        }
+      },
+      "registerRelayServer(address,uint80,uint16,bytes32[3])": {
+        "params": {
+          "baseRelayFee": "The base fee the Relay Server charges for a single transaction in Ether, in wei.",
+          "pctRelayFee": "The percent of the total charge to add as a Relay Server fee to the total charge.",
+          "relayHub": "The address of the `RelayHub` contract for which this action is performed.",
+          "url": "The URL of the Relay Server that is listening to the clients' requests."
+        }
+      },
+      "supportsInterface(bytes4)": {
+        "details": "Returns true if this contract implements the interface defined by `interfaceId`. See the corresponding https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section] to learn more about how these ids are created. This function call must use less than 30 000 gas."
+      }
+    },
+    "title": "The RelayRegistrar Implementation",
+    "version": 1
+  },
+  "userdoc": {
+    "events": {
+      "RelayServerRegistered(address,uint256,uint256,bytes32[3])": {
+        "notice": "Emitted when a relay server registers or updates its details. Looking up these events allows a client to discover registered Relay Servers."
+      }
+    },
+    "kind": "user",
+    "methods": {
+      "readRelayInfos(address,uint256,uint256,uint256)": {
+        "notice": "Read relay info of registered Relay Server from an on-chain storage."
+      },
+      "registerRelayServer(address,uint80,uint16,bytes32[3])": {
+        "notice": "This function is called by Relay Servers in order to register or to update their registration."
+      }
+    },
+    "notice": "Keeps a list of registered relayers.Provides view functions to read the list of registered relayers and filters out invalid ones.Protects the list from spamming entries: only staked relayers are added.",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 10836,
+        "contract": "contracts-link/utils/RelayRegistrar.sol:RelayRegistrar",
+        "label": "values",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_mapping(t_address,t_mapping(t_address,t_struct(RelayInfo)7502_storage))"
+      },
+      {
+        "astId": 10842,
+        "contract": "contracts-link/utils/RelayRegistrar.sol:RelayRegistrar",
+        "label": "indexedValues",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_mapping(t_address,t_array(t_address)dyn_storage)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_array(t_address)dyn_storage": {
+        "base": "t_address",
+        "encoding": "dynamic_array",
+        "label": "address[]",
+        "numberOfBytes": "32"
+      },
+      "t_array(t_bytes32)3_storage": {
+        "base": "t_bytes32",
+        "encoding": "inplace",
+        "label": "bytes32[3]",
+        "numberOfBytes": "96"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_address,t_array(t_address)dyn_storage)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => address[])",
+        "numberOfBytes": "32",
+        "value": "t_array(t_address)dyn_storage"
+      },
+      "t_mapping(t_address,t_mapping(t_address,t_struct(RelayInfo)7502_storage))": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => mapping(address => struct IRelayRegistrar.RelayInfo))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_address,t_struct(RelayInfo)7502_storage)"
+      },
+      "t_mapping(t_address,t_struct(RelayInfo)7502_storage)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => struct IRelayRegistrar.RelayInfo)",
+        "numberOfBytes": "32",
+        "value": "t_struct(RelayInfo)7502_storage"
+      },
+      "t_struct(RelayInfo)7502_storage": {
+        "encoding": "inplace",
+        "label": "struct IRelayRegistrar.RelayInfo",
+        "members": [
+          {
+            "astId": 7485,
+            "contract": "contracts-link/utils/RelayRegistrar.sol:RelayRegistrar",
+            "label": "lastSeenBlockNumber",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint32"
+          },
+          {
+            "astId": 7487,
+            "contract": "contracts-link/utils/RelayRegistrar.sol:RelayRegistrar",
+            "label": "lastSeenTimestamp",
+            "offset": 4,
+            "slot": "0",
+            "type": "t_uint40"
+          },
+          {
+            "astId": 7489,
+            "contract": "contracts-link/utils/RelayRegistrar.sol:RelayRegistrar",
+            "label": "firstSeenBlockNumber",
+            "offset": 9,
+            "slot": "0",
+            "type": "t_uint32"
+          },
+          {
+            "astId": 7491,
+            "contract": "contracts-link/utils/RelayRegistrar.sol:RelayRegistrar",
+            "label": "firstSeenTimestamp",
+            "offset": 13,
+            "slot": "0",
+            "type": "t_uint40"
+          },
+          {
+            "astId": 7493,
+            "contract": "contracts-link/utils/RelayRegistrar.sol:RelayRegistrar",
+            "label": "baseRelayFee",
+            "offset": 18,
+            "slot": "0",
+            "type": "t_uint80"
+          },
+          {
+            "astId": 7495,
+            "contract": "contracts-link/utils/RelayRegistrar.sol:RelayRegistrar",
+            "label": "pctRelayFee",
+            "offset": 28,
+            "slot": "0",
+            "type": "t_uint16"
+          },
+          {
+            "astId": 7499,
+            "contract": "contracts-link/utils/RelayRegistrar.sol:RelayRegistrar",
+            "label": "urlParts",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_bytes32)3_storage"
+          },
+          {
+            "astId": 7501,
+            "contract": "contracts-link/utils/RelayRegistrar.sol:RelayRegistrar",
+            "label": "relayManager",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_address"
+          }
+        ],
+        "numberOfBytes": "160"
+      },
+      "t_uint16": {
+        "encoding": "inplace",
+        "label": "uint16",
+        "numberOfBytes": "2"
+      },
+      "t_uint32": {
+        "encoding": "inplace",
+        "label": "uint32",
+        "numberOfBytes": "4"
+      },
+      "t_uint40": {
+        "encoding": "inplace",
+        "label": "uint40",
+        "numberOfBytes": "5"
+      },
+      "t_uint80": {
+        "encoding": "inplace",
+        "label": "uint80",
+        "numberOfBytes": "10"
+      }
+    }
+  }
+}
