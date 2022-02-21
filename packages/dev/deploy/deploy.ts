@@ -81,6 +81,12 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
       console.error('must specify TOKEN_STAKE for staking token')
       process.exit(1)
     }
+    const token = new ethers.Contract(stakingTokenAddress,
+	[ 'function symbol() view returns (string)' ], ethers.provider)
+    // verify token address is a valid token...
+    const symbol = await token.symbol().catch((e:any)=>null)
+    if (symbol==null) throw new Error(`invalid token: ${stakingTokenAddress}`)
+    console.log( 'using token', symbol)
   }
 
   const deployedForwarder = await deploy('Forwarder', { from: deployer })
