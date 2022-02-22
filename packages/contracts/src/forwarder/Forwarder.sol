@@ -15,7 +15,7 @@ import "./IForwarder.sol";
 contract Forwarder is IForwarder, ERC165 {
     using ECDSA for bytes32;
 
-    address private constant DRY_RUN_ADDRESS = 0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaD;
+    address private constant DRY_RUN_ADDRESS = 0x7777777777777777777777777777777777777777;
 
     string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntilTime";
 
@@ -148,17 +148,14 @@ contract Forwarder is IForwarder, ERC165 {
     virtual
     view
     {
-        // solhint-disable-next-line avoid-tx-origin
-        if (tx.origin == DRY_RUN_ADDRESS){
-            return;
-        }
         require(domains[domainSeparator], "FWD: unregistered domain sep.");
         require(typeHashes[requestTypeHash], "FWD: unregistered typehash");
         bytes32 digest = keccak256(abi.encodePacked(
                 "\x19\x01", domainSeparator,
                 keccak256(_getEncoded(req, requestTypeHash, suffixData))
             ));
-        require(digest.recover(sig) == req.from, "FWD: signature mismatch");
+        // solhint-disable-next-line avoid-tx-origin
+        require(digest.recover(sig) == req.from || tx.origin == DRY_RUN_ADDRESS, "FWD: signature mismatch");
     }
 
     /**

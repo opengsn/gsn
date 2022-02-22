@@ -36,7 +36,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     using ERC165Checker for address;
     using SafeMath for uint256;
 
-    address private constant DRY_RUN_ADDRESS = 0xdeaDDeADDEaDdeaDdEAddEADDEAdDeadDEADDEaD;
+    address private constant DRY_RUN_ADDRESS = 0x7777777777777777777777777777777777777777;
 
     /// @inheritdoc IRelayHub
     function versionHub() override virtual public pure returns (string memory){
@@ -296,7 +296,6 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
             require(msg.sender == relayRequest.relayData.relayWorker, "Not a right worker");
         }
 
-        // solhint-disable-next-line avoid-tx-origin
         if (tx.origin != DRY_RUN_ADDRESS) {
             vars.relayManager = workerToManager[relayRequest.relayData.relayWorker];
             require(vars.relayManager != address(0), "Unknown relay worker");
