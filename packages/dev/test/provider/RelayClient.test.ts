@@ -84,7 +84,7 @@ class MockHttpClient extends HttpClient {
   }
 }
 
-contract.only('RelayClient', function (accounts) {
+contract('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let relayRegistrar: RelayRegistrarInstance
@@ -849,7 +849,7 @@ contract.only('RelayClient', function (accounts) {
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
       assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
-      assert.match(relayingErrors.values().next().value.message, /paymaster rejected in DRY-RUN.*FWD: nonce mismatch/)
+      assert.match(relayingErrors.values().next().value.message, /paymaster rejected in DRY-RUN.*FWD: nonce mismatch/s)
     })
   })
 })
