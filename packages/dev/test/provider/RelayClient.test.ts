@@ -13,9 +13,10 @@ import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import {
   RelayHubInstance,
   PenalizerInstance,
+  TestTokenInstance,
   StakeManagerInstance,
   TestRecipientInstance,
-  TestPaymasterEverythingAcceptedInstance, TestTokenInstance
+  TestPaymasterEverythingAcceptedInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
@@ -83,7 +84,7 @@ class MockHttpClient extends HttpClient {
   }
 }
 
-contract('RelayClient', function (accounts) {
+contract.only('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let relayRegistrar: RelayRegistrarInstance
@@ -156,6 +157,7 @@ contract('RelayClient', function (accounts) {
     const loggerConfiguration: LoggerConfiguration = { logLevel: 'debug' }
     gsnConfig = {
       loggerConfiguration,
+      performDryRunViewRelayCall: false,
       paymasterAddress: paymaster.address
     }
     logger = createClientLogger(loggerConfiguration)
@@ -457,6 +459,7 @@ contract('RelayClient', function (accounts) {
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.keys().next().value, 'http://localhost:8090')
       assert.match(relayingErrors.values().next().value.message, /paymasterData-error/)
     })
 
@@ -680,7 +683,8 @@ contract('RelayClient', function (accounts) {
             }
           })
         await relayClient.init()
-        const httpRequest = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
+        const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas, relayInfo)
+        const httpRequest = await relayClient._prepareRelayHttpRequest(relayRequest, relayInfo)
         assert.equal(httpRequest.metadata.approvalData, '0x1234567890')
         assert.equal(httpRequest.relayRequest.relayData.paymasterData, '0xabcd')
       })
@@ -691,11 +695,13 @@ contract('RelayClient', function (accounts) {
           return '0x' + 'ff'.repeat(101)
         }
         relayClient.dependencies.asyncApprovalData = getLongData
-        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+        const relayRequest1 = await relayClient._prepareRelayRequest(optionsWithGas, relayInfo)
+        await expect(relayClient._prepareRelayHttpRequest(relayRequest1, relayInfo))
           .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
 
         relayClient.dependencies.asyncPaymasterData = getLongData
-        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+        const relayRequest2 = await relayClient._prepareRelayRequest(optionsWithGas, relayInfo)
+        await expect(relayClient._prepareRelayHttpRequest(relayRequest2, relayInfo))
           .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
       } finally {
         relayClient.dependencies.asyncApprovalData = EmptyDataCallback
@@ -825,6 +831,25 @@ contract('RelayClient', function (accounts) {
         sinon.assert.calledWithMatch(spy, 'Could not fetch configuration from docs:')
         sinon.restore()
       })
+    })
+  })
+
+  context('with performDryRunViewRelayCall set to true', function () {
+    it('should report the revert reason only once without requesting client signature', async function () {
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: { ...gsnConfig, performDryRunViewRelayCall: true }
+        })
+      await relayClient.init()
+      const getSenderNonceStub = sinon.stub(relayClient.dependencies.contractInteractor, 'getSenderNonce')
+      getSenderNonceStub.returns(Promise.resolve('1'))
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
+      assert.match(relayingErrors.values().next().value.message, /paymaster rejected in DRY-RUN.*FWD: nonce mismatch/)
     })
   })
 })

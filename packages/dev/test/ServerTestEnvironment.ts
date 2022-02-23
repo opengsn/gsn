@@ -277,8 +277,10 @@ export class ServerTestEnvironment {
       const mergedTransactionDetail = Object.assign({}, gsnTransactionDetails, overrideDetails)
       // do not 'return await' here as it will defer executing the 'finally' block and enable re-stubbing
       // (will crash on 'let x = [createRelayHttpRequest(), createRelayHttpRequest()]')
-      // eslint-disable-next-line @typescript-eslint/return-await
-      return this.relayClient._prepareRelayHttpRequest(relayInfo, mergedTransactionDetail)
+      // eslint-disable-next-line @typescript-eslint/return-await,@typescript-eslint/promise-function-async
+      return this.relayClient._prepareRelayRequest(mergedTransactionDetail, relayInfo).then(relayRequest => {
+        return this.relayClient._prepareRelayHttpRequest(relayRequest, relayInfo)
+      })
     } finally {
       sandbox.restore()
     }

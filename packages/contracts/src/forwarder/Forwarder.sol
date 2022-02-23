@@ -155,7 +155,7 @@ contract Forwarder is IForwarder, ERC165 {
                 keccak256(_getEncoded(req, requestTypeHash, suffixData))
             ));
         // solhint-disable-next-line avoid-tx-origin
-        require(digest.recover(sig) == req.from || tx.origin == DRY_RUN_ADDRESS, "FWD: signature mismatch");
+        require(tx.origin == DRY_RUN_ADDRESS || digest.recover(sig) == req.from, "FWD: signature mismatch");
     }
 
     /**
