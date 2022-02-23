@@ -228,7 +228,7 @@ options.forEach(params => {
           await approvalPaymaster.setRelayHub(rhub.address)
           await approvalPaymaster.setTrustedForwarder(await sr.getTrustedForwarder())
           await rhub.depositFor(approvalPaymaster.address, { value: (1e18).toString() })
-          relayClientConfig = { ...relayClientConfig, ...{ paymasterAddress: approvalPaymaster.address } }
+          relayClientConfig = { ...relayClientConfig, ...{ paymasterAddress: approvalPaymaster.address }, performDryRunViewRelayCall: false }
           const relayProvider = await RelayProvider.newProvider(
             {
               provider: web3.currentProvider as HttpProvider,
