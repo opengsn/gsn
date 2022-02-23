@@ -1,3 +1,5 @@
+/* eslint-disable no-global-assign */
+
 import childProcess from 'child_process'
 import path from 'path'
 import fs from 'fs'
