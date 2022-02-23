@@ -48,6 +48,7 @@ contract('HashcashPaymaster', ([from]) => {
         logLevel: 'error'
       },
       maxApprovalDataLength: 65,
+      performDryRunViewRelayCall: false,
       paymasterAddress: pm.address
     }
   })
