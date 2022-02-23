@@ -2,6 +2,12 @@ import childProcess from 'child_process'
 import path from 'path'
 import fs from 'fs'
 
+const describeOrig = describe
+if (process.env.TEST_WEBPACK == null) {
+  // @ts-ignore
+  describe = describe.skip
+}
+
 describe('RelayServer-webpack', () => {
   let oneFileRelayer: string
   before('create webpack', function () {
@@ -23,6 +29,4 @@ describe('RelayServer-webpack', () => {
       assert.match(e.message.toString(), /missing ethereumNodeUrl/)
     }
   })
-
-  it('should test it can actually work')
 })
