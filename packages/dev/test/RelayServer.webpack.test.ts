@@ -30,3 +30,6 @@ describe('RelayServer-webpack', () => {
     }
   })
 })
+
+// @ts-ignore
+describe = describeOrig
