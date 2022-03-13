@@ -95,7 +95,6 @@ export class RelayClient {
     this.rawConstructorInput = rawConstructorInput
     this.logger = rawConstructorInput.overrideDependencies?.logger ??
       createClientLogger(rawConstructorInput.config?.loggerConfiguration ?? defaultLoggerConfiguration)
-    this.logger.info(`Created new RelayClient ver.${gsnRuntimeVersion}`)
   }
 
   async init (): Promise<this> {
