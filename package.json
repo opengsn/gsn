@@ -60,6 +60,8 @@
     "lerna-rm-dist": "lerna run rm-dist",
     "lerna-run-test": "yarn lerna-tsc && lerna run test --stream --no-prefix",
     "lerna-run-gas-calculations": "lerna run gas-calculations --stream --no-prefix",
+    "lerna-run-test-webpack": "lerna run test-webpack --stream --no-prefix",
+    "lerna-run-test-webpack-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test-webpack'",
     "lerna-run-gas-calculations-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-gas-calculations'",
     "lerna-run-test-fork": "lerna run test-fork --stream --no-prefix",
     "lerna-run-test-only": "lerna run test-only --stream",
