@@ -279,7 +279,7 @@ export class CommandsLogic {
         const fundTx = await this.web3.eth.sendTransaction({
           ...sendOptions,
           to: relayAddress,
-          value: options.funds,
+          value: options.funds
         })
         if (fundTx.transactionHash == null) {
           return {
