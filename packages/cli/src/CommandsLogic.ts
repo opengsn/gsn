@@ -217,6 +217,12 @@ export class CommandsLogic {
       console.log(`Registering GSN relayer at ${options.relayUrl}`)
 
       const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
+      const sendOptions: any = {
+        chainId: toHex(await this.web3.eth.getChainId()),
+        from: options.from,
+        gas: 1e6,
+        gasPrice
+      }
       const response = await this.httpClient.getPingResponse(options.relayUrl)
         .catch((error: any) => {
           console.error(error)
@@ -271,11 +277,9 @@ export class CommandsLogic {
         console.log('Funding relayer')
 
         const fundTx = await this.web3.eth.sendTransaction({
-          from: options.from,
+          ...sendOptions,
           to: relayAddress,
           value: options.funds,
-          gas: 1e6,
-          gasPrice
         })
         if (fundTx.transactionHash == null) {
           return {
@@ -347,8 +351,7 @@ export class CommandsLogic {
 
         const stakeTx = await stakeManager
           .stakeForRelayManager(stakingToken, relayAddress, options.unstakeDelay.toString(), stakeValue, {
-            from: options.from,
-            gasPrice
+            ...sendOptions
           })
         // @ts-ignore
         transactions.push(stakeTx.transactionHash)
@@ -361,11 +364,7 @@ export class CommandsLogic {
         console.log('verifyRelayManagerStaked reverted with:', e.message)
         console.log('Authorizing relayer for hub')
         const authorizeTx = await stakeManager
-          .authorizeHubByOwner(relayAddress, relayHubAddress, {
-            from: options.from,
-            gas: 1e6,
-            gasPrice
-          })
+          .authorizeHubByOwner(relayAddress, relayHubAddress, sendOptions)
         // @ts-ignore
         transactions.push(authorizeTx.transactionHash)
       }
