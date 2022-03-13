@@ -5,6 +5,7 @@ import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { TypedTransaction } from '@ethereumjs/tx'
 
+import { gsnRuntimeVersion } from '@opengsn/common'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
 
@@ -64,6 +65,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     await this.relayClient.init()
     this.config = this.relayClient.config
     this.logger = this.relayClient.logger
+    this.logger.info(`Created new RelayProvider ver.${gsnRuntimeVersion}`)
     return this
   }
 
