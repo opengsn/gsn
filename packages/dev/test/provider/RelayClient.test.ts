@@ -400,7 +400,7 @@ contract('RelayClient', function (accounts) {
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 2)
-      assert.equal(relayingErrors.get(localhostOne)!.message, 'fail returned tx')
+      assert.equal(Array.from(relayingErrors.values())[0]!.message, 'fail returned tx')
     })
 
     it('should continue looking up relayers after relayer error', async function () {
@@ -459,7 +459,7 @@ contract('RelayClient', function (accounts) {
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
-      assert.equal(relayingErrors.keys().next().value, 'http://localhost:8090')
+      assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
       assert.match(relayingErrors.values().next().value.message, /paymasterData-error/)
     })
 
@@ -589,7 +589,8 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { contractInteractor: badContractInteractor }
         })
       await relayClient.init()
-      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, relayRequest)
       assert.isUndefined(transaction)
       assert.isUndefined(isRelayError)
       // @ts-ignore
@@ -607,7 +608,8 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
-      const attempt = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+      const attempt = await relayClient._attemptRelay(relayInfo, relayRequest)
       assert.equal(attempt.isRelayError, true, 'timeout should not abort relay search')
       assert.equal(attempt.error?.message, 'some error describing how timeout occurred somewhere')
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
@@ -624,7 +626,8 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
-      await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+      await relayClient._attemptRelay(relayInfo, relayRequest)
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.not.been.called
     })
 
@@ -653,7 +656,8 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
-      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, relayRequest)
       assert.isUndefined(transaction)
       assert.equal(isRelayError, true)
       // @ts-ignore
@@ -683,24 +687,26 @@ contract('RelayClient', function (accounts) {
             }
           })
         await relayClient.init()
-        const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas, relayInfo)
+
+        const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
         const httpRequest = await relayClient._prepareRelayHttpRequest(relayRequest, relayInfo)
         assert.equal(httpRequest.metadata.approvalData, '0x1234567890')
         assert.equal(httpRequest.relayRequest.relayData.paymasterData, '0xabcd')
       })
     })
+
     it('should throw if variable length parameters are bigger than reported', async function () {
       try {
         const getLongData = async function (_: RelayRequest): Promise<PrefixedHexString> {
           return '0x' + 'ff'.repeat(101)
         }
         relayClient.dependencies.asyncApprovalData = getLongData
-        const relayRequest1 = await relayClient._prepareRelayRequest(optionsWithGas, relayInfo)
+        const relayRequest1 = await relayClient._prepareRelayRequest(optionsWithGas)
         await expect(relayClient._prepareRelayHttpRequest(relayRequest1, relayInfo))
           .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
 
         relayClient.dependencies.asyncPaymasterData = getLongData
-        const relayRequest2 = await relayClient._prepareRelayRequest(optionsWithGas, relayInfo)
+        const relayRequest2 = await relayClient._prepareRelayRequest(optionsWithGas)
         await expect(relayClient._prepareRelayHttpRequest(relayRequest2, relayInfo))
           .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
       } finally {

@@ -203,8 +203,19 @@ export class RelayClient {
     const relayingErrors = new Map<string, Error>()
     const auditPromises: Array<Promise<AuditResponse>> = []
 
+    let relayRequest: RelayRequest
+    try {
+      relayRequest = await this._prepareRelayRequest(gsnTransactionDetails)
+    } catch (error) {
+      relayingErrors.set(constants.DRY_RUN_KEY, error)
+      return {
+        relayingErrors,
+        auditPromises,
+        pingErrors: new Map<string, Error>()
+      }
+    }
     if (this.config.performDryRunViewRelayCall) {
-      const dryRunError = await this._verifyDryRunSuccessful(gsnTransactionDetails)
+      const dryRunError = await this._verifyDryRunSuccessful(relayRequest)
       if (dryRunError != null) {
         relayingErrors.set(constants.DRY_RUN_KEY, dryRunError)
         return {
@@ -228,7 +239,7 @@ export class RelayClient {
       const activeRelay = await relaySelectionManager.selectNextRelay(paymaster)
       if (activeRelay != null) {
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
-        relayingAttempt = await this._attemptRelay(activeRelay, gsnTransactionDetails)
+        relayingAttempt = await this._attemptRelay(activeRelay, relayRequest)
           .catch(error => ({ error }))
         if (relayingAttempt.auditPromise != null) {
           auditPromises.push(relayingAttempt.auditPromise)
@@ -271,10 +282,10 @@ export class RelayClient {
 
   async _attemptRelay (
     relayInfo: RelayInfo,
-    gsnTransactionDetails: GsnTransactionDetails
+    relayRequest: RelayRequest
   ): Promise<RelayingAttempt> {
-    this.logger.info(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(gsnTransactionDetails)}`)
-    const relayRequest = await this._prepareRelayRequest(gsnTransactionDetails, relayInfo)
+    this.logger.info(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(relayRequest)}`)
+    await this.fillRelayInfo(relayRequest, relayInfo)
     const httpRequest = await this._prepareRelayHttpRequest(relayRequest, relayInfo)
     this.emit(new GsnValidateRequestEvent())
 
@@ -330,8 +341,7 @@ export class RelayClient {
   }
 
   async _prepareRelayRequest (
-    gsnTransactionDetails: GsnTransactionDetails,
-    relayInfo: RelayInfo
+    gsnTransactionDetails: GsnTransactionDetails
   ): Promise<RelayRequest> {
     const relayHubAddress = this.dependencies.contractInteractor.getDeployment().relayHubAddress
     const forwarder = this.dependencies.contractInteractor.getDeployment().forwarderAddress
@@ -341,7 +351,6 @@ export class RelayClient {
     }
 
     const senderNonce = await this.dependencies.contractInteractor.getSenderNonce(gsnTransactionDetails.from, forwarder)
-    const relayWorker = relayInfo.pingResponse.relayWorkerAddress
     const maxFeePerGasHex = gsnTransactionDetails.maxFeePerGas
     const maxPriorityFeePerGasHex = gsnTransactionDetails.maxPriorityFeePerGas
     const gasLimitHex = gsnTransactionDetails.gas
@@ -374,25 +383,33 @@ export class RelayClient {
         validUntilTime
       },
       relayData: {
-        pctRelayFee: relayInfo.relayInfo.pctRelayFee,
-        baseRelayFee: relayInfo.relayInfo.baseRelayFee,
+        // temp values. filled in by 'fillRelayInfo'
+        relayWorker: '',
+        pctRelayFee: '',
+        baseRelayFee: '',
+        transactionCalldataGasUsed: '', // temp value. filled in by estimateCalldataCostAbi, below.
+        paymasterData: '', // temp value. filled in by asyncPaymasterData, below.
         maxFeePerGas,
         maxPriorityFeePerGas,
         paymaster,
-        transactionCalldataGasUsed: '', // temp value. filled in by estimateCalldataCostAbi, below.
-        paymasterData: '', // temp value. filled in by asyncPaymasterData, below.
         clientId: this.config.clientId,
-        forwarder,
-        relayWorker
+        forwarder
       }
     }
-
-    relayRequest.relayData.transactionCalldataGasUsed =
-      this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
 
     // put paymasterData into struct before signing
     relayRequest.relayData.paymasterData = await this.dependencies.asyncPaymasterData(relayRequest)
     return relayRequest
+  }
+
+  fillRelayInfo (relayRequest: RelayRequest, relayInfo: RelayInfo): void {
+    relayRequest.relayData.relayWorker = relayInfo.pingResponse.relayWorkerAddress
+    relayRequest.relayData.pctRelayFee = relayInfo.relayInfo.pctRelayFee
+    relayRequest.relayData.baseRelayFee = relayInfo.relayInfo.baseRelayFee
+
+    // cannot estimate before relay info is filled in
+    relayRequest.relayData.transactionCalldataGasUsed =
+      this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
   }
 
   async _prepareRelayHttpRequest (
@@ -547,7 +564,7 @@ export class RelayClient {
     }
   }
 
-  async _verifyDryRunSuccessful (gsnTransactionDetails: GsnTransactionDetails): Promise<Error | undefined> {
+  async _verifyDryRunSuccessful (relayRequest: RelayRequest): Promise<Error | undefined> {
     // TODO: only 3 fields are needed, extract fields instead of building stub object
     const dryRunRelayInfo: RelayInfo = {
       relayInfo: {
@@ -567,7 +584,8 @@ export class RelayClient {
         version: ''
       }
     }
-    const relayRequest = await this._prepareRelayRequest(gsnTransactionDetails, dryRunRelayInfo)
+    // TODO: clone?
+    this.fillRelayInfo(relayRequest, dryRunRelayInfo)
     // note that here 'maxAcceptanceBudget' is set to the entire transaction 'maxViewableGasLimit'
     const relayCallABI: RelayCallABI = {
       relayRequest,
@@ -593,7 +611,7 @@ export class RelayClient {
       if (acceptRelayCallResult.reverted) {
         message = `${isDryRun ? 'DRY-RUN' : 'local'} view call to 'relayCall()' reverted`
       } else {
-        message = `paymaster rejected in ${isDryRun ? 'DRY-RUN' : 'local'} view call to 'relayCall()`
+        message = `paymaster rejected in ${isDryRun ? 'DRY-RUN' : 'local'} view call to 'relayCall()'`
       }
       if (isDryRun) {
         message += '\n(You can set \'performDryRunViewRelayCall\' to \'false\' if your want to skip the DRY-RUN step)\nReported reason: '

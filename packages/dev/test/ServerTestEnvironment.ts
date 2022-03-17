@@ -278,7 +278,8 @@ export class ServerTestEnvironment {
       // do not 'return await' here as it will defer executing the 'finally' block and enable re-stubbing
       // (will crash on 'let x = [createRelayHttpRequest(), createRelayHttpRequest()]')
       // eslint-disable-next-line @typescript-eslint/return-await,@typescript-eslint/promise-function-async
-      return this.relayClient._prepareRelayRequest(mergedTransactionDetail, relayInfo).then(relayRequest => {
+      return this.relayClient._prepareRelayRequest(mergedTransactionDetail).then(relayRequest => {
+        this.relayClient.fillRelayInfo(relayRequest, relayInfo)
         return this.relayClient._prepareRelayHttpRequest(relayRequest, relayInfo)
       })
     } finally {
