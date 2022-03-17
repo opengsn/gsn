@@ -12,7 +12,8 @@ export const constants = {
   ZERO_ADDRESS: '0x0000000000000000000000000000000000000000',
   // OpenZeppelin's ERC-20 implementation bans transfer to zero address
   BURN_ADDRESS: '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF',
-  DRY_RUN_ADDRESS: '0x7777777777777777777777777777777777777777',
+  // in order to avoid error on insufficient balance for gas, send dry-run call from zero address
+  DRY_RUN_ADDRESS: '0x0000000000000000000000000000000000000000',
   DRY_RUN_KEY: 'DRY-RUN',
   ZERO_BYTES32: '0x0000000000000000000000000000000000000000000000000000000000000000',
   MAX_UINT256: new BN('2').pow(new BN('256')).sub(new BN('1')),

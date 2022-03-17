@@ -15,7 +15,7 @@ import "./IForwarder.sol";
 contract Forwarder is IForwarder, ERC165 {
     using ECDSA for bytes32;
 
-    address private constant DRY_RUN_ADDRESS = 0x7777777777777777777777777777777777777777;
+    address private constant DRY_RUN_ADDRESS = 0x0000000000000000000000000000000000000000;
 
     string public constant GENERIC_PARAMS = "address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data,uint256 validUntilTime";
 

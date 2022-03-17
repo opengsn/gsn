@@ -36,7 +36,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     using ERC165Checker for address;
     using SafeMath for uint256;
 
-    address private constant DRY_RUN_ADDRESS = 0x7777777777777777777777777777777777777777;
+    address private constant DRY_RUN_ADDRESS = 0x0000000000000000000000000000000000000000;
 
     /// @inheritdoc IRelayHub
     function versionHub() override virtual public pure returns (string memory){
