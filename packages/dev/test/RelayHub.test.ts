@@ -1,6 +1,7 @@
 import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
 import chai from 'chai'
+import { toBN } from 'web3-utils'
 
 import { decodeRevertReason, getEip712Signature, removeHexPrefix } from '@opengsn/common/dist/Utils'
 import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
@@ -33,6 +34,7 @@ const Penalizer = artifacts.require('Penalizer')
 const GatewayForwarder = artifacts.require('GatewayForwarder')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestToken = artifacts.require('TestToken')
+const TestRelayHub = artifacts.require('TestRelayHub')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
@@ -160,6 +162,39 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         dest,
         amount
       })
+    })
+
+    it('accounts with deposits can withdraw to multiple destinations', async function () {
+      const testRelayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, oneEther.toString(), undefined, undefined, TestRelayHub)
+      const amount = ether('1')
+      await testRelayHubInstance.depositFor(paymasterOwner, {
+        from: paymasterOwner,
+        value: amount
+      })
+      const address1BalanceTracker = await balance.tracker(other)
+      const address2BalanceTracker = await balance.tracker(dest)
+      const balanceBefore = await testRelayHubInstance.balanceOf(paymasterOwner)
+
+      const withdrawAmount1 = amount.divn(3).toString()
+      const withdrawAmount2 = amount.divn(7).toString()
+      const { tx } = await testRelayHubInstance.withdrawMultiple(
+        [withdrawAmount1, withdrawAmount2],
+        [other, dest],
+        { from: paymasterOwner })
+      const balanceAfter = await testRelayHubInstance.balanceOf(paymasterOwner)
+      assert.equal(balanceAfter.toString(), balanceBefore.sub(toBN(withdrawAmount1)).sub(toBN(withdrawAmount2)).toString())
+      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+        account: paymasterOwner,
+        dest: other,
+        amount: withdrawAmount1
+      })
+      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+        account: paymasterOwner,
+        dest: dest,
+        amount: withdrawAmount2
+      })
+      expect(await address1BalanceTracker.delta()).to.be.bignumber.equal(withdrawAmount1)
+      expect(await address2BalanceTracker.delta()).to.be.bignumber.equal(withdrawAmount2)
     })
 
     it('accounts cannot withdraw more than their balance', async function () {

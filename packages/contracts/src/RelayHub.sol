@@ -192,11 +192,29 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     function withdraw(uint256 amount, address payable dest) public override {
         address payable account = payable(msg.sender);
         require(balances[account] >= amount, "insufficient funds");
+        uint256[] memory amounts = new uint256[](1);
+        address payable[] memory destinations = new address payable[](1);
+        amounts[0] = amount;
+        destinations[0] = dest;
+        withdrawMultiple(amounts, destinations);
+    }
 
-        balances[account] = balances[account].sub(amount);
-        dest.transfer(amount);
-
-        emit Withdrawn(account, dest, amount);
+    /// @inheritdoc IRelayHub
+    function withdrawMultiple(uint256[] memory amount, address payable[] memory dest) public override {
+        address payable account = payable(msg.sender);
+        for (uint256 i = 0; i < amount.length; i++) {
+            // #if ENABLE_CONSOLE_LOG
+            console.log("withdrawMultiple: balances", balances[account]);
+            console.log("withdrawMultiple: account", account);
+            console.log("withdrawMultiple: dest[i]", dest[i]);
+            console.log("withdrawMultiple: amount[i]", amount[i]);
+            // #endif
+            uint256 balance = balances[account];
+            require(balance >= amount[i], "insufficient funds");
+            balances[account] = balance.sub(amount[i]);
+            dest[i].transfer(amount[i]);
+            emit Withdrawn(account, dest[i], amount[i]);
+        }
     }
 
     function verifyGasAndDataLimits(
