@@ -178,8 +178,8 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
       const withdrawAmount1 = amount.divn(3).toString()
       const withdrawAmount2 = amount.divn(7).toString()
       const { tx } = await testRelayHubInstance.withdrawMultiple(
-        [withdrawAmount1, withdrawAmount2],
         [other, dest],
+        [withdrawAmount1, withdrawAmount2],
         { from: paymasterOwner })
       const balanceAfter = await testRelayHubInstance.balanceOf(paymasterOwner)
       assert.equal(balanceAfter.toString(), balanceBefore.sub(toBN(withdrawAmount1)).sub(toBN(withdrawAmount2)).toString())
