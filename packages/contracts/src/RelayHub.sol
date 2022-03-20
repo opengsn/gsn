@@ -7,7 +7,9 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
+// #if ENABLE_CONSOLE_LOG
 import "hardhat/console.sol";
+// #endif
 
 import "./utils/MinLibBytes.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
@@ -189,30 +191,26 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     /// @inheritdoc IRelayHub
-    function withdraw(uint256 amount, address payable dest) public override {
-        address payable account = payable(msg.sender);
-        require(balances[account] >= amount, "insufficient funds");
+    function withdraw(address payable dest, uint256 amount) public override {
         uint256[] memory amounts = new uint256[](1);
         address payable[] memory destinations = new address payable[](1);
         amounts[0] = amount;
         destinations[0] = dest;
-        withdrawMultiple(amounts, destinations);
+        withdrawMultiple(destinations, amounts);
     }
 
     /// @inheritdoc IRelayHub
-    function withdrawMultiple(uint256[] memory amount, address payable[] memory dest) public override {
+    function withdrawMultiple(address payable[] memory dest, uint256[] memory amount) public override {
         address payable account = payable(msg.sender);
         for (uint256 i = 0; i < amount.length; i++) {
             // #if ENABLE_CONSOLE_LOG
-            console.log("withdrawMultiple: balances", balances[account]);
-            console.log("withdrawMultiple: account", account);
-            console.log("withdrawMultiple: dest[i]", dest[i]);
-            console.log("withdrawMultiple: amount[i]", amount[i]);
+            console.log("withdrawMultiple %s %s %s", balances[account], dest[i], amount[i]);
             // #endif
             uint256 balance = balances[account];
             require(balance >= amount[i], "insufficient funds");
             balances[account] = balance.sub(amount[i]);
-            dest[i].transfer(amount[i]);
+            (bool success, ) = dest[i].call{value: amount[i]}("");
+            require(success, "Transfer failed.");
             emit Withdrawn(account, dest[i], amount[i]);
         }
     }

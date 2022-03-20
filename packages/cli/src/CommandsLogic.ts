@@ -448,7 +448,7 @@ export class CommandsLogic {
         if (balance.lt(options.withdrawAmount)) {
           throw new Error('Relay manager hub balance lower than withdrawal amount')
         }
-        const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
+        const method = relayHub.contract.methods.withdraw(owner, options.withdrawAmount)
         const encodedCall = method.encodeABI()
         txToSign = new Transaction({
           to: options.config.relayHubAddress,

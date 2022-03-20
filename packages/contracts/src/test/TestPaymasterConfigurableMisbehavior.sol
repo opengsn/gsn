@@ -103,7 +103,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
     function withdrawAllBalance() public returns (uint256) {
         require(address(relayHub) != address(0), "relay hub address not set");
         uint256 balance = relayHub.balanceOf(address(this));
-        relayHub.withdraw(balance, payable(address(this)));
+        relayHub.withdraw(payable(address(this)), balance);
         return balance;
     }
 
