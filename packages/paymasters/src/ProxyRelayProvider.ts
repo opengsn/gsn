@@ -33,7 +33,7 @@ export default class ProxyRelayProvider extends RelayProvider {
     return new ProxyRelayProvider(proxyFactoryAddress, new RelayClient(input))
   }
 
-  _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+  async _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
     this.calculateProxyAddress(gsnTransactionDetails.from).then(proxyAddress => {
       // @ts-ignore
