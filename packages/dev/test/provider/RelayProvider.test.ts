@@ -1,3 +1,4 @@
+/* eslint-disable no-void */
 import Web3 from 'web3'
 import chaiAsPromised from 'chai-as-promised'
 import { ChildProcessWithoutNullStreams } from 'child_process'
@@ -274,9 +275,11 @@ contract('RelayProvider', function (accounts) {
       })
       const relayProvider = new RelayProvider(badRelayClient)
       await relayProvider.init()
-      const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
-        reject(error)
-      }))
+      const promisified = new Promise((resolve, reject) => {
+        void relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
+          reject(error)
+        })
+      })
       await expect(promisified).to.be.eventually.rejectedWith(`Rejected relayTransaction call with reason: ${BadRelayClient.message}`)
     })
 
@@ -284,9 +287,11 @@ contract('RelayProvider', function (accounts) {
       const badRelayClient = new BadRelayClient(false, true, { provider: underlyingProvider, config })
       const relayProvider = new RelayProvider(badRelayClient)
       await relayProvider.init()
-      const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
-        reject(error)
-      }))
+      const promisified = new Promise((resolve, reject) => {
+        void relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
+          reject(error)
+        })
+      })
       await expect(promisified).to.be.eventually.rejectedWith('Failed to relay call. Results:')
     })
 
@@ -298,13 +303,15 @@ contract('RelayProvider', function (accounts) {
           ...config
         }
       }).init()
-      const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
-        if (error != null) {
-          reject(error)
-        } else {
-          resolve(result)
-        }
-      }))
+      const response: JsonRpcResponse = await new Promise((resolve, reject) => {
+        void relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
+          if (error != null) {
+            reject(error)
+          } else {
+            resolve(result)
+          }
+        })
+      })
       assert.equal(id, response.id)
       assert.equal('2.0', response.jsonrpc)
       // I don't want to hard-code tx hash, so for now just checking it is there

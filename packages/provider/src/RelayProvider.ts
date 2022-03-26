@@ -240,7 +240,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
 
   _getTranslatedGsnResponseResult (respResult: TransactionReceipt, relayRequestID?: string): TransactionReceipt {
     const fixedTransactionReceipt = Object.assign({}, respResult)
-    // adding non declared field to this object - it is not usable but maybe will help debugging one day
+    // adding non declared field to receipt object - can be used in tests
     // @ts-ignore
     fixedTransactionReceipt.actualTransactionHash = fixedTransactionReceipt.transactionHash
     fixedTransactionReceipt.transactionHash = relayRequestID ?? fixedTransactionReceipt.transactionHash
