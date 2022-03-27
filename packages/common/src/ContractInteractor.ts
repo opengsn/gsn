@@ -985,7 +985,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     method: any
   }> {
     const hub = this.relayHubInstance
-    const method = hub.contract.methods.withdraw(amount.toString(), destination)
+    const method = hub.contract.methods.withdraw(destination, amount.toString())
     const withdrawTxGasLimit = await method.estimateGas(
       {
         from: managerAddress
