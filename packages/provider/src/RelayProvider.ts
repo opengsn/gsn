@@ -62,6 +62,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     this.origProvider = this.relayClient.getUnderlyingProvider() as HttpProvider
     this.host = this.origProvider.host
     this.connected = this.origProvider.connected
+    this.logger = this.relayClient.logger
 
     if (typeof this.origProvider.sendAsync === 'function') {
       this.origProviderSend = this.origProvider.sendAsync.bind(this.origProvider)
@@ -74,7 +75,6 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   async init (): Promise<this> {
     await this.relayClient.init()
     this.config = this.relayClient.config
-    this.logger = this.relayClient.logger
     this.logger.info(`Created new RelayProvider ver.${gsnRuntimeVersion}`)
     return this
   }

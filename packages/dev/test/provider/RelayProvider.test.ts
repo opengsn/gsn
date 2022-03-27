@@ -147,7 +147,7 @@ contract('RelayProvider', function (accounts) {
           paymasterAddress: paymasterInstance.address,
           ...config
         }
-      }).init()
+      })
       // NOTE: in real application its enough to set the provider in web3.
       // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
       // so changing the global one is not enough.
