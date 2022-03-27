@@ -5,7 +5,7 @@ import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import { Contract, SendOptions } from 'web3-eth-contract'
 import { HttpProvider, TransactionReceipt } from 'web3-core'
-import { fromWei, toBN } from 'web3-utils'
+import { fromWei, toBN, toHex } from 'web3-utils'
 import ow from 'ow'
 
 import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
@@ -36,7 +36,7 @@ export interface RegisterOptions {
   /** number of times to sleep before timeout */
   sleepCount: number
   from: Address
-  gasPrice: string | BN
+  gasPrice?: string | BN
   stake: string | BN
   funds: string | BN
   relayUrl: string
@@ -189,6 +189,13 @@ export class CommandsLogic {
     try {
       console.log(`Registering GSN relayer at ${options.relayUrl}`)
 
+      const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
+      const sendOptions = {
+        chainId: toHex(await this.web3.eth.getChainId()),
+        from: options.from,
+        gas: 1e6,
+        gasPrice
+      } as any
       const response = await this.httpClient.getPingResponse(options.relayUrl)
         .catch((error: any) => {
           console.error(error)
@@ -223,13 +230,10 @@ export class CommandsLogic {
         console.log('Relayer already funded')
       } else {
         console.log('Funding relayer')
-
         const _fundTx = await this.web3.eth.sendTransaction({
-          from: options.from,
+          ...sendOptions,
           to: relayAddress,
-          value: options.funds,
-          gas: 1e6,
-          gasPrice: options.gasPrice
+          value: options.funds
         })
         const fundTx = _fundTx as TransactionReceipt
         if (fundTx.transactionHash == null) {
@@ -274,10 +278,8 @@ export class CommandsLogic {
 
         const stakeTx = await stakeManager
           .stakeForRelayManager(relayAddress, options.unstakeDelay.toString(), {
-            value: stakeValue,
-            from: options.from,
-            gas: 1e6,
-            gasPrice: options.gasPrice
+            ...sendOptions,
+            value: stakeValue
           })
         // @ts-ignore
         transactions.push(stakeTx.transactionHash)
@@ -288,11 +290,7 @@ export class CommandsLogic {
       } else {
         console.log('Authorizing relayer for hub')
         const authorizeTx = await stakeManager
-          .authorizeHubByOwner(relayAddress, relayHubAddress, {
-            from: options.from,
-            gas: 1e6,
-            gasPrice: options.gasPrice
-          })
+          .authorizeHubByOwner(relayAddress, relayHubAddress, sendOptions)
         // @ts-ignore
         transactions.push(authorizeTx.transactionHash)
       }
@@ -419,5 +417,11 @@ export class CommandsLogic {
         throw new Error('User rejected')
       }
     }
+  }
+
+  async getGasPrice (): Promise<string> {
+    const gasPrice = await this.contractInteractor.getGasPrice()
+    console.log(`Using network gas price of ${fromWei(gasPrice, 'gwei')}`)
+    return gasPrice
   }
 }

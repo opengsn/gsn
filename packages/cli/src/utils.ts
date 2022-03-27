@@ -157,7 +157,7 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\'')
         break
       case 'g':
-        commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.', '1')
+        commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.')
         break
     }
   })
