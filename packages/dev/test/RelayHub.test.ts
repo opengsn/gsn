@@ -435,6 +435,45 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           relayRequestMisbehavingPaymaster.relayData.paymaster = misbehavingPaymaster.address
         })
 
+        context('in dry-run view mode without requiring client signature or valid worker', function () {
+          function clearRelayRequest (relayRequest: RelayRequest): RelayRequest {
+            const clone = cloneRelayRequest(relayRequest)
+            clone.relayData.relayWorker = constants.ZERO_ADDRESS
+            clone.relayData.pctRelayFee = ''
+            clone.relayData.baseRelayFee = ''
+            clone.relayData.transactionCalldataGasUsed = ''
+            return clone
+          }
+
+          it('should get \'paymasterAccepted = true\' and no revert reason as view call result of \'relayCall\' for a valid transaction', async function () {
+            const clearedRelayRequest = clearRelayRequest(relayRequest)
+            const relayCallView = await relayHubInstance.contract.methods.relayCall(
+              10e6,
+              clearedRelayRequest,
+              '0x', '0x')
+              .call({
+                from: constants.DRY_RUN_ADDRESS,
+                gas: 7e6,
+                gasPrice: 1e9
+              })
+            assert.equal(relayCallView.returnValue, null)
+            assert.equal(relayCallView.paymasterAccepted, true)
+          })
+
+          it('should return failure if forwarder rejects for incorrect nonce', async function () {
+            const relayRequestWrongNonce = clearRelayRequest(relayRequest)
+            relayRequestWrongNonce.request.nonce = (parseInt(relayRequestWrongNonce.request.nonce) - 1).toString()
+            const relayCallView =
+              await relayHubInstance.contract.methods
+                .relayCall(10e6, relayRequestWrongNonce, '0x', '0x')
+                .call({ from: constants.DRY_RUN_ADDRESS, gas: 7e6, gasPrice: 1e9 })
+
+            assert.equal(relayCallView.paymasterAccepted, false)
+
+            assert.equal(decodeRevertReason(relayCallView.returnValue), 'FWD: nonce mismatch')
+          })
+        })
+
         it('should get \'paymasterAccepted = true\' and no revert reason as view call result of \'relayCall\' for a valid transaction', async function () {
           const relayCallView = await relayHubInstance.contract.methods.relayCall(
             10e6,
@@ -449,7 +488,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           assert.equal(relayCallView.paymasterAccepted, true)
         })
 
-        it('should get Paymaster\'s reject reason from view call result of \'relayCall\' for a transaction with a wrong signature', async function () {
+        it('should get Paymaster\'s reject reason from view call result of \'relayCall\' for a transaction before checking signature', async function () {
           await misbehavingPaymaster.setReturnInvalidErrorCode(true)
           const relayCallView =
             await relayHubInstance.contract.methods
