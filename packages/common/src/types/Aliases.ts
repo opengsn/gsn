@@ -19,10 +19,6 @@ export type SemVerString = string
  */
 export type PingFilter = (pingResponse: PingResponse, gsnTransactionDetails: GsnTransactionDetails) => void
 
-/**
- * Note that RelayRequest passed here will not contain following relay-specific fields:
- * baseRelayFee, pctRelayFee, relayWorker, transactionCalldataGasUsed
- */
 export type AsyncDataCallback = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
 
 export type RelayFilter = (registeredEventInfo: RelayRegisteredEventInfo) => boolean
