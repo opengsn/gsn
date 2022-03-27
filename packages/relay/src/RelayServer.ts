@@ -35,7 +35,7 @@ import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import { toNumber } from '@opengsn/common'
+import { isSameAddress, toNumber } from '@opengsn/common'
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -176,7 +176,7 @@ export class RelayServer extends EventEmitter {
     }
 
     // Check the relayWorker (todo: once migrated to multiple relays, check if exists)
-    if (req.relayRequest.relayData.relayWorker.toLowerCase() !== this.workerAddress.toLowerCase()) {
+    if (!isSameAddress(req.relayRequest.relayData.relayWorker.toLowerCase(), this.workerAddress.toLowerCase())) {
       throw new Error(
         `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
     }
@@ -560,7 +560,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (mustWithdrawHubDeposit && !isWithdrawalPending) {
       this.logger.info(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
       // Refill manager eth balance from hub balance
-      const method = this.relayHubContract?.contract.methods.withdraw(toHex(managerHubBalance), this.managerAddress)
+      const method = this.relayHubContract?.contract.methods.withdraw(this.managerAddress, toHex(managerHubBalance))
       const gasLimit = await this.transactionManager.attemptEstimateGas('Withdraw', method, this.managerAddress)
       const details: SendTransactionDetails = {
         signer: this.managerAddress,
