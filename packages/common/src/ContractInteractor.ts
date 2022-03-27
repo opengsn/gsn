@@ -67,6 +67,7 @@ import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from 'bignumber.js'
 import { TransactionType } from './types/TransactionType'
+import { constants } from './Constants'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -103,6 +104,12 @@ export interface ERC20TokenMetadata {
   tokenName: string
   tokenSymbol: string
   tokenDecimals: BN
+}
+
+export interface ViewCallVerificationResult {
+  paymasterAccepted: boolean
+  returnValue: string
+  reverted: boolean
 }
 
 export class ContractInteractor {
@@ -443,11 +450,13 @@ export class ContractInteractor {
    */
   async validateRelayCall (
     relayCallABIData: RelayCallABI,
-    viewCallGasLimit: BN): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
+    viewCallGasLimit: BN,
+    isDryRun: boolean): Promise<ViewCallVerificationResult> {
     if (viewCallGasLimit == null || relayCallABIData.relayRequest.relayData.maxFeePerGas == null || relayCallABIData.relayRequest.relayData.maxPriorityFeePerGas == null) {
       throw new Error('validateRelayCall: invalid input')
     }
     const relayHub = this.relayHubInstance
+    const from = isDryRun ? constants.DRY_RUN_ADDRESS : relayCallABIData.relayRequest.relayData.relayWorker
     try {
       const encodedRelayCall = this.encodeABI(relayCallABIData)
       const res: string = await new Promise((resolve, reject) => {
@@ -458,7 +467,7 @@ export class ContractInteractor {
           method: 'eth_call',
           params: [
             {
-              from: relayCallABIData.relayRequest.relayData.relayWorker,
+              from,
               to: relayHub.address,
               gas: toHex(viewCallGasLimit),
               data: encodedRelayCall,

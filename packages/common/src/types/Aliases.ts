@@ -18,6 +18,7 @@ export type SemVerString = string
  * TODO: make ping filtering sane!
  */
 export type PingFilter = (pingResponse: PingResponse, gsnTransactionDetails: GsnTransactionDetails) => void
+
 export type AsyncDataCallback = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
 
 export type RelayFilter = (registeredEventInfo: RelayRegisteredEventInfo) => boolean

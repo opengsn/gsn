@@ -38,6 +38,8 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     using ERC165Checker for address;
     using SafeMath for uint256;
 
+    address private constant DRY_RUN_ADDRESS = 0x0000000000000000000000000000000000000000;
+
     /// @inheritdoc IRelayHub
     function versionHub() override virtual public pure returns (string memory){
         return "2.2.3+opengsn.hub.irelayhub";
@@ -303,14 +305,18 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
         require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
-        if (msg.sender != batchGateway){
+
+        if (msg.sender != batchGateway && tx.origin != DRY_RUN_ADDRESS) {
             require(signature.length != 0, "missing signature or bad gateway");
             require(msg.sender == tx.origin, "relay worker must be EOA");
             require(msg.sender == relayRequest.relayData.relayWorker, "Not a right worker");
         }
-        vars.relayManager = workerToManager[relayRequest.relayData.relayWorker];
-        require(vars.relayManager != address(0), "Unknown relay worker");
-        verifyRelayManagerStaked(vars.relayManager);
+
+        if (tx.origin != DRY_RUN_ADDRESS) {
+            vars.relayManager = workerToManager[relayRequest.relayData.relayWorker];
+            require(vars.relayManager != address(0), "Unknown relay worker");
+            verifyRelayManagerStaked(vars.relayManager);
+        }
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft);
