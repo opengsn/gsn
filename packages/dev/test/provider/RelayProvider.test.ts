@@ -1,3 +1,4 @@
+/* eslint-disable no-void */
 import Web3 from 'web3'
 import chaiAsPromised from 'chai-as-promised'
 import { ChildProcessWithoutNullStreams } from 'child_process'
@@ -7,7 +8,7 @@ import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
 import { toChecksumAddress } from 'ethereumjs-util'
 
-import { BaseTransactionReceipt, RelayProvider } from '@opengsn/provider/dist/RelayProvider'
+import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
   RelayHubInstance,
@@ -274,9 +275,11 @@ contract('RelayProvider', function (accounts) {
       })
       const relayProvider = new RelayProvider(badRelayClient)
       await relayProvider.init()
-      const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
-        reject(error)
-      }))
+      const promisified = new Promise((resolve, reject) => {
+        void relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
+          reject(error)
+        })
+      })
       await expect(promisified).to.be.eventually.rejectedWith(`Rejected relayTransaction call with reason: ${BadRelayClient.message}`)
     })
 
@@ -284,9 +287,11 @@ contract('RelayProvider', function (accounts) {
       const badRelayClient = new BadRelayClient(false, true, { provider: underlyingProvider, config })
       const relayProvider = new RelayProvider(badRelayClient)
       await relayProvider.init()
-      const promisified = new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
-        reject(error)
-      }))
+      const promisified = new Promise((resolve, reject) => {
+        void relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null): void => {
+          reject(error)
+        })
+      })
       await expect(promisified).to.be.eventually.rejectedWith('Failed to relay call. Results:')
     })
 
@@ -298,13 +303,15 @@ contract('RelayProvider', function (accounts) {
           ...config
         }
       }).init()
-      const response: JsonRpcResponse = await new Promise((resolve, reject) => relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
-        if (error != null) {
-          reject(error)
-        } else {
-          resolve(result)
-        }
-      }))
+      const response: JsonRpcResponse = await new Promise((resolve, reject) => {
+        void relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
+          if (error != null) {
+            reject(error)
+          } else {
+            resolve(result)
+          }
+        })
+      })
       assert.equal(id, response.id)
       assert.equal('2.0', response.jsonrpc)
       // I don't want to hard-code tx hash, so for now just checking it is there
@@ -316,10 +323,10 @@ contract('RelayProvider', function (accounts) {
   describe('_getTranslatedGsnResponseResult', function () {
     let relayProvider: RelayProvider
     let testRecipient: TestRecipientInstance
-    let paymasterRejectedTxReceipt: BaseTransactionReceipt
-    let innerTxFailedReceipt: BaseTransactionReceipt
-    let innerTxSucceedReceipt: BaseTransactionReceipt
-    let notRelayedTxReceipt: BaseTransactionReceipt
+    let paymasterRejectedTxReceipt: TransactionReceipt
+    let innerTxFailedReceipt: TransactionReceipt
+    let innerTxSucceedReceipt: TransactionReceipt
+    let notRelayedTxReceipt: TransactionReceipt
     let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
     const gas = toBN(3e6).toString()
     // It is not strictly necessary to make this test against actual tx receipt, but I prefer to do it anyway

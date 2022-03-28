@@ -97,25 +97,25 @@ contract('ProxyRelayProvider', function () {
       const countBefore = await counter.count()
       assert.strictEqual(countBefore.toNumber(), 0)
       const { maxFeePerGas, maxPriorityFeePerGas } = await proxyRelayProvider.calculateGasFees()
-      const tx1 = await counter.increment({
+      const tx1: any = await counter.increment({
         from: gaslessAccount.address,
         maxFeePerGas,
         maxPriorityFeePerGas
       })
 
-      await expectEvent.inTransaction(tx1.tx, ProxyFactory, 'ProxyDeployed', { proxyAddress })
+      await expectEvent.inTransaction(tx1.receipt.actualTransactionHash, ProxyFactory, 'ProxyDeployed', { proxyAddress })
 
       const countAfter1 = await counter.count()
       assert.strictEqual(countAfter1.toNumber(), 1)
-      const tx2 = await counter.increment({
+      const tx2: any = await counter.increment({
         from: gaslessAccount.address,
         maxFeePerGas,
         maxPriorityFeePerGas
       })
       const countAfter2 = await counter.count()
       assert.strictEqual(countAfter2.toNumber(), 2)
-      await expectEvent.not.inTransaction(tx2.tx, ProxyFactory, 'ProxyDeployed', { proxyAddress })
-      await expectEvent.inTransaction(tx2.tx, TestToken, 'Transfer')
+      await expectEvent.not.inTransaction(tx2.receipt.actualTransactionHash, ProxyFactory, 'ProxyDeployed', { proxyAddress })
+      await expectEvent.inTransaction(tx2.receipt.actualTransactionHash, TestToken, 'Transfer')
     })
   })
 })

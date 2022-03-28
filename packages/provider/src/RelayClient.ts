@@ -15,6 +15,7 @@ import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { decodeRevertReason, removeNullValues } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
+import { constants, getRelayRequestID, RelayCallABI } from '@opengsn/common'
 
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
@@ -36,7 +37,6 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
-import { constants, RelayCallABI } from '@opengsn/common'
 
 // forwarder requests are signed with expiration time.
 
@@ -63,6 +63,8 @@ export interface GSNUnresolvedConstructorInput {
 }
 
 interface RelayingAttempt {
+  relayRequestID?: PrefixedHexString
+  validUntilTime?: string
   transaction?: TypedTransaction
   isRelayError?: boolean
   error?: Error
@@ -70,6 +72,9 @@ interface RelayingAttempt {
 }
 
 export interface RelayingResult {
+  relayRequestID?: PrefixedHexString
+  submissionBlock?: number
+  validUntilTime?: string
   transaction?: TypedTransaction
   pingErrors: Map<string, Error>
   relayingErrors: Map<string, Error>
@@ -233,6 +238,8 @@ export class RelayClient {
       throw new Error('no registered relayers')
     }
     const paymaster = this.dependencies.contractInteractor.getDeployment().paymasterAddress
+    // approximate block height when relaying began is used to look up relayed events
+    const submissionBlock = await this.dependencies.contractInteractor.getBlockNumberRightNow()
 
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
@@ -253,6 +260,9 @@ export class RelayClient {
         }
       }
       return {
+        relayRequestID: relayingAttempt?.relayRequestID,
+        submissionBlock,
+        validUntilTime: relayingAttempt?.validUntilTime,
         transaction: relayingAttempt?.transaction,
         relayingErrors,
         auditPromises,
@@ -297,6 +307,7 @@ export class RelayClient {
     let transaction: TypedTransaction
     let auditPromise: Promise<AuditResponse>
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
+    const relayRequestID = this._getRelayRequestID(httpRequest.relayRequest, httpRequest.metadata.signature)
     try {
       hexTransaction = await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
       transaction = TransactionFactory.fromSerializedData(toBuffer(hexTransaction), this.dependencies.contractInteractor.getRawTxOptions())
@@ -335,9 +346,16 @@ export class RelayClient {
     this.emit(new GsnRelayerResponseEvent(true))
     await this._broadcastRawTx(transaction)
     return {
+      relayRequestID,
+      validUntilTime: httpRequest.relayRequest.request.validUntilTime,
       auditPromise,
       transaction
     }
+  }
+
+  // noinspection JSMethodCanBeStatic
+  _getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString): PrefixedHexString {
+    return getRelayRequestID(relayRequest, signature)
   }
 
   async _prepareRelayRequest (
