@@ -39,6 +39,8 @@ interface IRelayHub is IERC165 {
         address devAddress;
         // 0 < fee < 100, as percentage of total charge from paymaster to relayer
         uint8 devFee;
+        // time in seconds after which a balance of an abandoned relay can be taken as a dev fee by a dev address
+        uint256 abandonedRelayEscheatmentDelay;
 
     }
 
@@ -229,6 +231,24 @@ interface IRelayHub is IERC165 {
     function deprecateHub(uint256 _deprecationTime) external;
 
     /**
+     * @notice
+     * @param relayManager
+     */
+    function markRelayAbandoned(address relayManager) external;
+
+    /**
+     * @notice
+     * @param relayManager
+     */
+    function escheatAbandonedRelayBalance(address relayManager) external;
+
+    /**
+     * @notice
+     * @param relayManager
+     */
+    function revokeAbandonedStatus(address relayManager) external;
+
+    /**
      * @notice The fee is expressed as a base fee in wei plus percentage of the actual charge.
      * For example, a value '40' stands for a 40% fee, so the recipient will be charged for 1.4 times the spent amount.
      * @param gasUsed An amount of gas used by the transaction.
@@ -297,6 +317,9 @@ interface IRelayHub is IERC165 {
 
     /// @return The block number in which the contract has been deployed.
     function getCreationBlock() external view returns (uint256);
+
+    /// @return The timestamp in which the relay manager was marked as abandoned.
+    function getMarkedAsAbandoned(address relayManager) external view returns (uint256);
 
     /// @return a SemVer-compliant version of the `RelayHub` contract.
     function versionHub() external view returns (string memory);

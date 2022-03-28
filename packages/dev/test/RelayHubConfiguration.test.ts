@@ -265,7 +265,8 @@ contract('RelayHub Configuration',
             maxWorkerCount: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
             devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
-            devFee: 0x11.toString()
+            devFee: 0x11.toString(),
+            abandonedRelayEscheatmentDelay: 0xef.toString()
           }
           let configFromHub = await relayHub.getConfiguration()
           // relayHub.getConfiguration() returns an array, so we need to construct an object with its fields to compare to config.
@@ -284,7 +285,8 @@ contract('RelayHub Configuration',
             minimumStake: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
             devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
-            devFee: '101'
+            devFee: '101',
+            abandonedRelayEscheatmentDelay: 0xef.toString()
           }
           await expectRevert(
             relayHub.setConfiguration(config, { from: relayHubOwner }),

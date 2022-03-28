@@ -6,4 +6,5 @@ export interface RelayHubConfiguration {
   minimumUnstakeDelay: number | BN
   devAddress: string
   devFee: number | BN | string
+  abandonedRelayEscheatmentDelay: number | BN
 }
