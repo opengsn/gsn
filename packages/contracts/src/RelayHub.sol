@@ -86,8 +86,6 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
     mapping(address => uint256) internal balances;
 
-    mapping(address => uint256) internal markedAsAbandoned;
-
     uint256 internal immutable creationBlock;
     uint256 internal deprecationTime = type(uint256).max;
 
@@ -104,11 +102,6 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         batchGateway = _batchGateway;
         relayRegistrar = _relayRegistrar;
         setConfiguration(_config);
-    }
-
-    /// @inheritdoc IRelayHub
-    function getMarkedAsAbandoned(address relayManager) external override virtual view returns (uint256){
-        return markedAsAbandoned[relayManager];
     }
 
     /// @inheritdoc IRelayHub
@@ -597,25 +590,16 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
     }
 
-    function markRelayAbandoned(address relayManager) external override onlyOwner {
+    function verifyRelayAbandoned(address relayManager) public view override {
         (IStakeManager.StakeInfo memory stakeInfo,) = stakeManager.getStakeInfo(relayManager);
-        require(stakeInfo.stake > 0, "relay manager not staked");
-        require(markedAsAbandoned[relayManager] == 0, "relay manager already abandoned");
-        markedAsAbandoned[relayManager] = block.timestamp;
+        require(stakeInfo.abandonedTime != 0 && stakeInfo.abandonedTime + config.abandonedRelayEscheatmentDelay < block.timestamp, "relay manager not abandoned yet");
     }
 
     function escheatAbandonedRelayBalance(address relayManager) external override onlyOwner {
-        require(markedAsAbandoned[relayManager] != 0 && markedAsAbandoned[relayManager] + config.abandonedRelayEscheatmentDelay < block.timestamp, "relay manager not abandoned yet");
+        verifyRelayAbandoned(relayManager);
         uint256 balance = balances[relayManager];
         balances[relayManager] = 0;
         balances[config.devAddress] = balances[config.devAddress].add(balance);
-    }
-
-    function revokeAbandonedStatus(address relayManager) external override {
-        (IStakeManager.StakeInfo memory stakeInfo,) = stakeManager.getStakeInfo(relayManager);
-        require(stakeInfo.owner == msg.sender, "only owner can revoke abandoned");
-        require(markedAsAbandoned[relayManager] != 0, "relay manager not abandoned");
-        markedAsAbandoned[relayManager] = 0;
     }
 
     /// @inheritdoc IRelayHub

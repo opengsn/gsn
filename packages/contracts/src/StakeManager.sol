@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./interfaces/IStakeManager.sol";
-import "./interfaces/IRelayHub.sol";
 
 /**
  * @title The StakeManager implementation
@@ -26,6 +25,7 @@ contract StakeManager is IStakeManager, Ownable {
     uint256 internal immutable maxUnstakeDelay;
 
     address internal burnAddress;
+    address internal devAddress;
     uint256 internal immutable creationBlock;
 
     /// maps relay managers to their stakes
@@ -46,6 +46,17 @@ contract StakeManager is IStakeManager, Ownable {
     /// @inheritdoc IStakeManager
     function getBurnAddress() external override view returns (address) {
         return burnAddress;
+    }
+
+    /// @inheritdoc IStakeManager
+    function setDevAddress(address _devAddress) public override onlyOwner {
+        devAddress = _devAddress;
+        emit DevAddressSet(burnAddress);
+    }
+
+    /// @inheritdoc IStakeManager
+    function getDevAddress() external override view returns (address) {
+        return devAddress;
     }
 
     /// @inheritdoc IStakeManager
@@ -178,5 +189,33 @@ contract StakeManager is IStakeManager, Ownable {
         stakes[relayManager].token.safeTransfer(burnAddress, toBurn);
         stakes[relayManager].token.safeTransfer(beneficiary, reward);
         emit StakePenalized(relayManager, beneficiary, stakes[relayManager].token, reward);
+    }
+
+    function markRelayAbandoned(address relayManager) external override onlyOwner {
+        StakeInfo storage info = stakes[relayManager];
+        require(info.stake > 0, "relay manager not staked");
+        require(info.abandonedTime == 0, "relay manager already abandoned");
+        require(info.keepaliveTime + 1000 < block.timestamp, "relay manager was alive recently");
+        info.abandonedTime = block.timestamp;
+        emit RelayAbandoned(relayManager, true, info.abandonedTime);
+    }
+
+    function escheatAbandonedRelayStake(address relayManager) external override onlyOwner {
+        StakeInfo storage info = stakes[relayManager];
+        require(info.abandonedTime != 0 && info.abandonedTime + 1000 < block.timestamp, "relay manager not abandoned yet");
+        uint256 amount = info.stake;
+        info.stake = 0;
+        info.withdrawTime = 0;
+        info.token.safeTransfer(devAddress, amount);
+        emit AbandonedRelayManagerStakeEscheated(relayManager, msg.sender, info.token, amount);
+    }
+
+    function revokeAbandonedStatus(address relayManager) external override {
+        StakeInfo storage info = stakes[relayManager];
+        require(info.owner == msg.sender, "only owner can revoke abandoned");
+        require(info.abandonedTime != 0, "relay manager not abandoned");
+        info.abandonedTime = 0;
+        info.keepaliveTime = block.timestamp;
+        emit RelayAbandoned(relayManager, false, info.abandonedTime);
     }
 }

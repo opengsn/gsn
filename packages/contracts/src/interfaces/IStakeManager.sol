@@ -73,6 +73,25 @@ interface IStakeManager {
         address indexed burnAddress
     );
 
+    /// @notice Emitted when a `burnAddress` is changed.
+    event DevAddressSet(
+        address indexed burnAddress
+    );
+
+    /// @notice
+    event RelayAbandoned(
+        address indexed relayManager,
+        bool indexed isMarkedAbandoned,
+        uint256 abandonedSince
+    );
+
+    event AbandonedRelayManagerStakeEscheated(
+        address indexed relayManager,
+        address indexed owner,
+        IERC20 token,
+        uint256 amount
+    );
+
     /**
      * @param stake - amount of ether staked for this relay
      * @param unstakeDelay - number of seconds to elapse before the owner can retrieve the stake after calling 'unlock'
@@ -83,6 +102,8 @@ interface IStakeManager {
         uint256 stake;
         uint256 unstakeDelay;
         uint256 withdrawTime;
+        uint256 abandonedTime;
+        uint256 keepaliveTime;
         IERC20 token;
         address owner;
     }
@@ -154,6 +175,12 @@ interface IStakeManager {
      */
     function penalizeRelayManager(address relayManager, address beneficiary, uint256 amount) external;
 
+    function markRelayAbandoned(address relayManager) external;
+
+    function escheatAbandonedRelayStake(address relayManager) external;
+
+    function revokeAbandonedStatus(address relayManager) external;
+
     /**
      * @notice Get the stake details information for the given Relay Manager.
      * @param relayManager The address of a Relay Manager.
@@ -178,6 +205,17 @@ interface IStakeManager {
      * @return The address that will receive the 'burned' part of the penalized stake.
      */
     function getBurnAddress() external view returns (address);
+
+    /**
+     * @notice Change the address that will receive the 'abandoned' stake.
+     * This is done to prevent Relay Servers that lost their keys from losing access to funds.
+     */
+    function setDevAddress(address _burnAddress) external;
+
+    /**
+     * @return The address that will receive the 'abandoned' stake.
+     */
+    function getDevAddress() external view returns (address);
 
     /**
      * @return the block number in which the contract has been deployed.

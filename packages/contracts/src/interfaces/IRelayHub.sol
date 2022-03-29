@@ -118,6 +118,11 @@ interface IRelayHub is IERC165 {
     /// @notice This event is emitted in case this `RelayHub` is deprecated and will stop serving transactions soon.
     event HubDeprecated(uint256 deprecationTime);
 
+    event AbandonedRelayManagerBalanceEscheated(
+        address indexed relayManager,
+        uint256 balance
+    );
+
     /**
      * Error codes that describe all possible failure reasons reported in the `TransactionRelayed` event `status` field.
      *  @param OK The transaction was successfully relayed and execution successful - never included in the event.
@@ -234,19 +239,7 @@ interface IRelayHub is IERC165 {
      * @notice
      * @param relayManager
      */
-    function markRelayAbandoned(address relayManager) external;
-
-    /**
-     * @notice
-     * @param relayManager
-     */
     function escheatAbandonedRelayBalance(address relayManager) external;
-
-    /**
-     * @notice
-     * @param relayManager
-     */
-    function revokeAbandonedStatus(address relayManager) external;
 
     /**
      * @notice The fee is expressed as a base fee in wei plus percentage of the actual charge.
@@ -309,6 +302,12 @@ interface IRelayHub is IERC165 {
      */
     function verifyRelayManagerStaked(address relayManager) external view;
 
+    /**
+     * @notice Uses `StakeManager` to decide if the Relay Manager can be considered abandoned or not.
+     * Returns if the stake's abandonment time is in the past including the hard-coded delay.
+     */
+    function verifyRelayAbandoned(address relayManager) external view;
+
     /// @return `true` if the `RelayHub` is deprecated, `false` it it is not deprecated and can serve transactions.
     function isDeprecated() external view returns (bool);
 
@@ -317,9 +316,6 @@ interface IRelayHub is IERC165 {
 
     /// @return The block number in which the contract has been deployed.
     function getCreationBlock() external view returns (uint256);
-
-    /// @return The timestamp in which the relay manager was marked as abandoned.
-    function getMarkedAsAbandoned(address relayManager) external view returns (uint256);
 
     /// @return a SemVer-compliant version of the `RelayHub` contract.
     function versionHub() external view returns (string memory);

@@ -3,6 +3,10 @@
 pragma solidity ^0.8.6;
 /* solhint-disable no-inline-assembly */
 
+// #if ENABLE_CONSOLE_LOG
+import "hardhat/console.sol";
+// #endif
+
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import "./MinLibBytes.sol";
@@ -52,7 +56,7 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     ) external override {
         address relayManager = msg.sender;
         IRelayHub(relayHub).verifyCanRegister(relayManager);
-        emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);
+        emit RelayServerRegistered(relayHub, relayManager, baseRelayFee, pctRelayFee, url);
         storeRelayServerRegistration(relayHub, relayManager, baseRelayFee, pctRelayFee, url);
     }
 
@@ -126,5 +130,20 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
                 break;
         }
         assembly { mstore(info, filled) }
+    }
+
+    function deleteAbandonedRelayServer(address[] memory relayHubs, address relayManager) external {
+        for (uint256 i = 0; i < relayHubs.length; i++){
+            // solhint-disable-next-line no-empty-blocks
+            try IRelayHub(relayHubs[i]).verifyRelayAbandoned(relayManager){
+            } catch (bytes memory lowLevelData) {
+                // #if ENABLE_CONSOLE_LOG
+                console.log(string(lowLevelData));
+                // #endif
+                continue;
+            }
+            delete values[relayHubs[i]][relayManager];
+            emit RelayServerRemoved(relayHubs[i], relayManager);
+        }
     }
 }

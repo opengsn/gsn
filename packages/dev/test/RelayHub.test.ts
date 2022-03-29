@@ -18,7 +18,7 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   GatewayForwarderInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { deployHub, encodeRevertReason, increaseTime, revert, snapshot } from './TestUtils'
+import { deployHub, encodeRevertReason, revert, snapshot } from './TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 import chaiAsPromised from 'chai-as-promised'
@@ -39,8 +39,6 @@ const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterStoreContext = artifacts.require('TestPaymasterStoreContext')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
-
-const devAddress = '0x9999999999999999999999999999999999999999'
 
 contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
   const baseRelayFee = '10000'
@@ -1059,59 +1057,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           })
         })
       })
-    })
-  })
-
-  describe('abandoned relay balance confiscation', function () {
-    beforeEach(async function () {
-      await mintApproveSetOwnerStake()
-      relayHubInstance = await deployHub(
-        stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, oneEther.toString(),
-        { abandonedRelayEscheatmentDelay: 1000, devAddress }, undefined, TestRelayHub)
-      const amount = ether('1')
-      await relayHubInstance.depositFor(relayManager, {
-        value: amount
-      })
-    })
-
-    it('should allow contract owner to set relay as abandoned', async function () {
-      let abandonedTime = await relayHubInstance.getMarkedAsAbandoned(relayManager)
-      assert.equal(abandonedTime.toString(), '0')
-      const res = await relayHubInstance.markRelayAbandoned(relayManager)
-      abandonedTime = await relayHubInstance.getMarkedAsAbandoned(relayManager)
-      const transactionReceipt = await web3.eth.getTransaction(res.tx)
-      const block = await web3.eth.getBlock(transactionReceipt.blockNumber!)
-      assert.equal(abandonedTime.toString(), block.timestamp.toString())
-    })
-
-    it('should allow relay owner to unset relay as abandoned', async function () {
-      await relayHubInstance.markRelayAbandoned(relayManager)
-      let abandonedTime = await relayHubInstance.getMarkedAsAbandoned(relayManager)
-      assert.notEqual(abandonedTime.toString(), '0')
-      await relayHubInstance.revokeAbandonedStatus(relayManager, { from: relayOwner })
-      abandonedTime = await relayHubInstance.getMarkedAsAbandoned(relayManager)
-      assert.equal(abandonedTime.toString(), '0')
-    })
-
-    it('should not allow contract owner to confiscate balance of not abandoned relay', async function () {
-      await expectRevert(relayHubInstance.escheatAbandonedRelayBalance(relayManager), 'relay manager not abandoned yet')
-      await relayHubInstance.markRelayAbandoned(relayManager)
-      await increaseTime(500)
-      await expectRevert(relayHubInstance.escheatAbandonedRelayBalance(relayManager), 'relay manager not abandoned yet')
-    })
-
-    it('should allow contract owner to confiscate balance of abandoned relay', async function () {
-      const devAddressBalanceBefore = await relayHubInstance.balanceOf(devAddress)
-      const relayManagerBalanceBefore = await relayHubInstance.balanceOf(relayManager)
-      assert.equal(devAddressBalanceBefore.toString(), '0')
-      assert.equal(relayManagerBalanceBefore.toString(), ether('1').toString())
-      await relayHubInstance.markRelayAbandoned(relayManager)
-      await increaseTime(10000)
-      await relayHubInstance.escheatAbandonedRelayBalance(relayManager)
-      const devAddressBalanceAfter = await relayHubInstance.balanceOf(devAddress)
-      const relayManagerBalanceAfter = await relayHubInstance.balanceOf(relayManager)
-      assert.equal(devAddressBalanceAfter.toString(), ether('1').toString())
-      assert.equal(relayManagerBalanceAfter.toString(), '0')
     })
   })
 })

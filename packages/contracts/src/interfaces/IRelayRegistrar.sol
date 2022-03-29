@@ -35,10 +35,19 @@ interface IRelayRegistrar is IERC165 {
      * Looking up these events allows a client to discover registered Relay Servers.
      */
     event RelayServerRegistered(
+        address indexed relayHub,
         address indexed relayManager,
         uint256 baseRelayFee,
         uint256 pctRelayFee,
         bytes32[3] relayUrl
+    );
+
+    /**
+     * @notice Emitted when a relay server and its details are removed from the RelayRegistrar.
+     */
+    event RelayServerRemoved(
+        address indexed relayHub,
+        address indexed relayManager
     );
 
     /**
