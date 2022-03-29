@@ -141,7 +141,7 @@ contract('RelayProvider', function (accounts) {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
-      relayProvider = await RelayProvider.newProvider({
+      relayProvider = RelayProvider.newProvider({
         provider: websocketProvider as any,
         config: {
           paymasterAddress: paymasterInstance.address,
