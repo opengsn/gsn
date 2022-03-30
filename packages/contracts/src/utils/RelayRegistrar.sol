@@ -56,8 +56,8 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     ) external override {
         address relayManager = msg.sender;
         IRelayHub(relayHub).verifyCanRegister(relayManager);
-        emit RelayServerRegistered(relayHub, relayManager, baseRelayFee, pctRelayFee, url);
-        storeRelayServerRegistration(relayHub, relayManager, baseRelayFee, pctRelayFee, url);
+        emit RelayServerRegistered(relayManager, relayHub, baseRelayFee, pctRelayFee, url);
+        storeRelayServerRegistration(relayManager, relayHub, baseRelayFee, pctRelayFee, url);
     }
 
     function addItem(address relayHub, address relayManager) internal returns (RelayInfo storage) {
@@ -69,8 +69,8 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     }
 
     function storeRelayServerRegistration(
-        address relayHub,
         address relayManager,
+        address relayHub,
         uint80 baseRelayFee,
         uint16 pctRelayFee,
         bytes32[3] calldata url
