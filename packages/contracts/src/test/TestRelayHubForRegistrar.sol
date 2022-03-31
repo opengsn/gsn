@@ -14,6 +14,10 @@ contract TestRelayHubForRegistrar {
         require(isStaked[relayManager], "verifyCanRegister: cannot");
     }
 
+    function verifyRelayManagerStaked(address relayManager) external view {
+        require(isStaked[relayManager], "verifyRelayManagerStaked: is not");
+    }
+
     function onRelayServerRegistered(address relayManager) external view {
         require(isStaked[relayManager], "onRelayServerRegistered no stake");
     }
