@@ -141,13 +141,13 @@ contract('RelayProvider', function (accounts) {
       const TestRecipient = artifacts.require('TestRecipient')
       testRecipient = await TestRecipient.new(forwarderAddress)
       const websocketProvider = new Web3.providers.WebsocketProvider(underlyingProvider.host)
-      relayProvider = await RelayProvider.newProvider({
+      relayProvider = RelayProvider.newProvider({
         provider: websocketProvider as any,
         config: {
           paymasterAddress: paymasterInstance.address,
           ...config
         }
-      }).init()
+      })
       // NOTE: in real application its enough to set the provider in web3.
       // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
       // so changing the global one is not enough.
