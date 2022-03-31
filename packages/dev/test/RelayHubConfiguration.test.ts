@@ -75,7 +75,7 @@ contract('RelayHub Configuration',
       forwarder = forwarderInstance.address
       recipient = await TestRecipient.new(forwarder)
       paymaster = await TestPaymasterEverythingAccepted.new()
-      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
       penalizer = await Penalizer.new(
         defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
         defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
@@ -265,8 +265,7 @@ contract('RelayHub Configuration',
             maxWorkerCount: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
             devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
-            devFee: 0x11.toString(),
-            abandonedRelayEscheatmentDelay: 0xef.toString()
+            devFee: 0x11.toString()
           }
           let configFromHub = await relayHub.getConfiguration()
           // relayHub.getConfiguration() returns an array, so we need to construct an object with its fields to compare to config.
@@ -285,8 +284,7 @@ contract('RelayHub Configuration',
             minimumStake: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
             devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
-            devFee: '101',
-            abandonedRelayEscheatmentDelay: 0xef.toString()
+            devFee: '101'
           }
           await expectRevert(
             relayHub.setConfiguration(config, { from: relayHubOwner }),

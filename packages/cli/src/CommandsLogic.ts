@@ -69,9 +69,10 @@ interface DeployOptions {
   stakeManagerAddress?: string
   deployTestToken?: boolean
   stakingTokenAddress?: string
-  minimumTokenStake: number| IntString
+  minimumTokenStake: number | IntString
   penalizerAddress?: string
   burnAddress?: string
+  devAddress?: string
   verbose?: boolean
   skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
@@ -507,7 +508,7 @@ export class CommandsLogic {
       arguments: []
     }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
     const sInstance = await this.getContractInstance(StakeManager, {
-      arguments: [defaultEnvironment.maxUnstakeDelay, deployOptions.burnAddress]
+      arguments: [defaultEnvironment.maxUnstakeDelay, defaultEnvironment.abandonmentDelay, defaultEnvironment.escheatmentDelay, deployOptions.burnAddress, deployOptions.devAddress]
     }, deployOptions.stakeManagerAddress, { ...options }, deployOptions.skipConfirmation)
     const pInstance = await this.getContractInstance(Penalizer, {
       arguments: [

@@ -65,7 +65,7 @@ options.forEach(params => {
       const gasPriceFactor = 1
 
       testToken = await TestToken.new()
-      sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+      sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
       const stake = 1e18.toString()
       await testToken.mint(stake)
       await testToken.approve(sm.address, stake)

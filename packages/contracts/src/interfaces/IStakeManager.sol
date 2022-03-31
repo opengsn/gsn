@@ -81,8 +81,13 @@ interface IStakeManager {
     /// @notice
     event RelayAbandoned(
         address indexed relayManager,
-        bool indexed isMarkedAbandoned,
-        uint256 abandonedSince
+        uint256 abandonedTime
+    );
+
+    /// @notice
+    event RelayKeepalive(
+        address indexed relayManager,
+        uint256 keepaliveTime
     );
 
     event AbandonedRelayManagerStakeEscheated(
@@ -175,11 +180,30 @@ interface IStakeManager {
      */
     function penalizeRelayManager(address relayManager, address beneficiary, uint256 amount) external;
 
+    /**
+     * @notice Allows the contract owner to set the given `relayManager` as abandoned after a configurable delay.
+     * Its entire stake and balance will be taken from a relay if it does not respond to being marked as abandoned.
+     */
     function markRelayAbandoned(address relayManager) external;
 
+    /**
+     * @notice If more than `abandonmentDelay` has passed since the last Keepalive transaction, and relay manager
+     * has been marked as abandoned, and after that more that `escheatmentDelay` have passed, entire stake and
+     * balance will be taken from this relay.
+     */
     function escheatAbandonedRelayStake(address relayManager) external;
 
-    function revokeAbandonedStatus(address relayManager) external;
+    /**
+     * @notice Sets a new `keepaliveTime` for the given `relayManager`, preventing it from being marked as abandoned.
+     * Can be called by an authorized `RelayHub` or by the `relayOwner` address.
+     */
+    function updateRelayKeepaliveTime(address relayManager) external;
+
+    /**
+     * @notice Check if the Relay Manager can be considered abandoned or not.
+     * Returns true if the stake's abandonment time is in the past including the escheatment delay, false otherwise.
+     */
+    function isRelayEscheatable(address relayManager) external view returns(bool);
 
     /**
      * @notice Get the stake details information for the given Relay Manager.
@@ -194,6 +218,16 @@ interface IStakeManager {
      * @return The maximum unstake delay this `StakeManger` allows. This is to prevent locking money forever by mistake.
      */
     function getMaxUnstakeDelay() external view returns (uint256);
+
+    /**
+     * @return The abandonment delay this `StakeManger` requires.
+     */
+    function getAbandonmentDelay() external view returns (uint256);
+
+    /**
+     * @return The escheatment delay this `StakeManger` requires.
+     */
+    function getEscheatmentDelay() external view returns (uint256);
 
     /**
      * @notice Change the address that will receive the 'burned' part of the penalized stake.

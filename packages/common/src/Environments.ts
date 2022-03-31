@@ -9,6 +9,8 @@ export interface Environment {
   readonly penalizerConfiguration: PenalizerConfiguration
   readonly paymasterConfiguration: PaymasterConfiguration
   readonly maxUnstakeDelay: number
+  readonly abandonmentDelay: number
+  readonly escheatmentDelay: number
   readonly gtxdatanonzero: number
   readonly gtxdatazero: number
   readonly dataOnChainHandlingGasCostPerByte: number
@@ -34,8 +36,7 @@ const defaultRelayHubConfiguration: RelayHubConfiguration = {
   maxWorkerCount: 10,
   minimumUnstakeDelay: 15000,
   devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
-  devFee: 0,
-  abandonedRelayEscheatmentDelay: 157680000
+  devFee: 0
 }
 
 // TODO add as constructor params to paymaster instead of constants
@@ -56,6 +57,8 @@ const ethereumMainnet: Environment = {
   penalizerConfiguration: defaultPenalizerConfiguration,
   paymasterConfiguration: defaultPaymasterConfiguration,
   maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
+  abandonmentDelay: 31536000, // 1 year
+  escheatmentDelay: 2629746, // 1 month
   mintxgascost: 21000,
   gtxdatanonzero: 16,
   gtxdatazero: 4,
@@ -70,6 +73,8 @@ const ganacheLocal: Environment = {
   penalizerConfiguration: defaultPenalizerConfiguration,
   paymasterConfiguration: defaultPaymasterConfiguration,
   maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
+  abandonmentDelay: 1000,
+  escheatmentDelay: 500,
   mintxgascost: 21000,
   gtxdatanonzero: 16,
   gtxdatazero: 4,
@@ -98,6 +103,8 @@ const arbitrum: Environment = {
   mintxgascost: 700000,
   gtxdatanonzero: 2024,
   gtxdatazero: 506,
+  abandonmentDelay: 31536000, // 1 year
+  escheatmentDelay: 2629746, // 1 month
   // there is currently a hard-coded to be 2 at arbitrum:eth.go:43 (commit: 12483cfa17a29e7d68c354c456ebc371b05a6ea2)
   // setting factor to 0.6 instead of 0.5 to allow the transaction to pass in case of moderate gas price increase
   // note that excess will be collected by the Relay Server as an extra profit

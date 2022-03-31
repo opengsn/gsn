@@ -46,7 +46,7 @@ contract('SampleRecipient', function (accounts) {
   // TODO: this test is in a wrong file
   it('should allow owner to withdraw balance from RelayHub', async function () {
     const deposit = new BN('100000000000000000')
-    const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+    const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
     const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     const rhub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')
     await paymaster.setTrustedForwarder(forwarder)

@@ -118,7 +118,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
     paymaster = await ProxyDeployingPaymaster.new([uniswap.address], proxyFactory.address)
     forwarder = await Forwarder.new({ gas: 1e7 })
     recipient = await TestProxy.new(forwarder.address, { gas: 1e7 })
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, burnAddress)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, burnAddress, burnAddress)
     testHub = await TestHub.new(
       stakeManager.address,
       constants.ZERO_ADDRESS,

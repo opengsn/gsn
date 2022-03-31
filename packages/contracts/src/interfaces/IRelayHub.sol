@@ -39,9 +39,6 @@ interface IRelayHub is IERC165 {
         address devAddress;
         // 0 < fee < 100, as percentage of total charge from paymaster to relayer
         uint8 devFee;
-        // time in seconds after which a balance of an abandoned relay can be taken as a dev fee by a dev address
-        uint256 abandonedRelayEscheatmentDelay;
-
     }
 
     /// @notice Emitted when a configuration of the `RelayHub` is changed
@@ -118,6 +115,11 @@ interface IRelayHub is IERC165 {
     /// @notice This event is emitted in case this `RelayHub` is deprecated and will stop serving transactions soon.
     event HubDeprecated(uint256 deprecationTime);
 
+    /**
+     * @notice This event is emitted in case a `relayManager` has been deemed "abandoned" for being
+     * unresponsive for a prolonged period of time.
+     * @notice This event means the entire balance of the relay has been transferred to the `devAddress`.
+     */
     event AbandonedRelayManagerBalanceEscheated(
         address indexed relayManager,
         uint256 balance
@@ -149,7 +151,10 @@ interface IRelayHub is IERC165 {
      */
     function addRelayWorkers(address[] calldata newRelayWorkers) external;
 
-    function verifyCanRegister(address relayManager) external;
+    /**
+     * @notice The `RelayRegistrar` callback to notify the `RelayHub` that this `relayManager` has updated registration.
+     */
+    function onRelayServerRegistered(address relayManager) external;
 
     // Balance management
 
@@ -303,10 +308,10 @@ interface IRelayHub is IERC165 {
     function verifyRelayManagerStaked(address relayManager) external view;
 
     /**
-     * @notice Uses `StakeManager` to decide if the Relay Manager can be considered abandoned or not.
-     * Returns if the stake's abandonment time is in the past including the hard-coded delay.
+     * @notice Uses `StakeManager` to check if the Relay Manager can be considered abandoned or not.
+     * Returns true if the stake's abandonment time is in the past including the escheatment delay, false otherwise.
      */
-    function verifyRelayAbandoned(address relayManager) external view;
+    function isRelayEscheatable(address relayManager) external view returns (bool);
 
     /// @return `true` if the `RelayHub` is deprecated, `false` it it is not deprecated and can serve transactions.
     function isDeprecated() external view returns (bool);

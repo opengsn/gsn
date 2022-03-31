@@ -55,7 +55,7 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         bytes32[3] calldata url
     ) external override {
         address relayManager = msg.sender;
-        IRelayHub(relayHub).verifyCanRegister(relayManager);
+        IRelayHub(relayHub).onRelayServerRegistered(relayManager);
         emit RelayServerRegistered(relayManager, relayHub, baseRelayFee, pctRelayFee, url);
         storeRelayServerRegistration(relayManager, relayHub, baseRelayFee, pctRelayFee, url);
     }
@@ -132,18 +132,4 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         assembly { mstore(info, filled) }
     }
 
-    function deleteAbandonedRelayServer(address[] memory relayHubs, address relayManager) external {
-        for (uint256 i = 0; i < relayHubs.length; i++){
-            // solhint-disable-next-line no-empty-blocks
-            try IRelayHub(relayHubs[i]).verifyRelayAbandoned(relayManager){
-            } catch (bytes memory lowLevelData) {
-                // #if ENABLE_CONSOLE_LOG
-                console.log(string(lowLevelData));
-                // #endif
-                continue;
-            }
-            delete values[relayHubs[i]][relayManager];
-            emit RelayServerRemoved(relayHubs[i], relayManager);
-        }
-    }
 }

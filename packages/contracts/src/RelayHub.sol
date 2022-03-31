@@ -157,9 +157,11 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     /// @inheritdoc IRelayHub
-    function verifyCanRegister(address relayManager) external view override {
+    function onRelayServerRegistered(address relayManager) external override {
+        require(msg.sender == relayRegistrar, "caller is not relay registrar");
         verifyRelayManagerStaked(relayManager);
         require(workerCount[relayManager] > 0, "no relay workers");
+        stakeManager.updateRelayKeepaliveTime(relayManager);
     }
 
     /// @inheritdoc IRelayHub
@@ -590,16 +592,18 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
     }
 
-    function verifyRelayAbandoned(address relayManager) public view override {
-        (IStakeManager.StakeInfo memory stakeInfo,) = stakeManager.getStakeInfo(relayManager);
-        require(stakeInfo.abandonedTime != 0 && stakeInfo.abandonedTime + config.abandonedRelayEscheatmentDelay < block.timestamp, "relay manager not abandoned yet");
+    /// @inheritdoc IRelayHub
+    function isRelayEscheatable(address relayManager) public view override returns (bool){
+        return stakeManager.isRelayEscheatable(relayManager);
     }
 
+    /// @inheritdoc IRelayHub
     function escheatAbandonedRelayBalance(address relayManager) external override onlyOwner {
-        verifyRelayAbandoned(relayManager);
+        require(stakeManager.isRelayEscheatable(relayManager), "relay server not escheatable yet");
         uint256 balance = balances[relayManager];
         balances[relayManager] = 0;
         balances[config.devAddress] = balances[config.devAddress].add(balance);
+        emit AbandonedRelayManagerBalanceEscheated(relayManager, balance);
     }
 
     /// @inheritdoc IRelayHub
