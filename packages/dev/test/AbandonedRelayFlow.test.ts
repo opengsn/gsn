@@ -65,7 +65,7 @@ contract('Abandoned Relay Flow', function ([_, relayManager, relayOwner, relayWo
     let stakeInfo = (await stakeManager.getStakeInfo(relayManager))[0]
     assert.equal(stakeInfo.abandonedTime.toString(), '0')
     const res = await stakeManager.markRelayAbandoned(relayManager)
-    expectEvent.inLogs(res.logs, 'RelayAbandoned', {
+    expectEvent.inLogs(res.logs, 'RelayServerAbandoned', {
       relayManager
     })
     stakeInfo = (await stakeManager.getStakeInfo(relayManager))[0]
@@ -98,7 +98,7 @@ contract('Abandoned Relay Flow', function ([_, relayManager, relayOwner, relayWo
   })
 
   it('should not allow incorrect address to update relay keepalive timestamp on the StakeManager', async function () {
-    await expectRevert(stakeManager.updateRelayKeepaliveTime(relayManager, { from: relayWorker }), 'caller not authorized')
+    await expectRevert(stakeManager.updateRelayKeepaliveTime(relayManager, { from: relayWorker }), 'must be called by owner or hub')
   })
 
   it('should not allow contract owner to confiscate stake of not abandoned relay', async function () {

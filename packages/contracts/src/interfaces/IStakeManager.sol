@@ -73,13 +73,13 @@ interface IStakeManager {
         address indexed burnAddress
     );
 
-    /// @notice Emitted when a `burnAddress` is changed.
+    /// @notice Emitted when a `devAddress` is changed.
     event DevAddressSet(
         address indexed burnAddress
     );
 
-    /// @notice
-    event RelayAbandoned(
+    /// @notice Emitted if Relay Server is inactive for an `abandonmentDelay` and contract owner initiates its removal.
+    event RelayServerAbandoned(
         address indexed relayManager,
         uint256 abandonedTime
     );
