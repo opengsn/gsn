@@ -23,6 +23,7 @@ function cleanFolder (): void {
     fs.unlinkSync(txStoreFilePath)
   }
   if (fs.existsSync(workdir)) {
+    // @ts-ignore
     fs.rmSync(workdir, {
       recursive: true,
       force: true

@@ -1,10 +1,15 @@
 import Web3 from 'web3'
 import { PrefixedHexString, fromRpcSig } from 'ethereumjs-util'
 import { getEip712Signature, TruffleContract } from '@opengsn/common'
-import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types } from 'eth-sig-util'
+import { TypedMessage } from 'eth-sig-util'
 
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
-import { EIP712DomainType } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import {
+  EIP712Domain,
+  EIP712DomainType,
+  MessageTypeProperty,
+  MessageTypes
+} from '@opengsn/common/dist/EIP712/TypedRequestData'
 
 import daiPermitAbi from '../build/contracts/PermitInterfaceDAI.json'
 import eip2612PermitAbi from '../build/contracts/PermitInterfaceEIP2612.json'
@@ -34,7 +39,7 @@ export const CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS = '0xD6aA3D25116d8dA79Ea024
 export const PERMIT_SIGNATURE_DAI = 'permit(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)'
 export const PERMIT_SIGNATURE_EIP2612 = 'permit(address,address,uint256,uint256,uint8,bytes32,bytes32)'
 
-export function getDaiDomainSeparator (): EIP712Domain {
+export function getDaiDomainSeparator (): Record<string, unknown> {
   return {
     name: 'Dai Stablecoin',
     version: '1',
@@ -43,7 +48,7 @@ export function getDaiDomainSeparator (): EIP712Domain {
   }
 }
 
-export function getUniDomainSeparator (): EIP712Domain {
+export function getUniDomainSeparator (): Record<string, unknown> {
   return {
     name: 'Uniswap',
     chainId: 1,
@@ -51,9 +56,9 @@ export function getUniDomainSeparator (): EIP712Domain {
   }
 }
 
-interface Types extends EIP712Types {
-  EIP712Domain: EIP712TypeProperty[]
-  Permit: EIP712TypeProperty[]
+interface Types extends MessageTypes{
+  EIP712Domain: MessageTypeProperty[]
+  Permit: MessageTypeProperty[]
 }
 
 // TODO: for now, 'from' field can be thrown in without exception raised by Metamask
@@ -77,7 +82,7 @@ export interface PermitInterfaceEIP2612 {
 }
 
 // currently not imposing any limitations on how the 'Permit' type can look like
-export type PermitType = EIP712TypeProperty[]
+export type PermitType = MessageTypeProperty[]
 
 export const PermitTypeDai: PermitType = [
   { name: 'holder', type: 'address' },
@@ -95,7 +100,7 @@ export const PermitTypeEIP2612: PermitType = [
   { name: 'deadline', type: 'uint256' }
 ]
 
-export class TypedPermit implements EIP712TypedData {
+export class TypedPermit implements TypedMessage<Types> {
   readonly types: Types
   readonly domain: EIP712Domain
   readonly primaryType: string
@@ -106,7 +111,7 @@ export class TypedPermit implements EIP712TypedData {
     permitType: PermitType,
     domain: EIP712Domain,
     permit: PermitInterfaceDAI | PermitInterfaceEIP2612,
-    eip712DomainType: EIP712TypeProperty[] = EIP712DomainType) {
+    eip712DomainType: MessageTypeProperty[] = EIP712DomainType) {
     this.types = {
       EIP712Domain: eip712DomainType,
       Permit: permitType
@@ -176,7 +181,7 @@ export async function signAndEncodeEIP2612Permit (
   deadline: string,
   web3Input: Web3,
   domainSeparator: EIP712Domain,
-  domainType?: EIP712TypeProperty[],
+  domainType?: MessageTypeProperty[],
   forceNonce?: number,
   skipValidation = false
 ): Promise<PrefixedHexString> {

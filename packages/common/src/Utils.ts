@@ -26,8 +26,9 @@ import { Address } from './types/Aliases'
 
 import chalk from 'chalk'
 import { encode, List } from 'rlp'
-import { EIP712TypedData } from 'eth-sig-util'
 import { RelayRequest } from './EIP712/RelayRequest'
+import { MessageTypes } from './EIP712/TypedRequestData'
+import { TypedMessage } from 'eth-sig-util'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -95,14 +96,14 @@ export async function getDefaultMethodSuffix (web3: Web3): Promise<string> {
   return '_v4'
 }
 
-export async function getEip712Signature (
+export async function getEip712Signature<T extends MessageTypes> (
   web3: Web3,
-  typedRequestData: EIP712TypedData,
+  typedRequestData: TypedMessage<T>,
   methodSuffix: string | null = null,
   jsonStringifyRequest = false
 ): Promise<PrefixedHexString> {
   const senderAddress = typedRequestData.message.from
-  let dataToSign: EIP712TypedData | string
+  let dataToSign: TypedMessage<T> | string
   if (jsonStringifyRequest) {
     dataToSign = JSON.stringify(typedRequestData)
   } else {

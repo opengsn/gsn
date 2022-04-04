@@ -44,6 +44,7 @@ export async function startRelay (
 
   const serverWorkDir = '/tmp/gsn/test/server'
 
+  // @ts-ignore
   fs.rmSync(serverWorkDir, {
     recursive: true,
     force: true
@@ -102,7 +103,7 @@ export async function startRelay (
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   let relaylog = function (_: string): void {}
   if (options.relaylog) {
-    relaylog = (msg: string) => msg.split('\n').forEach(line => console.log(`relay-${proc.pid!.toString()}> ${line}`))
+    relaylog = (msg: string) => msg.split('\n').forEach(line => console.log(`relay-${proc.pid.toString()}> ${line}`))
   }
 
   await new Promise((resolve, reject) => {

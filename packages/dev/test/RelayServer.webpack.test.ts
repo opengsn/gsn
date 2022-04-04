@@ -15,6 +15,7 @@ describe('RelayServer-webpack', () => {
   before('create webpack', function () {
     this.timeout(15000)
     const jsrelayDir = path.join(__dirname, '../../../dockers', 'jsrelay')
+    // @ts-ignore
     fs.rmSync(path.join(jsrelayDir, 'dist'), {
       recursive: true,
       force: true
