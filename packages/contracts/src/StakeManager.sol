@@ -226,7 +226,7 @@ contract StakeManager is IStakeManager, Ownable {
         require(info.abandonedTime == 0, "relay manager already abandoned");
         require(info.keepaliveTime + abandonmentDelay < block.timestamp, "relay manager was alive recently");
         info.abandonedTime = block.timestamp;
-        emit RelayAbandoned(relayManager, info.abandonedTime);
+        emit RelayServerAbandoned(relayManager, info.abandonedTime);
     }
 
     /// @inheritdoc IStakeManager
@@ -245,7 +245,7 @@ contract StakeManager is IStakeManager, Ownable {
         StakeInfo storage info = stakes[relayManager];
         bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalTime == type(uint256).max;
         bool isRelayOwner = info.owner == msg.sender;
-        require(isHubAuthorized || isRelayOwner, "caller not authorized");
+        require(isHubAuthorized || isRelayOwner, "must be called by owner or hub");
         info.abandonedTime = 0;
         info.keepaliveTime = block.timestamp;
         emit RelayKeepalive(relayManager, info.keepaliveTime);

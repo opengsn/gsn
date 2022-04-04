@@ -43,14 +43,6 @@ interface IRelayRegistrar is IERC165 {
     );
 
     /**
-     * @notice Emitted when a relay server and its details are removed from the RelayRegistrar.
-     */
-    event RelayServerRemoved(
-        address indexed relayHub,
-        address indexed relayManager
-    );
-
-    /**
      * @notice This function is called by Relay Servers in order to register or to update their registration.
      * @param relayHub The address of the `RelayHub` contract for which this action is performed.
      * @param baseRelayFee The base fee the Relay Server charges for a single transaction in Ether, in wei.
