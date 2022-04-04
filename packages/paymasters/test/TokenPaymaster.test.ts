@@ -36,7 +36,7 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestProxy = artifacts.require('TestProxy')
 
-export const transferErc20Error = '\'ERC20: transfer amount exceeds allowance\' -- Reason given: ERC20: transfer amount exceeds allowance.'
+export const transferErc20Error = '\'ERC20: insufficient allowance\' -- Reason given: ERC20: insufficient allowance.'
 
 // TODO: this test recreates GSN manually. Use GSN tools to do it instead.
 contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) => {
@@ -136,7 +136,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
 
       it('should reject if not enough balance', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
-        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /ERC20: transfer amount exceeds balance/)
+        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /ERC20: insufficient allowance/)
       })
 
       it('should reject if unknown paymasterData', async () => {
