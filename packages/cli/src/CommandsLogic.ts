@@ -166,7 +166,7 @@ export class CommandsLogic {
       let isReady = false
       try {
         isReady = await this.isRelayReady(relayUrl)
-      } catch (e) {
+      } catch (e: any) {
         console.log(e.message)
       }
       if (isReady) {
@@ -361,7 +361,7 @@ export class CommandsLogic {
       try {
         await relayHub.verifyRelayManagerStaked(relayAddress)
         console.log('Relayer already authorized')
-      } catch (e) {
+      } catch (e: any) {
         console.log('verifyRelayManagerStaked reverted with:', e.message)
         console.log('Authorizing relayer for hub')
         const authorizeTx = await stakeManager
@@ -375,7 +375,7 @@ export class CommandsLogic {
         success: true,
         transactions
       }
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         transactions,
@@ -440,6 +440,7 @@ export class CommandsLogic {
         console.log('Calling in view mode')
         await this.contractInteractor.web3.eth.call({ ...web3TxData })
         const txData = { ...web3TxData, gasLimit: web3TxData.gas }
+        // @ts-ignore
         delete txData.gas
         txToSign = new Transaction(txData, this.contractInteractor.getRawTxOptions())
       } else {
@@ -479,7 +480,7 @@ export class CommandsLogic {
         success: true,
         transactions
       }
-    } catch (e) {
+    } catch (e: any) {
       return {
         success: false,
         transactions,

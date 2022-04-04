@@ -273,6 +273,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       console.log('recipient tokens balance change (used tokens): ', usedTokens.toString())
       // @ts-ignore
       console.log('reported charged tokens in TokensCharged: ', chargedEvent.args.tokenActualCharge.toString())
+      // @ts-ignore
       const expectedTokenCharge = await uniswap.getTokenToEthOutputPrice(chargedEvent.args.ethActualCharge)
       assert.closeTo(usedTokens.toNumber(), expectedTokenCharge.toNumber(), 1000)
       const postBalance = await hub.balanceOf(paymaster.address)

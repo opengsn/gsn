@@ -308,6 +308,7 @@ contract('RelayProvider', function (accounts) {
           if (error != null) {
             reject(error)
           } else {
+            // @ts-ignore
             resolve(result)
           }
         })

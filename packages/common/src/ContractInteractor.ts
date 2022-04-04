@@ -669,7 +669,7 @@ export class ContractInteractor {
               }))
               relayEventParts.push(pastEvents)
               break
-            } catch (e) {
+            } catch (e: any) {
               /* eslint-disable */
               this.logger.error(`error in getPastEvents. 
               fromBlock: ${fromBlock.toString()} 
@@ -690,7 +690,7 @@ export class ContractInteractor {
           }
         }
         break
-      } catch (e) {
+      } catch (e: any) {
         // dynamically adjust query size fo some RPC providers
         if (e.toString().match(/query returned more than/) != null) {
           this.logger.warn(

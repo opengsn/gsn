@@ -301,6 +301,7 @@ contract('RelayClient', function (accounts) {
         })
 
         await new Promise((resolve) => {
+          // @ts-ignore
           server = mockServer.listen(0, resolve)
         })
         const mockServerPort = (server as any).address().port

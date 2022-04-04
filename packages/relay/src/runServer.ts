@@ -117,7 +117,7 @@ async function run (): Promise<void> {
     console.log('Resolving reputation manager config...\n')
     reputationManagerConfig = resolveReputationManagerConfig(conf)
     runPaymasterReputations = config.runPaymasterReputations
-  } catch (e) {
+  } catch (e: any) {
     error(e.message)
   }
   const { devMode, workdir } = config

@@ -162,7 +162,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
         jsonrpc: '2.0'
       }
       callback(null, rpcResponse)
-    } catch (error) {
+    } catch (error: any) {
       callback(error, undefined)
     }
   }
@@ -172,7 +172,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     let gsnTransactionDetails: GsnTransactionDetails
     try {
       gsnTransactionDetails = this._fixGasFees(payload.params[0])
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(e)
       callback(e)
       return

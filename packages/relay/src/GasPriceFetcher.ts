@@ -34,7 +34,7 @@ export class GasPriceFetcher {
           throw new Error(`not a number: ${ret}`)
         }
         return (ret * 1e9).toString()
-      } catch (e) {
+      } catch (e: any) {
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         this.logger.error(`failed to access gas oracle. using getGasPrice() instead.\n(url=${this.gasPriceOracleUrl} path=${this.gasPriceOraclePath} err: ${e.message})`)
       }

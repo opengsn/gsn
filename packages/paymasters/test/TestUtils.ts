@@ -20,7 +20,7 @@ export async function revertReason (func: Promise<any>): Promise<string> {
   try {
     await func
     return 'ok' // no revert
-  } catch (e) {
+  } catch (e: any) {
     return e.message.replace(/.*reverted with reason string /, '')
   }
 }
