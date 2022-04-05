@@ -80,7 +80,7 @@ contract('Abandoned Relay Flow', function ([_, relayManager, relayOwner, relayWo
     assert.notEqual(stakeInfo.abandonedTime.toString(), '0')
     const res = await stakeManager.updateRelayKeepaliveTime(relayManager, { from: relayOwner })
     const blockTimestamp = await getBlockTimestamp(res)
-    expectEvent.inLogs(res.logs, 'RelayKeepalive', {
+    expectEvent.inLogs(res.logs, 'RelayServerKeepalive', {
       relayManager,
       keepaliveTime: blockTimestamp.toString()
     })
