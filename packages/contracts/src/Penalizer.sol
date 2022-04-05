@@ -17,7 +17,7 @@ import "./interfaces/IPenalizer.sol";
 contract Penalizer is IPenalizer {
     using ECDSA for bytes32;
 
-    string public override versionPenalizer = "3.0.0-alpha.3+opengsn.penalizer.ipenalizer";
+    string public override versionPenalizer = "3.0.0-alpha.2+opengsn.penalizer.ipenalizer";
 
     uint256 internal immutable penalizeBlockDelay;
     uint256 internal immutable penalizeBlockExpiration;

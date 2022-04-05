@@ -45,4 +45,3 @@ yarn-error.log
 hardhat.log
 /packages/contracts/solpp/
 /packages/contracts/docs/
-/packages/dev/contracts-link
