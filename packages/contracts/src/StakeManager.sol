@@ -66,16 +66,6 @@ contract StakeManager is IStakeManager, Ownable {
         return maxUnstakeDelay;
     }
 
-    /// @inheritdoc IStakeManager
-    function getAbandonmentDelay() external override view returns (uint256) {
-        return abandonmentDelay;
-    }
-
-    /// @inheritdoc IStakeManager
-    function getEscheatmentDelay() external override view returns (uint256) {
-        return escheatmentDelay;
-    }
-
     /// maps relay managers to a map of addressed of their authorized hubs to the information on that hub
     mapping(address => mapping(address => RelayHubInfo)) public authorizedHubs;
 

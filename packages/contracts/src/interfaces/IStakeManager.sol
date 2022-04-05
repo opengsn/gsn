@@ -232,16 +232,6 @@ interface IStakeManager {
     function getMaxUnstakeDelay() external view returns (uint256);
 
     /**
-     * @return The abandonment delay this `StakeManger` requires.
-     */
-    function getAbandonmentDelay() external view returns (uint256);
-
-    /**
-     * @return The escheatment delay this `StakeManger` requires.
-     */
-    function getEscheatmentDelay() external view returns (uint256);
-
-    /**
      * @notice Change the address that will receive the 'burned' part of the penalized stake.
      * This is done to prevent malicious Relay Server from penalizing itself and breaking even.
      */
