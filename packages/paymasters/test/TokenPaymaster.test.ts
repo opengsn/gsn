@@ -57,7 +57,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       value: (5e18).toString(),
       gas: 10000000
     })
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, burnAddress)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, burnAddress, burnAddress)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     hub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')
     token = await TestToken.at(await uniswap.tokenAddress())

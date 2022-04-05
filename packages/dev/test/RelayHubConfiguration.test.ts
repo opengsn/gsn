@@ -75,7 +75,7 @@ contract('RelayHub Configuration',
       forwarder = forwarderInstance.address
       recipient = await TestRecipient.new(forwarder)
       paymaster = await TestPaymasterEverythingAccepted.new()
-      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+      stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
       penalizer = await Penalizer.new(
         defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
         defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)

@@ -41,6 +41,17 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
+  const baseRelayFee = '10000'
+  const pctRelayFee = '10'
+  const gasPrice = 1e9.toString()
+  const maxFeePerGas = 1e9.toString()
+  const maxPriorityFeePerGas = 1e9.toString()
+  const gasLimit = '1000000'
+  const senderNonce = '0'
+  let sharedRelayRequestData: RelayRequest
+  const paymasterData = '0x'
+  const clientId = '1'
+
   const RelayCallStatusCodes = {
     OK: new BN('0'),
     RelayedCallFailed: new BN('1'),
@@ -67,9 +78,18 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
   let paymaster: string
   let forwarder: string
 
+  async function mintApproveSetOwnerStake (token: TestTokenInstance = testToken, stake: BN = oneEther, unstakeDelay: number = 15000): Promise<void> {
+    await token.mint(stake, { from: relayOwner })
+    await token.approve(stakeManager.address, stake, { from: relayOwner })
+    await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
+    await stakeManager.stakeForRelayManager(token.address, relayManager, unstakeDelay, stake, {
+      from: relayOwner
+    })
+  }
+
   beforeEach(async function () {
     testToken = await TestToken.new()
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, oneEther.toString())
     relayRegistrar = await RelayRegistrar.at(await relayHubInstance.getRelayRegistrar())
@@ -212,17 +232,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
   })
 
   describe('relayCall', function () {
-    const baseRelayFee = '10000'
-    const pctRelayFee = '10'
-    const gasPrice = 1e9.toString()
-    const maxFeePerGas = 1e9.toString()
-    const maxPriorityFeePerGas = 1e9.toString()
-    const gasLimit = '1000000'
-    const senderNonce = '0'
-    let sharedRelayRequestData: RelayRequest
-    const paymasterData = '0x'
-    const clientId = '1'
-
     beforeEach(function () {
       sharedRelayRequestData = {
         request: {
@@ -304,15 +313,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
 
       context('#verifyRelayManagerStaked()', function () {
         let id: string
-
-        async function mintApproveSetOwnerStake (token: TestTokenInstance = testToken, stake: BN = oneEther, unstakeDelay: number = 15000): Promise<void> {
-          await token.mint(stake, { from: relayOwner })
-          await token.approve(stakeManager.address, stake, { from: relayOwner })
-          await stakeManager.setRelayManagerOwner(relayOwner, { from: relayManager })
-          await stakeManager.stakeForRelayManager(token.address, relayManager, unstakeDelay, stake, {
-            from: relayOwner
-          })
-        }
 
         function testRejectsAddRelayWorkers (expectedError: string): void {
           it('should not accept a relay call with error: ' + expectedError, async function () {

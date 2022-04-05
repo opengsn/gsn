@@ -39,7 +39,6 @@ interface IRelayHub is IERC165 {
         address devAddress;
         // 0 < fee < 100, as percentage of total charge from paymaster to relayer
         uint8 devFee;
-
     }
 
     /// @notice Emitted when a configuration of the `RelayHub` is changed
@@ -117,6 +116,16 @@ interface IRelayHub is IERC165 {
     event HubDeprecated(uint256 deprecationTime);
 
     /**
+     * @notice This event is emitted in case a `relayManager` has been deemed "abandoned" for being
+     * unresponsive for a prolonged period of time.
+     * @notice This event means the entire balance of the relay has been transferred to the `devAddress`.
+     */
+    event AbandonedRelayManagerBalanceEscheated(
+        address indexed relayManager,
+        uint256 balance
+    );
+
+    /**
      * Error codes that describe all possible failure reasons reported in the `TransactionRelayed` event `status` field.
      *  @param OK The transaction was successfully relayed and execution successful - never included in the event.
      *  @param RelayedCallFailed The transaction was relayed, but the relayed call failed.
@@ -142,7 +151,10 @@ interface IRelayHub is IERC165 {
      */
     function addRelayWorkers(address[] calldata newRelayWorkers) external;
 
-    function verifyCanRegister(address relayManager) external;
+    /**
+     * @notice The `RelayRegistrar` callback to notify the `RelayHub` that this `relayManager` has updated registration.
+     */
+    function onRelayServerRegistered(address relayManager) external;
 
     // Balance management
 
@@ -229,6 +241,12 @@ interface IRelayHub is IERC165 {
     function deprecateHub(uint256 _deprecationTime) external;
 
     /**
+     * @notice
+     * @param relayManager
+     */
+    function escheatAbandonedRelayBalance(address relayManager) external;
+
+    /**
      * @notice The fee is expressed as a base fee in wei plus percentage of the actual charge.
      * For example, a value '40' stands for a 40% fee, so the recipient will be charged for 1.4 times the spent amount.
      * @param gasUsed An amount of gas used by the transaction.
@@ -288,6 +306,12 @@ interface IRelayHub is IERC165 {
      * Returns if the stake's token, amount and delay satisfy all requirements, reverts otherwise.
      */
     function verifyRelayManagerStaked(address relayManager) external view;
+
+    /**
+     * @notice Uses `StakeManager` to check if the Relay Manager can be considered abandoned or not.
+     * Returns true if the stake's abandonment time is in the past including the escheatment delay, false otherwise.
+     */
+    function isRelayEscheatable(address relayManager) external view returns (bool);
 
     /// @return `true` if the `RelayHub` is deprecated, `false` it it is not deprecated and can serve transactions.
     function isDeprecated() external view returns (bool);

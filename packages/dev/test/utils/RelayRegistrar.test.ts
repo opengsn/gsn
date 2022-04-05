@@ -76,7 +76,7 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
   context('#registerRelayServer()', function () {
     it('should fail to register if the Relay Manager does not get approved by the RelayHub', async function () {
       await relayHubOne.setRelayManagerStaked(relay1, false)
-      await expectRevert(relayRegistrar.registerRelayServer(relayHubOne.address, 1, 2, splitUrl1, { from: relay1 }), 'verifyCanRegister: cannot')
+      await expectRevert(relayRegistrar.registerRelayServer(relayHubOne.address, 1, 2, splitUrl1, { from: relay1 }), 'onRelayServerRegistered no stake')
     })
 
     it('should store the relay details on-chain and emit an event', async function () {

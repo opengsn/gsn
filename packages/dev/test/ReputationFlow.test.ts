@@ -11,7 +11,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
 const RelayHub = artifacts.require('RelayHub')
 
-contract('ReputationFlow', function (accounts) {
+contract('ReputationFlow', function () {
   let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
   let testRecipient: TestRecipientInstance
   let relayProvider: RelayProvider

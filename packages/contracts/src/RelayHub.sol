@@ -12,6 +12,7 @@ import "hardhat/console.sol";
 // #endif
 
 import "./utils/MinLibBytes.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -37,6 +38,7 @@ import "./interfaces/IStakeManager.sol";
 contract RelayHub is IRelayHub, Ownable, ERC165 {
     using ERC165Checker for address;
     using SafeMath for uint256;
+    using Address for address;
 
     address private constant DRY_RUN_ADDRESS = 0x0000000000000000000000000000000000000000;
 
@@ -155,9 +157,11 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     /// @inheritdoc IRelayHub
-    function verifyCanRegister(address relayManager) external view override {
+    function onRelayServerRegistered(address relayManager) external override {
+        require(msg.sender == relayRegistrar, "caller is not relay registrar");
         verifyRelayManagerStaked(relayManager);
         require(workerCount[relayManager] > 0, "no relay workers");
+        stakeManager.updateRelayKeepaliveTime(relayManager);
     }
 
     /// @inheritdoc IRelayHub
@@ -586,6 +590,20 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         (IStakeManager.StakeInfo memory stakeInfo,) = stakeManager.getStakeInfo(relayManager);
         require(stakeInfo.stake > 0, "relay manager not staked");
         stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
+    }
+
+    /// @inheritdoc IRelayHub
+    function isRelayEscheatable(address relayManager) public view override returns (bool){
+        return stakeManager.isRelayEscheatable(relayManager);
+    }
+
+    /// @inheritdoc IRelayHub
+    function escheatAbandonedRelayBalance(address relayManager) external override onlyOwner {
+        require(stakeManager.isRelayEscheatable(relayManager), "relay server not escheatable yet");
+        uint256 balance = balances[relayManager];
+        balances[relayManager] = 0;
+        balances[config.devAddress] = balances[config.devAddress].add(balance);
+        emit AbandonedRelayManagerBalanceEscheated(relayManager, balance);
     }
 
     /// @inheritdoc IRelayHub

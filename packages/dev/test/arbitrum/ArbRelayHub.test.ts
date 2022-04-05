@@ -40,7 +40,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
   before(async function () {
     testToken = await TestToken.new()
     forwarder = await Forwarder.new()
-    stakeManager = await StakeManager.new(Number.MAX_SAFE_INTEGER, constants.BURN_ADDRESS)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
     const testArbSys = await TestArbSys.new()
     relayRegistrar = await RelayRegistrar.new()
     arbRelayHub = await ArbRelayHub.new(testArbSys.address, stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, relayRegistrar.address, environments.arbitrum.relayHubConfiguration)

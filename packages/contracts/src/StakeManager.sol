@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./interfaces/IStakeManager.sol";
-import "./interfaces/IRelayHub.sol";
 
 /**
  * @title The StakeManager implementation
@@ -24,6 +23,8 @@ contract StakeManager is IStakeManager, Ownable {
 
     string public override versionSM = "2.2.3+opengsn.stakemanager.istakemanager";
     uint256 internal immutable maxUnstakeDelay;
+
+    AbandonedRelayServerConfig internal abandonedRelayServerConfig;
 
     address internal burnAddress;
     uint256 internal immutable creationBlock;
@@ -49,6 +50,17 @@ contract StakeManager is IStakeManager, Ownable {
     }
 
     /// @inheritdoc IStakeManager
+    function setDevAddress(address _devAddress) public override onlyOwner {
+        abandonedRelayServerConfig.devAddress = _devAddress;
+        emit DevAddressSet(abandonedRelayServerConfig.devAddress);
+    }
+
+    /// @inheritdoc IStakeManager
+    function getAbandonedRelayServerConfig() external override view returns (AbandonedRelayServerConfig memory) {
+        return abandonedRelayServerConfig;
+    }
+
+    /// @inheritdoc IStakeManager
     function getMaxUnstakeDelay() external override view returns (uint256) {
         return maxUnstakeDelay;
     }
@@ -58,12 +70,18 @@ contract StakeManager is IStakeManager, Ownable {
 
     constructor(
         uint256 _maxUnstakeDelay,
-        address _burnAddress
+        uint256 _abandonmentDelay,
+        uint256 _escheatmentDelay,
+        address _burnAddress,
+        address _devAddress
     ) {
         require(_burnAddress != address(0), "transfers to address(0) may fail");
         setBurnAddress(_burnAddress);
+        setDevAddress(_devAddress);
         creationBlock = block.number;
         maxUnstakeDelay = _maxUnstakeDelay;
+        abandonedRelayServerConfig.abandonmentDelay = _abandonmentDelay;
+        abandonedRelayServerConfig.escheatmentDelay = _escheatmentDelay;
     }
 
     /// @inheritdoc IStakeManager
@@ -178,5 +196,43 @@ contract StakeManager is IStakeManager, Ownable {
         stakes[relayManager].token.safeTransfer(burnAddress, toBurn);
         stakes[relayManager].token.safeTransfer(beneficiary, reward);
         emit StakePenalized(relayManager, beneficiary, stakes[relayManager].token, reward);
+    }
+
+    /// @inheritdoc IStakeManager
+    function isRelayEscheatable(address relayManager) public view override returns (bool) {
+        IStakeManager.StakeInfo memory stakeInfo = stakes[relayManager];
+        return stakeInfo.abandonedTime != 0 && stakeInfo.abandonedTime + abandonedRelayServerConfig.escheatmentDelay < block.timestamp;
+    }
+
+    /// @inheritdoc IStakeManager
+    function markRelayAbandoned(address relayManager) external override onlyOwner {
+        StakeInfo storage info = stakes[relayManager];
+        require(info.stake > 0, "relay manager not staked");
+        require(info.abandonedTime == 0, "relay manager already abandoned");
+        require(info.keepaliveTime + abandonedRelayServerConfig.abandonmentDelay < block.timestamp, "relay manager was alive recently");
+        info.abandonedTime = block.timestamp;
+        emit RelayServerAbandoned(relayManager, info.abandonedTime);
+    }
+
+    /// @inheritdoc IStakeManager
+    function escheatAbandonedRelayStake(address relayManager) external override onlyOwner {
+        StakeInfo storage info = stakes[relayManager];
+        require(isRelayEscheatable(relayManager), "relay server not escheatable yet");
+        uint256 amount = info.stake;
+        info.stake = 0;
+        info.withdrawTime = 0;
+        info.token.safeTransfer(abandonedRelayServerConfig.devAddress, amount);
+        emit AbandonedRelayManagerStakeEscheated(relayManager, msg.sender, info.token, amount);
+    }
+
+    /// @inheritdoc IStakeManager
+    function updateRelayKeepaliveTime(address relayManager) external override {
+        StakeInfo storage info = stakes[relayManager];
+        bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalTime == type(uint256).max;
+        bool isRelayOwner = info.owner == msg.sender;
+        require(isHubAuthorized || isRelayOwner, "must be called by owner or hub");
+        info.abandonedTime = 0;
+        info.keepaliveTime = block.timestamp;
+        emit RelayServerKeepalive(relayManager, info.keepaliveTime);
     }
 }
