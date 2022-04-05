@@ -11,7 +11,7 @@
     "access": "public"
   },
   "scripts": {
-    "deploy": "yarn solpp; hardhat deploy",
+    "deploy": "yarn solpp; hardhat deploy --export-all all-networks.json ",
     "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
     "tsc": "tsc",
     "watch-tsc": "tsc -w",
