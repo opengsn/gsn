@@ -6,7 +6,6 @@
     ],
     "nohoist": [
       "**eslint**",
-      "**eth-sig-util**",
       "**ts-node**"
     ]
   },
@@ -60,6 +59,8 @@
     "lerna-rm-dist": "lerna run rm-dist",
     "lerna-run-test": "yarn lerna-tsc && lerna run test --stream --no-prefix",
     "lerna-run-gas-calculations": "lerna run gas-calculations --stream --no-prefix",
+    "lerna-run-test-webpack": "lerna run test-webpack --stream --no-prefix",
+    "lerna-run-test-webpack-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test-webpack'",
     "lerna-run-gas-calculations-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-gas-calculations'",
     "lerna-run-test-fork": "lerna run test-fork --stream --no-prefix",
     "lerna-run-test-only": "lerna run test-only --stream",
@@ -78,7 +79,6 @@
     "@typechain/truffle-v5": "^6.0.0",
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.2.12",
-    "@types/eth-sig-util": "^2.1.0",
     "@types/mocha": "^8.2.0",
     "@typescript-eslint/eslint-plugin": "^4.8.1",
     "@typescript-eslint/parser": "^4.8.1",
@@ -90,7 +90,7 @@
     "eslint-plugin-node": "11.1.0",
     "eslint-plugin-promise": "4.2.1",
     "eslint-plugin-standard": "4.0.1",
-    "eth-sig-util": "2.5.2",
+    "eth-sig-util": "^3.0.1",
     "ethereumjs-abi": "^0.6.8",
     "ganache-cli": "^6.12.2",
     "lerna": "^3.22.1",
@@ -100,7 +100,7 @@
     "truffle": "5.1.26",
     "ts-node": "8.6.2",
     "typechain": "^6.0.5",
-    "typescript": "3.8.3",
+    "typescript": "^4.6.3",
     "verdaccio": "^4.12.0",
     "web3": "1.6.1",
     "web3-core": "1.6.1",

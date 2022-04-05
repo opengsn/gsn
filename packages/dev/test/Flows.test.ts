@@ -65,7 +65,7 @@ options.forEach(params => {
       const gasPriceFactor = 1
 
       testToken = await TestToken.new()
-      sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+      sm = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
       const stake = 1e18.toString()
       await testToken.mint(stake)
       await testToken.approve(sm.address, stake)
@@ -148,7 +148,7 @@ options.forEach(params => {
       try {
         const gas = await sr.contract.methods.emitMessage('hello').estimateGas()
         res = await sr.emitMessage('hello', { from: from, gas })
-      } catch (e) {
+      } catch (e: any) {
         console.log('error is ', e.message)
         throw e
       }
@@ -165,7 +165,7 @@ options.forEach(params => {
         await fixTxDetails(txDetails, relayProvider)
         const res = await sr.emitMessage('hello, from gasless', txDetails)
         console.log('res after gasless emit:', res.logs[0].args.message)
-      } catch (e) {
+      } catch (e: any) {
         ex = e
       }
 
@@ -211,7 +211,7 @@ options.forEach(params => {
                 const txDetails: any = { from, gas }
                 await fixTxDetails(txDetails, relayProvider)
                 res = await sr.emitMessageNoParams(txDetails)
-              } catch (e) {
+              } catch (e: any) {
                 console.log('error is ', e.message)
                 throw e
               }
@@ -228,7 +228,7 @@ options.forEach(params => {
           await approvalPaymaster.setRelayHub(rhub.address)
           await approvalPaymaster.setTrustedForwarder(await sr.getTrustedForwarder())
           await rhub.depositFor(approvalPaymaster.address, { value: (1e18).toString() })
-          relayClientConfig = { ...relayClientConfig, ...{ paymasterAddress: approvalPaymaster.address } }
+          relayClientConfig = { ...relayClientConfig, ...{ paymasterAddress: approvalPaymaster.address }, performDryRunViewRelayCall: false }
           const relayProvider = await RelayProvider.newProvider(
             {
               provider: web3.currentProvider as HttpProvider,
@@ -267,7 +267,7 @@ options.forEach(params => {
             }
             await fixTxDetails(txDetails, relayProvider)
             await sr.emitMessage('xxx', txDetails)
-          } catch (e) {
+          } catch (e: any) {
             console.log('error1: ', e)
             throw e
           } finally {
@@ -307,7 +307,7 @@ options.forEach(params => {
               await fixTxDetails(txDetails, relayProvider)
               await sr.emitMessage('xxx', txDetails)
             }, 'unexpected approvalData: \'\' instead of')
-          } catch (e) {
+          } catch (e: any) {
             console.log('error3: ', e)
             throw e
           } finally {
@@ -338,7 +338,7 @@ options.forEach(params => {
       let ex: Error | undefined
       try {
         await asyncFunc()
-      } catch (e) {
+      } catch (e: any) {
         ex = e
       }
       assert.ok(ex != null, `Expected to throw ${msg} but threw nothing`)

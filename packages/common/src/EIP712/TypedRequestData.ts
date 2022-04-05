@@ -1,17 +1,35 @@
 import { Address } from '../types/Aliases'
 import { RelayRequest } from './RelayRequest'
-import { EIP712Domain, EIP712TypedData, EIP712TypeProperty, EIP712Types, TypedDataUtils } from 'eth-sig-util'
 
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
+import { TypedDataUtils, TypedMessage } from 'eth-sig-util'
 
-export const EIP712DomainType: EIP712TypeProperty[] = [
+export interface MessageTypeProperty {
+  name: string
+  type: string
+}
+
+export interface MessageTypes {
+  EIP712Domain: MessageTypeProperty[]
+
+  [additionalProperties: string]: MessageTypeProperty[]
+}
+
+export interface EIP712Domain {
+  name?: string
+  version?: string
+  chainId?: number
+  verifyingContract?: string
+}
+
+export const EIP712DomainType: MessageTypeProperty[] = [
   { name: 'name', type: 'string' },
   { name: 'version', type: 'string' },
   { name: 'chainId', type: 'uint256' },
   { name: 'verifyingContract', type: 'address' }
 ]
 
-export const EIP712DomainTypeWithoutVersion: EIP712TypeProperty[] = [
+export const EIP712DomainTypeWithoutVersion: MessageTypeProperty[] = [
   { name: 'name', type: 'string' },
   { name: 'chainId', type: 'uint256' },
   { name: 'verifyingContract', type: 'address' }
@@ -44,10 +62,10 @@ const RelayRequestType = [
   { name: 'relayData', type: 'RelayData' }
 ]
 
-interface Types extends EIP712Types {
-  EIP712Domain: EIP712TypeProperty[]
-  RelayRequest: EIP712TypeProperty[]
-  RelayData: EIP712TypeProperty[]
+interface Types extends MessageTypes {
+  EIP712Domain: MessageTypeProperty[]
+  RelayRequest: MessageTypeProperty[]
+  RelayData: MessageTypeProperty[]
 }
 
 // use these values in registerDomainSeparator
@@ -57,7 +75,7 @@ export const GsnDomainSeparatorType = {
   version: '2'
 }
 
-export function getDomainSeparator (verifier: Address, chainId: number): EIP712Domain {
+export function getDomainSeparator (verifier: Address, chainId: number): Record<string, unknown> {
   return {
     name: GsnDomainSeparatorType.name,
     version: GsnDomainSeparatorType.version,
@@ -70,7 +88,7 @@ export function getDomainSeparatorHash (verifier: Address, chainId: number): Pre
   return bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', getDomainSeparator(verifier, chainId), { EIP712Domain: EIP712DomainType }))
 }
 
-export class TypedRequestData implements EIP712TypedData {
+export class TypedRequestData implements TypedMessage<Types> {
   readonly types: Types
   readonly domain: EIP712Domain
   readonly primaryType: string

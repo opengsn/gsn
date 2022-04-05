@@ -69,9 +69,10 @@ interface DeployOptions {
   stakeManagerAddress?: string
   deployTestToken?: boolean
   stakingTokenAddress?: string
-  minimumTokenStake: number| IntString
+  minimumTokenStake: number | IntString
   penalizerAddress?: string
   burnAddress?: string
+  devAddress?: string
   verbose?: boolean
   skipConfirmation?: boolean
   relayHubConfiguration: RelayHubConfiguration
@@ -165,7 +166,7 @@ export class CommandsLogic {
       let isReady = false
       try {
         isReady = await this.isRelayReady(relayUrl)
-      } catch (e) {
+      } catch (e: any) {
         console.log(e.message)
       }
       if (isReady) {
@@ -217,6 +218,12 @@ export class CommandsLogic {
       console.log(`Registering GSN relayer at ${options.relayUrl}`)
 
       const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
+      const sendOptions: any = {
+        chainId: toHex(await this.web3.eth.getChainId()),
+        from: options.from,
+        gas: 1e6,
+        gasPrice
+      }
       const response = await this.httpClient.getPingResponse(options.relayUrl)
         .catch((error: any) => {
           console.error(error)
@@ -271,11 +278,9 @@ export class CommandsLogic {
         console.log('Funding relayer')
 
         const fundTx = await this.web3.eth.sendTransaction({
-          from: options.from,
+          ...sendOptions,
           to: relayAddress,
-          value: options.funds,
-          gas: 1e6,
-          gasPrice
+          value: options.funds
         })
         if (fundTx.transactionHash == null) {
           return {
@@ -347,8 +352,7 @@ export class CommandsLogic {
 
         const stakeTx = await stakeManager
           .stakeForRelayManager(stakingToken, relayAddress, options.unstakeDelay.toString(), stakeValue, {
-            from: options.from,
-            gasPrice
+            ...sendOptions
           })
         // @ts-ignore
         transactions.push(stakeTx.transactionHash)
@@ -357,15 +361,11 @@ export class CommandsLogic {
       try {
         await relayHub.verifyRelayManagerStaked(relayAddress)
         console.log('Relayer already authorized')
-      } catch (e) {
+      } catch (e: any) {
         console.log('verifyRelayManagerStaked reverted with:', e.message)
         console.log('Authorizing relayer for hub')
         const authorizeTx = await stakeManager
-          .authorizeHubByOwner(relayAddress, relayHubAddress, {
-            from: options.from,
-            gas: 1e6,
-            gasPrice
-          })
+          .authorizeHubByOwner(relayAddress, relayHubAddress, sendOptions)
         // @ts-ignore
         transactions.push(authorizeTx.transactionHash)
       }
@@ -375,7 +375,7 @@ export class CommandsLogic {
         success: true,
         transactions
       }
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         transactions,
@@ -440,6 +440,7 @@ export class CommandsLogic {
         console.log('Calling in view mode')
         await this.contractInteractor.web3.eth.call({ ...web3TxData })
         const txData = { ...web3TxData, gasLimit: web3TxData.gas }
+        // @ts-ignore
         delete txData.gas
         txToSign = new Transaction(txData, this.contractInteractor.getRawTxOptions())
       } else {
@@ -448,7 +449,7 @@ export class CommandsLogic {
         if (balance.lt(options.withdrawAmount)) {
           throw new Error('Relay manager hub balance lower than withdrawal amount')
         }
-        const method = relayHub.contract.methods.withdraw(options.withdrawAmount, owner)
+        const method = relayHub.contract.methods.withdraw(owner, options.withdrawAmount)
         const encodedCall = method.encodeABI()
         txToSign = new Transaction({
           to: options.config.relayHubAddress,
@@ -479,7 +480,7 @@ export class CommandsLogic {
         success: true,
         transactions
       }
-    } catch (e) {
+    } catch (e: any) {
       return {
         success: false,
         transactions,
@@ -508,7 +509,7 @@ export class CommandsLogic {
       arguments: []
     }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
     const sInstance = await this.getContractInstance(StakeManager, {
-      arguments: [defaultEnvironment.maxUnstakeDelay, deployOptions.burnAddress]
+      arguments: [defaultEnvironment.maxUnstakeDelay, defaultEnvironment.abandonmentDelay, defaultEnvironment.escheatmentDelay, deployOptions.burnAddress, deployOptions.devAddress]
     }, deployOptions.stakeManagerAddress, { ...options }, deployOptions.skipConfirmation)
     const pInstance = await this.getContractInstance(Penalizer, {
       arguments: [

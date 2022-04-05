@@ -118,7 +118,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
     paymaster = await ProxyDeployingPaymaster.new([uniswap.address], proxyFactory.address)
     forwarder = await Forwarder.new({ gas: 1e7 })
     recipient = await TestProxy.new(forwarder.address, { gas: 1e7 })
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, burnAddress)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, burnAddress, burnAddress)
     testHub = await TestHub.new(
       stakeManager.address,
       constants.ZERO_ADDRESS,
@@ -430,7 +430,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
       // Check that increment was called
       const counter2 = await counter.get()
       assert.equal(counter2.toString(), '1')
-      await expectEvent.inTransaction(tx.transactionHash, ProxyFactory, 'ProxyDeployed', { proxyAddress })
+      await expectEvent.inTransaction(tx.actualTransactionHash, ProxyFactory, 'ProxyDeployed', { proxyAddress })
     })
 
     it('should pay with token to make a call if proxy is deployed', async function () {
@@ -446,7 +446,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
 
       const counter2 = await counter.get()
       assert.equal(counter2.toString(), '2')
-      await expectEvent.not.inTransaction(tx.transactionHash, ProxyFactory, 'ProxyDeployed', { proxyAddress })
+      await expectEvent.not.inTransaction(tx.actualTransactionHash, ProxyFactory, 'ProxyDeployed', { proxyAddress })
     })
 
     it('should convert tokens to ETH and send to Proxy if \'value\' is specified', async function () {

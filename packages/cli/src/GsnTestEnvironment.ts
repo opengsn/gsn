@@ -53,6 +53,7 @@ class GsnTestEnvironmentClass {
     const deploymentResult = await commandsLogic.deployGsnContracts({
       from,
       burnAddress: constants.BURN_ADDRESS,
+      devAddress: constants.BURN_ADDRESS,
       minimumTokenStake: 1,
       gasPrice: 1e9.toString(),
       gasLimit: 5000000,
@@ -123,6 +124,7 @@ class GsnTestEnvironmentClass {
   private async _resolveAvailablePort (): Promise<number> {
     const server = net.createServer()
     await new Promise(resolve => {
+      // @ts-ignore
       server.listen(0, resolve)
     })
     const address = server.address()

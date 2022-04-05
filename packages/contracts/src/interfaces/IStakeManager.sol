@@ -73,6 +73,31 @@ interface IStakeManager {
         address indexed burnAddress
     );
 
+    /// @notice Emitted when a `devAddress` is changed.
+    event DevAddressSet(
+        address indexed devAddress
+    );
+
+    /// @notice Emitted if Relay Server is inactive for an `abandonmentDelay` and contract owner initiates its removal.
+    event RelayServerAbandoned(
+        address indexed relayManager,
+        uint256 abandonedTime
+    );
+
+    /// @notice Emitted to indicate an action performed by a relay server to prevent it from being marked as abandoned.
+    event RelayServerKeepalive(
+        address indexed relayManager,
+        uint256 keepaliveTime
+    );
+
+    /// @notice Emitted when the stake of an abandoned relayer has been confiscated and transferred to the `devAddress`.
+    event AbandonedRelayManagerStakeEscheated(
+        address indexed relayManager,
+        address indexed owner,
+        IERC20 token,
+        uint256 amount
+    );
+
     /**
      * @param stake - amount of ether staked for this relay
      * @param unstakeDelay - number of seconds to elapse before the owner can retrieve the stake after calling 'unlock'
@@ -83,12 +108,25 @@ interface IStakeManager {
         uint256 stake;
         uint256 unstakeDelay;
         uint256 withdrawTime;
+        uint256 abandonedTime;
+        uint256 keepaliveTime;
         IERC20 token;
         address owner;
     }
 
     struct RelayHubInfo {
         uint256 removalTime;
+    }
+
+    /**
+     * @param devAddress - the address that will receive the 'abandoned' stake
+     * @param abandonmentDelay - the amount of time after which the relay can be marked as 'abandoned'
+     * @param escheatmentDelay - the amount of time after which the abandoned relay's stake and balance may be withdrawn to the `devAddress`
+     */
+    struct AbandonedRelayServerConfig {
+        address devAddress;
+        uint256 abandonmentDelay;
+        uint256 escheatmentDelay;
     }
 
     /**
@@ -155,6 +193,31 @@ interface IStakeManager {
     function penalizeRelayManager(address relayManager, address beneficiary, uint256 amount) external;
 
     /**
+     * @notice Allows the contract owner to set the given `relayManager` as abandoned after a configurable delay.
+     * Its entire stake and balance will be taken from a relay if it does not respond to being marked as abandoned.
+     */
+    function markRelayAbandoned(address relayManager) external;
+
+    /**
+     * @notice If more than `abandonmentDelay` has passed since the last Keepalive transaction, and relay manager
+     * has been marked as abandoned, and after that more that `escheatmentDelay` have passed, entire stake and
+     * balance will be taken from this relay.
+     */
+    function escheatAbandonedRelayStake(address relayManager) external;
+
+    /**
+     * @notice Sets a new `keepaliveTime` for the given `relayManager`, preventing it from being marked as abandoned.
+     * Can be called by an authorized `RelayHub` or by the `relayOwner` address.
+     */
+    function updateRelayKeepaliveTime(address relayManager) external;
+
+    /**
+     * @notice Check if the Relay Manager can be considered abandoned or not.
+     * Returns true if the stake's abandonment time is in the past including the escheatment delay, false otherwise.
+     */
+    function isRelayEscheatable(address relayManager) external view returns(bool);
+
+    /**
      * @notice Get the stake details information for the given Relay Manager.
      * @param relayManager The address of a Relay Manager.
      * @return stakeInfo The `StakeInfo` structure.
@@ -178,6 +241,17 @@ interface IStakeManager {
      * @return The address that will receive the 'burned' part of the penalized stake.
      */
     function getBurnAddress() external view returns (address);
+
+    /**
+     * @notice Change the address that will receive the 'abandoned' stake.
+     * This is done to prevent Relay Servers that lost their keys from losing access to funds.
+     */
+    function setDevAddress(address _burnAddress) external;
+
+    /**
+     * @return The structure that contains all configuration values for the 'abandoned' stake.
+     */
+    function getAbandonedRelayServerConfig() external view returns (AbandonedRelayServerConfig memory);
 
     /**
      * @return the block number in which the contract has been deployed.

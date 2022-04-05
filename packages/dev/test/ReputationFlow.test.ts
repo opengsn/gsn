@@ -11,7 +11,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 const Forwarder = artifacts.require('Forwarder')
 const RelayHub = artifacts.require('RelayHub')
 
-contract('ReputationFlow', function (accounts) {
+contract('ReputationFlow', function () {
   let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
   let testRecipient: TestRecipientInstance
   let relayProvider: RelayProvider
@@ -59,7 +59,7 @@ contract('ReputationFlow', function (accounts) {
         }
         try {
           await testRecipient.emitMessage('Hello there!', { gas: 100000 })
-        } catch (e) {
+        } catch (e: any) {
           if (e.message.includes('Transaction has been reverted by the EVM') === true) {
             continue
           }

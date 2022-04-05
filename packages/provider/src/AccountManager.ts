@@ -1,7 +1,7 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
 import Web3 from 'web3'
-import sigUtil from 'eth-sig-util'
+import { recoverTypedSignature_v4, signTypedData_v4 } from 'eth-sig-util'
 import { PrefixedHexString } from 'ethereumjs-util'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
@@ -82,9 +82,7 @@ export class AccountManager {
         signature = await this._signWithProvider(signedData)
       }
       // Sanity check only
-      // @ts-ignore
-      rec = sigUtil.recoverTypedSignature_v4({
-        // @ts-ignore
+      rec = recoverTypedSignature_v4({
         data: signedData,
         sig: signature
       })
@@ -112,8 +110,7 @@ export class AccountManager {
   }
 
   _signWithControlledKey (privateKey: PrefixedHexString, signedData: TypedRequestData): string {
-    // @ts-ignore
-    return sigUtil.signTypedData_v4(Buffer.from(removeHexPrefix(privateKey), 'hex'), { data: signedData })
+    return signTypedData_v4(Buffer.from(removeHexPrefix(privateKey), 'hex'), { data: signedData })
   }
 
   getAccounts (): string[] {

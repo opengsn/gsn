@@ -7,9 +7,12 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
+// #if ENABLE_CONSOLE_LOG
 import "hardhat/console.sol";
+// #endif
 
 import "./utils/MinLibBytes.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -35,6 +38,9 @@ import "./interfaces/IStakeManager.sol";
 contract RelayHub is IRelayHub, Ownable, ERC165 {
     using ERC165Checker for address;
     using SafeMath for uint256;
+    using Address for address;
+
+    address private constant DRY_RUN_ADDRESS = 0x0000000000000000000000000000000000000000;
 
     /// @inheritdoc IRelayHub
     function versionHub() override virtual public pure returns (string memory){
@@ -151,9 +157,11 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     /// @inheritdoc IRelayHub
-    function verifyCanRegister(address relayManager) external view override {
+    function onRelayServerRegistered(address relayManager) external override {
+        require(msg.sender == relayRegistrar, "caller is not relay registrar");
         verifyRelayManagerStaked(relayManager);
         require(workerCount[relayManager] > 0, "no relay workers");
+        stakeManager.updateRelayKeepaliveTime(relayManager);
     }
 
     /// @inheritdoc IRelayHub
@@ -189,14 +197,28 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     /// @inheritdoc IRelayHub
-    function withdraw(uint256 amount, address payable dest) public override {
+    function withdraw(address payable dest, uint256 amount) public override {
+        uint256[] memory amounts = new uint256[](1);
+        address payable[] memory destinations = new address payable[](1);
+        amounts[0] = amount;
+        destinations[0] = dest;
+        withdrawMultiple(destinations, amounts);
+    }
+
+    /// @inheritdoc IRelayHub
+    function withdrawMultiple(address payable[] memory dest, uint256[] memory amount) public override {
         address payable account = payable(msg.sender);
-        require(balances[account] >= amount, "insufficient funds");
-
-        balances[account] = balances[account].sub(amount);
-        dest.transfer(amount);
-
-        emit Withdrawn(account, dest, amount);
+        for (uint256 i = 0; i < amount.length; i++) {
+            // #if ENABLE_CONSOLE_LOG
+            console.log("withdrawMultiple %s %s %s", balances[account], dest[i], amount[i]);
+            // #endif
+            uint256 balance = balances[account];
+            require(balance >= amount[i], "insufficient funds");
+            balances[account] = balance.sub(amount[i]);
+            (bool success, ) = dest[i].call{value: amount[i]}("");
+            require(success, "Transfer failed.");
+            emit Withdrawn(account, dest[i], amount[i]);
+        }
     }
 
     function verifyGasAndDataLimits(
@@ -287,14 +309,18 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
         require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
-        if (msg.sender != batchGateway){
+
+        if (msg.sender != batchGateway && tx.origin != DRY_RUN_ADDRESS) {
             require(signature.length != 0, "missing signature or bad gateway");
             require(msg.sender == tx.origin, "relay worker must be EOA");
             require(msg.sender == relayRequest.relayData.relayWorker, "Not a right worker");
         }
-        vars.relayManager = workerToManager[relayRequest.relayData.relayWorker];
-        require(vars.relayManager != address(0), "Unknown relay worker");
-        verifyRelayManagerStaked(vars.relayManager);
+
+        if (tx.origin != DRY_RUN_ADDRESS) {
+            vars.relayManager = workerToManager[relayRequest.relayData.relayWorker];
+            require(vars.relayManager != address(0), "Unknown relay worker");
+            verifyRelayManagerStaked(vars.relayManager);
+        }
 
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft);
@@ -564,6 +590,20 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         (IStakeManager.StakeInfo memory stakeInfo,) = stakeManager.getStakeInfo(relayManager);
         require(stakeInfo.stake > 0, "relay manager not staked");
         stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
+    }
+
+    /// @inheritdoc IRelayHub
+    function isRelayEscheatable(address relayManager) public view override returns (bool){
+        return stakeManager.isRelayEscheatable(relayManager);
+    }
+
+    /// @inheritdoc IRelayHub
+    function escheatAbandonedRelayBalance(address relayManager) external override onlyOwner {
+        require(stakeManager.isRelayEscheatable(relayManager), "relay server not escheatable yet");
+        uint256 balance = balances[relayManager];
+        balances[relayManager] = 0;
+        balances[config.devAddress] = balances[config.devAddress].add(balance);
+        emit AbandonedRelayManagerBalanceEscheated(relayManager, balance);
     }
 
     /// @inheritdoc IRelayHub

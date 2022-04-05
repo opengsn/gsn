@@ -315,7 +315,7 @@ contract('RegistrationManager', function (accounts) {
       it('send balances to owner when manager hub balance < tx cost ', async function () {
         const workerAddress = newServer.workerAddress
         const managerHubBalance = await env.relayHub.balanceOf(newServer.managerAddress)
-        const method = env.relayHub.contract.methods.withdraw(toHex(managerHubBalance), workerAddress)
+        const method = env.relayHub.contract.methods.withdraw(workerAddress, toHex(managerHubBalance))
         const gasLimit = await newServer.transactionManager.attemptEstimateGas('Withdraw', method, newServer.managerAddress)
         await newServer.transactionManager.sendTransaction({
           signer: newServer.managerAddress,

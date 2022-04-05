@@ -117,6 +117,6 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
      * @param target The target to which the amount will be transferred.
      */
     function withdrawRelayHubDepositTo(uint256 amount, address payable target) public onlyOwner {
-        relayHub.withdraw(amount, target);
+        relayHub.withdraw(target, amount);
     }
 }

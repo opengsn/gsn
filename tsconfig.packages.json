@@ -31,7 +31,6 @@
       "./types"
     ],
     "types": [
-      "eth-sig-util",
       "openzeppelin__test-helpers",
       "date-format",
       "chai-bn"

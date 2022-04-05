@@ -36,7 +36,7 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestProxy = artifacts.require('TestProxy')
 
-export const transferErc20Error = '\'ERC20: transfer amount exceeds allowance\' -- Reason given: ERC20: transfer amount exceeds allowance.'
+export const transferErc20Error = '\'ERC20: insufficient allowance\' -- Reason given: ERC20: insufficient allowance.'
 
 // TODO: this test recreates GSN manually. Use GSN tools to do it instead.
 contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) => {
@@ -57,7 +57,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       value: (5e18).toString(),
       gas: 10000000
     })
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, burnAddress)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, burnAddress, burnAddress)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     hub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')
     token = await TestToken.at(await uniswap.tokenAddress())
@@ -136,7 +136,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
 
       it('should reject if not enough balance', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
-        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /ERC20: transfer amount exceeds balance/)
+        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /ERC20: insufficient allowance/)
       })
 
       it('should reject if unknown paymasterData', async () => {
@@ -273,6 +273,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       console.log('recipient tokens balance change (used tokens): ', usedTokens.toString())
       // @ts-ignore
       console.log('reported charged tokens in TokensCharged: ', chargedEvent.args.tokenActualCharge.toString())
+      // @ts-ignore
       const expectedTokenCharge = await uniswap.getTokenToEthOutputPrice(chargedEvent.args.ethActualCharge)
       assert.closeTo(usedTokens.toNumber(), expectedTokenCharge.toNumber(), 1000)
       const postBalance = await hub.balanceOf(paymaster.address)

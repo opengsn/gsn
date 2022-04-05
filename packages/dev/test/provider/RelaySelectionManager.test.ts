@@ -123,7 +123,7 @@ contract('RelaySelectionManager', function (accounts) {
         const StakeManager = artifacts.require('StakeManager')
         const Penalizer = artifacts.require('Penalizer')
         const testToken = await TestToken.new()
-        const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+        const stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
         const penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
         relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, ether('1').toString())
         await stake(testToken, stakeManager, relayHub, relayManager, accounts[0])

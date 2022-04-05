@@ -1,12 +1,21 @@
+/* eslint-disable no-global-assign */
+
 import childProcess from 'child_process'
 import path from 'path'
 import fs from 'fs'
+
+const describeOrig = describe
+if (process.env.TEST_WEBPACK == null) {
+  // @ts-ignore
+  describe = describe.skip
+}
 
 describe('RelayServer-webpack', () => {
   let oneFileRelayer: string
   before('create webpack', function () {
     this.timeout(15000)
     const jsrelayDir = path.join(__dirname, '../../../dockers', 'jsrelay')
+    // @ts-ignore
     fs.rmSync(path.join(jsrelayDir, 'dist'), {
       recursive: true,
       force: true
@@ -19,10 +28,11 @@ describe('RelayServer-webpack', () => {
     try {
       childProcess.execSync('node ' + oneFileRelayer, { encoding: 'ascii', stdio: 'pipe' })
       assert.fail('should throw')
-    } catch (e) {
+    } catch (e: any) {
       assert.match(e.message.toString(), /missing ethereumNodeUrl/)
     }
   })
-
-  it('should test it can actually work')
 })
+
+// @ts-ignore
+describe = describeOrig

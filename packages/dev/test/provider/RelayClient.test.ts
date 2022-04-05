@@ -13,9 +13,10 @@ import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import {
   RelayHubInstance,
   PenalizerInstance,
+  TestTokenInstance,
   StakeManagerInstance,
   TestRecipientInstance,
-  TestPaymasterEverythingAcceptedInstance, TestTokenInstance
+  TestPaymasterEverythingAcceptedInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
@@ -129,7 +130,7 @@ contract('RelayClient', function (accounts) {
   before(async function () {
     web3 = new Web3(underlyingProvider)
     testToken = await TestToken.new()
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
@@ -156,6 +157,7 @@ contract('RelayClient', function (accounts) {
     const loggerConfiguration: LoggerConfiguration = { logLevel: 'debug' }
     gsnConfig = {
       loggerConfiguration,
+      performDryRunViewRelayCall: false,
       paymasterAddress: paymaster.address
     }
     logger = createClientLogger(loggerConfiguration)
@@ -299,6 +301,7 @@ contract('RelayClient', function (accounts) {
         })
 
         await new Promise((resolve) => {
+          // @ts-ignore
           server = mockServer.listen(0, resolve)
         })
         const mockServerPort = (server as any).address().port
@@ -398,7 +401,7 @@ contract('RelayClient', function (accounts) {
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 2)
-      assert.equal(relayingErrors.get(localhostOne)!.message, 'fail returned tx')
+      assert.equal(Array.from(relayingErrors.values())[0]!.message, 'fail returned tx')
     })
 
     it('should continue looking up relayers after relayer error', async function () {
@@ -457,6 +460,7 @@ contract('RelayClient', function (accounts) {
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
       assert.match(relayingErrors.values().next().value.message, /paymasterData-error/)
     })
 
@@ -586,7 +590,8 @@ contract('RelayClient', function (accounts) {
           overrideDependencies: { contractInteractor: badContractInteractor }
         })
       await relayClient.init()
-      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, relayRequest)
       assert.isUndefined(transaction)
       assert.isUndefined(isRelayError)
       // @ts-ignore
@@ -604,7 +609,8 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
-      const attempt = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+      const attempt = await relayClient._attemptRelay(relayInfo, relayRequest)
       assert.equal(attempt.isRelayError, true, 'timeout should not abort relay search')
       assert.equal(attempt.error?.message, 'some error describing how timeout occurred somewhere')
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
@@ -621,7 +627,8 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
-      await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+      await relayClient._attemptRelay(relayInfo, relayRequest)
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.not.been.called
     })
 
@@ -650,7 +657,8 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
-      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, optionsWithGas)
+      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, relayRequest)
       assert.isUndefined(transaction)
       assert.equal(isRelayError, true)
       // @ts-ignore
@@ -680,22 +688,27 @@ contract('RelayClient', function (accounts) {
             }
           })
         await relayClient.init()
-        const httpRequest = await relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas)
+
+        const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+        const httpRequest = await relayClient._prepareRelayHttpRequest(relayRequest, relayInfo)
         assert.equal(httpRequest.metadata.approvalData, '0x1234567890')
         assert.equal(httpRequest.relayRequest.relayData.paymasterData, '0xabcd')
       })
     })
+
     it('should throw if variable length parameters are bigger than reported', async function () {
       try {
         const getLongData = async function (_: RelayRequest): Promise<PrefixedHexString> {
           return '0x' + 'ff'.repeat(101)
         }
         relayClient.dependencies.asyncApprovalData = getLongData
-        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+        const relayRequest1 = await relayClient._prepareRelayRequest(optionsWithGas)
+        await expect(relayClient._prepareRelayHttpRequest(relayRequest1, relayInfo))
           .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
 
         relayClient.dependencies.asyncPaymasterData = getLongData
-        await expect(relayClient._prepareRelayHttpRequest(relayInfo, optionsWithGas))
+        const relayRequest2 = await relayClient._prepareRelayRequest(optionsWithGas)
+        await expect(relayClient._prepareRelayHttpRequest(relayRequest2, relayInfo))
           .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
       } finally {
         relayClient.dependencies.asyncApprovalData = EmptyDataCallback
@@ -825,6 +838,25 @@ contract('RelayClient', function (accounts) {
         sinon.assert.calledWithMatch(spy, 'Could not fetch default configuration:')
         sinon.restore()
       })
+    })
+  })
+
+  context('with performDryRunViewRelayCall set to true', function () {
+    it('should report the revert reason only once without requesting client signature', async function () {
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: { ...gsnConfig, performDryRunViewRelayCall: true }
+        })
+      await relayClient.init()
+      const getSenderNonceStub = sinon.stub(relayClient.dependencies.contractInteractor, 'getSenderNonce')
+      getSenderNonceStub.returns(Promise.resolve('1'))
+      const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
+      assert.match(relayingErrors.values().next().value.message, /paymaster rejected in DRY-RUN.*FWD: nonce mismatch/s)
     })
   })
 })

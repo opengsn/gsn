@@ -113,7 +113,7 @@ export class ServerTestEnvironment {
    */
   async init (clientConfig: Partial<GSNConfig> = {}, relayHubConfig: Partial<RelayHubConfiguration> = {}, contractFactory?: (deployment: GSNContractsDeployment) => Promise<ContractInteractor>, HubContract?: any): Promise<void> {
     this.testToken = await TestToken.new()
-    this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+    this.stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
     this.penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     // @ts-ignore - IRelayHub and RelayHub types are similar enough for tests to work
     this.relayHub = await deployHub(this.stakeManager.address, this.penalizer.address, constants.ZERO_ADDRESS, this.testToken.address, 1e18.toString(), relayHubConfig, defaultEnvironment, HubContract)
@@ -277,8 +277,11 @@ export class ServerTestEnvironment {
       const mergedTransactionDetail = Object.assign({}, gsnTransactionDetails, overrideDetails)
       // do not 'return await' here as it will defer executing the 'finally' block and enable re-stubbing
       // (will crash on 'let x = [createRelayHttpRequest(), createRelayHttpRequest()]')
-      // eslint-disable-next-line @typescript-eslint/return-await
-      return this.relayClient._prepareRelayHttpRequest(relayInfo, mergedTransactionDetail)
+      // eslint-disable-next-line @typescript-eslint/return-await,@typescript-eslint/promise-function-async
+      return this.relayClient._prepareRelayRequest(mergedTransactionDetail).then(relayRequest => {
+        this.relayClient.fillRelayInfo(relayRequest, relayInfo)
+        return this.relayClient._prepareRelayHttpRequest(relayRequest, relayInfo)
+      })
     } finally {
       sandbox.restore()
     }

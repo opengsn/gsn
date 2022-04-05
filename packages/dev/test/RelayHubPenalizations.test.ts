@@ -81,7 +81,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
   // TODO: 'before' is a bad thing in general. Use 'beforeEach', this tests all depend on each other!!!
   before(async function () {
     testToken = await TestToken.new()
-    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, constants.BURN_ADDRESS)
+    stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, 40)
     relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     const forwarderInstance = await Forwarder.new()

@@ -1,6 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import sigUtil from 'eth-sig-util'
+import { recoverTypedSignature_v4 } from 'eth-sig-util'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { HttpProvider } from 'web3-core'
@@ -101,8 +101,7 @@ contract('AccountManager', function (accounts) {
         relayRequestWithoutExtraData(relayRequest)
       )
       const signature = await accountManager.sign(relayRequest)
-      // @ts-ignore
-      const rec = sigUtil.recoverTypedSignature_v4({
+      const rec = recoverTypedSignature_v4({
         data: signedData,
         sig: signature
       })
@@ -118,8 +117,7 @@ contract('AccountManager', function (accounts) {
         relayRequestWithoutExtraData(relayRequest)
       )
       const signature = await accountManager.sign(relayRequest)
-      // @ts-ignore
-      const rec = sigUtil.recoverTypedSignature_v4({
+      const rec = recoverTypedSignature_v4({
         data: signedData,
         sig: signature
       })

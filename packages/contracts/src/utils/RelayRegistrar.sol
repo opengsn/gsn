@@ -3,6 +3,10 @@
 pragma solidity ^0.8.6;
 /* solhint-disable no-inline-assembly */
 
+// #if ENABLE_CONSOLE_LOG
+import "hardhat/console.sol";
+// #endif
+
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import "./MinLibBytes.sol";
@@ -51,9 +55,9 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         bytes32[3] calldata url
     ) external override {
         address relayManager = msg.sender;
-        IRelayHub(relayHub).verifyCanRegister(relayManager);
-        emit RelayServerRegistered(relayManager, baseRelayFee, pctRelayFee, url);
-        storeRelayServerRegistration(relayHub, relayManager, baseRelayFee, pctRelayFee, url);
+        IRelayHub(relayHub).onRelayServerRegistered(relayManager);
+        emit RelayServerRegistered(relayManager, relayHub, baseRelayFee, pctRelayFee, url);
+        storeRelayServerRegistration(relayManager, relayHub, baseRelayFee, pctRelayFee, url);
     }
 
     function addItem(address relayHub, address relayManager) internal returns (RelayInfo storage) {
@@ -65,8 +69,8 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     }
 
     function storeRelayServerRegistration(
-        address relayHub,
         address relayManager,
+        address relayHub,
         uint80 baseRelayFee,
         uint16 pctRelayFee,
         bytes32[3] calldata url
@@ -127,4 +131,5 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         }
         assembly { mstore(info, filled) }
     }
+
 }

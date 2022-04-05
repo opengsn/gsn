@@ -33,18 +33,21 @@ export async function assertRelayAdded (transactionHashes: PrefixedHexString[], 
   const receipts = await resolveAllReceipts(transactionHashes)
   const registeredReceipt = receipts.find(r => {
     const decodedLogs = abiDecoder.decodeLogs(r.logs).map(server.registrationManager._parseEvent)
-    return decodedLogs[0].name === 'RelayServerRegistered'
+    return decodedLogs.find((it: any) => it.name === 'RelayServerRegistered') != null
   })
   if (registeredReceipt == null) {
     throw new Error('Registered Receipt not found')
   }
-  const registeredLogs = abiDecoder.decodeLogs(registeredReceipt.logs).map(server.registrationManager._parseEvent)
-  assert.equal(registeredLogs.length, 1)
-  assert.equal(registeredLogs[0].name, 'RelayServerRegistered')
-  assert.equal(registeredLogs[0].args.relayManager.toLowerCase(), server.managerAddress.toLowerCase())
-  assert.equal(registeredLogs[0].args.baseRelayFee, server.config.baseRelayFee)
-  assert.equal(registeredLogs[0].args.pctRelayFee, server.config.pctRelayFee)
-  assert.equal(packRelayUrlForRegistrar(registeredLogs[0].args.relayUrl), server.config.url)
+  const registeredLog = abiDecoder
+    .decodeLogs(registeredReceipt.logs)
+    .map(server.registrationManager._parseEvent)
+    .find((it: any) => it.name === 'RelayServerRegistered')
+  assert.isNotNull(registeredLog)
+  assert.equal(registeredLog.name, 'RelayServerRegistered')
+  assert.equal(registeredLog.args.relayManager.toLowerCase(), server.managerAddress.toLowerCase())
+  assert.equal(registeredLog.args.baseRelayFee, server.config.baseRelayFee)
+  assert.equal(registeredLog.args.pctRelayFee, server.config.pctRelayFee)
+  assert.equal(packRelayUrlForRegistrar(registeredLog.args.relayUrl), server.config.url)
 
   if (checkWorkers) {
     const workersAddedReceipt = receipts.find(r => {
