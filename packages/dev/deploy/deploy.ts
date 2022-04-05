@@ -7,10 +7,10 @@ import {
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
-import { formatEther, getAddress, parseEther } from 'ethers/lib/utils'
+import { formatEther, parseEther } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 // @ts-ignore
-import { deployments, ethers } from 'hardhat'
+import { ethers } from 'hardhat'
 
 const { AddressZero } = ethers.constants
 
@@ -25,7 +25,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   async function deploy (name: string, options: DeployOptions): Promise<DeployResult> {
     console.log('Deploying: ', name)
     const res = await deployments.deploy(name, options)
-    console.log(name, res.address, res.newlyDeployed ? chalk.yellow('newlyDeployed') : chalk.gray('existing'))
+    console.log(name, res.address, res.newlyDeployed as boolean ? chalk.yellow('newlyDeployed') : chalk.gray('existing'))
     return res
   }
 
@@ -82,11 +82,11 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
       process.exit(1)
     }
     const token = new ethers.Contract(stakingTokenAddress,
-	[ 'function symbol() view returns (string)' ], ethers.provider)
+      ['function symbol() view returns (string)'], ethers.provider)
     // verify token address is a valid token...
-    const symbol = await token.symbol().catch((e:any)=>null)
-    if (symbol==null) throw new Error(`invalid token: ${stakingTokenAddress}`)
-    console.log( 'using token', symbol)
+    const symbol = await token.symbol().catch((e: any) => null)
+    if (symbol == null) throw new Error(`invalid token: ${stakingTokenAddress}`)
+    console.log('using token', symbol)
   }
 
   const deployedForwarder = await deploy('Forwarder', { from: deployer })

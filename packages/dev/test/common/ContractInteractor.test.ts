@@ -31,11 +31,9 @@ import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contra
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 import { ether } from '@openzeppelin/test-helpers'
-import { splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const { expect } = chai.use(chaiAsPromised)
 
-const TestRelayHubForRegistrar = artifacts.require('TestRelayHubForRegistrar')
 const TestDecimalsToken = artifacts.require('TestDecimalsToken')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestToken = artifacts.require('TestToken')
@@ -603,7 +601,6 @@ contract('ContractInteractor', function (accounts) {
       await contractInteractor.init()
       relayReg = await RelayRegistrar.new()
       lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
-
     })
 
     // it('should get matching numeric return value', async () => {

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 // minimal "wrapped eth" implementation.
 contract TestWEth is ERC20 {
 
+    // solhint-disable-next-line no-empty-blocks
     constructor() ERC20("Test Wrapped Eth", "twEth") {
     }
 
@@ -19,6 +20,7 @@ contract TestWEth is ERC20 {
 
     function withdraw(uint amount) public {
         _burn(msg.sender, amount);
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success,) = msg.sender.call{value:amount}("");
         require(success, "twEth: withdraw failed");
     }

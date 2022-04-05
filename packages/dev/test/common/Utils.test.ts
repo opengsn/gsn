@@ -22,7 +22,7 @@ import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
-const  HashZero = constants.ZERO_BYTES32
+const HashZero = constants.ZERO_BYTES32
 const { assert } = chai.use(chaiAsPromised)
 
 const TestUtil = artifacts.require('TestUtil')
