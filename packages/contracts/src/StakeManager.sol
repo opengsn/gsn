@@ -27,7 +27,6 @@ contract StakeManager is IStakeManager, Ownable {
     AbandonedRelayServerConfig internal abandonedRelayServerConfig;
 
     address internal burnAddress;
-    address internal devAddress;
     uint256 internal immutable creationBlock;
 
     /// maps relay managers to their stakes
