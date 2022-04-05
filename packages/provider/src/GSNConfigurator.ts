@@ -48,7 +48,8 @@ export const defaultGsnConfig: GSNConfig = {
   maxApprovalDataLength: 0,
   maxPaymasterDataLength: 0,
   clientDefaultConfigUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
-  useClientDefaultConfigUrl: true
+  useClientDefaultConfigUrl: true,
+  performDryRunViewRelayCall: true
 }
 
 export interface LoggerConfiguration {

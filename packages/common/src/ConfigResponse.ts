@@ -51,4 +51,5 @@ export interface GSNConfig {
   maxPaymasterDataLength: number
   clientDefaultConfigUrl: string
   useClientDefaultConfigUrl: boolean
+  performDryRunViewRelayCall: boolean
 }

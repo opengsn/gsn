@@ -1,3 +1,4 @@
+/* eslint-disable no-void */
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayClient, JsonRpcCallback, RelayProvider, GSNUnresolvedConstructorInput } from '@opengsn/provider'
 
@@ -33,7 +34,7 @@ export default class ProxyRelayProvider extends RelayProvider {
     return new ProxyRelayProvider(proxyFactoryAddress, new RelayClient(input))
   }
 
-  _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+  async _ethSendTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
     this.calculateProxyAddress(gsnTransactionDetails.from).then(proxyAddress => {
       // @ts-ignore
@@ -41,7 +42,7 @@ export default class ProxyRelayProvider extends RelayProvider {
       const value = gsnTransactionDetails.value ?? '0'
       payload.params[0].data = proxy.methods.execute(0, gsnTransactionDetails.to, value, gsnTransactionDetails.data).encodeABI()
       payload.params[0].to = proxyAddress
-      super._ethSendTransaction(payload, callback)
+      void super._ethSendTransaction(payload, callback)
     })
       .catch(reason => {
         console.log('Failed to calculate proxy address', reason)

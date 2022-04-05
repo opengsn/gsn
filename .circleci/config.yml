@@ -87,6 +87,19 @@ jobs: # a collection of steps
           name: lint
           command: yarn lerna-lint
 
+  test_webpack:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
+      - run: # run tests
+          name: test-webpack
+          command: yarn lerna-run-test-webpack-with-hardhat | tee /tmp/test-webpack-results.log
+      - store_test_results: # special step to upload test results for display in Test Summary
+          path: /tmp/test-webpack-results.log
+
   test_fork:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
@@ -136,6 +149,9 @@ workflows:
           requires:
             - build
       - gas_calculations:
+          requires:
+            - build
+      - test_webpack:
           requires:
             - build
 

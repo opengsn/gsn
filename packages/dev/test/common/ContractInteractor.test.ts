@@ -182,7 +182,7 @@ contract('ContractInteractor', function (accounts) {
         })
       await contractInteractor.init()
       const blockGasLimit = await contractInteractor._getBlockGasLimit()
-      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
+      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'view call to \'relayCall\' reverted in client: Paymaster balance too low',
@@ -235,7 +235,7 @@ contract('ContractInteractor', function (accounts) {
         signature: '0xdeadbeef',
         approvalData: '0x'
       }
-      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
+      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'You asked me to revert, remember?',
@@ -258,7 +258,7 @@ contract('ContractInteractor', function (accounts) {
       const spy = sinon.spy(contractInteractor.web3.currentProvider as HttpProvider, 'send')
       try {
         contractInteractor.transactionType = TransactionType.LEGACY
-        await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
+        await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
       } finally {
         sinon.assert.calledOnce(spy)
         const rpcPayload = spy.getCall(0).args[0]
@@ -282,7 +282,7 @@ contract('ContractInteractor', function (accounts) {
       const blockGasLimit = await contractInteractor._getBlockGasLimit()
       const spy = sinon.spy(contractInteractor.web3.currentProvider as HttpProvider, 'send')
       try {
-        await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit))
+        await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
       } finally {
         sinon.assert.calledOnce(spy)
         const rpcPayload = spy.getCall(0).args[0]
@@ -519,7 +519,7 @@ contract('ContractInteractor', function (accounts) {
         }
         // @ts-ignore
         contractInteractor.maxPageSize = Number.MAX_SAFE_INTEGER
-        sinon.stub(contractInteractor, '_getPastEvents').callsFake(async function (contract: any, names: EventName[], extraTopics: string[], options: PastEventOptions): Promise<any> {
+        sinon.stub(contractInteractor, '_getPastEvents').callsFake(async function (contract: any, names: EventName[], extraTopics: Array<string[] | string | undefined>, options: PastEventOptions): Promise<any> {
           const fromBlock = options.fromBlock as number
           const toBlock = options.toBlock as number
           if (toBlock - fromBlock > 100) {

@@ -158,7 +158,14 @@ interface IRelayHub is IERC165 {
      * Relay Managers call this to retrieve their revenue, and `Paymasters` can also use it to reduce their funding.
      * Emits a `Withdrawn` event.
      */
-    function withdraw(uint256 amount, address payable dest) external;
+    function withdraw(address payable dest, uint256 amount) external;
+
+    /**
+     * @notice Withdraws from an account's balance, sending funds to multiple provided addresses.
+     * Relay Managers call this to retrieve their revenue, and `Paymasters` can also use it to reduce their funding.
+     * Emits a `Withdrawn` event for each destination.
+     */
+    function withdrawMultiple(address payable[] memory dest, uint256[] memory amount) external;
 
     // Relaying
 
