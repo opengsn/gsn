@@ -75,7 +75,7 @@ interface IStakeManager {
 
     /// @notice Emitted when a `devAddress` is changed.
     event DevAddressSet(
-        address indexed burnAddress
+        address indexed devAddress
     );
 
     /// @notice Emitted if Relay Server is inactive for an `abandonmentDelay` and contract owner initiates its removal.
@@ -84,12 +84,13 @@ interface IStakeManager {
         uint256 abandonedTime
     );
 
-    /// @notice
-    event RelayKeepalive(
+    /// @notice Emitted to indicate an action performed by a relay server to prevent it from being marked as abandoned.
+    event RelayServerKeepalive(
         address indexed relayManager,
         uint256 keepaliveTime
     );
 
+    /// @notice Emitted when the stake of an abandoned relayer has been confiscated and transferred to the `devAddress`.
     event AbandonedRelayManagerStakeEscheated(
         address indexed relayManager,
         address indexed owner,
@@ -115,6 +116,17 @@ interface IStakeManager {
 
     struct RelayHubInfo {
         uint256 removalTime;
+    }
+
+    /**
+     * @param devAddress - the address that will receive the 'abandoned' stake
+     * @param abandonmentDelay - the amount of time after which the relay can be marked as 'abandoned'
+     * @param escheatmentDelay - the amount of time after which the abandoned relay's stake and balance may be withdrawn to the `devAddress`
+     */
+    struct AbandonedRelayServerConfig {
+        address devAddress;
+        uint256 abandonmentDelay;
+        uint256 escheatmentDelay;
     }
 
     /**
@@ -247,9 +259,9 @@ interface IStakeManager {
     function setDevAddress(address _burnAddress) external;
 
     /**
-     * @return The address that will receive the 'abandoned' stake.
+     * @return The structure that contains all configuration values for the 'abandoned' stake.
      */
-    function getDevAddress() external view returns (address);
+    function getAbandonedRelayServerConfig() external view returns (AbandonedRelayServerConfig memory);
 
     /**
      * @return the block number in which the contract has been deployed.

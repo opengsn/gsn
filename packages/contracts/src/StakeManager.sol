@@ -24,11 +24,7 @@ contract StakeManager is IStakeManager, Ownable {
     string public override versionSM = "2.2.3+opengsn.stakemanager.istakemanager";
     uint256 internal immutable maxUnstakeDelay;
 
-    /// @notice amount of time after which the relay can be marked as 'abandoned'
-    uint256 internal immutable abandonmentDelay;
-
-    /// @notice amount of time after which the abandoned relay's stake and balance may be withdrawn to the devAddress
-    uint256 internal immutable escheatmentDelay;
+    AbandonedRelayServerConfig internal abandonedRelayServerConfig;
 
     address internal burnAddress;
     address internal devAddress;
@@ -56,13 +52,13 @@ contract StakeManager is IStakeManager, Ownable {
 
     /// @inheritdoc IStakeManager
     function setDevAddress(address _devAddress) public override onlyOwner {
-        devAddress = _devAddress;
-        emit DevAddressSet(burnAddress);
+        abandonedRelayServerConfig.devAddress = _devAddress;
+        emit DevAddressSet(abandonedRelayServerConfig.devAddress);
     }
 
     /// @inheritdoc IStakeManager
-    function getDevAddress() external override view returns (address) {
-        return devAddress;
+    function getAbandonedRelayServerConfig() external override view returns (AbandonedRelayServerConfig memory) {
+        return abandonedRelayServerConfig;
     }
 
     /// @inheritdoc IStakeManager
@@ -95,8 +91,8 @@ contract StakeManager is IStakeManager, Ownable {
         setDevAddress(_devAddress);
         creationBlock = block.number;
         maxUnstakeDelay = _maxUnstakeDelay;
-        abandonmentDelay = _abandonmentDelay;
-        escheatmentDelay = _escheatmentDelay;
+        abandonedRelayServerConfig.abandonmentDelay = _abandonmentDelay;
+        abandonedRelayServerConfig.escheatmentDelay = _escheatmentDelay;
     }
 
     /// @inheritdoc IStakeManager
@@ -216,7 +212,7 @@ contract StakeManager is IStakeManager, Ownable {
     /// @inheritdoc IStakeManager
     function isRelayEscheatable(address relayManager) public view override returns (bool) {
         IStakeManager.StakeInfo memory stakeInfo = stakes[relayManager];
-        return stakeInfo.abandonedTime != 0 && stakeInfo.abandonedTime + escheatmentDelay < block.timestamp;
+        return stakeInfo.abandonedTime != 0 && stakeInfo.abandonedTime + abandonedRelayServerConfig.escheatmentDelay < block.timestamp;
     }
 
     /// @inheritdoc IStakeManager
@@ -224,7 +220,7 @@ contract StakeManager is IStakeManager, Ownable {
         StakeInfo storage info = stakes[relayManager];
         require(info.stake > 0, "relay manager not staked");
         require(info.abandonedTime == 0, "relay manager already abandoned");
-        require(info.keepaliveTime + abandonmentDelay < block.timestamp, "relay manager was alive recently");
+        require(info.keepaliveTime + abandonedRelayServerConfig.abandonmentDelay < block.timestamp, "relay manager was alive recently");
         info.abandonedTime = block.timestamp;
         emit RelayServerAbandoned(relayManager, info.abandonedTime);
     }
@@ -236,7 +232,7 @@ contract StakeManager is IStakeManager, Ownable {
         uint256 amount = info.stake;
         info.stake = 0;
         info.withdrawTime = 0;
-        info.token.safeTransfer(devAddress, amount);
+        info.token.safeTransfer(abandonedRelayServerConfig.devAddress, amount);
         emit AbandonedRelayManagerStakeEscheated(relayManager, msg.sender, info.token, amount);
     }
 
@@ -248,6 +244,6 @@ contract StakeManager is IStakeManager, Ownable {
         require(isHubAuthorized || isRelayOwner, "must be called by owner or hub");
         info.abandonedTime = 0;
         info.keepaliveTime = block.timestamp;
-        emit RelayKeepalive(relayManager, info.keepaliveTime);
+        emit RelayServerKeepalive(relayManager, info.keepaliveTime);
     }
 }
