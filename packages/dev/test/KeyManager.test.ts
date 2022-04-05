@@ -12,6 +12,7 @@ function cleanFolder (): void {
     fs.unlinkSync(keyStoreFilePath)
   }
   if (fs.existsSync(workdir)) {
+    // @ts-ignore
     fs.rmSync(workdir, {
       recursive: true,
       force: true

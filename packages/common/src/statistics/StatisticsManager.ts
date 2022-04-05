@@ -329,7 +329,7 @@ export class StatisticsManager {
     try {
       const pingResponse = await this.httpClient.getPingResponse(url)
       relayPing = { pingResponse }
-    } catch (error) {
+    } catch (error: any) {
       relayPing = { error }
     }
     return relayPing

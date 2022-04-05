@@ -23,6 +23,7 @@ function cleanFolder (): void {
     fs.unlinkSync(txStoreFilePath)
   }
   if (fs.existsSync(workdir)) {
+    // @ts-ignore
     fs.rmSync(workdir, {
       recursive: true,
       force: true
@@ -146,7 +147,7 @@ contract('TxStoreManager', function (accounts) {
     try {
       await txmanager.putTx(tx, false)
       assert.fail('should fail storing twice')
-    } catch (e) {
+    } catch (e: any) {
       assert.include(e.message, 'violates the unique constraint')
     }
     assert.deepEqual(1, (await txmanager.getAll()).length)

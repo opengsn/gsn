@@ -59,7 +59,7 @@ contract('ReputationFlow', function () {
         }
         try {
           await testRecipient.emitMessage('Hello there!', { gas: 100000 })
-        } catch (e) {
+        } catch (e: any) {
           if (e.message.includes('Transaction has been reverted by the EVM') === true) {
             continue
           }

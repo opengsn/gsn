@@ -5,7 +5,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 
 // @ts-ignore
-import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData } from 'eth-sig-util'
+import { EIP712TypedData, signTypedData_v4, TypedDataUtils, signTypedData, TypedMessage } from 'eth-sig-util'
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
@@ -253,14 +253,15 @@ contract('Forwarder', ([from]) => {
         }
 
         // we create extended data message
-        const extendedData = {
+        const types = {
+          EIP712Domain: EIP712DomainType,
+          ExtendedMessage: ExtendedMessageType,
+          ExtraData: ExtraDataType
+        }
+        const extendedData: TypedMessage<typeof types> = {
           domain: data.domain,
           primaryType: 'ExtendedMessage',
-          types: {
-            EIP712Domain: EIP712DomainType,
-            ExtendedMessage: ExtendedMessageType,
-            ExtraData: ExtraDataType
-          },
+          types,
           message: extendedReq
         }
 

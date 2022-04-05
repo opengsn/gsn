@@ -45,6 +45,7 @@ context('GasPriceFetcher', function () {
       res.send(mockOracleResponse)
     })
     await new Promise((resolve) => {
+      // @ts-ignore
       server = mockServer.listen(0, resolve)
     })
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

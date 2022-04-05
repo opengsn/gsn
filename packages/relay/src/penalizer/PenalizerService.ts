@@ -357,7 +357,7 @@ export class PenalizerService {
     }
     try {
       await this.contractInteractor.relayHubInstance.verifyRelayManagerStaked(relayManager)
-    } catch (e) {
+    } catch (e: any) {
       this.logger.info(e.message)
       return {
         valid: false,
