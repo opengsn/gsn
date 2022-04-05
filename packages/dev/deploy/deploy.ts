@@ -4,6 +4,7 @@ import {
   environments,
   EnvironmentsKeys
 } from '@opengsn/common'
+import { constants } from '@opengsn/common/dist/Constants'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
@@ -106,10 +107,9 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
     ]
   })
 
-  const burnAddress = '0x'.padEnd(42, 'f')
   const stakeManager = await deploy('StakeManager', {
     from: deployer,
-    args: [env.maxUnstakeDelay, burnAddress]
+    args: [env.maxUnstakeDelay, env.abandonmentDelay, env.escheatmentDelay, constants.BURN_ADDRESS, env.relayHubConfiguration.devAddress]
   })
 
   const relayRegistrar = await deploy('RelayRegistrar', {
