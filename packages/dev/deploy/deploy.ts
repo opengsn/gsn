@@ -26,8 +26,6 @@ interface DeploymentConfig {
 }
 
 const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const deployTestPaymaster = true
-
   // TODO: there should be type extensions to support these...
   const { web3, deployments, getChainId } = hre as any
   const accounts = await ethers.provider.listAccounts()
@@ -99,6 +97,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
       const sampleEnv = merge(defaultEnv, {
         deploymentConfiguration: {
           paymasterDeposit: '0.1',
+          deployTestPaymaster: true,
           minimumStakePerToken: { test: '0.5' }
         }
       })
@@ -201,7 +200,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 
   let deployedPm: DeployResult
-  if (deployTestPaymaster) {
+  if (env.deploymentConfiguration.deployTestPaymaster) {
     deployedPm = await deploy('TestPaymasterEverythingAccepted', { from: deployer, log: true })
 
     await setField('TestPaymasterEverythingAccepted', 'getRelayHub', 'setRelayHub', relayHub.address)

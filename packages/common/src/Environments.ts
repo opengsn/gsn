@@ -5,6 +5,7 @@ import { PenalizerConfiguration } from './types/PenalizerConfiguration'
 interface DeploymentConfiguration {
   readonly minimumStakePerToken: { [key: string]: string }
   readonly paymasterDeposit: string
+  readonly deployTestPaymaster: boolean
 }
 
 export interface Environment {
