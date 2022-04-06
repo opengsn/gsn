@@ -2,12 +2,18 @@ import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { PaymasterConfiguration } from './types/PaymasterConfiguration'
 import { PenalizerConfiguration } from './types/PenalizerConfiguration'
 
+interface DeploymentConfiguration {
+  readonly minimumStakePerToken: { [key: string]: string }
+  readonly paymasterDeposit: string
+}
+
 export interface Environment {
   readonly chainId: number
   readonly mintxgascost: number
   readonly relayHubConfiguration: RelayHubConfiguration
   readonly penalizerConfiguration: PenalizerConfiguration
   readonly paymasterConfiguration: PaymasterConfiguration
+  readonly deploymentConfiguration?: DeploymentConfiguration
   readonly maxUnstakeDelay: number
   readonly abandonmentDelay: number
   readonly escheatmentDelay: number
@@ -16,6 +22,19 @@ export interface Environment {
   readonly dataOnChainHandlingGasCostPerByte: number
   readonly getGasPriceFactor: number
   readonly nonZeroDevFeeGasOverhead: number
+}
+
+// deep (3-level) merge of environments
+export function merge (env1: Environment, env2: Partial<Environment>): Environment {
+  return Object.assign({}, env1, env2,
+    {
+      relayHubConfiguration: Object.assign({}, env1.relayHubConfiguration, env2.relayHubConfiguration),
+      penalizerConfiguration: Object.assign({}, env1.penalizerConfiguration, env2.penalizerConfiguration),
+      paymasterConfiguration: Object.assign({}, env1.paymasterConfiguration, env2.paymasterConfiguration),
+      deploymentConfiguration: Object.assign({}, env1.deploymentConfiguration, env2.deploymentConfiguration, {
+        minimumStakePerToken: Object.assign({}, env1.deploymentConfiguration?.minimumStakePerToken, env2.deploymentConfiguration?.minimumStakePerToken)
+      })
+    })
 }
 
 /**

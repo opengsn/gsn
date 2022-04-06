@@ -3,6 +3,7 @@
   "include": [
     "src/**/*.ts",
     "deploy/*.ts",
+    "deployment-config.ts",
     "hardhat.config.ts",
     "test/**/*.ts",
     "../contracts/types/truffle-contracts/index.d.ts",
