@@ -65,17 +65,6 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   //   process.exit(1)
   // }
 
-  let isArbitrum = false
-  try {
-    const arbSysAddress = '0x' + '64'.padStart(40, '0')
-    const ArbSys = new ethers.Contract(arbSysAddress, ['function arbOSVersion() external pure returns (uint)'], ethers.provider)
-    const arbos = await ArbSys.arbOSVersion()
-
-    console.log('== Running on', chalk.yellowBright('Arbitrum'), 'arbOSVersion=', arbos)
-    isArbitrum = true
-  } catch (e) {
-  }
-
   function fatal (...params: any): never {
     console.error(chalk.red('fatal:'), ...params)
     process.exit(1)
@@ -113,6 +102,12 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   if (env.deploymentConfiguration == null || Object.keys(env.deploymentConfiguration.minimumStakePerToken).length === 0) {
     fatal('must have at least one entry in minimumStakePerToken')
+  }
+
+  if (env.deploymentConfiguration.isArbitrum === true) {
+    // sanity: verify we indeed on arbitrum-enabled network.
+    const ArbSys = new ethers.Contract(constants.ARBITRUM_ARBSYS, ['function arbOSVersion() external pure returns (uint)'], ethers.provider)
+    await ArbSys.arbOSVersion()
   }
 
   let stakingTokenAddress = Object.keys(env.deploymentConfiguration.minimumStakePerToken ?? {})[0]
@@ -165,7 +160,7 @@ const deploymentFunc: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const hubConfig = env.relayHubConfiguration
   let relayHub: DeployResult
   let hubContractName: string
-  if (isArbitrum) {
+  if (env.deploymentConfiguration.isArbitrum === true) {
     console.log(`Using ${chalk.yellow('Arbitrum')} relayhub`)
     hubContractName = 'ArbRelayHub'
     relayHub = await deploy(hubContractName, {

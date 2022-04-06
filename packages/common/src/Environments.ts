@@ -6,6 +6,7 @@ interface DeploymentConfiguration {
   readonly minimumStakePerToken: { [key: string]: string }
   readonly paymasterDeposit: string
   readonly deployTestPaymaster: boolean
+  readonly isArbitrum?: boolean
 }
 
 export interface Environment {
