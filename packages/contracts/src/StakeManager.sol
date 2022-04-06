@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./interfaces/IStakeManager.sol";
@@ -19,7 +18,6 @@ import "./interfaces/IStakeManager.sol";
  */
 contract StakeManager is IStakeManager, Ownable {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
     string public override versionSM = "2.2.3+opengsn.stakemanager.istakemanager";
     uint256 internal immutable maxUnstakeDelay;
@@ -117,7 +115,7 @@ contract StakeManager is IStakeManager, Ownable {
     function unlockStake(address relayManager) external override relayOwnerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.withdrawTime == 0, "already pending");
-        info.withdrawTime = block.timestamp.add(info.unstakeDelay);
+        info.withdrawTime = block.timestamp + info.unstakeDelay;
         emit StakeUnlocked(relayManager, msg.sender, info.withdrawTime);
     }
 
@@ -175,7 +173,7 @@ contract StakeManager is IStakeManager, Ownable {
     function _unauthorizeHub(address relayManager, address relayHub) internal {
         RelayHubInfo storage hubInfo = authorizedHubs[relayManager][relayHub];
         require(hubInfo.removalTime == type(uint256).max, "hub not authorized");
-        hubInfo.removalTime = block.timestamp.add(stakes[relayManager].unstakeDelay);
+        hubInfo.removalTime = block.timestamp + stakes[relayManager].unstakeDelay;
         emit HubUnauthorized(relayManager, relayHub, hubInfo.removalTime);
     }
 
@@ -187,10 +185,10 @@ contract StakeManager is IStakeManager, Ownable {
 
         // Half of the stake will be burned (sent to address 0)
         require(stakes[relayManager].stake >= amount, "penalty exceeds stake");
-        stakes[relayManager].stake = SafeMath.sub(stakes[relayManager].stake, amount);
+        stakes[relayManager].stake =stakes[relayManager].stake - amount;
 
-        uint256 toBurn = SafeMath.div(amount, 2);
-        uint256 reward = SafeMath.sub(amount, toBurn);
+        uint256 toBurn = amount / 2;
+        uint256 reward = amount - toBurn;
 
         // Stake ERC-20 token is burned and transferred
         stakes[relayManager].token.safeTransfer(burnAddress, toBurn);

@@ -15,7 +15,6 @@ import "./utils/MinLibBytes.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -37,7 +36,6 @@ import "./interfaces/IStakeManager.sol";
  */
 contract RelayHub is IRelayHub, Ownable, ERC165 {
     using ERC165Checker for address;
-    using SafeMath for uint256;
     using Address for address;
 
     address private constant DRY_RUN_ADDRESS = 0x0000000000000000000000000000000000000000;
@@ -186,7 +184,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         require(target.supportsInterface(type(IPaymaster).interfaceId), "target is not a valid IPaymaster");
         uint256 amount = msg.value;
 
-        balances[target] = balances[target].add(amount);
+        balances[target] = balances[target] + amount;
 
         emit Deposited(target, msg.sender, amount);
     }
@@ -214,7 +212,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
             // #endif
             uint256 balance = balances[account];
             require(balance >= amount[i], "insufficient funds");
-            balances[account] = balance.sub(amount[i]);
+            balances[account] = balance - amount[i];
             (bool success, ) = dest[i].call{value: amount[i]}("");
             require(success, "Transfer failed.");
             emit Withdrawn(account, dest[i], amount[i]);
@@ -364,7 +362,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         if (!vars.success) {
             //Failure cases where the PM doesn't pay
             if (vars.status == RelayCallStatus.RejectedByPreRelayed ||
-                    (vars.innerGasUsed <= vars.gasAndDataLimits.acceptanceBudget.add(relayRequest.relayData.transactionCalldataGasUsed)) && (
+                    (vars.innerGasUsed <= vars.gasAndDataLimits.acceptanceBudget + relayRequest.relayData.transactionCalldataGasUsed) && (
                     vars.status == RelayCallStatus.RejectedByForwarder ||
                     vars.status == RelayCallStatus.RejectedByRecipientRevert  //can only be thrown if rejectOnRecipientRevert==true
                 )) {
@@ -389,10 +387,10 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
         uint256 devCharge = calculateDevCharge(charge);
 
-        balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster].sub(charge);
-        balances[vars.relayManager] = balances[vars.relayManager].add(charge.sub(devCharge));
+        balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster] - charge;
+        balances[vars.relayManager] = balances[vars.relayManager] + (charge - devCharge);
         if (devCharge > 0) { // save some gas in case of zero dev charge
-            balances[config.devAddress] = balances[config.devAddress].add(devCharge);
+            balances[config.devAddress] = balances[config.devAddress] + devCharge;
         }
 
         {
@@ -549,7 +547,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
             basefee = block.basefee;
         }
         uint256 chargeableGasPrice = Math.min(relayData.maxFeePerGas, Math.min(tx.gasprice, basefee + relayData.maxPriorityFeePerGas));
-        return relayData.baseRelayFee.add((gasUsed.mul(chargeableGasPrice).mul(relayData.pctRelayFee.add(100))).div(100));
+        return relayData.baseRelayFee + (gasUsed * chargeableGasPrice * (relayData.pctRelayFee + 100)) / 100;
     }
 
     /// @inheritdoc IRelayHub
@@ -602,7 +600,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         require(stakeManager.isRelayEscheatable(relayManager), "relay server not escheatable yet");
         uint256 balance = balances[relayManager];
         balances[relayManager] = 0;
-        balances[config.devAddress] = balances[config.devAddress].add(balance);
+        balances[config.devAddress] = balances[config.devAddress] + balance;
         emit AbandonedRelayManagerBalanceEscheated(relayManager, balance);
     }
 
