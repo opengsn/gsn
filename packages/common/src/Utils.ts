@@ -362,7 +362,7 @@ function isBigNumber (object: Object): boolean {
 export function toNumber (numberish: number | string | BN | BigInt): number {
   switch (typeof numberish) {
     case 'string':
-      return parseInt(numberish)
+      return parseFloat(numberish)
     case 'number':
       return numberish
     case 'bigint':

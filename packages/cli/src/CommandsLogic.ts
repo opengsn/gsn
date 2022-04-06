@@ -5,7 +5,7 @@ import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
 import { HttpProvider } from 'web3-core'
-import { fromWei, toBN, toHex, toNumber } from 'web3-utils'
+import { fromWei, toBN, toHex } from 'web3-utils'
 import ow from 'ow'
 
 import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
@@ -32,7 +32,7 @@ import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConf
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
-import { formatTokenAmount } from '@opengsn/common'
+import { formatTokenAmount, toNumber } from '@opengsn/common'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
