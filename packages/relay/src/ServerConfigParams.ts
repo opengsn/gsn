@@ -279,6 +279,7 @@ export function parseServerConfig (args: string[], env: any): any {
   if (argv._.length > 0) {
     error(`unexpected param(s) ${argv._.join(',')}`)
   }
+  // @ts-ignore
   delete argv._
   let configFile = {}
   const configFileName = argv.config as string

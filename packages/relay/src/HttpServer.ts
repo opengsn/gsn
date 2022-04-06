@@ -82,7 +82,7 @@ export class HttpServer {
       const pingResponse = await this.relayService.pingHandler(paymaster)
       res.send(pingResponse)
       this.logger.info(`address ${pingResponse.relayWorkerAddress} sent. ready: ${pingResponse.ready}`)
-    } catch (e) {
+    } catch (e: any) {
       const message: string = e.message
       res.send({ message })
       this.logger.error(`ping handler rejected: ${message}`)
@@ -97,7 +97,7 @@ export class HttpServer {
       const statsResponse = this.relayService.statsHandler()
       res.send(statsResponse)
       this.logger.info('stats sent.')
-    } catch (e) {
+    } catch (e: any) {
       const message: string = e.message
       res.send({ message })
       this.logger.error(`stats handler rejected: ${message}`)
@@ -112,7 +112,7 @@ export class HttpServer {
       ow(req.body, ow.object.exactShape(RelayTransactionRequestShape))
       const signedTx = await this.relayService.createRelayTransaction(req.body)
       res.send({ signedTx })
-    } catch (e) {
+    } catch (e: any) {
       const error: string = e.message
       res.send({ error })
       this.logger.error(`tx failed: ${error}`)
@@ -136,7 +136,7 @@ export class HttpServer {
         commitTxHash: penalizeResponse.commitTxHash,
         message
       })
-    } catch (e) {
+    } catch (e: any) {
       const message: string = e.message
       res.send({ message })
       this.logger.error(`penalization failed: ${message}`)

@@ -21,7 +21,7 @@ require('source-map-support').install({ errorFormatterForce: true })
 function expectThrow (func: () => void, match: string): void {
   try {
     func()
-  } catch (e) {
+  } catch (e: any) {
     assert.include(e.toString(), match)
     return
   }
@@ -130,7 +130,7 @@ context('#ServerConfigParams', () => {
       fs.writeFileSync(tmpConfigfile, JSON.stringify(serverDefaultConfiguration))
       try {
         parseServerConfig(['--config', tmpConfigfile], {})
-      } catch (e) {
+      } catch (e: any) {
         assert.fail(e)
       }
     })
@@ -146,7 +146,7 @@ context('#ServerConfigParams', () => {
       try {
         validateBalanceParams(config)
         assert.fail()
-      } catch (e) {
+      } catch (e: any) {
         assert.include(e.message, 'workerTargetBalance must be at least workerMinBalance')
       }
     })
@@ -159,7 +159,7 @@ context('#ServerConfigParams', () => {
       try {
         validateBalanceParams(config)
         assert.fail()
-      } catch (e) {
+      } catch (e: any) {
         assert.include(e.message, 'managerTargetBalance must be at least managerMinBalance')
       }
     })
@@ -172,7 +172,7 @@ context('#ServerConfigParams', () => {
       try {
         validateBalanceParams(config)
         assert.fail()
-      } catch (e) {
+      } catch (e: any) {
         assert.include(e.message, 'withdrawToOwnerOnBalance must be at least minHubWithdrawalBalance')
       }
     })
@@ -186,7 +186,7 @@ context('#ServerConfigParams', () => {
       try {
         validateBalanceParams(config)
         assert.fail()
-      } catch (e) {
+      } catch (e: any) {
         assert.include(e.message, 'withdrawToOwnerOnBalance must be larger than managerTargetBalance + workerTargetBalance')
       }
     })

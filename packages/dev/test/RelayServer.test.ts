@@ -216,7 +216,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message, `Wrong worker address: ${accounts[1]}`)
         }
@@ -229,7 +229,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             `priorityFee given ${wrongPriorityFee} too low. Minimum maxPriorityFee server accepts: ${env.relayServer.minMaxPriorityFeePerGas}`)
@@ -241,7 +241,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             `maxFee ${req.relayRequest.relayData.maxFeePerGas} cannot be lower than priorityFee ${req.relayRequest.relayData.maxPriorityFeePerGas}`)
@@ -255,7 +255,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             `maxFee given ${wrongFee} too high : ${env.relayServer.config.maxGasPrice}`)
@@ -268,7 +268,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           env.relayServer.transactionType = TransactionType.LEGACY
           env.relayServer.validateRequestTxType(req)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             `Network ${env.relayServer.contractInteractor.getNetworkType()} doesn't support eip1559`)
@@ -282,7 +282,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             `Wrong hub address.\nRelay server's hub address: ${env.relayServer.config.relayHubAddress}, request's hub address: ${wrongHubAddress}\n`)
@@ -295,7 +295,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           env.relayServer.validateInput(req, 1000)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message,
             'Request expired (or too close): expired at (Fri, 13 Feb 2009 23:31:30 GMT), we expect it to be valid until')
         }
@@ -307,7 +307,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           env.relayServer.validateInput(req, 0)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message,
             `Paymaster ${blacklistedPaymaster} is blacklisted!`)
         }
@@ -343,7 +343,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           try {
             env.relayServer.validateRelayFees(req)
             assert.fail()
-          } catch (e) {
+          } catch (e: any) {
             assert.include(e.message, 'Unacceptable baseRelayFee:')
           }
         })
@@ -355,7 +355,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           try {
             env.relayServer.validateRelayFees(req)
             assert.fail()
-          } catch (e) {
+          } catch (e: any) {
             assert.include(e.message, 'Unacceptable pctRelayFee:')
           }
         })
@@ -385,7 +385,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           try {
             await env.relayServer.validateMaxNonce(0)
             assert.fail()
-          } catch (e) {
+          } catch (e: any) {
             assert.include(e.message, 'Unacceptable relayMaxNonce:')
           }
         })
@@ -406,7 +406,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           await env.relayServer._refreshPriorityFee()
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message,
             `network maxPriorityFeePerGas ${env.relayServer.minMaxPriorityFeePerGas} is higher than config.maxGasPrice ${env.relayServer.config.maxGasPrice}`)
@@ -423,7 +423,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           await env.relayServer.validatePaymasterGasAndDataLimits(req)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message, `not a valid paymaster contract: ${accounts[1]}`)
         }
@@ -436,7 +436,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           await env.relayServer.validatePaymasterGasAndDataLimits(req)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message, 'exceeds maxGasLimit')
         } finally {
           env.relayServer.maxGasLimit = origMaxGas
@@ -450,7 +450,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           await env.paymaster.withdrawAll(accounts[0])
           await env.relayServer.validatePaymasterGasAndDataLimits(req)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message, 'paymaster balance too low')
         } finally {
           await revert(id)
@@ -476,7 +476,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           try {
             await env.relayServer.validatePaymasterGasAndDataLimits(req)
             assert.fail()
-          } catch (e) {
+          } catch (e: any) {
             assert.include(e.message, 'paymaster acceptance budget + msg.data gas cost too high')
           }
         })
@@ -486,7 +486,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           try {
             await env.relayServer.validatePaymasterGasAndDataLimits(req)
             assert.fail()
-          } catch (e) {
+          } catch (e: any) {
             assert.include(e.message, 'Refusing to relay a transaction due to calldata cost. Client signed transactionCalldataGasUsed: 500')
           }
         })
@@ -520,7 +520,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         try {
           await env.relayServer.validateViewCallSucceeds(req, 200000, 2000000)
           assert.fail()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message, 'Paymaster rejected in server: FWD: signature mismatch')
         }
       })

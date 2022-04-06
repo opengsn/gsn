@@ -15,6 +15,7 @@ describe('RelayServer-webpack', () => {
   before('create webpack', function () {
     this.timeout(15000)
     const jsrelayDir = path.join(__dirname, '../../../dockers', 'jsrelay')
+    // @ts-ignore
     fs.rmSync(path.join(jsrelayDir, 'dist'), {
       recursive: true,
       force: true
@@ -27,7 +28,7 @@ describe('RelayServer-webpack', () => {
     try {
       childProcess.execSync('node ' + oneFileRelayer, { encoding: 'ascii', stdio: 'pipe' })
       assert.fail('should throw')
-    } catch (e) {
+    } catch (e: any) {
       assert.match(e.message.toString(), /missing ethereumNodeUrl/)
     }
   })

@@ -103,7 +103,7 @@ contract('TransactionManager', function (accounts) {
         const promises = [env.relayTransaction(), env.relayTransaction(false, { data: '0xdeadbeef' })]
         await Promise.all(promises)
         assert.fail()
-      } catch (e) {
+      } catch (e: any) {
         console.log(e)
         assert.include(e.message, 'violates the unique constraint')
         // there may be multiple fields marked as 'unique', this checks that 'nonceSigner' is the one that throws
@@ -129,7 +129,7 @@ contract('TransactionManager', function (accounts) {
         }
         try {
           await env.relayTransaction()
-        } catch (e) {
+        } catch (e: any) {
           assert.include(e.message, 'no tx for you')
           assert.isFalse(transactionManager.nonceMutex.isLocked(), 'nonce mutex not released after exception')
         }
@@ -176,7 +176,7 @@ contract('TransactionManager', function (accounts) {
       try {
         await transactionManager.resendTransaction(
           oldTransaction, latestBlockNumber, latestBlockTimestamp, oldTransaction.maxFeePerGas * 2, oldTransaction.maxPriorityFeePerGas * 2, false)
-      } catch (e) {
+      } catch (e: any) {
         assert.include(e.message, 'Nonce too low. Expected nonce to be')
       }
       storedTransactions = await transactionManager.txStoreManager.getAll()

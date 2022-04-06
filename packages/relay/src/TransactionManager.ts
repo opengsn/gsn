@@ -120,7 +120,7 @@ data                     | ${transaction.data}
     try {
       const estimateGas = await method.estimateGas({ from })
       return parseInt(estimateGas)
-    } catch (e) {
+    } catch (e: any) {
       const error = e as Error
       this.logger.error(`Failed to estimate gas for method ${methodName}\n. Using default ${this.config.defaultGasLimit}. Error: ${error.message} ${error.stack}`)
     }
@@ -145,7 +145,7 @@ data                     | ${transaction.data}
         transactionHash,
         signedTx
       }
-    } catch (e) {
+    } catch (e: any) {
       throw new Error(`Tx broadcast failed: ${(e as Error).message}`)
     }
   }
@@ -433,7 +433,7 @@ data                     | ${transaction.data}
       } else { // The tx is ok, just rebroadcast it
         try {
           await this.resendTransaction(transaction, currentBlockNumber, currentBlockTimestamp, transaction.maxFeePerGas, transaction.maxPriorityFeePerGas, transaction.maxFeePerGas > parseInt(this.config.maxGasPrice))
-        } catch (e) {
+        } catch (e: any) {
           this.logger.error(`Rebroadcasting existing transaction: ${(e as Error).message}`)
         }
       }

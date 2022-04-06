@@ -46,7 +46,7 @@ export class KeyManager {
           fs.writeFileSync(keyStorePath, JSON.stringify({ seed: genseed }), { flag: 'w' })
         }
         this.hdkey = HDKey.fromMasterSeed(genseed)
-      } catch (e) {
+      } catch (e: any) {
         // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
         if (!e.message.includes('file already exists')) {
           throw e

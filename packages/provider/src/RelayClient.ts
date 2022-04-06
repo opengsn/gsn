@@ -161,7 +161,7 @@ export class RelayClient {
       // can't find the TX in the mempool. broadcast it ourselves.
       await this.dependencies.contractInteractor.sendSignedTransaction(rawTx)
       return { hasReceipt: true }
-    } catch (broadcastError) {
+    } catch (broadcastError: any) {
       // don't display error for the known-good cases
       if (broadcastError?.message.match(/the tx doesn't have the correct nonce|known transaction/) != null) {
         return {
@@ -211,7 +211,7 @@ export class RelayClient {
     let relayRequest: RelayRequest
     try {
       relayRequest = await this._prepareRelayRequest(gsnTransactionDetails)
-    } catch (error) {
+    } catch (error: any) {
       relayingErrors.set(constants.DRY_RUN_KEY, error)
       return {
         relayingErrors,
@@ -319,7 +319,7 @@ export class RelayClient {
           }
           return penalizeResponse
         })
-    } catch (error) {
+    } catch (error: any) {
       if (error?.message == null || error.message.indexOf('timeout') !== -1) {
         this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       }
@@ -331,7 +331,7 @@ export class RelayClient {
       if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
         validationError = new Error('Returned transaction did not pass validation')
       }
-    } catch (e) {
+    } catch (e: any) {
       validationError = e
     }
     if (validationError != null) {
