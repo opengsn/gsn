@@ -147,4 +147,13 @@ export const environments: { [key in EnvironmentsKeys]: Environment } = {
   arbitrum
 }
 
+export function getEnvironment (chainId: number): { name: EnvironmentsKeys, environment: Environment } | undefined {
+  const name = Object.keys(environments).find(env => environments[env as EnvironmentsKeys].chainId === chainId) as EnvironmentsKeys
+  if (name == null) {
+    return undefined
+  }
+  const environment = environments[name]
+  return { name, environment }
+}
+
 export const defaultEnvironment = environments.ganacheLocal
