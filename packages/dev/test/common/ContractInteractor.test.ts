@@ -616,7 +616,6 @@ contract('ContractInteractor', function (accounts) {
     //     .to.deep.equal(await relayReg.countRelays())
     // })
     it('should get matching returned struct', async () => {
-      console.log({testRelayHub})
       expect(await lightreg.getRelayInfo(testRelayHub.address, accounts[1]))
         .to.eql(await relayReg.getRelayInfo(testRelayHub.address, accounts[1]))
     })

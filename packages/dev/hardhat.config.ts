@@ -69,15 +69,4 @@ const config: HardhatUserConfig = {
   etherscan: { apiKey: process.env.ETHERSCAN_API_KEY }
 }
 
-// support url-based network: either start with "http", or a single work (infura network name)
-const neturl = process.argv.find((val, i, env) => (env[i - 1] === '--network'))
-if (neturl != null && config.networks != null && config.networks[neturl] == null) {
-  console.log(chalk.yellow('NOTE:'), 'using --network', chalk.yellow(neturl), 'which doesn\'t appear in config file')
-  if (neturl.match(/^http/) != null) {
-    config.networks[neturl] = getNetwork(neturl)
-  } else if (neturl.match(/^[\w-]+$/) != null) {
-    config.networks[neturl] = getInfuraNetwork(neturl)
-  }
-}
-
 module.exports = config
