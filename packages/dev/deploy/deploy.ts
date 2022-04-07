@@ -112,7 +112,7 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
     fatal('must have at least one entry in minimumStakePerToken')
   }
 
-  if (env.deploymentConfiguration.isArbitrum) {
+  if (env.deploymentConfiguration.isArbitrum === true) {
     // sanity: verify we indeed on arbitrum-enabled network.
     const ArbSys = new ethers.Contract(constants.ARBITRUM_ARBSYS, ['function arbOSVersion() external pure returns (uint)'], ethers.provider)
     await ArbSys.arbOSVersion()
@@ -180,7 +180,7 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
   const hubConfig = env.relayHubConfiguration
   let relayHub: DeployResult
   let hubContractName: string
-  if (env.deploymentConfiguration.isArbitrum) {
+  if (env.deploymentConfiguration.isArbitrum === true) {
     console.log(`Using ${chalk.yellow('Arbitrum')} relayhub`)
     hubContractName = 'ArbRelayHub'
     relayHub = await deploy(deployments, hubContractName, {
