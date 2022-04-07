@@ -2,6 +2,7 @@ import { DeployFunction, DeploymentsExtension, TxOptions } from 'hardhat-deploy/
 import { HttpNetworkConfig } from 'hardhat/src/types/config'
 
 import {
+  defaultEnvironment,
   Environment,
   getEnvironment,
   merge
@@ -73,7 +74,7 @@ function printSampleEnvironment (environment: Environment, chainId: number): voi
 
 function getMergedEnvironment (chainId: number): Environment {
   try {
-    const env = getEnvironment(chainId)
+    const env = getEnvironment(chainId) ?? { name: 'default', environment: defaultEnvironment }
     if (env == null) {
       fatal(`Environment with chainID ${chainId} not found`)
     }
