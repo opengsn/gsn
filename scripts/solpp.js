@@ -48,6 +48,12 @@ const recursiveSolidityPreprocess = async function (dirPath) {
 }
 console.time('solpp finished')
 console.log('solpp started')
+err = console.error
+console.error = (...params) => {
+   if ( params[0].match(/INVALID_ALT_NUMBER/) ) return
+   err(...params)
+}
+
 recursiveSolidityPreprocess(contractsFolder).then(function () {
   console.log(`processed ${filesCount} files`)
   console.timeEnd('solpp finished')

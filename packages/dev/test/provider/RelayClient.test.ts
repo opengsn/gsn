@@ -835,7 +835,7 @@ contract('RelayClient', function (accounts) {
         const spy = sinon.spy(relayClient.logger, 'error')
         const config = await relayClient._resolveConfigurationFromServer(supportedNetworks[0], 'https://opengsn.org/badurl')
         assert.deepEqual(config, {})
-        sinon.assert.calledWithMatch(spy, 'Could not fetch configuration from docs:')
+        sinon.assert.calledWithMatch(spy, 'Could not fetch default configuration:')
         sinon.restore()
       })
     })

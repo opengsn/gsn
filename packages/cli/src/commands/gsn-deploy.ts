@@ -61,7 +61,6 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
     stakingTokenAddress: commander.stakingToken,
     minimumTokenStake: commander.minimumTokenStake,
     deployPaymaster: commander.testPaymaster,
-    deployTestToken: commander.testToken,
     verbose: true,
     skipConfirmation: commander.skipConfirmation,
     forwarderAddress: commander.forwarder,

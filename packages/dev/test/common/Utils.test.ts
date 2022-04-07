@@ -1,7 +1,6 @@
 /* global describe it web3 */
 // @ts-ignore
 import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
-import { HashZero } from 'ethers/constants'
 import chaiAsPromised from 'chai-as-promised'
 import chai, { expect } from 'chai'
 
@@ -18,11 +17,12 @@ import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '@ope
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encodeRevertReason } from '../TestUtils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
-import { packRelayUrlForRegistrar, removeNullValues, splitRelayUrlForRegistrar } from '@opengsn/common'
+import { constants, packRelayUrlForRegistrar, removeNullValues, splitRelayUrlForRegistrar } from '@opengsn/common'
 import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
+const HashZero = constants.ZERO_BYTES32
 const { assert } = chai.use(chaiAsPromised)
 
 const TestUtil = artifacts.require('TestUtil')

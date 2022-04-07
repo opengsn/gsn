@@ -52,7 +52,7 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
     gsnTransactionDetails.maxPriorityFeePerGas != null &&
     parseInt(pingResponse.minMaxPriorityFeePerGas) > parseInt(gsnTransactionDetails.maxPriorityFeePerGas)
   ) {
-    throw new Error(`Proposed priority gas fee: ${gsnTransactionDetails.maxPriorityFeePerGas}; relay's minMaxPriorityFeePerGas: ${pingResponse.minMaxPriorityFeePerGas}`)
+    throw new Error(`Proposed priority gas fee: ${parseInt(gsnTransactionDetails.maxPriorityFeePerGas)}; relay's minMaxPriorityFeePerGas: ${pingResponse.minMaxPriorityFeePerGas}`)
   }
 }
 
@@ -536,7 +536,7 @@ export class RelayClient {
       }
       return jsonConfig.networks[chainId].gsnConfig
     } catch (e) {
-      this.logger.error(`Could not fetch configuration from docs: ${(e as Error).message}`)
+      this.logger.error(`Could not fetch default configuration: ${(e as Error).message}`)
       return {}
     }
   }

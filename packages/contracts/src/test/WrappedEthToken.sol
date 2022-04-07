@@ -4,10 +4,17 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../interfaces/IERC20Token.sol";
 
+/**
+ * @notice minimal "wrapped eth" implementation.
+ */
 contract WrappedEthToken is ERC20, IERC20Token {
 
     // solhint-disable-next-line no-empty-blocks
     constructor() ERC20("Wrapped Eth", "wEth") {
+    }
+
+    receive() external payable {
+        deposit();
     }
 
     function deposit() public override payable {

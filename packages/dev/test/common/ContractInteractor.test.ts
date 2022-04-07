@@ -603,8 +603,8 @@ contract('ContractInteractor', function (accounts) {
       await contractInteractor.init()
       relayReg = await RelayRegistrar.new()
       lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
-
       testRelayHub = await TestRelayHubForRegistrar.new()
+
       await testRelayHub.setRelayManagerStaked(accounts[1], true)
       await testRelayHub.setRelayManagerStaked(accounts[2], true)
       await relayReg.registerRelayServer(testRelayHub.address, 10, 11, splitRelayUrlForRegistrar('url1'), { from: accounts[1] })
