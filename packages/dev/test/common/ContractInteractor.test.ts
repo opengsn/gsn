@@ -31,9 +31,11 @@ import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contra
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 import { ether } from '@openzeppelin/test-helpers'
+import { splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const { expect } = chai.use(chaiAsPromised)
 
+const TestRelayHubForRegistrar = artifacts.require('TestRelayHubForRegistrar')
 const TestDecimalsToken = artifacts.require('TestDecimalsToken')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestToken = artifacts.require('TestToken')
@@ -601,6 +603,12 @@ contract('ContractInteractor', function (accounts) {
       await contractInteractor.init()
       relayReg = await RelayRegistrar.new()
       lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
+      testRelayHub = await TestRelayHubForRegistrar.new()
+
+      await testRelayHub.setRelayManagerStaked(accounts[1], true)
+      await testRelayHub.setRelayManagerStaked(accounts[2], true)
+      await relayReg.registerRelayServer(testRelayHub.address, 10, 11, splitRelayUrlForRegistrar('url1'), { from: accounts[1] })
+      await relayReg.registerRelayServer(testRelayHub.address, 20, 21, splitRelayUrlForRegistrar('url2'), { from: accounts[2] })
     })
 
     // it('should get matching numeric return value', async () => {
@@ -608,6 +616,7 @@ contract('ContractInteractor', function (accounts) {
     //     .to.deep.equal(await relayReg.countRelays())
     // })
     it('should get matching returned struct', async () => {
+      console.log({testRelayHub})
       expect(await lightreg.getRelayInfo(testRelayHub.address, accounts[1]))
         .to.eql(await relayReg.getRelayInfo(testRelayHub.address, accounts[1]))
     })
