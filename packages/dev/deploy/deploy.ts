@@ -120,7 +120,7 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
 
   let stakingTokenAddress = Object.keys(env.deploymentConfiguration.minimumStakePerToken ?? {})[0]
   if (stakingTokenAddress == null) {
-    fatal('must specify token address in minimumStakePerToken (or "test" to deploy TestWeth')
+    fatal('must specify token address in minimumStakePerToken (or "test" to deploy WrappedEthToken')
   }
 
   let stakingTokenDecimals: number
@@ -128,10 +128,10 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
 
   if (stakingTokenAddress === 'test') {
     stakingTokenDecimals = 18
-    const TestWEth = await deploy(deployments, 'TestWEth', {
+    const WrappedEthToken = await deploy(deployments, 'WrappedEthToken', {
       from: deployer
     })
-    stakingTokenAddress = TestWEth.address
+    stakingTokenAddress = WrappedEthToken.address
     stakingTokenValue = stakingTokenValue ?? '0.1'
   } else {
     const token = new ethers.Contract(stakingTokenAddress,
@@ -151,7 +151,7 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
   const stakingTokenValueParsed = parseUnits(stakingTokenValue, stakingTokenDecimals)
   console.log('stakingTokenValueParsed', stakingTokenValueParsed.toString())
 
-  const deployedForwarder = await deploy(deployments, 'Forwarder', { from: deployer })
+  const deployedForwarder = await deploy(deployments, 'Forwarder', { from: deployer, deterministicDeployment: true })
 
   if (deployedForwarder.newlyDeployed) {
     const f = new web3.eth.Contract(deployedForwarder.abi, deployedForwarder.address)
