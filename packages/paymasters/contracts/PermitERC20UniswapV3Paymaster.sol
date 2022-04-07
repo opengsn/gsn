@@ -3,7 +3,6 @@ pragma solidity ^0.8.7;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -23,7 +22,6 @@ import "./helpers/PermitInterfaceDAI.sol";
  * to pay for a GSN transaction.
  */
 contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
-    using SafeMath for uint256;
 
     event Received(address indexed sender, uint256 eth);
     event TokensCharged(uint256 gasUseWithoutPost, uint256 gasJustPost, uint256 ethActualCharge);
@@ -108,7 +106,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             relayRequest.request.value;
         uint256 price = uint256(priceFeed.latestAnswer());
         uint256 decimals = uint256(priceFeed.decimals());
-        tokenPreCharge = ethMaxCharge.mul(price).div(10**decimals);
+        tokenPreCharge = ethMaxCharge * price / (10 ** decimals);
     }
 
     function preRelayedCall(
@@ -149,7 +147,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     override
     relayHubOnly {
         (address payer,) = abi.decode(context, (address, uint256));
-        uint256 ethActualCharge = relayHub.calculateCharge(gasUseWithoutPost.add(gasUsedByPost), relayData);
+        uint256 ethActualCharge = relayHub.calculateCharge(gasUseWithoutPost + gasUsedByPost, relayData);
         _depositProceedsToHub(ethActualCharge);
         uint256 remainingTokenBalance = token.balanceOf(address(this));
         require(token.transfer(payer, remainingTokenBalance), "failed refund");

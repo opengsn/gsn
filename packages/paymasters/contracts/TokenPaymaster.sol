@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@opengsn/contracts/src/forwarder/IForwarder.sol";
@@ -19,7 +18,6 @@ import "./interfaces/IUniswap.sol";
  * - postRelayedCall - refund the caller for the unused gas
  */
 contract TokenPaymaster is BasePaymaster {
-    using SafeMath for uint256;
 
     function versionPaymaster() external override virtual view returns (string memory){
         return "2.2.3+opengsn.token.ipaymaster";
@@ -131,9 +129,9 @@ contract TokenPaymaster is BasePaymaster {
         IERC20 token,
         IUniswap uniswap
     ) internal {
-        uint256 ethActualCharge = relayHub.calculateCharge(gasUseWithoutPost.add(gasUsedByPost), relayData);
-        uint256 tokenActualCharge = uniswap.getTokenToEthOutputPrice(valueRequested.add(ethActualCharge));
-        uint256 tokenRefund = tokenPrecharge.sub(tokenActualCharge);
+        uint256 ethActualCharge = relayHub.calculateCharge(gasUseWithoutPost + gasUsedByPost, relayData);
+        uint256 tokenActualCharge = uniswap.getTokenToEthOutputPrice(valueRequested + ethActualCharge);
+        uint256 tokenRefund = tokenPrecharge - tokenActualCharge;
         _refundPayer(payer, token, tokenRefund);
         _depositProceedsToHub(ethActualCharge, uniswap);
         emit TokensCharged(gasUseWithoutPost, gasUsedByPost, ethActualCharge, tokenActualCharge);
