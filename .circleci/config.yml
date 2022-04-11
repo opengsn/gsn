@@ -162,6 +162,8 @@ workflows:
     jobs:
       - build
       - build_paymasters
+        requires:
+          - build
       - test_dev:
           requires:
             - build
