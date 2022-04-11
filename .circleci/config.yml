@@ -39,6 +39,20 @@ jobs: # a collection of steps
           root: .
           paths:
             - .
+  build_paymasters:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
+      - run: # preprocess task specifically for paymasters
+          name: yarn-preprocess
+          command: yarn preprocess-paymasters
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
   test_dev:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
@@ -51,6 +65,19 @@ jobs: # a collection of steps
           command: yarn lerna-run-test-only-with-hardhat | tee /tmp/test-dev-results.log
       - store_test_results: # special step to upload test results for display in Test Summary
           path: /tmp/test-dev-results.log
+
+  test_paymasters:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
+      - run: # run tests
+          name: test-paymasters
+          command: yarn lerna-run-test-paymasters-only-with-hardhat | tee /tmp/test-paymasters-results.log
+      - store_test_results: # special step to upload test results for display in Test Summary
+          path: /tmp/test-paymasters-results.log
 
   gas_calculations:
     working_directory: ~/gls # directory where steps will run
@@ -136,18 +163,23 @@ workflows:
   build_and_test:
     jobs:
       - build
+      - build_paymasters:
+          requires:
+            - build
       - test_dev:
           requires:
             - build
-#      - test_paymasters:
-#          requires:
-#            - build
+      - test_paymasters:
+          requires:
+            - build
+            - build_paymasters
       - lint:
           requires:
             - build
       - test_fork:
           requires:
             - build
+            - build_paymasters
       - gas_calculations:
           requires:
             - build
