@@ -59,6 +59,9 @@ jobs: # a collection of steps
     steps: # a collection of executable commands
       - attach_workspace:
           at: .
+      - run: # preprocess task specifically for paymasters
+         name: yarn-preprocess
+         command: yarn preprocess-paymasters
       - run: # run tests
           name: test-paymasters
           command: yarn lerna-run-test-paymasters-only-with-hardhat | tee /tmp/test-paymasters-results.log
