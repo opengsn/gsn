@@ -44,6 +44,8 @@ jobs: # a collection of steps
     docker: # run the steps with Docker
       - image: cimg/node:16.6.2
     steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
       - run: # preprocess task specifically for paymasters
           name: yarn-preprocess
           command: yarn preprocess-paymasters
