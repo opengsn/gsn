@@ -25,8 +25,7 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     'number of times to sleep before timeout', '5'
   )
   .option('-t, --token <address>', 'Token to be used as a stake, defaults to first registered token')
-  .option('--wrap', 'When using default "Wrapped ETH" token: Wrap owner eth if current balance for stake is not enough')
-
+  .option('--wrap', 'Assume token is "Wrapped ETH". If its balance is not enough for stake, then deposit ETH into it.')
   .parse(process.argv);
 
 (async () => {
@@ -48,9 +47,6 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     relayUrl: commander.relayUrl,
     unstakeDelay: commander.unstakeDelay
   }
-  if (registerOptions.wrap === (registerOptions.token != null)) {
-    console.log('must specify --token or --wrap but not both')
-  }
   if (registerOptions.from == null) {
     console.error('Failed to find a wealthy "from" address')
     process.exit(1)
@@ -61,7 +57,7 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
     console.log('Relay registered successfully! Transactions:\n', result.transactions)
     process.exit(0)
   } else {
-    console.error('Failed to register relay:', result.error)
+    console.error('Failed to register relay:', result.error, result)
     process.exit(1)
   }
 })().catch(

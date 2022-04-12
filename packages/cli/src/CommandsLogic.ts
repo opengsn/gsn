@@ -247,11 +247,9 @@ export class CommandsLogic {
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { stake, unstakeDelay, owner, token } = (await stakeManager.getStakeInfo(relayAddress))[0]
 
-      let isDefaultToken = false
       let stakingToken = options.token
       if (stakingToken == null) {
         stakingToken = await this._findFirstToken(relayHubAddress)
-        isDefaultToken = true
       }
 
       if (!(isSameAddress(token, stakingToken) || isSameAddress(token, constants.ZERO_ADDRESS))) {
@@ -327,12 +325,16 @@ export class CommandsLogic {
           stake.toString() === '0' ? '' : ` (already has ${formatToken(stake)})`)
 
         const tokenBalance = await stakingTokenContract.balanceOf(options.from)
-        if (tokenBalance.lt(stakeValue) && isDefaultToken && options.wrap) {
+        if (tokenBalance.lt(stakeValue) && options.wrap) {
           // default token is wrapped eth, so deposit eth to make then into tokens.
           console.log(`Wrapping ${formatToken(stakeValue)}`)
           let depositTx: any
           try {
-            depositTx = await stakingTokenContract.deposit({ from: options.from, value: stakeValue }) as any
+            depositTx = await stakingTokenContract.deposit({
+              ...sendOptions,
+              from: options.from,
+              value: stakeValue
+            }) as any
           } catch (e) {
             throw new Error('No deposit() method on default token. is it wrapped ETH?')
           }
@@ -344,6 +346,7 @@ export class CommandsLogic {
         if (currentAllowance.lt(stakeValue)) {
           console.log(`Approving ${formatToken(stakeValue)} to StakeManager`)
           const approveTx = await stakingTokenContract.approve(stakeManager.address, stakeValue, {
+            ...sendOptions,
             from: options.from
           })
           // @ts-ignore
@@ -362,7 +365,10 @@ export class CommandsLogic {
         await relayHub.verifyRelayManagerStaked(relayAddress)
         console.log('Relayer already authorized')
       } catch (e: any) {
-        console.log('verifyRelayManagerStaked reverted with:', e.message)
+        // hide expected error
+        if (e.message.match(/not authorized/) == null) {
+          console.log('verifyRelayManagerStaked reverted with:', e.message)
+        }
         console.log('Authorizing relayer for hub')
         const authorizeTx = await stakeManager
           .authorizeHubByOwner(relayAddress, relayHubAddress, sendOptions)
@@ -376,6 +382,7 @@ export class CommandsLogic {
         transactions
       }
     } catch (error: any) {
+      console.log(error)
       return {
         success: false,
         transactions,
