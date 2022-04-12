@@ -24,21 +24,41 @@ contract ProxyDeployingPaymaster is TokenPaymaster {
         return proxyFactory.calculateAddress(relayRequest.request.from);
     }
 
-    function preRelayedCall(
+
+    /**
+     * @notice unlike the default implementation we need to allow destination address to have no code deployed yet
+     */
+    function _verifyForwarder(GsnTypes.RelayRequest calldata relayRequest)
+    internal
+    virtual
+    override
+    view
+    {
+        require(address(_trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
+        if (relayRequest.request.to.isContract()){
+            GsnEip712Library.verifyForwarderTrusted(relayRequest);
+        }
+    }
+
+    function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {
+        // solhint-disable-next-line reason-string
+        require(relayRequest.relayData.paymasterData.length == 32, "paymasterData: invalid length for Uniswap v1 exchange address");
+    }
+
+    // solhint-disable-next-line no-empty-blocks
+    function _verifyValue(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {}
+
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
     virtual
     returns (bytes memory, bool revertOnRecipientRevert) {
-        (signature);
-
-        require(approvalData.length == 0, "approvalData: invalid length");
-        // solhint-disable-next-line reason-string
-        require(relayRequest.relayData.paymasterData.length == 32, "paymasterData: invalid length for Uniswap v1 exchange address");
+        (signature, approvalData);
 
         (IERC20 token, IUniswap uniswap) = _getToken(relayRequest.relayData.paymasterData);
         (address payer, uint256 tokenPrecharge) = _calculatePreCharge(token, uniswap, relayRequest, maxPossibleGas);
@@ -47,7 +67,7 @@ contract ProxyDeployingPaymaster is TokenPaymaster {
         }
         token.transferFrom(payer, address(this), tokenPrecharge);
         //solhint-disable-next-line
-        uniswap.tokenToEthSwapOutput(relayRequest.request.value, type(uint256).max, block.timestamp+60*15);
+        uniswap.tokenToEthSwapOutput(relayRequest.request.value, type(uint256).max, block.timestamp + 60 * 15);
         payable(relayRequest.relayData.forwarder).transfer(relayRequest.request.value);
         return (abi.encode(payer, relayRequest.request.from, tokenPrecharge, relayRequest.request.value, relayRequest.relayData.forwarder, token, uniswap), false);
     }
@@ -58,12 +78,15 @@ contract ProxyDeployingPaymaster is TokenPaymaster {
         return proxy;
     }
 
-    function postRelayedCall(
+    function _postRelayedCall(
         bytes calldata context,
         bool,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
-    ) external override virtual {
+    )
+    internal
+    override
+    virtual {
         (address payer,, uint256 tokenPrecharge, uint256 valueRequested,,IERC20 token, IUniswap uniswap) = abi.decode(context, (address, address, uint256, uint256, address, IERC20, IUniswap));
         _postRelayedCallInternal(payer, tokenPrecharge, valueRequested, gasUseWithoutPost, relayData, token, uniswap);
     }

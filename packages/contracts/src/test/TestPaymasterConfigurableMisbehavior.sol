@@ -45,19 +45,24 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         expensiveGasLimits = val;
     }
 
+    // solhint-disable-next-line no-empty-blocks
+    function _verifyApprovalData(bytes calldata approvalData) internal virtual override view {}
+
+    // solhint-disable-next-line no-empty-blocks
+    function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {}
+
     // solhint-disable reason-string
     // contains comments that are checked in tests
-    function preRelayedCall(
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
-    relayHubOnly
     returns (bytes memory, bool) {
-        (signature, approvalData, maxPossibleGas);
+        (relayRequest, signature, approvalData, maxPossibleGas);
         if (outOfGasPre) {
             uint256 i = 0;
             while (true) {
@@ -76,19 +81,17 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         if (revertPreRelayCallOnEvenBlocks && block.number % 2 == 0) {
             revert("You asked me to revert on even blocks, remember?");
         }
-        _verifyForwarder(relayRequest);
         return ("", trustRecipientRevert);
     }
 
-    function postRelayedCall(
+    function _postRelayedCall(
         bytes calldata context,
         bool success,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
-    external
+    internal
     override
-    relayHubOnly
     {
         (context, success, gasUseWithoutPost, relayData);
         if (withdrawDuringPostRelayedCall) {

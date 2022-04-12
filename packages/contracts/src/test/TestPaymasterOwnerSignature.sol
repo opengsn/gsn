@@ -10,20 +10,19 @@ contract TestPaymasterOwnerSignature is TestPaymasterEverythingAccepted {
     using ECDSA for bytes32;
 
     /**
-     * This demonstrates how dapps can provide an off-chain signatures to relayed transactions.
+     * @notice This demonstrates how dapps can provide an off-chain signatures to relayed transactions.
      */
-    function preRelayedCall(
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     view
     override
     returns (bytes memory, bool) {
         (signature, maxPossibleGas);
-        _verifyForwarder(relayRequest);
 
         address signer =
             keccak256(abi.encodePacked("I approve", relayRequest.request.from))

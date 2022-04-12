@@ -25,21 +25,22 @@ contract VerifyingPaymaster is Ownable, BasePaymaster {
 
     address public signer;
 
-    function preRelayedCall(
+    function _verifyApprovalData(bytes calldata approvalData) internal virtual override view{
+        // solhint-disable-next-line reason-string
+        require(approvalData.length == 65, "approvalData: invalid length for signature");
+    }
+
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
     virtual
     returns (bytes memory context, bool revertOnRecipientRevert) {
         (signature, maxPossibleGas);
-
-        // solhint-disable-next-line reason-string
-        require(approvalData.length == 65, "approvalData: invalid length for signature");
-        require(relayRequest.relayData.paymasterData.length == 0, "paymasterData: invalid length");
 
         bytes32 requestHash = getRequestHash(relayRequest);
         require(signer == ECDSA.recover(requestHash, approvalData), "approvalData: wrong signature");
@@ -64,12 +65,15 @@ contract VerifyingPaymaster is Ownable, BasePaymaster {
         return abi.encode(d.maxFeePerGas, d.maxPriorityFeePerGas, d.pctRelayFee, d.baseRelayFee, d.relayWorker, d.paymaster, d.paymasterData, d.clientId);
     }
 
-    function postRelayedCall(
+    function _postRelayedCall(
         bytes calldata context,
         bool success,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
-    ) external override virtual {
+    )
+    internal
+    override
+    virtual {
         (context, success, gasUseWithoutPost, relayData);
     }
 

@@ -76,8 +76,6 @@ interface IPaymaster is IERC165 {
      * @notice Called by the Relay in view mode and later by the `RelayHub` on-chain to validate that
      * the Paymaster agrees to pay for this call.
      *
-     * :warning: **Warning** :warning: This method MUST be protected with `relayHubOnly()` in case it modifies state.
-     *
      * The request is considered to be rejected by the Paymaster in one of the following conditions:
      *  - `preRelayedCall()` method reverts
      *  - the `Forwarder` reverts because of nonce or signature error
@@ -121,8 +119,6 @@ interface IPaymaster is IERC165 {
     /**
      * @notice This method is called after the actual relayed function call.
      * It may be used to record the transaction (e.g. charge the caller by some contract logic) for this call.
-     *
-     * :warning: **Warning** :warning: This method MUST be protected with relayHubOnly() in case it modifies state.
      *
      * Revert in this functions causes a revert of the client's relayed call (and preRelayedCall(), but the Paymaster
      * is still committed to pay the relay for the entire transaction.

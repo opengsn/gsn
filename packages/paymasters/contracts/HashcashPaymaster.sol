@@ -25,22 +25,22 @@ contract HashcashPaymaster is AcceptEverythingPaymaster {
         difficulty = _difficulty;
     }
 
-    function preRelayedCall(
+    function _verifyApprovalData(bytes calldata approvalData) internal virtual override view{
+        // solhint-disable-next-line reason-string
+        require(approvalData.length == 64, "approvalData: invalid length for hash and nonce");
+    }
+
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
     virtual
-    relayHubOnly
     returns (bytes memory, bool revertOnRecipientRevert) {
         (maxPossibleGas, signature);
-
-        // solhint-disable-next-line reason-string
-        require(approvalData.length == 64, "approvalData: invalid length for hash and nonce");
-        require(relayRequest.relayData.paymasterData.length == 0, "paymasterData: invalid length");
 
         (bytes32 hash, uint256 hashNonce) = abi.decode(approvalData, (bytes32, uint256));
         bytes32 calcHash = keccak256(abi.encode(

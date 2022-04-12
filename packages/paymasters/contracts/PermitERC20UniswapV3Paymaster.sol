@@ -109,15 +109,14 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         tokenPreCharge = ethMaxCharge * price / (10 ** decimals);
     }
 
-    function preRelayedCall(
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
-    relayHubOnly
     returns (bytes memory context, bool revertOnRecipientRevert) {
         (signature);
         require(approvalData.length == 0, "approvalData: invalid length");
@@ -137,15 +136,15 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         return (abi.encode(payer, tokenPreCharge), false);
     }
 
-    function postRelayedCall(
+    function _postRelayedCall(
         bytes calldata context,
         bool,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
-    external
+    internal
     override
-    relayHubOnly {
+    {
         (address payer,) = abi.decode(context, (address, uint256));
         uint256 ethActualCharge = relayHub.calculateCharge(gasUseWithoutPost + gasUsedByPost, relayData);
         _depositProceedsToHub(ethActualCharge);

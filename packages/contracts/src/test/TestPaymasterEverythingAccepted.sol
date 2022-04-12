@@ -14,30 +14,32 @@ contract TestPaymasterEverythingAccepted is BasePaymaster {
     event SampleRecipientPreCall();
     event SampleRecipientPostCall(bool success, uint256 actualCharge);
 
-    function preRelayedCall(
+    // solhint-disable-next-line no-empty-blocks
+    function _verifyValue(GsnTypes.RelayRequest calldata) internal override view{}
+
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
     virtual
     returns (bytes memory, bool) {
-        (signature);
-        _verifyForwarder(relayRequest);
+        (relayRequest, signature);
         (approvalData, maxPossibleGas);
         emit SampleRecipientPreCall();
         return ("no revert here",false);
     }
 
-    function postRelayedCall(
+    function _postRelayedCall(
         bytes calldata context,
         bool success,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
-    external
+    internal
     override
     virtual
     {
