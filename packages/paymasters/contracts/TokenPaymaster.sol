@@ -20,7 +20,7 @@ import "./interfaces/IUniswap.sol";
 contract TokenPaymaster is BasePaymaster {
 
     function versionPaymaster() external override virtual view returns (string memory){
-        return "2.2.3+opengsn.token.ipaymaster";
+        return "3.0.0-alpha.4+opengsn.token.ipaymaster";
     }
 
 
