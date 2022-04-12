@@ -22,7 +22,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
     using ERC165Checker for address;
 
     IRelayHub internal relayHub;
-    address internal _trustedForwarder;
+    address private _trustedForwarder;
 
     /// @inheritdoc IPaymaster
     function getRelayHub() public override view returns (address) {
@@ -71,7 +71,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
     virtual
     view
     {
-        require(address(_trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
+        require(getTrustedForwarder() == relayRequest.relayData.forwarder, "Forwarder is not trusted");
         GsnEip712Library.verifyForwarderTrusted(relayRequest);
     }
 

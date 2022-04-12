@@ -109,6 +109,12 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         tokenPreCharge = ethMaxCharge * price / (10 ** decimals);
     }
 
+    // solhint-disable-next-line no-empty-blocks
+    function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {}
+
+    // solhint-disable-next-line no-empty-blocks
+    function _verifyApprovalData(bytes calldata approvalData) internal virtual override view {}
+
     function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,

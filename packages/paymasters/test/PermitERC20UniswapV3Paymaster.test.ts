@@ -10,7 +10,6 @@ import {
   TestHubInstance
 } from '../types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { ForwarderInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { constants } from '@opengsn/common'
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
 import {
@@ -39,7 +38,6 @@ const PermitInterfaceEIP2612 = artifacts.require('PermitInterfaceEIP2612')
 const PermitInterfaceDAI = artifacts.require('PermitInterfaceDAI')
 const IChainlinkOracle = artifacts.require('IChainlinkOracle')
 const SampleRecipient = artifacts.require('SampleRecipient')
-const Forwarder = artifacts.require('Forwarder')
 const IQuoter = artifacts.require('IQuoter')
 
 // as we are using forked mainnet, we will need to impersonate an account with a lot of DAI & UNI
@@ -71,7 +69,6 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
   let chainlinkOracle: IChainlinkOracleInstance
   let sampleRecipient: SampleRecipientInstance
   let testRelayHub: TestHubInstance
-  let forwarder: ForwarderInstance
   let quoter: IQuoterInstance
 
   let relayRequest: RelayRequest
@@ -83,7 +80,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       this.skip()
     }
     sampleRecipient = await SampleRecipient.new()
-    forwarder = await Forwarder.new({ gas: 1e7 })
+    await sampleRecipient.setForwarder(GSN_FORWARDER_CONTRACT_ADDRESS)
     quoter = await IQuoter.at(UNISWAP_V3_QUOTER_CONTRACT_ADDRESS)
     daiPermittableToken = await PermitInterfaceDAI.at(DAI_CONTRACT_ADDRESS)
     chainlinkOracle = await IChainlinkOracle.at(CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS)
@@ -112,7 +109,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       relayData: {
         relayWorker: relay,
         paymaster: permitPaymaster.address,
-        forwarder: forwarder.address,
+        forwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
         pctRelayFee: '0',
         baseRelayFee: '0',
         transactionCalldataGasUsed: '0',

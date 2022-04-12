@@ -34,7 +34,7 @@ contract ProxyDeployingPaymaster is TokenPaymaster {
     override
     view
     {
-        require(address(_trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
+        require(getTrustedForwarder() == relayRequest.relayData.forwarder, "Forwarder is not trusted");
         if (relayRequest.request.to.isContract()){
             GsnEip712Library.verifyForwarderTrusted(relayRequest);
         }
