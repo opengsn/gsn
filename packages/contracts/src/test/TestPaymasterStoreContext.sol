@@ -25,17 +25,16 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
     /**
      * This demonstrates how preRelayedCall can return 'context' data for reuse in postRelayedCall.
      */
-    function preRelayedCall(
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
     returns (bytes memory, bool) {
         (signature, approvalData, maxPossibleGas);
-        _verifyForwarder(relayRequest);
 
         emit SampleRecipientPreCallWithValues(
             relayRequest.relayData.relayWorker,
@@ -50,15 +49,14 @@ contract TestPaymasterStoreContext is TestPaymasterEverythingAccepted {
         return ("context passed from preRelayedCall to postRelayedCall",false);
     }
 
-    function postRelayedCall(
+    function _postRelayedCall(
         bytes calldata context,
         bool success,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
-    external
+    internal
     override
-    relayHubOnly
     {
         (context, success, gasUseWithoutPost, relayData);
         emit SampleRecipientPostCallWithValues(string(context));

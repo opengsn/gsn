@@ -15,13 +15,13 @@ contract AcceptEverythingPaymaster is BasePaymaster {
         return "2.2.3+opengsn.accepteverything.ipaymaster";
     }
 
-    function preRelayedCall(
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
     virtual
     returns (bytes memory context, bool revertOnRecipientRevert) {
@@ -29,12 +29,15 @@ contract AcceptEverythingPaymaster is BasePaymaster {
         return ("", false);
     }
 
-    function postRelayedCall(
+    function _postRelayedCall(
         bytes calldata context,
         bool success,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
-    ) external override virtual {
+    )
+    internal
+    override
+    virtual {
         (context, success, gasUseWithoutPost, relayData);
     }
 

@@ -23,13 +23,13 @@ contract WhitelistPaymaster is AcceptEverythingPaymaster {
         useTargetWhitelist = true;
     }
 
-    function preRelayedCall(
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
     virtual
     returns (bytes memory context, bool revertOnRecipientRevert) {
