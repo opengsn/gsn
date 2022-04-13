@@ -369,10 +369,8 @@ export class RegistrationManager {
   async addRelayWorker (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString> {
     // register on chain
     const addRelayWorkerMethod = await this.contractInteractor.getAddRelayWorkersMethod([this.workerAddress])
-    const gasLimit = await this.transactionManager.estimateGas('AddRelayWorkers', addRelayWorkerMethod, this.managerAddress)
     const details: SendTransactionDetails = {
       signer: this.managerAddress,
-      gasLimit,
       serverAction: ServerAction.ADD_WORKER,
       method: addRelayWorkerMethod,
       destination: this.hubAddress,
@@ -419,11 +417,9 @@ export class RegistrationManager {
       skipGasEstimationForRegisterRelay = true
     }
     const registerMethod = await this.contractInteractor.getRegisterRelayMethod(this.hubAddress, this.config.baseRelayFee, this.config.pctRelayFee, this.config.url)
-    let gasLimit: number
+    let gasLimit: number | undefined
     if (skipGasEstimationForRegisterRelay) {
       gasLimit = this.config.defaultGasLimit
-    } else {
-      gasLimit = await this.transactionManager.estimateGas('RegisterRelay', registerMethod, this.managerAddress)
     }
     const details: SendTransactionDetails = {
       serverAction: ServerAction.REGISTER_SERVER,
@@ -610,11 +606,9 @@ TxHash    | ${decodedEvent.transactionHash}
   // TODO: duplicated code; another leaked web3 'method' abstraction
   async setOwnerInStakeManager (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString> {
     const setRelayManagerMethod = await this.contractInteractor.getSetRelayManagerMethod(this.config.ownerAddress)
-    const gasLimit = await this.transactionManager.estimateGas('SetRelayManager', setRelayManagerMethod, this.managerAddress)
     const stakeManagerAddress = this.contractInteractor.stakeManagerAddress()
     const details: SendTransactionDetails = {
       signer: this.managerAddress,
-      gasLimit,
       serverAction: ServerAction.SET_OWNER,
       method: setRelayManagerMethod,
       destination: stakeManagerAddress,
