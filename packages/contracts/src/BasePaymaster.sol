@@ -84,11 +84,11 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
     }
 
     function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual view {
-        require(relayRequest.relayData.paymasterData.length == 0, "paymaster data not supported");
+        require(relayRequest.relayData.paymasterData.length == 0, "should have no paymasterData");
     }
 
     function _verifyApprovalData(bytes calldata approvalData) internal virtual view{
-        require(approvalData.length == 0, "approval data not supported");
+        require(approvalData.length == 0, "should have no approvalData");
     }
 
     /**
@@ -131,6 +131,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
         relayHub.withdraw(target, amount);
     }
 
+    /// @inheritdoc IPaymaster
     function preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
@@ -148,6 +149,11 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
         return _preRelayedCall(relayRequest, signature, approvalData, maxPossibleGas);
     }
 
+
+    /**
+     * @notice internal logic the paymasters need to provide to select which transactions they are willing to pay for
+     * @notice see the documentation for `IPaymaster::preRelayedCall` for details
+     */
     function _preRelayedCall(
         GsnTypes.RelayRequest calldata,
         bytes calldata,
@@ -158,6 +164,7 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
     virtual
     returns (bytes memory, bool);
 
+    /// @inheritdoc IPaymaster
     function postRelayedCall(
         bytes calldata context,
         bool success,
@@ -171,6 +178,10 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
         _postRelayedCall(context, success, gasUseWithoutPost, relayData);
     }
 
+    /**
+     * @notice internal logic the paymasters need to provide if they need to take some action after the transaction
+     * @notice see the documentation for `IPaymaster::postRelayedCall` for details
+     */
     function _postRelayedCall(
         bytes calldata,
         bool,

@@ -12,8 +12,11 @@ contract TestPaymasterPreconfiguredApproval is TestPaymasterEverythingAccepted {
         expectedApprovalData = val;
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function _verifyApprovalData(bytes calldata) internal override view {}
+    function _verifyApprovalData(bytes calldata approvalData) internal override view {
+        require(keccak256(expectedApprovalData) == keccak256(approvalData),
+            string(abi.encodePacked(
+                "test: unexpected approvalData: '", approvalData, "' instead of '", expectedApprovalData, "'")));
+    }
 
     function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
@@ -26,9 +29,6 @@ contract TestPaymasterPreconfiguredApproval is TestPaymasterEverythingAccepted {
     override
     returns (bytes memory, bool) {
         (relayRequest, signature, approvalData, maxPossibleGas);
-        require(keccak256(expectedApprovalData) == keccak256(approvalData),
-            string(abi.encodePacked(
-                "test: unexpected approvalData: '", approvalData, "' instead of '", expectedApprovalData, "'")));
         return ("",false);
     }
 }
