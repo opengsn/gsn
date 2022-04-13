@@ -62,22 +62,33 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
         );
     }
 
-    // this method must be called from preRelayedCall to validate that the forwarder
-    // is approved by the paymaster as well as by the recipient contract.
+    /**
+     * @notice this method must be called from preRelayedCall to validate that the forwarder
+     * is approved by the paymaster as well as by the recipient contract.
+     */
     function _verifyForwarder(GsnTypes.RelayRequest calldata relayRequest)
-    public
+    internal
+    virtual
     view
     {
-        require(address(_trustedForwarder) == relayRequest.relayData.forwarder, "Forwarder is not trusted");
+        require(getTrustedForwarder() == relayRequest.relayData.forwarder, "Forwarder is not trusted");
         GsnEip712Library.verifyForwarderTrusted(relayRequest);
     }
 
-    /**
-     * @notice Modifier to be used by recipients as access control protection for `preRelayedCall` & `postRelayedCall`
-     */
-    modifier relayHubOnly() {
+    function _verifyRelayHubOnly() internal virtual view {
         require(msg.sender == getRelayHub(), "can only be called by RelayHub");
-        _;
+    }
+
+    function _verifyValue(GsnTypes.RelayRequest calldata relayRequest) internal virtual view{
+        require(relayRequest.request.value == 0, "value transfer not supported");
+    }
+
+    function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual view {
+        require(relayRequest.relayData.paymasterData.length == 0, "should have no paymasterData");
+    }
+
+    function _verifyApprovalData(bytes calldata approvalData) internal virtual view{
+        require(approvalData.length == 0, "should have no approvalData");
     }
 
     /**
@@ -119,4 +130,64 @@ abstract contract BasePaymaster is IPaymaster, Ownable, ERC165 {
     function withdrawRelayHubDepositTo(uint256 amount, address payable target) public onlyOwner {
         relayHub.withdraw(target, amount);
     }
+
+    /// @inheritdoc IPaymaster
+    function preRelayedCall(
+        GsnTypes.RelayRequest calldata relayRequest,
+        bytes calldata signature,
+        bytes calldata approvalData,
+        uint256 maxPossibleGas
+    )
+    external
+    override
+    returns (bytes memory, bool) {
+        _verifyRelayHubOnly();
+        _verifyForwarder(relayRequest);
+        _verifyValue(relayRequest);
+        _verifyPaymasterData(relayRequest);
+        _verifyApprovalData(approvalData);
+        return _preRelayedCall(relayRequest, signature, approvalData, maxPossibleGas);
+    }
+
+
+    /**
+     * @notice internal logic the paymasters need to provide to select which transactions they are willing to pay for
+     * @notice see the documentation for `IPaymaster::preRelayedCall` for details
+     */
+    function _preRelayedCall(
+        GsnTypes.RelayRequest calldata,
+        bytes calldata,
+        bytes calldata,
+        uint256
+    )
+    internal
+    virtual
+    returns (bytes memory, bool);
+
+    /// @inheritdoc IPaymaster
+    function postRelayedCall(
+        bytes calldata context,
+        bool success,
+        uint256 gasUseWithoutPost,
+        GsnTypes.RelayData calldata relayData
+    )
+    external
+    override
+    {
+        _verifyRelayHubOnly();
+        _postRelayedCall(context, success, gasUseWithoutPost, relayData);
+    }
+
+    /**
+     * @notice internal logic the paymasters need to provide if they need to take some action after the transaction
+     * @notice see the documentation for `IPaymaster::postRelayedCall` for details
+     */
+    function _postRelayedCall(
+        bytes calldata,
+        bool,
+        uint256,
+        GsnTypes.RelayData calldata
+    )
+    internal
+    virtual;
 }

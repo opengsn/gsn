@@ -218,6 +218,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
         })
 
         it('should reject if incorrect signature', async () => {
+          await paymaster.setRelayHub(relayHub.address)
           const wrongSignature = await getEip712Signature(
             web3,
             new TypedRequestData(
@@ -235,6 +236,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
         })
 
         it('should accept because identity gave approval to the paymaster', async function () {
+          await paymaster.setRelayHub(testHub.address)
           await testHub.callPreRC(relayRequest, signature, '0x', 1e6)
         })
 
@@ -246,6 +248,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
           })
 
           it('should reject if payer is an already deployed identity and approval is insufficient', async function () {
+            await paymaster.setRelayHub(testHub.address)
             assert.equal(await revertReason(testHub.callPreRC(relayRequest, signature, '0x', 1e6)), transferErc20Error)
           })
         })
@@ -272,7 +275,8 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
 
     it('should deploy new identity contract if does not exist, and pre-charge it', async function () {
       await assertDeployed(proxyAddress, false)
-      const tx = await paymaster.preRelayedCall(relayRequest, signature, '0x', preChargeEth)
+      await paymaster.setRelayHub(testHub.address)
+      const tx = await testHub.callPreRC(relayRequest, signature, '0x', preChargeEth)
       await assertDeployed(proxyAddress, true)
       await expectEvent.inTransaction(tx.tx, ProxyFactory, 'ProxyDeployed', { proxyAddress })
       await expectEvent.inTransaction(tx.tx, TestToken, 'Transfer', {
@@ -285,7 +289,8 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
     it('should not deploy new identity contract if exists, only pre-charge', async function () {
       const code = await web3.eth.getCode(proxyAddress)
       assert.notStrictEqual(code, '0x')
-      const tx = await paymaster.preRelayedCall(relayRequest, signature, '0x', preChargeEth)
+      await paymaster.setRelayHub(testHub.address)
+      const tx = await testHub.callPreRC(relayRequest, signature, '0x', preChargeEth)
       await expectEvent.not.inTransaction(tx.tx, ProxyFactory, 'ProxyDeployed', { proxyAddress })
       await expectEvent.inTransaction(tx.tx, TestToken, 'Transfer', {
         from: proxyAddress,
@@ -312,6 +317,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
 
     it('should refund the proxy with the overcharged tokens', async function () {
       const gasUseWithoutPost = 1000000
+      await paymaster.setRelayHub(testHub.address)
       const tx = await testHub.callPostRC(paymaster.address, context, gasUseWithoutPost, relayRequest.relayData)
       const gasUsedWithPost = gasUseWithoutPost + gasUsedByPost
       // Repeat on-chain calculation here for sanity

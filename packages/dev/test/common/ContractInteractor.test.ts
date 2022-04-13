@@ -41,6 +41,8 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 const TestToken = artifacts.require('TestToken')
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
+const Forwarder = artifacts.require('Forwarder')
+const TestRecipient = artifacts.require('TestRecipient')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const environment = defaultEnvironment
@@ -191,10 +193,13 @@ contract('ContractInteractor', function (accounts) {
     })
 
     it('should return paymaster revert reason', async () => {
+      const forwarder = await Forwarder.new()
+      const recipient = await TestRecipient.new(forwarder.address)
       const pm = await TestPaymasterConfigurableMisbehavior.new()
       await pm.setRelayHub(rh.address)
       await rh.depositFor(pm.address, { value: 1e18.toString() })
       await pm.setRevertPreRelayCall(true)
+      await pm.setTrustedForwarder(forwarder.address)
       const contractInteractor = new ContractInteractor({
         environment,
         provider: web3.currentProvider as HttpProvider,
@@ -207,7 +212,7 @@ contract('ContractInteractor', function (accounts) {
 
       const relayRequest: RelayRequest = {
         request: {
-          to: addr(1),
+          to: recipient.address,
           data: '0x12345678',
           from: addr(2),
           nonce: '1',
@@ -222,7 +227,7 @@ contract('ContractInteractor', function (accounts) {
           baseRelayFee: '0',
           transactionCalldataGasUsed: '0',
           relayWorker: workerAddress,
-          forwarder: addr(4),
+          forwarder: forwarder.address,
           paymaster: pm.address,
           paymasterData: '0x',
           clientId: '1'
