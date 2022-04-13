@@ -1147,7 +1147,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     if (relayHub == null) {
       throw new Error('RelayHub is not initialized!')
     }
-    let oldestBlockTimestamp = 0
     const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub)
 
     return relayInfos.map(info => {
