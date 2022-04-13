@@ -369,7 +369,7 @@ export class RegistrationManager {
   async addRelayWorker (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString> {
     // register on chain
     const addRelayWorkerMethod = await this.contractInteractor.getAddRelayWorkersMethod([this.workerAddress])
-    const gasLimit = await this.transactionManager.attemptEstimateGas('AddRelayWorkers', addRelayWorkerMethod, this.managerAddress)
+    const gasLimit = await this.transactionManager.estimateGas('AddRelayWorkers', addRelayWorkerMethod, this.managerAddress)
     const details: SendTransactionDetails = {
       signer: this.managerAddress,
       gasLimit,
@@ -412,12 +412,19 @@ export class RegistrationManager {
     // add worker only if not already added
     const workersAdded = await this._isWorkerValid()
     const addWorkersPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.ADD_WORKER, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
+    let skipGasEstimationForRegisterRelay = false
     if (!(workersAdded || addWorkersPending)) {
       const txHash = await this.addRelayWorker(currentBlockNumber, currentBlockTimestamp)
       transactions = transactions.concat(txHash)
+      skipGasEstimationForRegisterRelay = true
     }
     const registerMethod = await this.contractInteractor.getRegisterRelayMethod(this.hubAddress, this.config.baseRelayFee, this.config.pctRelayFee, this.config.url)
-    const gasLimit = await this.transactionManager.attemptEstimateGas('RegisterRelay', registerMethod, this.managerAddress)
+    let gasLimit: number
+    if (skipGasEstimationForRegisterRelay) {
+      gasLimit = this.config.defaultGasLimit
+    } else {
+      gasLimit = await this.transactionManager.estimateGas('RegisterRelay', registerMethod, this.managerAddress)
+    }
     const details: SendTransactionDetails = {
       serverAction: ServerAction.REGISTER_SERVER,
       gasLimit,
@@ -603,7 +610,7 @@ TxHash    | ${decodedEvent.transactionHash}
   // TODO: duplicated code; another leaked web3 'method' abstraction
   async setOwnerInStakeManager (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString> {
     const setRelayManagerMethod = await this.contractInteractor.getSetRelayManagerMethod(this.config.ownerAddress)
-    const gasLimit = await this.transactionManager.attemptEstimateGas('SetRelayManager', setRelayManagerMethod, this.managerAddress)
+    const gasLimit = await this.transactionManager.estimateGas('SetRelayManager', setRelayManagerMethod, this.managerAddress)
     const stakeManagerAddress = this.contractInteractor.stakeManagerAddress()
     const details: SendTransactionDetails = {
       signer: this.managerAddress,
