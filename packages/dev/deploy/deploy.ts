@@ -11,7 +11,7 @@ import { constants } from '@opengsn/common/dist/Constants'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
-import { formatEther, parseEther, parseUnits } from 'ethers/lib/utils'
+import { formatEther, formatUnits, parseEther, parseUnits } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { ethers } from 'hardhat'
 import path from 'path'
@@ -29,6 +29,37 @@ interface DeploymentConfig {
 function fatal (...params: any): never {
   console.error(chalk.red('fatal:'), ...params)
   process.exit(1)
+}
+
+interface Token {
+  address: string
+  symbol: string
+  decimals: number
+
+  balanceOf: (address: string) => Promise<string>
+}
+
+async function getToken (address: string): Promise<Token> {
+  const token = new ethers.Contract(address,
+    [
+      'function symbol() view returns (string)',
+      'function balanceOf() view returns (uint256)',
+      'function decimals() view returns (uint256)'
+    ], ethers.provider)
+  // verify token address is a valid token...
+  const symbol: string = await token.symbol().catch((e: any) => null)
+  const decimals: number = await token.decimals().catch((e: any) => null)
+  if (symbol == null || decimals == null) {
+    throw new Error(`invalid token: ${address} (Symbol: ${symbol} Decimals: ${decimals})`)
+  }
+  const divisor = Math.pow(10, decimals)
+
+  return {
+    address,
+    symbol,
+    decimals,
+    balanceOf: async (addr: string) => token.balanceOf(addr).then((v: any) => v.div(divisor))
+  }
 }
 
 // helper: nicer logging view fo deployed contracts
@@ -60,19 +91,24 @@ async function setField (deployments: DeploymentsExtension, contract: string, ge
   }
 }
 
-function printSampleEnvironment (environment: Environment, chainId: number): void {
-  const sampleEnv = merge(environment, {
+function printSampleEnvironment (defaultDevAddress: string, chainId: number): void {
+  const sampleEnv = {
+    relayHubConfiguration: {
+      devAddress: defaultDevAddress
+    },
+
     deploymentConfiguration: {
       paymasterDeposit: '0.1',
+      isArbitrum: false,
       deployTestPaymaster: true,
       minimumStakePerToken: { test: '0.5' }
     }
-  })
+  }
   console.log(chalk.red('No configuration found:'), '\nPlease add the following to', chalk.whiteBright(`"${deploymentConfigFile}"`), ':\n\nmodule.exports = ',
     util.inspect({ [chainId]: sampleEnv }, false, 10, false))
 }
 
-function getMergedEnvironment (chainId: number): Environment {
+function getMergedEnvironment (chainId: number, defaultDevAddress: string): Environment {
   try {
     const env = getEnvironment(chainId) ?? { name: 'default', environment: defaultEnvironment }
     if (env == null) {
@@ -85,7 +121,7 @@ function getMergedEnvironment (chainId: number): Environment {
       config = fileConfig[chainId]
     }
     if (config == null) {
-      printSampleEnvironment(env.environment, chainId)
+      printSampleEnvironment(defaultDevAddress, chainId)
       process.exit(1)
     }
 
@@ -106,7 +142,7 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
 
   const chainId = parseInt(await getChainId())
 
-  const env: Environment = getMergedEnvironment(chainId)
+  const env: Environment = getMergedEnvironment(chainId, deployer)
 
   if (env.deploymentConfiguration == null || Object.keys(env.deploymentConfiguration.minimumStakePerToken).length === 0) {
     fatal('must have at least one entry in minimumStakePerToken')
@@ -123,35 +159,24 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
     fatal('must specify token address in minimumStakePerToken (or "test" to deploy WrappedEthToken')
   }
 
-  let stakingTokenDecimals: number
   let stakingTokenValue = env.deploymentConfiguration.minimumStakePerToken[stakingTokenAddress]
 
   if (stakingTokenAddress === 'test') {
-    stakingTokenDecimals = 18
     const WrappedEthToken = await deploy(deployments, 'WrappedEthToken', {
       from: deployer
     })
     stakingTokenAddress = WrappedEthToken.address
     stakingTokenValue = stakingTokenValue ?? '0.1'
-  } else {
-    const token = new ethers.Contract(stakingTokenAddress,
-      [
-        'function symbol() view returns (string)',
-        'function decimals() view returns (uint256)'
-      ], ethers.provider)
-    // verify token address is a valid token...
-    const symbol: string = await token.symbol().catch((e: any) => null)
-    stakingTokenDecimals = await token.decimals().catch((e: any) => null)
-    if (symbol == null || stakingTokenDecimals == null) {
-      throw new Error(`invalid token: ${stakingTokenAddress} (Symbol: ${symbol} Decimals: ${stakingTokenDecimals})`)
-    }
-    console.log('Using token', symbol, 'at', stakingTokenAddress, 'with minimum stake of', stakingTokenValue)
   }
 
-  const stakingTokenValueParsed = parseUnits(stakingTokenValue, stakingTokenDecimals)
-  console.log('stakingTokenValueParsed', stakingTokenValueParsed.toString())
+  // const token = await getToken(stakingTokenAddress)
 
-  const deployedForwarder = await deploy(deployments, 'Forwarder', { from: deployer, deterministicDeployment: true })
+  // const stakingTokenValueParsed = parseUnits(stakingTokenValue, token.decimals)
+  // console.log('stakingTokenValueParsed', stakingTokenValueParsed.toString())
+
+  // can't set "deterministicDeployment" on networks that require EIP-155 transactions (e.g. avax)
+  const deterministicDeployment = false
+  const deployedForwarder = await deploy(deployments, 'Forwarder', { from: deployer, deterministicDeployment })
 
   if (deployedForwarder.newlyDeployed) {
     const f = new web3.eth.Contract(deployedForwarder.abi, deployedForwarder.address)
@@ -209,9 +234,25 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
   }
   const hub = new ethers.Contract(relayHub.address, relayHub.abi, ethers.provider.getSigner())
 
-  if (relayHub.newlyDeployed) {
-    console.log('Adding stake token', stakingTokenAddress, 'stake=', stakingTokenValue)
-    await hub.setMinimumStakes([stakingTokenAddress], [stakingTokenValueParsed.toString()])
+  const tokens: Array<{ token: string, minimumStake: string } | null> = await Promise.all(
+    Object.entries(env.deploymentConfiguration.minimumStakePerToken).map(async ([tokenAddr, configMinimumStake]) => {
+      if (tokenAddr === 'test') {
+        tokenAddr = stakingTokenAddress
+      }
+      const token = await getToken(tokenAddr)
+      const minStake = await hub.getMinimumStakePerToken(tokenAddr)
+      const parsedConfigMinimumStake = parseUnits(configMinimumStake, token.decimals).toString()
+      console.log(`- Staking Token "${token.symbol}" ${token.address} current ${formatUnits(minStake, token.decimals)} config ${configMinimumStake}`)
+      if (parsedConfigMinimumStake !== minStake.toString()) {
+        return { token: tokenAddr, minimumStake: parsedConfigMinimumStake }
+      } else {
+        return null
+      }
+    })).then(list => list.filter(x => x != null))
+
+  if (tokens.length !== 0) {
+    console.log('Adding/Updating token stakes', tokens)
+    await hub.setMinimumStakes(tokens.map(x => x?.token), tokens.map(x => x?.minimumStake))
   }
 
   let deployedPm: DeployResult
@@ -234,4 +275,18 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
       }, 'depositFor', deployedPm.address)
     }
   }
+  const network = hre.network.config as HttpNetworkConfig
+  console.log(chalk.white('relayer config:'))
+  console.log(chalk.grey(JSON.stringify({
+    baseRelayFee: 0,
+    pctRelayFee: 70,
+    relayHubAddress: hub.address,
+    ownerAddress: deployer,
+    managerStakeTokenAddress: stakingTokenAddress,
+    gasPriceFactor: 1,
+    maxGasPrice: 1e12,
+    ethereumNodeUrl: network.url
+  }, null, 2)))
+  console.log(chalk.white('relayer register:'))
+  console.log(chalk.grey(`gsn relayer-register -m $SECRET --network ${network.url} --relayUrl https://${hre.hardhatArguments.network}.v3.opengsn.org/v3 --token ${stakingTokenAddress} --stake ${stakingTokenValue} --wrap`))
 }
