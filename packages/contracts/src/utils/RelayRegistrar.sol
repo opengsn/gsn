@@ -32,13 +32,21 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
 
     uint256 private immutable creationBlock;
 
-    constructor() {
+    uint256 private relayRegistrationMaxAge;
+
+    constructor(uint256 _relayRegistrationMaxAge) {
         creationBlock = block.number;
+        relayRegistrationMaxAge = _relayRegistrationMaxAge;
     }
 
     /// @inheritdoc IRelayRegistrar
     function getCreationBlock() external override view returns (uint256){
         return creationBlock;
+    }
+
+    /// @inheritdoc IRelayRegistrar
+    function getRelayRegistrationMaxAge() external override view returns (uint256){
+        return relayRegistrationMaxAge;
     }
 
     /// @inheritdoc IERC165
@@ -97,6 +105,19 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
 
     /// @inheritdoc IRelayRegistrar
     function readRelayInfos(
+        address relayHub
+    )
+    public
+    view
+    override
+    returns (
+        RelayInfo[] memory info
+    ) {
+        return readRelayInfosInRange(relayHub, type(uint256).max, relayRegistrationMaxAge, 10);
+    }
+
+    /// @inheritdoc IRelayRegistrar
+    function readRelayInfosInRange(
         address relayHub,
         uint256 oldestBlockNumber,
         uint256 oldestBlockTimestamp,

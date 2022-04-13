@@ -3,11 +3,13 @@ import { toBN } from 'web3-utils'
 
 const dayInSec = 24 * 60 * 60
 const weekInSec = dayInSec * 7
+const yearInSec = dayInSec * 365
 const oneEther = toBN(1e18)
 
 export const constants = {
   dayInSec,
   weekInSec,
+  yearInSec,
   oneEther,
   ZERO_ADDRESS: '0x0000000000000000000000000000000000000000',
   // OpenZeppelin's ERC-20 implementation bans transfer to zero address

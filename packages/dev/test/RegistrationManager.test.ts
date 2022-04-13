@@ -498,7 +498,6 @@ contract('RegistrationManager', function (accounts) {
         await newServer.registrationManager.refreshStake()
         assert.deepEqual(newServer.registrationManager.stakeRequired!.currentValue, oneEther)
         assert.equal(newServer.registrationManager.ownerAddress, relayOwner, 'owner should be set after refreshing stake')
-        assert.equal(newServer.config.registrationRateSeconds, 0)
       })
 
       afterEach(async function () {
