@@ -60,8 +60,12 @@ const config: HardhatUserConfig = {
     rarb: getNetwork('https://rinkeby.arbitrum.io/rpc'),
     aox: getNetwork('https://arbitrum.xdaichain.com/'),
 
-    goerli: getInfuraNetwork('goarli'),
+    goerli: getInfuraNetwork('goerli'),
     kovan: getInfuraNetwork('kovan'),
+    fuji: getNetwork('https://api.avax-test.network/ext/bc/C/rpc'),
+    mumbai: getNetwork('https://rpc-mumbai.maticvigil.com'),
+    kopt: getNetwork('https://kovan.optimism.io/'),
+
     mainnet: getInfuraNetwork('mainnet')
   },
 
