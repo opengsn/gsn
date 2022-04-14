@@ -561,14 +561,12 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       this.logger.info(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
       // Refill manager eth balance from hub balance
       const method = this.relayHubContract?.contract.methods.withdraw(this.managerAddress, toHex(managerHubBalance))
-      const gasLimit = await this.transactionManager.attemptEstimateGas('Withdraw', method, this.managerAddress)
       const details: SendTransactionDetails = {
         signer: this.managerAddress,
         serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
         destination: this.relayHubContract.address,
         creationBlockNumber: currentBlockNumber,
         creationBlockTimestamp: currentBlockTimestamp,
-        gasLimit,
         method
       }
       const { transactionHash } = await this.transactionManager.sendTransaction(details)

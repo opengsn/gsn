@@ -116,17 +116,6 @@ data                     | ${transaction.data}
 `)
   }
 
-  async attemptEstimateGas (methodName: string, method: any, from: Address): Promise<number> {
-    try {
-      const estimateGas = await method.estimateGas({ from })
-      return parseInt(estimateGas)
-    } catch (e: any) {
-      const error = e as Error
-      this.logger.error(`Failed to estimate gas for method ${methodName}\n. Using default ${this.config.defaultGasLimit}. Error: ${error.message} ${error.stack}`)
-    }
-    return this.config.defaultGasLimit
-  }
-
   async validateBalance (signer: string, maxFeePerGas: number, gasLimit: number): Promise<void> {
     const txCost = toBN(maxFeePerGas).mul(toBN(gasLimit))
     const signerBalance = await this.contractInteractor.getBalance(signer)
@@ -160,7 +149,7 @@ data                     | ${transaction.data}
       gasLimit = await this.contractInteractor.estimateGas({
         from: txDetails.signer,
         to: txDetails.destination,
-        data: txDetails.method,
+        data: encodedCall,
         value: txDetails.value
       })
       this.logger.debug(`sendTransaction: gasLimit from estimate: ${gasLimit}`)
