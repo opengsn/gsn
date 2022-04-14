@@ -113,7 +113,9 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     returns (
         RelayInfo[] memory info
     ) {
-        return readRelayInfosInRange(relayHub, type(uint256).max, relayRegistrationMaxAge, 10);
+        uint256 blockTimestamp = block.timestamp;
+        uint256 oldestBlockTimestamp = blockTimestamp >= relayRegistrationMaxAge ? blockTimestamp - relayRegistrationMaxAge : 0;
+        return readRelayInfosInRange(relayHub, 0, oldestBlockTimestamp, 100);
     }
 
     /// @inheritdoc IRelayRegistrar
@@ -152,5 +154,4 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         }
         assembly { mstore(info, filled) }
     }
-
 }
