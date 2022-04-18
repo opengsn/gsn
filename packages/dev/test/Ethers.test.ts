@@ -8,6 +8,7 @@ const Web3HttpProvider = require('web3-providers-http')
 
 const TestRecipient = require('../../cli/src/compiled/TestRecipient.json')
 
+// eslint-disable-next-line
 let NOLOG = true
 
 function logProvider (provider: any): any {
