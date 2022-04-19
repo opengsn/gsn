@@ -8,6 +8,7 @@ import "hardhat/console.sol";
 // #endif
 
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./MinLibBytes.sol";
 import "../interfaces/IRelayHub.sol";
@@ -21,7 +22,7 @@ import "../interfaces/IRelayRegistrar.sol";
  *
  * @notice Protects the list from spamming entries: only staked relayers are added.
  */
-contract RelayRegistrar is IRelayRegistrar, ERC165 {
+contract RelayRegistrar is IRelayRegistrar, Ownable, ERC165 {
     using MinLibBytes for bytes;
 
     /// @notice Mapping from `RelayHub` address to a mapping from a Relay Manager address to its registration details.
@@ -35,8 +36,8 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     uint256 private relayRegistrationMaxAge;
 
     constructor(uint256 _relayRegistrationMaxAge) {
+        setRelayRegistrationMaxAge(_relayRegistrationMaxAge);
         creationBlock = block.number;
-        relayRegistrationMaxAge = _relayRegistrationMaxAge;
     }
 
     /// @inheritdoc IRelayRegistrar
@@ -47,6 +48,11 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
     /// @inheritdoc IRelayRegistrar
     function getRelayRegistrationMaxAge() external override view returns (uint256){
         return relayRegistrationMaxAge;
+    }
+
+    /// @inheritdoc IRelayRegistrar
+    function setRelayRegistrationMaxAge(uint256 _relayRegistrationMaxAge) public override onlyOwner {
+        relayRegistrationMaxAge = _relayRegistrationMaxAge;
     }
 
     /// @inheritdoc IERC165

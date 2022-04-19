@@ -67,6 +67,11 @@ interface IRelayRegistrar is IERC165 {
     function getRelayRegistrationMaxAge() external view returns (uint256);
 
     /**
+     * @notice Change the maximum relay registration age.
+     */
+    function setRelayRegistrationMaxAge(uint256) external;
+
+    /**
      * @param relayManager An address of a Relay Manager.
      * @param relayHub The address of the `RelayHub` contract for which this action is performed.
      * @return info All the details of the given Relay Manager's registration. Throws if relay not found for `RelayHub`.
