@@ -28,13 +28,13 @@ contract SingleRecipientPaymaster is BasePaymaster {
         target=_target;
     }
 
-    function preRelayedCall(
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
     virtual
     returns (bytes memory context, bool revertOnRecipientRevert) {
@@ -45,12 +45,15 @@ contract SingleRecipientPaymaster is BasePaymaster {
         return ("", true);
     }
 
-    function postRelayedCall(
+    function _postRelayedCall(
         bytes calldata context,
         bool success,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
-    ) external override virtual {
+    )
+    internal
+    override
+    virtual {
         (context, success, gasUseWithoutPost, relayData);
     }
 }

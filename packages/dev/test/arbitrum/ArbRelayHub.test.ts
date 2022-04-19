@@ -74,6 +74,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
       const testRecipient = await TestRecipient.new(forwarder.address)
       const paymaster = await TestPaymasterEverythingAccepted.new()
       await paymaster.setTrustedForwarder(forwarder.address)
+      await paymaster.setRelayHub(arbRelayHub.address)
 
       await arbRelayHub.depositFor(paymaster.address, {
         value: ether('1'),
@@ -136,7 +137,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
       })
 
       // just an observed value
-      const expectedGasUsed = 21000000
+      const expectedGasUsed = 22000000
 
       const transactionRelayedEvent = res.logs[0].args as TransactionRelayed['args']
       const charge = transactionRelayedEvent.charge.div(new BN('100000000'))

@@ -300,7 +300,6 @@ export class PenalizerService {
   }
 
   async broadcastTransaction (methodName: string, method: any): Promise<PrefixedHexString> {
-    const gasLimit = await this.transactionManager.attemptEstimateGas(methodName, method, this.managerAddress)
     const creationBlockNumber = await this.contractInteractor.getBlockNumber()
     const block = await this.contractInteractor.getBlock(creationBlockNumber)
     const creationBlockTimestamp = toNumber(block.timestamp)
@@ -310,7 +309,6 @@ export class PenalizerService {
         signer: this.managerAddress,
         method,
         destination: this.contractInteractor.penalizerInstance.address,
-        gasLimit,
         creationBlockNumber,
         creationBlockTimestamp,
         serverAction

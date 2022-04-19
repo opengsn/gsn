@@ -18,31 +18,29 @@ contract TestPaymasterVariableGasLimits is TestPaymasterEverythingAccepted {
         uint256 gasUseWithoutPost
     );
 
-    function preRelayedCall(
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
     returns (bytes memory, bool) {
-        (signature, approvalData);
-        _verifyForwarder(relayRequest);
+        (relayRequest, signature, approvalData);
         emit SampleRecipientPreCallWithValues(
             gasleft(), maxPossibleGas);
         return ("", false);
     }
 
-    function postRelayedCall(
+    function _postRelayedCall(
         bytes calldata context,
         bool success,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
-    external
+    internal
     override
-    relayHubOnly
     {
         (context, success, gasUseWithoutPost, relayData);
         emit SampleRecipientPostCallWithValues(gasleft(), gasUseWithoutPost);

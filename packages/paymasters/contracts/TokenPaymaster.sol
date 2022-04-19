@@ -83,22 +83,22 @@ contract TokenPaymaster is BasePaymaster {
         tokenPreCharge = uniswap.getTokenToEthOutputPrice(ethMaxCharge);
     }
 
-    function preRelayedCall(
+    function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {
+        // solhint-disable-next-line reason-string
+        require(relayRequest.relayData.paymasterData.length == 32, "paymasterData: invalid length for Uniswap v1 exchange address");
+    }
+
+    function _preRelayedCall(
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
         uint256 maxPossibleGas
     )
-    external
+    internal
     override
     virtual
-    relayHubOnly
     returns (bytes memory context, bool revertOnRecipientRevert) {
-        (signature);
-
-        require(approvalData.length == 0, "approvalData: invalid length");
-        // solhint-disable-next-line reason-string
-        require(relayRequest.relayData.paymasterData.length == 32, "paymasterData: invalid length for Uniswap v1 exchange address");
+        (signature, approvalData);
 
         (IERC20 token, IUniswap uniswap) = _getToken(relayRequest.relayData.paymasterData);
         (address payer, uint256 tokenPrecharge) = _calculatePreCharge(token, uniswap, relayRequest, maxPossibleGas);
@@ -106,16 +106,16 @@ contract TokenPaymaster is BasePaymaster {
         return (abi.encode(payer, tokenPrecharge, token, uniswap), false);
     }
 
-    function postRelayedCall(
+    function _postRelayedCall(
         bytes calldata context,
         bool,
         uint256 gasUseWithoutPost,
         GsnTypes.RelayData calldata relayData
     )
-    external
+    internal
     override
     virtual
-    relayHubOnly {
+    {
         (address payer, uint256 tokenPrecharge, IERC20 token, IUniswap uniswap) = abi.decode(context, (address, uint256, IERC20, IUniswap));
         _postRelayedCallInternal(payer, tokenPrecharge, 0, gasUseWithoutPost, relayData, token, uniswap);
     }
