@@ -35,6 +35,10 @@ interface SubmittedRelayRequestInfo {
   validUntilTime: string
 }
 
+const TX_FUTURE = 'tx-future'
+const TX_NOTFOUND = 'tx-notfound'
+const TX_NOTSENTHERE = 'tx-notsenthere'
+
 // TODO: stop faking the HttpProvider implementation -  it won't work for any other 'origProvider' type
 export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   protected readonly origProvider: HttpProvider & ISendAsync
@@ -70,6 +74,26 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       this.origProviderSend = this.origProvider.send.bind(this.origProvider)
     }
     this._delegateEventsApi()
+  }
+
+  sendId = 1000
+
+  // async wrapper for calling origSend
+  async origSend (method: string, params: any[]): Promise<any> {
+    return await new Promise((resolve, reject) => {
+      this.origProviderSend({
+        id: this.sendId++,
+        jsonrpc: '2.0',
+        method,
+        params
+      }, (error: Error | null, result?: JsonRpcResponse) => {
+        if (error != null) {
+          reject(error)
+        } else {
+          resolve(result?.result)
+        }
+      })
+    })
   }
 
   async init (): Promise<this> {
@@ -113,6 +137,10 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
         void this._ethGetTransactionReceipt(payload, callback)
         return
       }
+      if (payload.method === 'eth_getTransactionByHash') {
+        void this._ethGetTransactionByHash(payload, callback)
+        return
+      }
       if (payload.method === 'eth_accounts') {
         this._getAccounts(payload, callback)
       }
@@ -139,6 +167,46 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       rpcResponse.result = this._getTranslatedGsnResponseResult(rpcResponse.result)
       callback(error, rpcResponse)
     })
+  }
+
+  /**
+   * pack promise call as a jsonrpc callback
+   * @param promise the promise request. return value is "result" for the callback
+   * @param payload original payload. used to copy rpc param (jsonrpc, id)
+   * @param callback callback to call result or error (for exception)
+   */
+  asCallback (promise: Promise<any>, payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+    promise
+      .then(result => {
+        callback(null, {
+          result,
+          // @ts-ignore
+          id: payload.id,
+          jsonrpc: payload.jsonrpc
+        })
+      })
+      .catch(error => {
+        const err: any = {
+          error,
+          // @ts-ignore
+          id: payload.id,
+          jsonrpc: payload.jsonrpc
+        }
+        callback(err)
+      })
+  }
+
+  async _ethGetTransactionByHash (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
+    const relayRequestID = payload.params[0]
+    let txHash = await this._getTransactionIdFromRequestId(relayRequestID)
+    if (!txHash.startsWith('0x')) {
+      txHash = relayRequestID
+    }
+    const tx = await this.origSend('eth_getTransactionByHash', [txHash])
+    // must return exactly what was requested..
+    tx.hash = relayRequestID
+    tx.actualTransactionHash = tx.hash
+    this.asCallback(Promise.resolve(tx), payload, callback)
   }
 
   /**
@@ -211,6 +279,35 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       id,
       result: relayRequestID
     }
+  }
+
+  /**
+   * convert relayRequestId (which is a "synthethic" transaction ID) into the actual transaction Id.
+   * This is done by parsing RelayHub event, and can only be done after mining.
+   * @param relayRequestId
+   * @return transactionId or marker:
+   * If the transaction is already mined, return a real transactionId
+   * If requestId doesn't appear in the cache, return TX_NOTSENTHERE
+   * If the transaction is no longer valid, return TX_NOTFOUND
+   * If the transaction can still be mined, returns TX_FUTURE
+   */
+  async _getTransactionIdFromRequestId (relayRequestID: string): Promise<string> {
+    const submissionDetails = this.submittedRelayRequests.get(relayRequestID)
+    if (submissionDetails == null) {
+      return TX_NOTSENTHERE
+    }
+    const extraTopics = [undefined, undefined, [relayRequestID]]
+    const events = await this.relayClient.dependencies.contractInteractor.getPastEventsForHub(
+      extraTopics,
+      { fromBlock: submissionDetails.submissionBlock },
+      [TransactionRelayed, TransactionRejectedByPaymaster])
+    if (events.length === 0) {
+      if (parseInt(submissionDetails.validUntilTime) > Date.now()) {
+        return TX_FUTURE
+      }
+      return TX_NOTFOUND
+    }
+    return this._pickSingleEvent(events, relayRequestID).transactionHash
   }
 
   /**
@@ -347,7 +444,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
    * If all events are {@link TransactionRejectedByPaymaster}, return the last one.
    * If there is more than one successful {@link TransactionRelayed} throws as this is impossible for current Forwarder
    */
-  async _pickSingleEvent (events: EventData[], relayRequestID: string): Promise<EventData> {
+  _pickSingleEvent (events: EventData[], relayRequestID: string): EventData {
     const successes = events.filter(it => it.event === TransactionRelayed)
     if (successes.length === 0) {
       const sorted = events.sort((a: EventData, b: EventData) => b.blockNumber - a.blockNumber)
