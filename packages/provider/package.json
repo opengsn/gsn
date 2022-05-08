@@ -30,7 +30,7 @@
     "ethereumjs-util": "^7.1.0",
     "ethereumjs-wallet": "^0.6.5",
     "loglevel": "^1.7.1",
-    "web3": "1.6.1",
+    "web3": "^1.7.3",
     "winston": "^3.3.3"
   }
 }

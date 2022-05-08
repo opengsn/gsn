@@ -126,6 +126,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     if (this._useGSN(payload)) {
       if (payload.method === 'eth_sendTransaction') {
+        // @ts-ignore
         if (payload.params[0].to === undefined) {
           callback(new Error('GSN cannot relay contract deployment transactions. Add {from: accountWithEther, useGSN: false}.'))
           return
@@ -197,6 +198,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   }
 
   async _ethGetTransactionByHash (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
+    // @ts-ignore
     const relayRequestID = payload.params[0]
     let txHash = await this._getTransactionIdFromRequestId(relayRequestID)
     if (!txHash.startsWith('0x')) {
@@ -216,6 +218,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
    */
   async _ethGetTransactionReceipt (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
+    // @ts-ignore
     const relayRequestID = payload.params[0] as string
     const submissionDetails = this.submittedRelayRequests.get(relayRequestID)
     if (submissionDetails == null) {
@@ -239,6 +242,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     this.logger.info('calling sendAsync' + JSON.stringify(payload))
     let gsnTransactionDetails: GsnTransactionDetails
     try {
+      // @ts-ignore
       gsnTransactionDetails = this._fixGasFees(payload.params[0])
     } catch (e: any) {
       this.logger.error(e)
@@ -381,9 +385,11 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     if (payload.method === 'eth_accounts') {
       return true
     }
+    // @ts-ignore
     if (payload.params[0] === undefined) {
       return false
     }
+    // @ts-ignore
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
     return gsnTransactionDetails?.useGSN ?? true
   }
@@ -486,6 +492,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       logs: [],
       blockNumber: 0,
       cumulativeGasUsed: 0,
+      effectiveGasPrice: 0,
       status: false // failure
     }
   }

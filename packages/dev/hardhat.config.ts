@@ -1,7 +1,6 @@
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
-import '@nomiclabs/hardhat-truffle5'
 import '@nomiclabs/hardhat-web3'
 import 'hardhat-deploy'
 import '@nomiclabs/hardhat-ethers'
