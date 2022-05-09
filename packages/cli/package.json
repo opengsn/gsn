@@ -36,7 +36,7 @@
     "chalk": "^4.1.0",
     "clear": "^0.1.0",
     "cli-table": "^0.3.4",
-    "colors": "^1.4.0",
+    "colors": "1.4.0",
     "commander": "^6.1.0",
     "console-read-write": "^0.1.1",
     "date-format": "^3.0.0",
