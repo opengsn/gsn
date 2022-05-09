@@ -252,7 +252,8 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
 
   if (tokens.length !== 0) {
     console.log('Adding/Updating token stakes', tokens)
-    await hub.setMinimumStakes(tokens.map(x => x?.token), tokens.map(x => x?.minimumStake))
+    const ret = await hub.setMinimumStakes(tokens.map(x => x?.token), tokens.map(x => x?.minimumStake))
+    await ret.wait()
   }
 
   let deployedPm: DeployResult
