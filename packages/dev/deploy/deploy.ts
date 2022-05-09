@@ -175,8 +175,10 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
   // console.log('stakingTokenValueParsed', stakingTokenValueParsed.toString())
 
   // can't set "deterministicDeployment" on networks that require EIP-155 transactions (e.g. avax)
-  const deterministicDeployment = false
-  const deployedForwarder = await deploy(deployments, 'Forwarder', { from: deployer, deterministicDeployment })
+  const deployedForwarder = await deploy(deployments, 'Forwarder', { from: deployer, deterministicDeployment: true }).catch(async e => {
+    console.log('re-attempting to deploy forwarder using non-deterministic address')
+    return await deploy(deployments, 'Forwarder', { from: deployer, deterministicDeployment: false })
+  })
 
   if (deployedForwarder.newlyDeployed) {
     const f = new web3.eth.Contract(deployedForwarder.abi, deployedForwarder.address)
