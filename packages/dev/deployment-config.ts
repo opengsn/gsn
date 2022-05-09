@@ -6,8 +6,7 @@ module.exports = {
     deploymentConfiguration: {
       paymasterDeposit: '0.1',
       minimumStakePerToken: {
-        test: '0.1',
-        '0x610178dA211FEF7D417bC0e6FeD39F05609AD788': '0.3'
+        test: '0.1'
       }
     }
   },
