@@ -1,7 +1,6 @@
 // @ts-ignore
 import io from 'console-read-write'
 import BN from 'bn.js'
-import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
 import { HttpProvider } from 'web3-core'
@@ -33,6 +32,9 @@ import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
 import { formatTokenAmount, toNumber } from '@opengsn/common'
+
+//fails to "import"
+const HDWalletProvider = require('@truffle/hdwallet-provider')
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -115,7 +117,7 @@ export class CommandsLogic {
     deployment: GSNContractsDeployment,
     mnemonic?: string
   ) {
-    let provider: HttpProvider | HDWalletProvider = new Web3.providers.HttpProvider(host, {
+    let provider: HttpProvider = new Web3.providers.HttpProvider(host, {
       keepAlive: true,
       timeout: 120000
     })
@@ -217,12 +219,16 @@ export class CommandsLogic {
     try {
       console.log(`Registering GSN relayer at ${options.relayUrl}`)
 
-      const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
+      // const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
+      const gasInfo = options.gasPrice == null ? await this.contractInteractor.getGasFees() : {
+        gasPrice: toHex(options.gasPrice)
+      }
+      console.log('gasinfo=', gasInfo)
       const sendOptions: any = {
         chainId: toHex(await this.web3.eth.getChainId()),
         from: options.from,
         gas: 1e6,
-        gasPrice
+        ... gasInfo
       }
       const response = await this.httpClient.getPingResponse(options.relayUrl)
         .catch((error: any) => {
@@ -275,11 +281,13 @@ export class CommandsLogic {
       } else {
         console.log('Funding relayer')
 
-        const fundTx = await this.web3.eth.sendTransaction({
+        let transactionConfig = {
           ...sendOptions,
           to: relayAddress,
           value: options.funds
-        })
+        };
+        console.log('funding tx =', transactionConfig)
+        const fundTx = await this.web3.eth.sendTransaction(transactionConfig)
         if (fundTx.transactionHash == null) {
           return {
             success: false,
