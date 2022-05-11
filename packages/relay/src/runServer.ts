@@ -13,7 +13,9 @@ import {
   resolveReputationManagerConfig,
   resolveServerConfig,
   ServerConfigParams,
-  ServerDependencies
+  ServerDependencies,
+  validateHub,
+  HUB_FILE
 } from './ServerConfigParams'
 import { createServerLogger } from './ServerWinstonLogger'
 import { PenalizerDependencies, PenalizerService } from './penalizer/PenalizerService'
@@ -155,6 +157,13 @@ async function run (): Promise<void> {
   })
   console.log('Initializing interactor...\n')
   await contractInteractor.init()
+  await validateHub(
+    config.workdir + HUB_FILE,
+    config.relayHubAddress,
+    managerKeyManager.getAddress(0),
+    workersKeyManager.getAddress(0),
+    contractInteractor
+  )
   console.log('Creating gasPrice fetcher...\n')
   const gasPriceFetcher = new GasPriceFetcher(config.gasPriceOracleUrl, config.gasPriceOraclePath, contractInteractor, logger)
   let reputationManager: ReputationManager | undefined
