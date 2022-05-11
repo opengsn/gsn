@@ -25,6 +25,8 @@ import "../interfaces/IRelayRegistrar.sol";
 contract RelayRegistrar is IRelayRegistrar, Ownable, ERC165 {
     using MinLibBytes for bytes;
 
+    uint256 private constant MAX_RELAYS_RETURNED_COUNT = 1000;
+
     /// @notice Mapping from `RelayHub` address to a mapping from a Relay Manager address to its registration details.
     mapping(address => mapping(address => RelayInfo)) internal values;
 
@@ -121,7 +123,7 @@ contract RelayRegistrar is IRelayRegistrar, Ownable, ERC165 {
     ) {
         uint256 blockTimestamp = block.timestamp;
         uint256 oldestBlockTimestamp = blockTimestamp >= relayRegistrationMaxAge ? blockTimestamp - relayRegistrationMaxAge : 0;
-        return readRelayInfosInRange(relayHub, 0, oldestBlockTimestamp, 100);
+        return readRelayInfosInRange(relayHub, 0, oldestBlockTimestamp, MAX_RELAYS_RETURNED_COUNT);
     }
 
     /// @inheritdoc IRelayRegistrar
