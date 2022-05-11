@@ -11,6 +11,7 @@ import { HardhatUserConfig } from 'hardhat/config'
 import { NetworkUserConfig } from 'hardhat/src/types/config'
 import path from 'path'
 import chalk from 'chalk'
+import { deployments } from 'hardhat'
 
 const mnemonicFileName = process.env.MNEMONIC_FILE
 let mnemonic = 'test '.repeat(11) + 'junk'
@@ -48,10 +49,14 @@ const config: HardhatUserConfig = {
     }
   },
   paths: {
+    deployments: 'deployments/networks',
     sources: CONTRACTS_LINK // can't use "../contracts/src" directly.
   },
   networks: {
-    hardhat: { chainId: parseInt(process.env.FORK ?? '1337') },
+    hardhat: {
+      chainId: parseInt(process.env.FORK ?? '1337'),
+      saveDeployments: false,
+    },
     npmtest: { // used from "npm test". see package.json
       url: 'http://127.0.0.1:8544'
     },
@@ -60,8 +65,12 @@ const config: HardhatUserConfig = {
     rarb: getNetwork('https://rinkeby.arbitrum.io/rpc'),
     aox: getNetwork('https://arbitrum.xdaichain.com/'),
 
-    goerli: getInfuraNetwork('goarli'),
+    goerli: getInfuraNetwork('goerli'),
     kovan: getInfuraNetwork('kovan'),
+    fuji: getNetwork('https://api.avax-test.network/ext/bc/C/rpc'),
+    mumbai: getNetwork('https://rpc-mumbai.maticvigil.com'),
+    kopt: getNetwork('https://kovan.optimism.io/'),
+
     mainnet: getInfuraNetwork('mainnet')
   },
 

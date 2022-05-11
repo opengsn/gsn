@@ -45,6 +45,5 @@ yarn-error.log
 hardhat.log
 /packages/contracts/solpp/
 /packages/contracts/docs/
-/packages/dev/contracts-link
-/packages/dev/all-networks.json
-/packages/dev/deployments/
+/packages/deployer/contracts-link
+/packages/deployer/all-networks.json
