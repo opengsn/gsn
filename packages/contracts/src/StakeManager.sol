@@ -5,6 +5,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import "./interfaces/IStakeManager.sol";
 
@@ -16,7 +17,7 @@ import "./interfaces/IStakeManager.sol";
  *
  * @notice It cannot be changed after the first time 'stakeForRelayManager' is called as it is equivalent to withdrawal.
  */
-contract StakeManager is IStakeManager, Ownable {
+contract StakeManager is IStakeManager, Ownable, ERC165 {
     using SafeERC20 for IERC20;
 
     string public override versionSM = "2.2.3+opengsn.stakemanager.istakemanager";
@@ -80,6 +81,12 @@ contract StakeManager is IStakeManager, Ownable {
         maxUnstakeDelay = _maxUnstakeDelay;
         abandonedRelayServerConfig.abandonmentDelay = _abandonmentDelay;
         abandonedRelayServerConfig.escheatmentDelay = _escheatmentDelay;
+    }
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
+        return interfaceId == type(IStakeManager).interfaceId ||
+        super.supportsInterface(interfaceId);
     }
 
     /// @inheritdoc IStakeManager

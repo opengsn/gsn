@@ -397,6 +397,48 @@ contract('ContractInteractor', function (accounts) {
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith(/Provided.*version.*does not satisfy the requirement/)
     })
+
+    describe('#_validateERC165Interfaces()', function () {
+      it('should fail verification of ERC-165 interfaces if no contract instance is initialized', async function () {
+        const deployment = {}
+        const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+        await contractInteractor.init()
+        await expect(contractInteractor._validateERC165Interfaces())
+          .to.eventually.be.rejectedWith('ERC-165 interface check failed. Not a single contract instance initialized')
+      })
+
+      it('should verify ERC-165 interfaces of all contracts in the resolved deployment', async function () {
+        const fw = await Forwarder.new()
+
+        // no contract at address
+        const deployment = {
+          forwarderAddress: fw.address,
+          relayHubAddress: rh.address,
+          paymasterAddress: pm.address,
+          penalizerAddress: pen.address,
+          relayRegistrarAddress: constants.BURN_ADDRESS,
+          stakeManagerAddress: sm.address
+        }
+        let contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+        await contractInteractor.init()
+        await expect(contractInteractor._validateERC165Interfaces())
+          .to.eventually.be.rejectedWith(new RegExp(`Failed call to supportsInterface at address: ${constants.BURN_ADDRESS}`))
+
+        // incorrect contract at address
+        deployment.relayRegistrarAddress = sm.address
+        contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+        await contractInteractor.init()
+        await expect(contractInteractor._validateERC165Interfaces())
+          .to.eventually.be.rejectedWith('ERC-165 interface check failed. FW: true PM: true PN: true RR: false RH: true SM: true')
+
+        // all contracts correct
+        const rr = await RelayRegistrar.new()
+        deployment.relayRegistrarAddress = rr.address
+        contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+        await contractInteractor.init()
+        await contractInteractor._validateERC165Interfaces()
+      })
+    })
   })
 
   describe('#splitRange', () => {

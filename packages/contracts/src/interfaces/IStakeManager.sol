@@ -3,6 +3,7 @@ pragma solidity >=0.7.6;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 /**
  * @title The StakeManager Interface
@@ -15,7 +16,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @notice An implementation of this interface is tasked with keeping Relay Servers' stakes, made in any ERC-20 token.
  * Note that the `RelayHub` chooses which ERC-20 tokens to support and how much stake is needed.
  */
-interface IStakeManager {
+interface IStakeManager is IERC165 {
 
     /// @notice Emitted when a `stake` or `unstakeDelay` are initialized or increased.
     event StakeAdded(
