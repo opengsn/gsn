@@ -330,8 +330,11 @@ export class ContractInteractor {
   }
 
   private async _trySupportsInterface (
-    contractInstance: IERC165Instance,
+    contractInstance: IERC165Instance | null,
     interfaceId: PrefixedHexString): Promise<boolean> {
+    if (contractInstance == null) {
+      return true
+    }
     try {
       return await contractInstance.supportsInterface(interfaceId)
     } catch (e: any) {
