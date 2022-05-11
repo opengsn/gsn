@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.packages.json",
   "include": [
     "deploy/*.ts",
+    "src/**.ts",
     "deployment-config.ts",
     "hardhat.config.ts",
     "../contracts/types/truffle-contracts/index.d.ts",

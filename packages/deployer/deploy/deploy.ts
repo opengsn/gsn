@@ -1,12 +1,7 @@
 import { DeployFunction, DeploymentsExtension, TxOptions } from 'hardhat-deploy/types'
 import { HttpNetworkConfig } from 'hardhat/src/types/config'
 
-import {
-  defaultEnvironment,
-  Environment,
-  getEnvironment,
-  merge
-} from '@opengsn/common'
+import { Environment } from '@opengsn/common'
 import { constants } from '@opengsn/common/dist/Constants'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
@@ -14,53 +9,9 @@ import chalk from 'chalk'
 import { formatEther, formatUnits, parseEther, parseUnits } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { ethers } from 'hardhat'
-import path from 'path'
-import fs from 'fs'
-import * as util from 'util'
+import { fatal, getMergedEnvironment, getToken, printRelayInfo, setField } from '../src/deployUtils'
 
 const { AddressZero } = ethers.constants
-
-const deploymentConfigFile = path.resolve(__dirname, '../deployments', 'deployment-config.ts')
-
-interface DeploymentConfig {
-  [key: number]: Environment
-}
-
-function fatal (...params: any): never {
-  console.error(chalk.red('fatal:'), ...params)
-  process.exit(1)
-}
-
-interface Token {
-  address: string
-  symbol: string
-  decimals: number
-
-  balanceOf: (address: string) => Promise<string>
-}
-
-async function getToken (address: string): Promise<Token> {
-  const token = new ethers.Contract(address,
-    [
-      'function symbol() view returns (string)',
-      'function balanceOf() view returns (uint256)',
-      'function decimals() view returns (uint256)'
-    ], ethers.provider)
-  // verify token address is a valid token...
-  const symbol: string = await token.symbol().catch((e: any) => null)
-  const decimals: number = await token.decimals().catch((e: any) => null)
-  if (symbol == null || decimals == null) {
-    throw new Error(`invalid token: ${address} (Symbol: ${symbol} Decimals: ${decimals})`)
-  }
-  const divisor = Math.pow(10, decimals)
-
-  return {
-    address,
-    symbol,
-    decimals,
-    balanceOf: async (addr: string) => token.balanceOf(addr).then((v: any) => v.div(divisor))
-  }
-}
 
 // helper: nicer logging view fo deployed contracts
 async function deploy (deployments: DeploymentsExtension, name: string, options: DeployOptions): Promise<DeployResult> {
@@ -68,67 +19,6 @@ async function deploy (deployments: DeploymentsExtension, name: string, options:
   const res = await deployments.deploy(name, options)
   console.log(name, res.address, res.newlyDeployed ? chalk.yellow('newlyDeployed') : chalk.gray('existing'))
   return res
-}
-
-/** helper: set a field on a contract only if it was changed.
- * the "deploy" mechanism has the property of "re-deploy only on change". this method replicate the logic for calling a setter.
- * @param deployments - hardhat deploy extension
- * @param contract - a contract deployed earlier using "deploy"
- * @param getFunc - a getter (with no params) to read current value
- * @param setFunc - a setter function (accepting a single value) to set the new value
- * @param val - the value we want the field to have
- * @param deployer
- */
-async function setField (deployments: DeploymentsExtension, contract: string, getFunc: string, setFunc: string, val: string, deployer: string): Promise<void> {
-  const options: TxOptions = {
-    from: deployer,
-    log: true
-  }
-  const currentVal = await deployments.read(contract, options, getFunc)
-  if (currentVal !== val) {
-    console.log('calling', `${contract}.${setFunc}( ${val} )`)
-    await deployments.execute(contract, options, setFunc, val)
-  }
-}
-
-function printSampleEnvironment (defaultDevAddress: string, chainId: number): void {
-  const sampleEnv = {
-    relayHubConfiguration: {
-      devAddress: defaultDevAddress
-    },
-
-    deploymentConfiguration: {
-      paymasterDeposit: '0.1',
-      isArbitrum: false,
-      deployTestPaymaster: true,
-      minimumStakePerToken: { test: '0.5' }
-    }
-  }
-  console.log(chalk.red('No configuration found:'), '\nPlease add the following to', chalk.whiteBright(`"${deploymentConfigFile}"`), ':\n\nmodule.exports = ',
-    util.inspect({ [chainId]: sampleEnv }, false, 10, false))
-}
-
-function getMergedEnvironment (chainId: number, defaultDevAddress: string): Environment {
-  try {
-    const env = getEnvironment(chainId) ?? { name: 'default', environment: defaultEnvironment }
-    if (env == null) {
-      fatal(`Environment with chainID ${chainId} not found`)
-    }
-    console.log('loading env ( based on chainId', chainId, ')', env.name)
-    let config: any
-    if (fs.existsSync(deploymentConfigFile)) {
-      const fileConfig = require(deploymentConfigFile) as DeploymentConfig
-      config = fileConfig[chainId]
-    }
-    if (config == null) {
-      printSampleEnvironment(defaultDevAddress, chainId)
-      process.exit(1)
-    }
-
-    return merge(env.environment, config)
-  } catch (e: any) {
-    fatal(`Error reading config file ${deploymentConfigFile}: ${(e as Error).message}`)
-  }
 }
 
 export default async function deploymentFunc (this: DeployFunction, hre: HardhatRuntimeEnvironment): Promise<void> {
@@ -148,7 +38,7 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
     fatal('must have at least one entry in minimumStakePerToken')
   }
 
-  if (env.deploymentConfiguration.isArbitrum === true) {
+  if (env.deploymentConfiguration?.isArbitrum ?? false) {
     // sanity: verify we indeed on arbitrum-enabled network.
     const ArbSys = new ethers.Contract(constants.ARBITRUM_ARBSYS, ['function arbOSVersion() external pure returns (uint)'], ethers.provider)
     await ArbSys.arbOSVersion()
@@ -208,7 +98,7 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
   const hubConfig = env.relayHubConfiguration
   let relayHub: DeployResult
   let hubContractName: string
-  if (env.deploymentConfiguration.isArbitrum === true) {
+  if (env.deploymentConfiguration?.isArbitrum ?? false) {
     console.log(`Using ${chalk.yellow('Arbitrum')} relayhub`)
     hubContractName = 'ArbRelayHub'
     relayHub = await deploy(deployments, hubContractName, {
@@ -266,11 +156,11 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
     await setField(deployments, 'TestPaymasterEverythingAccepted', 'getRelayHub', 'setRelayHub', relayHub.address, deployer)
     await setField(deployments, 'TestPaymasterEverythingAccepted', 'getTrustedForwarder', 'setTrustedForwarder', deployedForwarder.address, deployer)
 
-    const val = await deployments.read(hubContractName, 'balanceOf', deployedPm.address)
-    console.log('current paymaster balance=', formatEther(val))
+    const paymasterBalance = await deployments.read(hubContractName, 'balanceOf', deployedPm.address)
+    console.log('current paymaster balance=', formatEther(paymasterBalance))
     const depositValue = parseEther(env.deploymentConfiguration.paymasterDeposit)
 
-    if (val.toString() === '0') {
+    if (paymasterBalance.toString() === '0') {
       console.log('depositing in paymaster', formatEther(depositValue))
       await deployments.execute(hubContractName, {
         from: deployer,
@@ -279,18 +169,6 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
       }, 'depositFor', deployedPm.address)
     }
   }
-  const network = hre.network.config as HttpNetworkConfig
-  console.log(chalk.white('relayer config:'))
-  console.log(chalk.grey(JSON.stringify({
-    baseRelayFee: 0,
-    pctRelayFee: 70,
-    relayHubAddress: hub.address,
-    ownerAddress: deployer,
-    managerStakeTokenAddress: stakingTokenAddress,
-    gasPriceFactor: 1,
-    maxGasPrice: 1e12,
-    ethereumNodeUrl: network.url
-  }, null, 2)))
-  console.log(chalk.white('relayer register:'))
-  console.log(chalk.grey(`gsn relayer-register -m $SECRET --network ${network.url} --relayUrl https://${hre.hardhatArguments.network}.v3.opengsn.org/v3 --token ${stakingTokenAddress} --stake ${stakingTokenValue} --wrap`))
+
+  await printRelayInfo(hre)
 }

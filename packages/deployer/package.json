@@ -5,7 +5,8 @@
   "license": "MIT",
   "scripts": {
     "deploy": "yarn --cwd ../dev solpp; hardhat deploy --export-all all-networks.json ",
-    "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0"
+    "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
+    "depinfo": "hardhat run ./src/depinfo.ts"
   },
   "dependencies": {
     "@opengsn/common": "^3.0.0-alpha.4",
