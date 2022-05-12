@@ -432,7 +432,7 @@ contract('ContractInteractor', function (accounts) {
           .to.eventually.be.rejectedWith('ERC-165 interface check failed. FW: true PM: true PN: true RR: false RH: true SM: true')
 
         // all contracts correct
-        const rr = await RelayRegistrar.new()
+        const rr = await RelayRegistrar.new(constants.yearInSec)
         deployment.relayRegistrarAddress = rr.address
         contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
         await contractInteractor.init()
