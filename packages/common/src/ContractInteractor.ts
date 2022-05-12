@@ -1141,10 +1141,13 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   /**
    * discover registered relays
-   * @param relayRegistrationMaximumAge - the oldest registrations to be counted
    */
-  async getRegisteredRelays (relayRegistrationMaximumAge: number): Promise<RelayRegisteredEventInfo[]> {
-    return await this.getRegisteredRelaysFromRegistrar(relayRegistrationMaximumAge)
+  async getRegisteredRelays (): Promise<RelayRegisteredEventInfo[]> {
+    return await this.getRegisteredRelaysFromRegistrar()
+  }
+
+  async getRelayRegistrationMaxAge (): Promise<BN> {
+    return await this.relayRegistrar.getRelayRegistrationMaxAge()
   }
 
   async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
@@ -1176,7 +1179,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
    * get registered relayers from registrar
    * (output format matches event info)
    */
-  async getRegisteredRelaysFromRegistrar (relayRegistrationMaximumAge: number): Promise<RelayRegisteredEventInfo[]> {
+  async getRegisteredRelaysFromRegistrar (): Promise<RelayRegisteredEventInfo[]> {
     if (this.relayRegistrar == null) {
       throw new Error('Relay Registrar is not initialized')
     }
@@ -1184,12 +1187,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     if (relayHub == null) {
       throw new Error('RelayHub is not initialized!')
     }
-    let oldestBlockTimestamp = 0
-    if (relayRegistrationMaximumAge !== 0) {
-      const block = await this.getBlock('latest')
-      oldestBlockTimestamp = Math.max(0, toNumber(block.timestamp) - relayRegistrationMaximumAge)
-    }
-    const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub, 0, oldestBlockTimestamp, 100)
+    const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub)
 
     return relayInfos.map(info => {
       return {
