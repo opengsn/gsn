@@ -403,6 +403,7 @@ export class CommandsLogic {
     }
     return tokens[0].returnValues.token
   }
+
   async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
     const relayManager = keyManager.getAddress(0)
     console.log('relayManager is', relayManager)
@@ -547,7 +548,6 @@ export class CommandsLogic {
     if (!isSameAddress(await rInstance.methods.getRelayRegistrar().call(), rrInstance.options.address)) {
       await rInstance.methods.setRegistrar(rrInstance.options.address).send({ ...options })
     }
-
 
     let pmInstance: Contract | undefined
     if (deployOptions.deployPaymaster ?? false) {
