@@ -423,8 +423,8 @@ export class CommandsLogic {
       const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { owner } = (await stakeManager.getStakeInfo(relayManager))[0]
-      if ( options.config.ownerAddress!=null ) {
-        //old (2.1.0) relayers didn't have owners in config. 
+      if (options.config.ownerAddress != null) {
+        // old (2.1.0) relayers didn't have owners in config.
         // but its OK to withdraw from them...
         if (owner.toLowerCase() !== options.config.ownerAddress.toLowerCase()) {
           throw new Error(`Owner in relayHub ${owner} is different than in server config ${options.config.ownerAddress}`)
@@ -452,6 +452,7 @@ export class CommandsLogic {
         console.log('Calling in view mode', web3TxData)
         await this.contractInteractor.web3.eth.call({ ...web3TxData })
         const txData = { ...web3TxData, gasLimit: web3TxData.gas }
+        // @ts-ignore
         delete txData.gas
         txToSign = new Transaction(txData, this.contractInteractor.getRawTxOptions())
       } else {
