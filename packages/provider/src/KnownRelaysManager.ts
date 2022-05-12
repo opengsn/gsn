@@ -71,7 +71,7 @@ export class KnownRelaysManager {
     this.allRelayers = await this.getRelayInfoForManagers()
   }
 
-  getRelayInfoForManager (address: string): RelayRegisteredEventInfo|undefined {
+  getRelayInfoForManager (address: string): RelayRegisteredEventInfo | undefined {
     return this.allRelayers.find(info => isSameAddress(info.relayManager, address))
   }
 
@@ -81,7 +81,10 @@ export class KnownRelaysManager {
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
 
     const blacklistFilteredRelayInfos = relayInfos.filter((info: RelayRegisteredEventInfo) => {
-      const host = new URL(info.relayUrl).host.toLowerCase()
+      let host = ''
+      try {
+        host = new URL(info.relayUrl).host.toLowerCase()
+      } catch (e) {}
       const isHostBlacklisted = this.config.blacklistedRelays.find(relay => relay.urlHost != null && host.includes(relay.urlHost.toLowerCase())) != null
       const isManagerBlacklisted = this.config.blacklistedRelays.find(relay => relay.relayManager != null && isSameAddress(info.relayManager, relay.relayManager)) != null
       return !(isHostBlacklisted || isManagerBlacklisted)
