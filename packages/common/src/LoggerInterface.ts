@@ -1,4 +1,4 @@
-type LogMethod = (msg: string) => void
+export type LogMethod = (msg: string) => void
 
 export interface LoggerInterface {
   error: LogMethod
