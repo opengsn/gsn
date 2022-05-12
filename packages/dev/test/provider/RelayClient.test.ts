@@ -773,6 +773,27 @@ contract('RelayClient', function (accounts) {
       assert.equal(relayingResult.pingErrors.size, 0)
       assert.exists(relayingResult.transaction)
     })
+
+    it('should not use blacklisted relays', async () => {
+      relayClient = new RelayClient({
+        provider: underlyingProvider,
+        config: {
+          ...gsnConfig,
+          blacklistedRelays: [
+            {
+              urlHost: 'localhost:8090'
+            },
+            {
+              relayManager: accounts[4]
+            }
+          ]
+        }
+      })
+      await relayClient.init()
+
+      await expect(relayClient.relayTransaction(options))
+        .to.eventually.be.rejectedWith('no registered relayers')
+    })
   })
 
   describe('_resolveConfiguration()', function () {

@@ -21,8 +21,14 @@ export interface ConfigEntry {
   gsnConfig: Partial<GSNConfig>
 }
 
+export interface BlacklistedRelayServerInfo {
+  urlHost?: string
+  relayManager?: string
+}
+
 export interface GSNConfig {
   preferredRelays: string[]
+  blacklistedRelays: BlacklistedRelayServerInfo[]
   // in case querying large block ranges is restricted, set limit and use pagination
   pastEventsQueryMaxPageSize: number
   // allows use of versioned methods, i.e. 'eth_signTypedData_v4'. Should be '_v4' for Metamask

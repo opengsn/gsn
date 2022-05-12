@@ -80,7 +80,13 @@ export class KnownRelaysManager {
 
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
 
-    const filteredRelayInfos = relayInfos.filter(this.relayFilter)
+    const blacklistFilteredRelayInfos = relayInfos.filter((info: RelayRegisteredEventInfo) => {
+      const host = new URL(info.relayUrl).host.toLowerCase()
+      const isHostBlacklisted = this.config.blacklistedRelays.find(relay => relay.urlHost != null && host.includes(relay.urlHost.toLowerCase())) != null
+      const isManagerBlacklisted = this.config.blacklistedRelays.find(relay => relay.relayManager != null && isSameAddress(info.relayManager, relay.relayManager)) != null
+      return !(isHostBlacklisted || isManagerBlacklisted)
+    })
+    const filteredRelayInfos = blacklistFilteredRelayInfos.filter(this.relayFilter)
     if (filteredRelayInfos.length !== relayInfos.length) {
       this.logger.warn(`RelayFilter: removing ${relayInfos.length - filteredRelayInfos.length} relays from results`)
     }

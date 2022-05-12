@@ -28,6 +28,7 @@ export const defaultLoggerConfiguration: LoggerConfiguration = {
 
 export const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
+  blacklistedRelays: [],
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   gasPriceOracleUrl: '',
