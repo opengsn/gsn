@@ -1,7 +1,7 @@
 {
   "name": "@opengsn/contracts",
   "license": "GPL-3.0-only",
-  "version": "3.0.0-alpha.4",
+  "version": "3.0.0-alpha.5",
   "main": "types/truffle-contracts/index.d.ts",
   "scripts": {
     "solpp": "yarn --cwd=\"../..\" solpp",
