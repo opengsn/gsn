@@ -316,7 +316,6 @@ export class ContractInteractor {
       throw new Error('ERC-165 interface check failed. Not a single contract instance initialized')
     }
     this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
-    console.log(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
     const fw = await this._trySupportsInterface(this.forwarderInstance, erc165Interfaces.forwarder)
     const pm = await this._trySupportsInterface(this.paymasterInstance, erc165Interfaces.paymaster)
     const pn = await this._trySupportsInterface(this.penalizerInstance, erc165Interfaces.penalizer)

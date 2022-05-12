@@ -395,7 +395,5 @@ export function getERC165InterfaceID (abi: AbiItem[]): string {
       .map((x) => parseInt(x, 16))
       .reduce((x, y) => x ^ y)
   interfaceId = interfaceId > 0 ? interfaceId : 0xFFFFFFFF + interfaceId + 1
-  const interfaceIdHex = '0x' + interfaceId.toString(16).padStart(8, '0')
-  console.log('interfaceId= ', interfaceIdHex)
-  return interfaceIdHex
+  return '0x' + interfaceId.toString(16).padStart(8, '0')
 }
