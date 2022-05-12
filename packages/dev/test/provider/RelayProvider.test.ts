@@ -1,6 +1,7 @@
 /* eslint-disable no-void */
 import Web3 from 'web3'
 import chaiAsPromised from 'chai-as-promised'
+import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
@@ -28,7 +29,7 @@ import { getEip712Signature } from '@opengsn/common/dist/Utils'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { constants } from '@opengsn/common'
+import { constants, sleep } from '@opengsn/common'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
@@ -148,6 +149,7 @@ contract('RelayProvider', function (accounts) {
           ...config
         }
       })
+      await relayProvider.init()
       // NOTE: in real application its enough to set the provider in web3.
       // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
       // so changing the global one is not enough.
@@ -157,6 +159,7 @@ contract('RelayProvider', function (accounts) {
       await emptyBalance(gasLess, accounts[0])
       console.log('gasLess is', gasLess)
     })
+
     it('should relay transparently', async function () {
       const res = await testRecipient.emitMessage('hello world', {
         from: gasLess,
@@ -172,6 +175,26 @@ contract('RelayProvider', function (accounts) {
         msgValue: '0',
         balance: '0'
       })
+    })
+
+    it('should initiate lookup for forgotten transaction based on its identifier having a prefix', async function () {
+      // @ts-ignore
+      const stubGet = sinon.stub(relayProvider.submittedRelayRequests, 'get').returns(undefined)
+      const res = await testRecipient.emitMessage('hello world', {
+        from: gasLess,
+        gasPrice: '0x51f4d5c00',
+        gas: '100000',
+        // @ts-ignore
+        paymaster
+      })
+
+      expectEvent.inLogs(res.logs, 'SampleRecipientEmitted', {
+        message: 'hello world',
+        realSender: gasLess,
+        msgValue: '0',
+        balance: '0'
+      })
+      stubGet.restore()
     })
 
     it('should relay transparently with value', async function () {

@@ -39,6 +39,8 @@ const TX_FUTURE = 'tx-future'
 const TX_NOTFOUND = 'tx-notfound'
 const TX_NOTSENTHERE = 'tx-notsenthere'
 
+const BLOCKS_FOR_LOOKUP = 5000
+
 // TODO: stop faking the HttpProvider implementation -  it won't work for any other 'origProvider' type
 export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   protected readonly origProvider: HttpProvider & ISendAsync
@@ -46,6 +48,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   protected readonly web3: Web3
   protected readonly submittedRelayRequests = new Map<string, SubmittedRelayRequestInfo>()
   protected config!: GSNConfig
+  protected initBlockNubmer!: number
 
   readonly relayClient: RelayClient
   logger!: LoggerInterface
@@ -98,6 +101,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
 
   async init (): Promise<this> {
     await this.relayClient.init()
+    this.initBlockNubmer = await this.web3.eth.getBlockNumber()
     this.config = this.relayClient.config
     this.logger.info(`Created new RelayProvider ver.${gsnRuntimeVersion}`)
     return this
@@ -217,12 +221,22 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   async _ethGetTransactionReceipt (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
     const relayRequestID = payload.params[0] as string
-    const submissionDetails = this.submittedRelayRequests.get(relayRequestID)
-    if (submissionDetails == null) {
+    let submissionDetails = this.submittedRelayRequests.get(relayRequestID)
+    const hasPrefix = relayRequestID.includes('0x00000000')
+    if (!hasPrefix && submissionDetails == null) {
       this._ethGetTransactionReceiptWithTransactionHash(payload, callback)
       return
     }
     try {
+      if (submissionDetails == null) {
+        const manyBlocksAgo = Math.max(1, this.initBlockNubmer - BLOCKS_FOR_LOOKUP)
+        this.logger.warn(`Looking up relayed transaction by its RelayRequestID(${relayRequestID}) from block ${manyBlocksAgo}`)
+        submissionDetails = {
+          submissionBlock: manyBlocksAgo,
+          validUntilTime: Number.MAX_SAFE_INTEGER.toString()
+        }
+      }
+
       const result = await this._createTransactionReceiptForRelayRequestID(relayRequestID, submissionDetails)
       const rpcResponse = {
         id,
