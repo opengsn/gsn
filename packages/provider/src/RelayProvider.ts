@@ -205,9 +205,11 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       txHash = relayRequestID
     }
     const tx = await this.origSend('eth_getTransactionByHash', [txHash])
-    // must return exactly what was requested..
-    tx.hash = relayRequestID
-    tx.actualTransactionHash = tx.hash
+    if (tx != null) {
+      // must return exactly what was requested...
+      tx.hash = relayRequestID
+      tx.actualTransactionHash = tx.hash
+    }
     this.asCallback(Promise.resolve(tx), payload, callback)
   }
 
