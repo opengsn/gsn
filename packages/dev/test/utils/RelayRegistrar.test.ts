@@ -2,7 +2,7 @@ import { RelayRegistrarInstance, TestRelayHubForRegistrarInstance } from '@openg
 import { expect } from 'chai'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 
-import { splitRelayUrlForRegistrar, toNumber } from '@opengsn/common'
+import { constants, splitRelayUrlForRegistrar, toNumber } from '@opengsn/common'
 
 import { cleanValue } from './chaiHelper'
 import { evmMine, evmMineMany, revert, setNextBlockTimestamp, snapshot } from '../TestUtils'
@@ -64,7 +64,7 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
     relayHubTwo = await TestRelayHubForRegistrar.new()
     await relayHubOne.setRelayManagerStaked(relay1, true)
     await relayHubTwo.setRelayManagerStaked(relay1, true)
-    relayRegistrar = await RelayRegistrar.new()
+    relayRegistrar = await RelayRegistrar.new(constants.yearInSec)
     id = (await snapshot()).result
   })
 
@@ -141,28 +141,28 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
       })
 
       it('should read all relays relevant for this hub', async () => {
-        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, 0, 0, 5) as any
+        let info = await relayRegistrar.readRelayInfosInRange(relayHubOne.address, 0, 0, 5) as any
         info = cleanValue(info)
         cleanBlockNumbers(info)
         expect(info).to.eql([relay1Info, relay2Info, relay4Info])
       })
 
       it('should read all relays relevant for that hub', async () => {
-        let info = await relayRegistrar.readRelayInfos(relayHubTwo.address, 0, 0, 5) as any
+        let info = await relayRegistrar.readRelayInfosInRange(relayHubTwo.address, 0, 0, 5) as any
         info = cleanValue(info)
         cleanBlockNumbers(info)
         expect(info).to.eql([relay1Info, relay3Info])
       })
 
       it('should not include relays last re-registered before oldestBlockNumber', async function () {
-        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, oldestBlockNumber, 0, 5) as any
+        let info = await relayRegistrar.readRelayInfosInRange(relayHubOne.address, oldestBlockNumber, 0, 5) as any
         info = cleanValue(info)
         cleanBlockNumbers(info)
         expect(info).to.eql([relay4Info])
       })
 
       it('should not include relays last re-registered before oldestBlockTimestamp', async function () {
-        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, 0, oldestBlockTimestamp, 5) as any
+        let info = await relayRegistrar.readRelayInfosInRange(relayHubOne.address, 0, oldestBlockTimestamp, 5) as any
         info = cleanValue(info)
         cleanBlockNumbers(info)
         expect(info).to.eql([relay4Info])
@@ -170,7 +170,7 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
 
       it('should not include relays that fail verifyRelayManagerStaked', async function () {
         await relayHubOne.setRelayManagerStaked(relay2, false)
-        let info = await relayRegistrar.readRelayInfos(relayHubOne.address, 0, 0, 5) as any
+        let info = await relayRegistrar.readRelayInfosInRange(relayHubOne.address, 0, 0, 5) as any
         info = cleanValue(info)
         cleanBlockNumbers(info)
         expect(info).to.eql([relay1Info, relay4Info])

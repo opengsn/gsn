@@ -518,7 +518,9 @@ export class CommandsLogic {
     }
 
     const rrInstance = await this.getContractInstance(RelayRegistrar, {
-      arguments: []
+      arguments: [
+        constants.yearInSec
+      ]
     }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
     const sInstance = await this.getContractInstance(StakeManager, {
       arguments: [defaultEnvironment.maxUnstakeDelay, defaultEnvironment.abandonmentDelay, defaultEnvironment.escheatmentDelay, deployOptions.burnAddress, deployOptions.devAddress]
