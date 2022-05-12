@@ -76,7 +76,7 @@ export class KnownRelaysManager {
   }
 
   async getRelayInfoForManagers (): Promise<RelayRegisteredEventInfo[]> {
-    const relayInfos = await this.contractInteractor.getRegisteredRelays(this.config.relayRegistrationMaximumAge)
+    const relayInfos = await this.contractInteractor.getRegisteredRelays()
 
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
 
