@@ -277,7 +277,7 @@ context('#ServerConfigParams', () => {
     })
   })
 
-  context.only('runServer', () => {
+  context('runServer', () => {
     const workdir = '/tmp/gsn/test/validateHub/'
     const hubPath = workdir + HUB_FILE
     const hub = '0xdeadbeef'
