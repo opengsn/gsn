@@ -10,6 +10,7 @@ import { formatEther, formatUnits, parseEther, parseUnits } from 'ethers/lib/uti
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { ethers } from 'hardhat'
 import { fatal, getMergedEnvironment, getToken, printRelayInfo, setField } from '../src/deployUtils'
+import { Contract } from "ethers";
 
 const { AddressZero } = ethers.constants
 
@@ -20,6 +21,20 @@ async function deploy (deployments: DeploymentsExtension, name: string, options:
   console.log(name, res.address, res.newlyDeployed ? chalk.yellow('newlyDeployed') : chalk.gray('existing'))
   return res
 }
+
+//check if token's minimum stake is correct. return null if no need to change.
+async function updateTokenStakeOrNull (hub: Contract, tokenAddr: string, configMinimumStake: string): Promise<{ token: string, minimumStake: string } | null> {
+  const token = await getToken(tokenAddr)
+  const minStake = await hub.getMinimumStakePerToken(tokenAddr)
+  const parsedConfigMinimumStake = parseUnits(configMinimumStake, token.decimals).toString()
+  console.log(`- Staking Token "${token.symbol}" ${token.address} current ${formatUnits(minStake, token.decimals)} config ${configMinimumStake}`)
+  if (parsedConfigMinimumStake !== minStake.toString()) {
+    return { token: tokenAddr, minimumStake: parsedConfigMinimumStake }
+  } else {
+    return null
+  }
+}
+
 
 export default async function deploymentFunc (this: DeployFunction, hre: HardhatRuntimeEnvironment): Promise<void> {
   const { web3, deployments, getChainId } = hre
@@ -59,13 +74,11 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
     stakingTokenValue = stakingTokenValue ?? '0.1'
   }
 
-  // const token = await getToken(stakingTokenAddress)
-
-  // const stakingTokenValueParsed = parseUnits(stakingTokenValue, token.decimals)
-  // console.log('stakingTokenValueParsed', stakingTokenValueParsed.toString())
-
   // can't set "deterministicDeployment" on networks that require EIP-155 transactions (e.g. avax)
-  const deployedForwarder = await deploy(deployments, 'Forwarder', { from: deployer, deterministicDeployment: true }).catch(async e => {
+  const deployedForwarder = await deploy(deployments, 'Forwarder', {
+    from: deployer,
+    deterministicDeployment: true
+  }).catch(async e => {
     console.log('re-attempting to deploy forwarder using non-deterministic address')
     return await deploy(deployments, 'Forwarder', { from: deployer, deterministicDeployment: false })
   })
@@ -127,21 +140,11 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
   }
   const hub = new ethers.Contract(relayHub.address, relayHub.abi, ethers.provider.getSigner())
 
-  const tokens: Array<{ token: string, minimumStake: string } | null> = await Promise.all(
-    Object.entries(env.deploymentConfiguration.minimumStakePerToken).map(async ([tokenAddr, configMinimumStake]) => {
-      if (tokenAddr === 'test') {
-        tokenAddr = stakingTokenAddress
-      }
-      const token = await getToken(tokenAddr)
-      const minStake = await hub.getMinimumStakePerToken(tokenAddr)
-      const parsedConfigMinimumStake = parseUnits(configMinimumStake, token.decimals).toString()
-      console.log(`- Staking Token "${token.symbol}" ${token.address} current ${formatUnits(minStake, token.decimals)} config ${configMinimumStake}`)
-      if (parsedConfigMinimumStake !== minStake.toString()) {
-        return { token: tokenAddr, minimumStake: parsedConfigMinimumStake }
-      } else {
-        return null
-      }
-    })).then(list => list.filter(x => x != null))
+  const configChanges = Object.entries(env.deploymentConfiguration.minimumStakePerToken).map(async ([tokenAddr, configMinimumStake]) =>
+    updateTokenStakeOrNull(hub, tokenAddr === 'test' ? stakingTokenAddress : tokenAddr, configMinimumStake))
+    .filter(x => x != null)
+
+  const tokens = await Promise.all(configChanges)
 
   if (tokens.length !== 0) {
     console.log('Adding/Updating token stakes', tokens)

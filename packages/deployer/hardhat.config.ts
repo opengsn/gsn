@@ -11,7 +11,6 @@ import { HardhatUserConfig } from 'hardhat/config'
 import { NetworkUserConfig } from 'hardhat/src/types/config'
 import path from 'path'
 import chalk from 'chalk'
-import { deployments } from 'hardhat'
 
 const mnemonicFileName = process.env.MNEMONIC_FILE
 let mnemonic = 'test '.repeat(11) + 'junk'
