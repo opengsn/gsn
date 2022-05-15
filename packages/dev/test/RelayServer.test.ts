@@ -31,6 +31,7 @@ const TestRelayHub = artifacts.require('TestRelayHub')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
 contract('RelayServer', function (accounts: Truffle.Accounts) {
+  const registrationRateSeconds = 500
   const alertedDelaySeconds = 0
   const baseRelayFee = '12'
 
@@ -46,7 +47,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     }
 
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
-    await env.init(relayClientConfig, undefined, undefined, TestRelayHub)
+    await env.init(relayClientConfig, undefined, undefined, TestRelayHub, registrationRateSeconds)
     const overrideParams: Partial<ServerConfigParams> = {
       alertedDelaySeconds,
       baseRelayFee
@@ -833,7 +834,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   })
 
   describe('server keepalive re-registration', function () {
-    const registrationRateSeconds = 5000
     const refreshStateTimeoutBlocks = 1
     let relayServer: RelayServer
     let latestBlockNumber: number
@@ -857,7 +857,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     beforeEach(async function () {
       id = (await snapshot()).result
       await env.newServerInstance({
-        registrationRateSeconds,
         refreshStateTimeoutBlocks
       })
       relayServer = env.relayServer

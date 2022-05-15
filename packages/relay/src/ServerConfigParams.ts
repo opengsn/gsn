@@ -34,8 +34,6 @@ export interface ServerConfigParams {
   checkInterval: number
   devMode: boolean
   loggingProvider: LoggingProviderMode
-  // if set, must match clients' "relayRegistrationMaximumAge" parameter for relay to remain discoverable
-  registrationRateSeconds: number
   maxAcceptanceBudget: number
   alertedDelaySeconds: number
   minAlertedDelayMS: number
@@ -111,7 +109,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   gasPriceFactor: 1,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
-  registrationRateSeconds: 0,
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
@@ -173,7 +170,6 @@ const ConfigParamsTypes = {
   customerToken: 'string',
   hostOverride: 'string',
   userId: 'string',
-  registrationRateSeconds: 'number',
   maxAcceptanceBudget: 'number',
   alertedDelaySeconds: 'number',
 
