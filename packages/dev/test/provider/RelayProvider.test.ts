@@ -241,6 +241,7 @@ contract('RelayProvider', function (accounts) {
       await testRecipient.emitMessage('hello again', {
         from: gasLess,
         gas: '100000',
+        gasPrice: '0x71f4d5c00',
         // @ts-ignore
         paymaster
       })
@@ -278,7 +279,7 @@ contract('RelayProvider', function (accounts) {
           {
             from: gasLess,
             gas: '0x186a0',
-            gasPrice: '0x51f4d5c00',
+            gasPrice: '0x81f4d5c00',
             paymaster,
             forwarder: forwarderAddress,
             to: testRecipient.address,
