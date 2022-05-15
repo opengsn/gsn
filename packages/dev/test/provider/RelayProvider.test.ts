@@ -45,7 +45,7 @@ const underlyingProvider = web3.currentProvider as HttpProvider
 const paymasterData = '0x'
 const clientId = '1'
 
-const config: Partial<GSNConfig> = { loggerConfiguration: { logLevel: 'error' } }
+const config: Partial<GSNConfig> = { loggerConfiguration: { logLevel: 'error' }, skipErc165Check: true }
 
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {

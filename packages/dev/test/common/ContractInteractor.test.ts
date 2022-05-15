@@ -403,7 +403,9 @@ contract('ContractInteractor', function (accounts) {
         const deployment = {}
         const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
         await contractInteractor.init()
-        await expect(contractInteractor._validateERC165Interfaces())
+        await expect(contractInteractor._validateERC165InterfacesRelay())
+          .to.eventually.be.rejectedWith('ERC-165 interface check failed. Not a single contract instance initialized')
+        await expect(contractInteractor._validateERC165InterfacesClient())
           .to.eventually.be.rejectedWith('ERC-165 interface check failed. Not a single contract instance initialized')
       })
 
@@ -421,22 +423,22 @@ contract('ContractInteractor', function (accounts) {
         }
         let contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
         await contractInteractor.init()
-        await expect(contractInteractor._validateERC165Interfaces())
+        await expect(contractInteractor._validateERC165InterfacesRelay())
           .to.eventually.be.rejectedWith(new RegExp(`Failed call to supportsInterface at address: ${constants.BURN_ADDRESS}`))
 
         // incorrect contract at address
         deployment.relayRegistrarAddress = sm.address
         contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
         await contractInteractor.init()
-        await expect(contractInteractor._validateERC165Interfaces())
-          .to.eventually.be.rejectedWith('ERC-165 interface check failed. FW: true PM: true PN: true RR: false RH: true SM: true')
+        await expect(contractInteractor._validateERC165InterfacesRelay())
+          .to.eventually.be.rejectedWith('ERC-165 interface check failed. PN: true RR: false RH: true SM: true')
 
         // all contracts correct
         const rr = await RelayRegistrar.new(constants.yearInSec)
         deployment.relayRegistrarAddress = rr.address
         contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
         await contractInteractor.init()
-        await contractInteractor._validateERC165Interfaces()
+        await contractInteractor._validateERC165InterfacesRelay()
       })
     })
   })

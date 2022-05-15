@@ -123,7 +123,6 @@ export class ContractInteractor {
   private readonly IRelayRegistrar: Contract<IRelayRegistrarInstance>
   private readonly IERC20Token: Contract<IERC20TokenInstance>
 
-  private initialisedERC165InstancesCount = 0
   private paymasterInstance!: IPaymasterInstance
   relayHubInstance!: IRelayHubInstance
   relayHubConfiguration!: RelayHubConfiguration
@@ -282,7 +281,6 @@ export class ContractInteractor {
 
   async _resolveDeploymentFromRelayHub (relayHubAddress: Address): Promise<void> {
     this.relayHubInstance = await this._createRelayHub(relayHubAddress)
-    this.initialisedERC165InstancesCount++
     const [stakeManagerAddress, penalizerAddress, relayRegistrarAddress] = await Promise.all([
       this._hubStakeManagerAddress(),
       this._hubPenalizerAddress(),
@@ -311,20 +309,39 @@ export class ContractInteractor {
     }
   }
 
-  async _validateERC165Interfaces (): Promise<void> {
-    if (this.initialisedERC165InstancesCount === 0) {
+  async _validateERC165InterfacesRelay (): Promise<void> {
+    const allNull = [
+      this.penalizerInstance,
+      this.relayRegistrar,
+      this.relayHubInstance,
+      this.stakeManagerInstance].every(it => it == null)
+    if (allNull) {
+      throw new Error('ERC-165 interface check failed. Not a single contract instance initialized')
+    }
+    this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
+    const pn = await this._trySupportsInterface(this.penalizerInstance, erc165Interfaces.penalizer)
+    const rr = await this._trySupportsInterface(this.relayRegistrar, erc165Interfaces.relayRegistrar)
+    const rh = await this._trySupportsInterface(this.relayHubInstance, erc165Interfaces.relayHub)
+    const sm = await this._trySupportsInterface(this.stakeManagerInstance, erc165Interfaces.stakeManager)
+    const all = pn && rr && rh && sm
+    if (!all) {
+      throw new Error(`ERC-165 interface check failed. PN: ${pn} RR: ${rr} RH: ${rh} SM: ${sm}`)
+    }
+  }
+
+  async _validateERC165InterfacesClient (): Promise<void> {
+    const allNull = [
+      this.forwarderInstance,
+      this.paymasterInstance].every(it => it == null)
+    if (allNull) {
       throw new Error('ERC-165 interface check failed. Not a single contract instance initialized')
     }
     this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
     const fw = await this._trySupportsInterface(this.forwarderInstance, erc165Interfaces.forwarder)
     const pm = await this._trySupportsInterface(this.paymasterInstance, erc165Interfaces.paymaster)
-    const pn = await this._trySupportsInterface(this.penalizerInstance, erc165Interfaces.penalizer)
-    const rr = await this._trySupportsInterface(this.relayRegistrar, erc165Interfaces.relayRegistrar)
-    const rh = await this._trySupportsInterface(this.relayHubInstance, erc165Interfaces.relayHub)
-    const sm = await this._trySupportsInterface(this.stakeManagerInstance, erc165Interfaces.stakeManager)
-    const all = fw && pm && pn && rr && rh && sm
+    const all = fw && pm
     if (!all) {
-      throw new Error(`ERC-165 interface check failed. FW: ${fw} PM: ${pm} PN: ${pn} RR: ${rr} RH: ${rh} SM: ${sm}`)
+      throw new Error(`ERC-165 interface check failed. FW: ${fw} PM: ${pm}`)
     }
   }
 
@@ -346,27 +363,21 @@ export class ContractInteractor {
     // any sense NOT to initialize some components, or NOT to read them all from the PM and then RH ?
     if (this.relayHubInstance == null && this.deployment.relayHubAddress != null) {
       this.relayHubInstance = await this._createRelayHub(this.deployment.relayHubAddress)
-      this.initialisedERC165InstancesCount++
     }
     if (this.relayRegistrar == null && this.deployment.relayRegistrarAddress != null) {
       this.relayRegistrar = await this._createRelayRegistrar(this.deployment.relayRegistrarAddress)
-      this.initialisedERC165InstancesCount++
     }
     if (this.paymasterInstance == null && this.deployment.paymasterAddress != null) {
       this.paymasterInstance = await this._createPaymaster(this.deployment.paymasterAddress)
-      this.initialisedERC165InstancesCount++
     }
     if (this.deployment.forwarderAddress != null) {
       this.forwarderInstance = await this._createForwarder(this.deployment.forwarderAddress)
-      this.initialisedERC165InstancesCount++
     }
     if (this.deployment.stakeManagerAddress != null) {
       this.stakeManagerInstance = await this._createStakeManager(this.deployment.stakeManagerAddress)
-      this.initialisedERC165InstancesCount++
     }
     if (this.deployment.penalizerAddress != null) {
       this.penalizerInstance = await this._createPenalizer(this.deployment.penalizerAddress)
-      this.initialisedERC165InstancesCount++
     }
     if (this.deployment.managerStakeTokenAddress != null) {
       this.erc20Token = await this._createERC20(this.deployment.managerStakeTokenAddress)
