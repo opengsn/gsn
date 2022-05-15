@@ -198,7 +198,6 @@ contract('RelayProvider', function (accounts) {
     })
 
     it('should relay transparently with value', async function () {
-      await evmMine()
       const value = 1e18.toString()
       // note: this test only validates we process the "value" parameter of the request properly.
       // a real use-case should have a paymaster to transfer the value into the forwarder,
@@ -210,7 +209,7 @@ contract('RelayProvider', function (accounts) {
       })
       const res = await testRecipient.emitMessage('hello world', {
         from: gasLess,
-        gasPrice: '0x51f4d5c00',
+        gasPrice: '0x61f4d5c00',
         value,
         gas: '100000',
         // @ts-ignore
