@@ -22,7 +22,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { deployHub, emptyBalance, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
+import { deployHub, emptyBalance, encodeRevertReason, evmMine, startRelay, stopRelay } from '../TestUtils'
 import { BadRelayClient } from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
@@ -198,6 +198,7 @@ contract('RelayProvider', function (accounts) {
     })
 
     it('should relay transparently with value', async function () {
+      await evmMine()
       const value = 1e18.toString()
       // note: this test only validates we process the "value" parameter of the request properly.
       // a real use-case should have a paymaster to transfer the value into the forwarder,
