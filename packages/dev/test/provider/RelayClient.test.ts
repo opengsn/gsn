@@ -779,14 +779,7 @@ contract('RelayClient', function (accounts) {
         provider: underlyingProvider,
         config: {
           ...gsnConfig,
-          blacklistedRelays: [
-            {
-              urlHost: 'localhost:8090'
-            },
-            {
-              relayManager: accounts[4]
-            }
-          ]
+          blacklistedRelays: ['localhost:8090', accounts[2], accounts[4]]
         }
       })
       await relayClient.init()
