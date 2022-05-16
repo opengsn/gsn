@@ -37,7 +37,8 @@ interface SubmittedRelayRequestInfo {
 
 const TX_FUTURE = 'tx-future'
 const TX_NOTFOUND = 'tx-notfound'
-const TX_NOTSENTHERE = 'tx-notsenthere'
+
+const BLOCKS_FOR_LOOKUP = 5000
 
 // TODO: stop faking the HttpProvider implementation -  it won't work for any other 'origProvider' type
 export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
@@ -197,10 +198,25 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       })
   }
 
+  async _getSubmissionDetailsForRelayRequestId (relayRequestID: PrefixedHexString): Promise<SubmittedRelayRequestInfo> {
+    const submissionDetails = this.submittedRelayRequests.get(relayRequestID)
+    if (submissionDetails != null) {
+      return submissionDetails
+    }
+    const blockNumber = await this.web3.eth.getBlockNumber()
+    const manyBlocksAgo = Math.max(1, blockNumber - BLOCKS_FOR_LOOKUP)
+    this.logger.warn(`Looking up relayed transaction by its RelayRequestID(${relayRequestID}) from block ${manyBlocksAgo}`)
+    return {
+      submissionBlock: manyBlocksAgo,
+      validUntilTime: Number.MAX_SAFE_INTEGER.toString()
+    }
+  }
+
   async _ethGetTransactionByHash (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     // @ts-ignore
     const relayRequestID = payload.params[0]
-    let txHash = await this._getTransactionIdFromRequestId(relayRequestID)
+    const submissionDetails = await this._getSubmissionDetailsForRelayRequestId(relayRequestID)
+    let txHash = await this._getTransactionIdFromRequestId(relayRequestID, submissionDetails)
     if (!txHash.startsWith('0x')) {
       txHash = relayRequestID
     }
@@ -221,13 +237,13 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   async _ethGetTransactionReceipt (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
     const relayRequestID = payload.params?.[0] as string
-    const submissionDetails = this.submittedRelayRequests.get(relayRequestID)
-    if (submissionDetails == null) {
+    const hasPrefix = relayRequestID.includes('0x00000000')
+    if (!hasPrefix) {
       this._ethGetTransactionReceiptWithTransactionHash(payload, callback)
       return
     }
     try {
-      const result = await this._createTransactionReceiptForRelayRequestID(relayRequestID, submissionDetails)
+      const result = await this._createTransactionReceiptForRelayRequestID(relayRequestID)
       const rpcResponse = {
         id,
         result,
@@ -288,18 +304,17 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   /**
    * convert relayRequestId (which is a "synthethic" transaction ID) into the actual transaction Id.
    * This is done by parsing RelayHub event, and can only be done after mining.
-   * @param relayRequestId
+   * @param relayRequestID
+   * @param submissionDetails
    * @return transactionId or marker:
    * If the transaction is already mined, return a real transactionId
-   * If requestId doesn't appear in the cache, return TX_NOTSENTHERE
    * If the transaction is no longer valid, return TX_NOTFOUND
    * If the transaction can still be mined, returns TX_FUTURE
    */
-  async _getTransactionIdFromRequestId (relayRequestID: string): Promise<string> {
-    const submissionDetails = this.submittedRelayRequests.get(relayRequestID)
-    if (submissionDetails == null) {
-      return TX_NOTSENTHERE
-    }
+  async _getTransactionIdFromRequestId (
+    relayRequestID: string,
+    submissionDetails: SubmittedRelayRequestInfo
+  ): Promise<string> {
     const extraTopics = [undefined, undefined, [relayRequestID]]
     const events = await this.relayClient.dependencies.contractInteractor.getPastEventsForHub(
       extraTopics,
@@ -320,22 +335,16 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
    * If the transaction can still be mined, returns "null" like a regular RPC call would do
    */
   async _createTransactionReceiptForRelayRequestID (
-    relayRequestID: string,
-    submissionDetails: SubmittedRelayRequestInfo): Promise<TransactionReceipt | null> {
-    const extraTopics = [undefined, undefined, [relayRequestID]]
-    const events = await this.relayClient.dependencies.contractInteractor.getPastEventsForHub(
-      extraTopics,
-      { fromBlock: submissionDetails.submissionBlock },
-      [TransactionRelayed, TransactionRejectedByPaymaster])
-    if (events.length === 0) {
-      if (parseInt(submissionDetails.validUntilTime) > Date.now()) {
-        return null
-      }
+    relayRequestID: string): Promise<TransactionReceipt | null> {
+    const submissionDetails = await this._getSubmissionDetailsForRelayRequestId(relayRequestID)
+    const transactionHash = await this._getTransactionIdFromRequestId(relayRequestID, submissionDetails)
+    if (transactionHash === TX_FUTURE) {
+      return null
+    }
+    if (transactionHash === TX_NOTFOUND) {
       return this._createTransactionRevertedReceipt()
     }
-
-    const eventData = await this._pickSingleEvent(events, relayRequestID)
-    const originalTransactionReceipt = await this.web3.eth.getTransactionReceipt(eventData.transactionHash)
+    const originalTransactionReceipt = await this.web3.eth.getTransactionReceipt(transactionHash)
     return this._getTranslatedGsnResponseResult(originalTransactionReceipt, relayRequestID)
   }
 
