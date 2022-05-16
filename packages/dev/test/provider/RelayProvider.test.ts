@@ -22,7 +22,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { Address } from '@opengsn/common/dist/types/Aliases'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { deployHub, emptyBalance, encodeRevertReasong, startRelay, stopRelay } from '../TestUtils'
+import { deployHub, emptyBalance, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
 import { BadRelayClient } from '../dummies/BadRelayClient'
 
 import { getEip712Signature } from '@opengsn/common/dist/Utils'
