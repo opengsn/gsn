@@ -117,6 +117,9 @@ export class RelayClient {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
     this.dependencies = await this._resolveDependencies(this.rawConstructorInput)
+    if (!this.config.skipErc165Check) {
+      await this.dependencies.contractInteractor._validateERC165InterfacesClient()
+    }
   }
 
   /**

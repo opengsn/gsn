@@ -10,7 +10,7 @@ import "./IRelayHub.sol";
  *
  * @notice In case there was, the `Penalizer` will direct the `RelayHub` to slash the stake of the faulty Relay Server.
  */
-interface IPenalizer {
+interface IPenalizer is IERC165 {
 
     /// @notice Emitted once the reporter submits the first step in the commit-reveal process.
     event CommitAdded(address indexed sender, bytes32 indexed commitHash, uint256 readyBlockNumber);

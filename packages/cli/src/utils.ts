@@ -147,7 +147,7 @@ export function loadDeployment (workdir: string): GSNContractsDeployment {
 
   return {
     relayHubAddress: getAddress('RelayHub'),
-    relayRegistrar: getAddress('RelayRegistrar'),
+    relayRegistrarAddress: getAddress('RelayRegistrar'),
     stakeManagerAddress: getAddress('StakeManager'),
     penalizerAddress: getAddress('Penalizer'),
     forwarderAddress: getAddress('Forwarder'),
