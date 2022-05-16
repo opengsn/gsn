@@ -1,5 +1,4 @@
 import { PrefixedHexString } from 'ethereumjs-util'
-
 import { PingResponse } from '../PingResponse'
 import { RelayRequest } from '../EIP712/RelayRequest'
 import { GsnTransactionDetails } from './GsnTransactionDetails'
@@ -7,7 +6,7 @@ import { RelayFailureInfo } from './RelayFailureInfo'
 import { RelayRegisteredEventInfo } from './GSNContractsDataTypes'
 import { HttpProvider, IpcProvider, WebsocketProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
-import BN from 'bn.js'
+import { BN } from 'bn.js'
 
 export type Address = string
 export type EventName = string

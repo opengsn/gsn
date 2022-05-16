@@ -11,6 +11,8 @@ import "./GsnTypes.sol";
  */
 library GsnUtils {
 
+    bytes32 constant private RELAY_REQUEST_ID_MASK = 0x00000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+
     /**
      * @notice Calculate an identifier for the meta-transaction in a format similar to a transaction hash.
      * Note that uniqueness relies on signature and may not be enforced if meta-transactions are verified
@@ -22,7 +24,7 @@ library GsnUtils {
     internal
     pure
     returns (bytes32) {
-        return keccak256(abi.encode(relayRequest.request.from, relayRequest.request.nonce, signature));
+        return keccak256(abi.encode(relayRequest.request.from, relayRequest.request.nonce, signature)) & RELAY_REQUEST_ID_MASK;
     }
 
     /**

@@ -1,11 +1,11 @@
 {
   "name": "@opengsn/common",
-  "version": "2.2.4",
+  "version": "3.0.0-alpha.5",
   "license": "Apache-2.0",
   "main": "dist/index.js",
   "scripts": {
     "tsc": "tsc",
-    "watch-tsc": "tsc -w",
+    "watch-tsc": "tsc -w --preserveWatchOutput",
     "lint": "eslint -f unix .",
     "lint-fix": "yarn lint --fix",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@ethereumjs/tx": "^3.2.0",
-    "@opengsn/contracts": "^2.2.4",
+    "@opengsn/contracts": "^3.0.0-alpha.5",
     "@types/bn.js": "^5.1.0",
     "@types/semver": "^7.3.4",
     "@types/web3": "1.2.2",
@@ -32,12 +32,12 @@
     "ow": "^0.17.0",
     "rlp": "^2.2.6",
     "semver": "^7.3.2",
-    "web3": "1.6.1",
-    "web3-core": "1.6.1",
-    "web3-core-helpers": "1.6.1",
-    "web3-eth": "1.6.1",
-    "web3-eth-abi": "1.6.1",
-    "web3-eth-contract": "1.6.1",
-    "web3-utils": "1.6.1"
+    "web3": "^1.7.3",
+    "web3-core": "^1.7.3",
+    "web3-core-helpers": "^1.7.3",
+    "web3-eth": "^1.7.3",
+    "web3-eth-abi": "^1.7.3",
+    "web3-eth-contract": "^1.7.3",
+    "web3-utils": "^1.7.3"
   }
 }

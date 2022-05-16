@@ -1,6 +1,14 @@
 import BN from 'bn.js'
 import { toBN } from 'web3-utils'
 
+import paymasterAbi from './interfaces/IPaymaster.json'
+import relayHubAbi from './interfaces/IRelayHub.json'
+import forwarderAbi from './interfaces/IForwarder.json'
+import stakeManagerAbi from './interfaces/IStakeManager.json'
+import penalizerAbi from './interfaces/IPenalizer.json'
+import relayRegistrarAbi from './interfaces/IRelayRegistrar.json'
+import { getERC165InterfaceID } from './Utils'
+
 const dayInSec = 24 * 60 * 60
 const weekInSec = dayInSec * 7
 const yearInSec = dayInSec * 365
@@ -24,4 +32,13 @@ export const constants = {
   MIN_INT256: new BN('2').pow(new BN('255')).mul(new BN('-1')),
 
   ARBITRUM_ARBSYS: '0x0000000000000000000000000000000000000064'
+}
+
+export const erc165Interfaces = {
+  forwarder: getERC165InterfaceID(forwarderAbi as any),
+  paymaster: getERC165InterfaceID(paymasterAbi as any),
+  penalizer: getERC165InterfaceID(penalizerAbi as any),
+  relayRegistrar: getERC165InterfaceID(relayRegistrarAbi as any),
+  relayHub: getERC165InterfaceID(relayHubAbi as any),
+  stakeManager: getERC165InterfaceID(stakeManagerAbi as any)
 }

@@ -157,6 +157,7 @@ contract('RelayClient', function (accounts) {
     const loggerConfiguration: LoggerConfiguration = { logLevel: 'debug' }
     gsnConfig = {
       loggerConfiguration,
+      skipErc165Check: true,
       performDryRunViewRelayCall: false,
       paymasterAddress: paymaster.address
     }

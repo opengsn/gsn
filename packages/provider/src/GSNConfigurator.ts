@@ -41,6 +41,7 @@ export const defaultGsnConfig: GSNConfig = {
   requiredVersionRange: gsnRequiredVersion,
   jsonStringifyRequest: true,
   auditorsCount: 0,
+  skipErc165Check: false,
   clientId: '1',
   requestValidSeconds: 172800, // 2 days
   maxViewableGasLimit: '12000000',
