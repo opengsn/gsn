@@ -70,13 +70,9 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
     stakingTokenAddress = WrappedEthToken.address
   }
 
-  // can't set "deterministicDeployment" on networks that require EIP-155 transactions (e.g. avax)
   const deployedForwarder = await deploy(deployments, 'Forwarder', {
     from: deployer,
     deterministicDeployment: true
-  }).catch(async () => {
-    console.log('re-attempting to deploy forwarder using non-deterministic address')
-    return await deploy(deployments, 'Forwarder', { from: deployer, deterministicDeployment: false })
   })
 
   if (deployedForwarder.newlyDeployed) {
