@@ -112,7 +112,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
 
   it('should retrieve version number', async function () {
     const version = await relayHubInstance.versionHub()
-    assert.match(version, /2\.\d*\.\d*-?.*\+opengsn\.hub\.irelayhub/)
+    assert.match(version, /3\.\d*\.\d*-?.*\+opengsn\.hub\.irelayhub/)
   })
 
   describe('balances', function () {

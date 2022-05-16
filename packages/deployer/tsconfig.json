@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.packages.json",
+  "include": [
+    "deploy/*.ts",
+    "deployments/*.ts",
+    "src/**.ts",
+    "deployment-config.ts",
+    "hardhat.config.ts",
+    "../contracts/types/truffle-contracts/index.d.ts",
+    "../contracts/types/truffle-contracts/types.d.ts"
+  ],
+  "compilerOptions": {
+    "outDir": "dist"
+  }
+}
+
+

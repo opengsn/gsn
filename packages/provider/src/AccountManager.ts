@@ -53,7 +53,7 @@ export class AccountManager {
 
   newAccount (): AccountKeypair {
     const a = ethWallet.generate()
-    const privateKey = `0x${(a.privKey as Buffer).toString('hex')}`
+    const privateKey = a.getPrivateKeyString()
     this.addAccount(privateKey)
     const address = toAddress(privateKey)
     return {

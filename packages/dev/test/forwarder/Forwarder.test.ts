@@ -513,7 +513,7 @@ contract('Forwarder', ([from]) => {
       })
 
       it('should forward all funds left in forwarder to "from" address', async () => {
-        const senderPrivateKey = ethWallet.generate().privKey as Buffer
+        const senderPrivateKey = ethWallet.generate().getPrivateKey()
         const senderAddress = toChecksumAddress(bufferToHex(privateToAddress(senderPrivateKey)))
 
         const value = ether('1')
