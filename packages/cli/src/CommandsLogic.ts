@@ -417,7 +417,6 @@ export class CommandsLogic {
   async withdrawToOwner (options: WithdrawOptions): Promise<WithdrawalResult> {
     const transactions: string[] = []
     try {
-      console.log('Withdrawing from GSN relayer to owner')
       const relayManager = options.keyManager.getAddress(0)
       console.log('relayManager is', relayManager)
       const relayHub = await this.contractInteractor._createRelayHub(options.config.relayHubAddress)
@@ -462,7 +461,7 @@ export class CommandsLogic {
         if (balance.lt(options.withdrawAmount)) {
           throw new Error('Relay manager hub balance lower than withdrawal amount')
         }
-        const method = relayHub.contract.methods.withdraw(options.withdrawAmount, withdrawTarget)
+        const method = relayHub.contract.methods.withdraw(withdrawTarget, options.withdrawAmount)
         const encodedCall = method.encodeABI()
         txToSign = new Transaction({
           to: options.config.relayHubAddress,
