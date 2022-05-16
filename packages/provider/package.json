@@ -1,11 +1,11 @@
 {
   "name": "@opengsn/provider",
-  "version": "2.2.4",
+  "version": "3.0.0-alpha.5",
   "license": "Apache-2.0",
   "main": "dist/index.js",
   "scripts": {
     "tsc": "tsc",
-    "watch-tsc": "tsc -w",
+    "watch-tsc": "tsc -w --preserveWatchOutput",
     "lint": "eslint -f unix .",
     "lint-fix": "yarn lint --fix",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist"
@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@ethereumjs/tx": "^3.2.0",
-    "@opengsn/common": "^2.2.4",
+    "@opengsn/common": "^3.0.0-alpha.5",
     "@types/body-parser": "^1.19.0",
     "@types/chai": "^4.3.0",
     "@types/express-serve-static-core": "^4.17.18",
@@ -30,7 +30,7 @@
     "ethereumjs-util": "^7.1.0",
     "ethereumjs-wallet": "^0.6.5",
     "loglevel": "^1.7.1",
-    "web3": "1.6.1",
+    "web3": "^1.7.3",
     "winston": "^3.3.3"
   }
 }

@@ -157,6 +157,7 @@ contract('RelayClient', function (accounts) {
     const loggerConfiguration: LoggerConfiguration = { logLevel: 'debug' }
     gsnConfig = {
       loggerConfiguration,
+      skipErc165Check: true,
       performDryRunViewRelayCall: false,
       paymasterAddress: paymaster.address
     }
@@ -772,6 +773,20 @@ contract('RelayClient', function (accounts) {
       const relayingResult = await relayClient.relayTransaction(options)
       assert.equal(relayingResult.pingErrors.size, 0)
       assert.exists(relayingResult.transaction)
+    })
+
+    it('should not use blacklisted relays', async () => {
+      relayClient = new RelayClient({
+        provider: underlyingProvider,
+        config: {
+          ...gsnConfig,
+          blacklistedRelays: ['localhost:8090', accounts[2], accounts[4]]
+        }
+      })
+      await relayClient.init()
+
+      await expect(relayClient.relayTransaction(options))
+        .to.eventually.be.rejectedWith('no registered relayers')
     })
   })
 
