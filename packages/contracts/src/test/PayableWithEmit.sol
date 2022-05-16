@@ -9,7 +9,7 @@ import "@opengsn/contracts/src/ERC2771Recipient.sol";
 // it should work)
 contract PayableWithEmit is ERC2771Recipient {
 
-  string public override versionRecipient = "3.0.0-alpha.4+opengsn.payablewithemit.irelayrecipient";
+  string public override versionRecipient = "3.0.0-alpha.5+opengsn.payablewithemit.irelayrecipient";
 
   event Received(address sender, uint256 value, uint256 gasleft);
 

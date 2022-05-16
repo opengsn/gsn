@@ -293,10 +293,8 @@ contract('ContractInteractor', function (accounts) {
         sinon.assert.calledOnce(spy)
         const rpcPayload = spy.getCall(0).args[0]
         assert.equal(rpcPayload.method, 'eth_call')
-        // @ts-ignore
-        assert.equal(rpcPayload.params[0].maxFeePerGas, toHex(relayRequest.relayData.maxFeePerGas))
-        // @ts-ignore
-        assert.equal(rpcPayload.params[0].maxPriorityFeePerGas, toHex(relayRequest.relayData.maxPriorityFeePerGas))
+        assert.equal(rpcPayload.params![0].maxFeePerGas, toHex(relayRequest.relayData.maxFeePerGas))
+        assert.equal(rpcPayload.params![0].maxPriorityFeePerGas, toHex(relayRequest.relayData.maxPriorityFeePerGas))
         spy.restore()
       }
     })

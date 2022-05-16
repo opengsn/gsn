@@ -20,8 +20,7 @@ export class NetworkSimulatingProvider extends WrapperProviderBase {
   }
 
   calculateTxHash (payload: JsonRpcPayload): PrefixedHexString {
-    // @ts-ignore
-    const txHash = web3Utils.sha3(payload.params[0])
+    const txHash = web3Utils.sha3(payload.params?.[0])
     if (txHash == null) {
       throw new Error('Failed to hash transaction')
     }

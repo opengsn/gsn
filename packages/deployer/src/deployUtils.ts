@@ -137,7 +137,7 @@ export async function printRelayInfo (hre: HardhatRuntimeEnvironment): Promise<v
 
   const hub = await hre.deployments.get('RelayHub')
   const network = hre.network.config as HttpNetworkConfig
-  console.log(chalk.white('Relayer config:'))
+  console.log(chalk.white('Example for Relayer config JSON file:'))
   console.log(chalk.grey(JSON.stringify({
     baseRelayFee: 0,
     pctRelayFee: 70,

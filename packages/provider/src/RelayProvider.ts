@@ -220,8 +220,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
    */
   async _ethGetTransactionReceipt (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
-    // @ts-ignore
-    const relayRequestID = payload.params[0] as string
+    const relayRequestID = payload.params?.[0] as string
     const submissionDetails = this.submittedRelayRequests.get(relayRequestID)
     if (submissionDetails == null) {
       this._ethGetTransactionReceiptWithTransactionHash(payload, callback)
@@ -244,8 +243,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     this.logger.info('calling sendAsync' + JSON.stringify(payload))
     let gsnTransactionDetails: GsnTransactionDetails
     try {
-      // @ts-ignore
-      gsnTransactionDetails = this._fixGasFees(payload.params[0])
+      gsnTransactionDetails = this._fixGasFees(payload.params?.[0])
     } catch (e: any) {
       this.logger.error(e)
       callback(e)
@@ -387,11 +385,9 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     if (payload.method === 'eth_accounts') {
       return true
     }
-    // @ts-ignore
-    if (payload.params[0] === undefined) {
+    if (payload.params?.[0] === undefined) {
       return false
     }
-    // @ts-ignore
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
     return gsnTransactionDetails?.useGSN ?? true
   }

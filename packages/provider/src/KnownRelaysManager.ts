@@ -1,6 +1,6 @@
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayFailureInfo } from '@opengsn/common/dist/types/RelayFailureInfo'
-import { Address, AsyncScoreCalculator, BN, RelayFilter } from '@opengsn/common/dist/types/Aliases'
+import { Address, AsyncScoreCalculator, RelayFilter } from '@opengsn/common/dist/types/Aliases'
 import { GSNConfig } from './GSNConfigurator'
 
 import {
@@ -13,6 +13,7 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { isSameAddress } from '@opengsn/common'
 import { MAX_INTEGER } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
+import { BN } from 'bn.js'
 
 export const DefaultRelayFilter: RelayFilter = function (registeredEventInfo: RelayRegisteredEventInfo): boolean {
   const maxPctRelayFee = 100
