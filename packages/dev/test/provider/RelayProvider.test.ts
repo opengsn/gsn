@@ -136,6 +136,11 @@ contract('RelayProvider', function (accounts) {
   after(async function () {
     await stopRelay(relayProcess)
   })
+
+  afterEach(async function(){
+    await web3.eth.sendTransaction({from: accounts[0], to: accounts[0], maxPriorityFeePerGas: 0})
+  })
+
   describe('Use Provider to relay transparently', () => {
     let testRecipient: TestRecipientInstance
     before(async () => {
