@@ -33,7 +33,6 @@ import { PaymasterStatus, ReputationManager } from './ReputationManager'
 import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } from './TransactionManager'
 import { ServerAction } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
-import { CircularLogBuffer } from './CircularLogBuffer'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 import { isSameAddress, toNumber } from '@opengsn/common'
@@ -54,7 +53,6 @@ const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
-  readonly logBuffer: CircularLogBuffer
   lastScannedBlock: number
   lastRefreshBlock = 0
   ready = false
@@ -95,7 +93,6 @@ export class RelayServer extends EventEmitter {
     dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
-    this.logBuffer = new CircularLogBuffer(5)
     this.lastScannedBlock = config.coldRestartLogsFromBlock ?? 0
     this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
