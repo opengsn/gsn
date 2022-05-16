@@ -34,6 +34,7 @@ import {
   toNumber
 } from './Utils'
 import {
+  IERC165Instance,
   IERC20TokenInstance,
   IERC2771RecipientInstance,
   IForwarderInstance,
@@ -67,7 +68,7 @@ import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from 'bignumber.js'
 import { TransactionType } from './types/TransactionType'
-import { constants } from './Constants'
+import { constants, erc165Interfaces } from './Constants'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -305,6 +306,45 @@ export class ContractInteractor {
     if (!versionSatisfied) {
       throw new Error(
         `Provided ${contractName} version(${version}) does not satisfy the requirement(${this.versionManager.requiredVersionRange})`)
+    }
+  }
+
+  async _validateERC165InterfacesRelay (): Promise<void> {
+    this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
+    const pnPromise = this._trySupportsInterface('Penalizer', this.penalizerInstance, erc165Interfaces.penalizer)
+    const rrPromise = this._trySupportsInterface('RelayRegistrar', this.relayRegistrar, erc165Interfaces.relayRegistrar)
+    const rhPromise = this._trySupportsInterface('RelayHub', this.relayHubInstance, erc165Interfaces.relayHub)
+    const smPromise = this._trySupportsInterface('StakeManager', this.stakeManagerInstance, erc165Interfaces.stakeManager)
+    const [pn, rr, rh, sm] = await Promise.all([pnPromise, rrPromise, rhPromise, smPromise])
+    const all = pn && rr && rh && sm
+    if (!all) {
+      throw new Error(`ERC-165 interface check failed. PN: ${pn} RR: ${rr} RH: ${rh} SM: ${sm}`)
+    }
+  }
+
+  async _validateERC165InterfacesClient (): Promise<void> {
+    this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
+    const fwPromise = this._trySupportsInterface('Forwarder', this.forwarderInstance, erc165Interfaces.forwarder)
+    const pmPromise = this._trySupportsInterface('Paymaster', this.paymasterInstance, erc165Interfaces.paymaster)
+    const [fw, pm] = await Promise.all([fwPromise, pmPromise])
+    const all = fw && pm
+    if (!all) {
+      throw new Error(`ERC-165 interface check failed. FW: ${fw} PM: ${pm}`)
+    }
+  }
+
+  private async _trySupportsInterface (
+    contractName: string,
+    contractInstance: IERC165Instance | null,
+    interfaceId: PrefixedHexString): Promise<boolean> {
+    if (contractInstance == null) {
+      throw new Error(`ERC-165 interface check failed. ${contractName} instance is not initialized`)
+    }
+    try {
+      return await contractInstance.supportsInterface(interfaceId)
+    } catch (e: any) {
+      const isContractDeployed = await this.isContractDeployed(contractInstance.address)
+      throw new Error(`Failed call to ${contractName} supportsInterface at address: ${contractInstance.address} (isContractDeployed: ${isContractDeployed}) with error: ${e.message as string}`)
     }
   }
 
@@ -708,7 +748,7 @@ export class ContractInteractor {
   }
 
   async _getPastEvents (contract: any, names: EventName[], extraTopics: Array<string[] | string | undefined>, options: PastEventOptions): Promise<EventData[]> {
-    const topics: Array<string[] | string| undefined> = []
+    const topics: Array<string[] | string | undefined> = []
     const eventTopic = event2topic(contract, names)
     topics.push(eventTopic)
 

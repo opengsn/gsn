@@ -13,7 +13,7 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { isSameAddress } from '@opengsn/common'
 import { MAX_INTEGER } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
-import BN from 'bn.js'
+import { BN } from 'bn.js'
 
 export const DefaultRelayFilter: RelayFilter = function (registeredEventInfo: RelayRegisteredEventInfo): boolean {
   const maxPctRelayFee = 100
@@ -71,7 +71,7 @@ export class KnownRelaysManager {
     this.allRelayers = await this.getRelayInfoForManagers()
   }
 
-  getRelayInfoForManager (address: string): RelayRegisteredEventInfo|undefined {
+  getRelayInfoForManager (address: string): RelayRegisteredEventInfo | undefined {
     return this.allRelayers.find(info => isSameAddress(info.relayManager, address))
   }
 
@@ -80,7 +80,12 @@ export class KnownRelaysManager {
 
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
 
-    const filteredRelayInfos = relayInfos.filter(this.relayFilter)
+    const blacklistFilteredRelayInfos = relayInfos.filter((info: RelayRegisteredEventInfo) => {
+      const isHostBlacklisted = this.config.blacklistedRelays.find(relay => info.relayUrl.toLowerCase().includes(relay.toLowerCase())) != null
+      const isManagerBlacklisted = this.config.blacklistedRelays.find(relay => isSameAddress(info.relayManager, relay)) != null
+      return !(isHostBlacklisted || isManagerBlacklisted)
+    })
+    const filteredRelayInfos = blacklistFilteredRelayInfos.filter(this.relayFilter)
     if (filteredRelayInfos.length !== relayInfos.length) {
       this.logger.warn(`RelayFilter: removing ${relayInfos.length - filteredRelayInfos.length} relays from results`)
     }
@@ -151,9 +156,9 @@ export class KnownRelaysManager {
       .filter(isInfoFromEvent)
       .map(value => (value as RelayRegisteredEventInfo))
       .sort((a, b) => {
-        const aScore = scores.get(a.relayManager) ?? toBN(0)
-        const bScore = scores.get(b.relayManager) ?? toBN(0)
-        return bScore.cmp(aScore)
+        const aScore = scores.get(a.relayManager)?.toString() ?? '0'
+        const bScore = scores.get(b.relayManager)?.toString() ?? '0'
+        return toBN(bScore).cmp(toBN(aScore))
       })
   }
 

@@ -500,6 +500,9 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     await this.transactionManager._init(this.transactionType)
     await this._initTrustedPaymasters(this.config.trustedPaymasters)
+    if (!this.config.skipErc165Check) {
+      await this.contractInteractor._validateERC165InterfacesRelay()
+    }
     this.relayHubContract = await this.contractInteractor.relayHubInstance
 
     const relayHubAddress = this.relayHubContract.address
