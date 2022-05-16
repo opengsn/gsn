@@ -54,7 +54,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       chainId: parseInt(process.env.FORK ?? '1337'),
-      saveDeployments: false,
+      saveDeployments: false
     },
     npmtest: { // used from "npm test". see package.json
       url: 'http://127.0.0.1:8544'

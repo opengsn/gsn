@@ -6,7 +6,9 @@
   "scripts": {
     "deploy": "yarn --cwd ../dev solpp; hardhat deploy --export-all all-networks.json ",
     "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
-    "depinfo": "hardhat run ./src/depinfo.ts"
+    "depinfo": "hardhat run ./src/depinfo.ts",
+    "lint": "eslint -f unix .",
+    "lint-fix": "yarn lint --fix"
   },
   "dependencies": {
     "@opengsn/common": "^3.0.0-alpha.4",

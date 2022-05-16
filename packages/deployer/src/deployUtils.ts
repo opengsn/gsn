@@ -3,10 +3,10 @@ import * as util from 'util'
 import path from 'path'
 import fs from 'fs'
 import { defaultEnvironment, Environment, getEnvironment, merge } from '@opengsn/common'
-import { ethers } from "hardhat";
-import { DeploymentsExtension, TxOptions } from "hardhat-deploy/types";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { HttpNetworkConfig } from "hardhat/src/types/config";
+import { ethers } from 'hardhat'
+import { DeploymentsExtension, TxOptions } from 'hardhat-deploy/types'
+import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { HttpNetworkConfig } from 'hardhat/src/types/config'
 
 export const deploymentConfigFile = path.resolve(__dirname, '../deployments', 'deployment-config.ts')
 
@@ -89,7 +89,6 @@ export async function getToken (address: string): Promise<Token> {
     balanceOf: async (addr: string) => token.balanceOf(addr).then((v: any) => v.div(divisor))
   }
 }
-
 
 /** helper: set a field on a contract only if it was changed.
  * the "deploy" mechanism has the property of "re-deploy only on change". this method replicate the logic for calling a setter.

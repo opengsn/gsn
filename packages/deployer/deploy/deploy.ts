@@ -1,4 +1,4 @@
-import { DeployFunction, DeploymentsExtension, TxOptions } from 'hardhat-deploy/types'
+import { DeployFunction, DeploymentsExtension } from 'hardhat-deploy/types'
 import { HttpNetworkConfig } from 'hardhat/src/types/config'
 
 import { Environment } from '@opengsn/common'
@@ -10,7 +10,7 @@ import { formatEther, formatUnits, parseEther, parseUnits } from 'ethers/lib/uti
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { ethers } from 'hardhat'
 import { fatal, getMergedEnvironment, getToken, printRelayInfo, setField } from '../src/deployUtils'
-import { Contract } from "ethers";
+import { Contract } from 'ethers'
 
 const { AddressZero } = ethers.constants
 
@@ -22,7 +22,7 @@ async function deploy (deployments: DeploymentsExtension, name: string, options:
   return res
 }
 
-//check if token's minimum stake is correct. return null if no need to change.
+// check if token's minimum stake is correct. return null if no need to change.
 async function updateTokenStakeOrNull (hub: Contract, tokenAddr: string, configMinimumStake: string): Promise<{ token: string, minimumStake: string } | null> {
   const token = await getToken(tokenAddr)
   const minStake = await hub.getMinimumStakePerToken(tokenAddr)
@@ -34,7 +34,6 @@ async function updateTokenStakeOrNull (hub: Contract, tokenAddr: string, configM
     return null
   }
 }
-
 
 export default async function deploymentFunc (this: DeployFunction, hre: HardhatRuntimeEnvironment): Promise<void> {
   const { web3, deployments, getChainId } = hre
@@ -64,21 +63,18 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
     fatal('must specify token address in minimumStakePerToken (or "test" to deploy WrappedEthToken')
   }
 
-  let stakingTokenValue = env.deploymentConfiguration.minimumStakePerToken[stakingTokenAddress]
-
   if (stakingTokenAddress === 'test') {
     const WrappedEthToken = await deploy(deployments, 'WrappedEthToken', {
       from: deployer
     })
     stakingTokenAddress = WrappedEthToken.address
-    stakingTokenValue = stakingTokenValue ?? '0.1'
   }
 
   // can't set "deterministicDeployment" on networks that require EIP-155 transactions (e.g. avax)
   const deployedForwarder = await deploy(deployments, 'Forwarder', {
     from: deployer,
     deterministicDeployment: true
-  }).catch(async e => {
+  }).catch(async () => {
     console.log('re-attempting to deploy forwarder using non-deterministic address')
     return await deploy(deployments, 'Forwarder', { from: deployer, deterministicDeployment: false })
   })
@@ -141,7 +137,7 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
   const hub = new ethers.Contract(relayHub.address, relayHub.abi, ethers.provider.getSigner())
 
   const configChanges = Object.entries(env.deploymentConfiguration.minimumStakePerToken).map(async ([tokenAddr, configMinimumStake]) =>
-    updateTokenStakeOrNull(hub, tokenAddr === 'test' ? stakingTokenAddress : tokenAddr, configMinimumStake))
+    await updateTokenStakeOrNull(hub, tokenAddr === 'test' ? stakingTokenAddress : tokenAddr, configMinimumStake))
     .filter(x => x != null)
 
   const tokens = await Promise.all(configChanges)
