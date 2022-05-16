@@ -721,7 +721,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       (currentBlockTimestamp - latestRegisterTxBlockTimestamp >= this.config.registrationRateSeconds) &&
       !isPendingRegistration
     const shouldRegister = registrationExpired
-    if (!registrationExpired) {
+    if (registrationExpired) {
       this.logger.debug(
         `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestRegisterTxBlockTimestamp} registrationBlockRate=${this.config.registrationRateSeconds}`)
     }
