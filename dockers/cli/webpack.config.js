@@ -15,7 +15,6 @@ module.exports = {
     'gsn-relayer-withdraw': '../../packages/cli/dist/commands/gsn-relayer-withdraw.js',
     'gsn-paymaster-balance': '../../packages/cli/dist/commands/gsn-paymaster-balance.js',
     'gsn-paymaster-fund': '../../packages/cli/dist/commands/gsn-paymaster-fund.js',
-    'gsn-registry': '../../packages/cli/dist/commands/gsn-registry.js',
     'gsn-status': '../../packages/cli/dist/commands/gsn-status.js'
   },
   // should save 18Mb on each entry - but entries fail to run...
