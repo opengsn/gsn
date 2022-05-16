@@ -2,7 +2,8 @@ import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { PaymasterConfiguration } from './types/PaymasterConfiguration'
 import { PenalizerConfiguration } from './types/PenalizerConfiguration'
 
-interface DeploymentConfiguration {
+export interface DeploymentConfiguration {
+  readonly registrationMaxAge: number
   readonly minimumStakePerToken: { [key: string]: string }
   readonly paymasterDeposit: string
   readonly deployTestPaymaster: boolean

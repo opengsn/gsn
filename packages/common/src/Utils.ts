@@ -128,7 +128,7 @@ export async function getEip712Signature<T extends MessageTypes> (
     }
     method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null | boolean, result?: JsonRpcResponse) => {
       if (result?.error != null) {
-        error = result.error
+        error = result.error as any
       }
       if ((errorAsBoolean(error)) || result == null) {
         reject((error as any).message ?? error)

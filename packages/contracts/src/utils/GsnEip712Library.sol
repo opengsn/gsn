@@ -105,7 +105,7 @@ library GsnEip712Library {
     function domainSeparator(address forwarder) internal view returns (bytes32) {
         return hashDomain(EIP712Domain({
             name : "GSN Relayed Transaction",
-            version : "2",
+            version : "3",
             chainId : getChainID(),
             verifyingContract : forwarder
             }));

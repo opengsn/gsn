@@ -126,6 +126,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     if (this._useGSN(payload)) {
       if (payload.method === 'eth_sendTransaction') {
+        // @ts-ignore
         if (payload.params[0].to === undefined) {
           callback(new Error('GSN cannot relay contract deployment transactions. Add {from: accountWithEther, useGSN: false}.'))
           return
@@ -197,15 +198,18 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   }
 
   async _ethGetTransactionByHash (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
+    // @ts-ignore
     const relayRequestID = payload.params[0]
     let txHash = await this._getTransactionIdFromRequestId(relayRequestID)
     if (!txHash.startsWith('0x')) {
       txHash = relayRequestID
     }
     const tx = await this.origSend('eth_getTransactionByHash', [txHash])
-    // must return exactly what was requested..
-    tx.hash = relayRequestID
-    tx.actualTransactionHash = tx.hash
+    if (tx != null) {
+      // must return exactly what was requested...
+      tx.hash = relayRequestID
+      tx.actualTransactionHash = tx.hash
+    }
     this.asCallback(Promise.resolve(tx), payload, callback)
   }
 
@@ -216,7 +220,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
    */
   async _ethGetTransactionReceipt (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
-    const relayRequestID = payload.params[0] as string
+    const relayRequestID = payload.params?.[0] as string
     const submissionDetails = this.submittedRelayRequests.get(relayRequestID)
     if (submissionDetails == null) {
       this._ethGetTransactionReceiptWithTransactionHash(payload, callback)
@@ -239,7 +243,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     this.logger.info('calling sendAsync' + JSON.stringify(payload))
     let gsnTransactionDetails: GsnTransactionDetails
     try {
-      gsnTransactionDetails = this._fixGasFees(payload.params[0])
+      gsnTransactionDetails = this._fixGasFees(payload.params?.[0])
     } catch (e: any) {
       this.logger.error(e)
       callback(e)
@@ -381,7 +385,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     if (payload.method === 'eth_accounts') {
       return true
     }
-    if (payload.params[0] === undefined) {
+    if (payload.params?.[0] === undefined) {
       return false
     }
     const gsnTransactionDetails: GsnTransactionDetails = payload.params[0]
@@ -486,6 +490,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       logs: [],
       blockNumber: 0,
       cumulativeGasUsed: 0,
+      effectiveGasPrice: 0,
       status: false // failure
     }
   }
