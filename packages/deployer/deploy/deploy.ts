@@ -97,7 +97,8 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
   })
 
   const relayRegistrar = await deploy(deployments, 'RelayRegistrar', {
-    from: deployer
+    from: deployer,
+    args: [env.deploymentConfiguration.registrationMaxAge]
   })
 
   const hubConfig = env.relayHubConfiguration

@@ -2,7 +2,7 @@ import chalk from 'chalk'
 import * as util from 'util'
 import path from 'path'
 import fs from 'fs'
-import { defaultEnvironment, Environment, getEnvironment, merge } from '@opengsn/common'
+import { defaultEnvironment, DeploymentConfiguration, Environment, getEnvironment, merge } from '@opengsn/common'
 import { ethers } from 'hardhat'
 import { DeploymentsExtension, TxOptions } from 'hardhat-deploy/types'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
@@ -43,17 +43,18 @@ export function getMergedEnvironment (chainId: number, defaultDevAddress: string
 }
 
 export function printSampleEnvironment (defaultDevAddress: string, chainId: number): void {
+  const deploymentConfiguration: DeploymentConfiguration = {
+    registrationMaxAge: 180 * 24 * 3600,
+    paymasterDeposit: '0.1',
+    isArbitrum: false,
+    deployTestPaymaster: true,
+    minimumStakePerToken: { test: '0.5' }
+  }
   const sampleEnv = {
     relayHubConfiguration: {
       devAddress: defaultDevAddress
     },
-
-    deploymentConfiguration: {
-      paymasterDeposit: '0.1',
-      isArbitrum: false,
-      deployTestPaymaster: true,
-      minimumStakePerToken: { test: '0.5' }
-    }
+    deploymentConfiguration
   }
   console.log(chalk.red('No configuration found:'), '\nPlease add the following to', chalk.whiteBright(`"${deploymentConfigFile}"`), ':\n\nmodule.exports = ',
     util.inspect({ [chainId]: sampleEnv }, false, 10, false))
