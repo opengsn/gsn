@@ -653,7 +653,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   async _refreshPriorityFee (): Promise<void> {
     const minMaxPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
     this.minMaxPriorityFeePerGas = Math.floor(minMaxPriorityFeePerGas * this.config.gasPriceFactor)
-    if (this.minMaxPriorityFeePerGas === 0) {
+    if (this.minMaxPriorityFeePerGas === 0 && parseInt(this.config.defaultPriorityFee) > 0) {
       this.logger.debug(`Priority fee received from node is 0. Setting priority fee to ${this.config.defaultPriorityFee}`)
       this.minMaxPriorityFeePerGas = parseInt(this.config.defaultPriorityFee)
     }

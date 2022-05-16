@@ -399,6 +399,23 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const priorityFee = parseInt(await env.relayServer.contractInteractor.getMaxPriorityFee())
         assert.equal(env.relayServer.minMaxPriorityFeePerGas, env.relayServer.config.gasPriceFactor * priorityFee)
       })
+      it('should fix zero minMaxPriorityFeePerGas only if config.defaultPriorityFee is greater than zero', async function () {
+        let defaultPriorityFee = '0'
+        env.relayServer.config.defaultPriorityFee = defaultPriorityFee
+        env.relayServer.minMaxPriorityFeePerGas = 0
+        sinon.stub(env.relayServer.contractInteractor, 'getMaxPriorityFee').returns(Promise.resolve('0'))
+        const spy = sinon.spy(env.relayServer.logger, 'debug')
+        await env.relayServer._refreshPriorityFee()
+        sinon.assert.notCalled(spy)
+        assert.equal(env.relayServer.minMaxPriorityFeePerGas, 0)
+
+        defaultPriorityFee = '1234'
+        env.relayServer.config.defaultPriorityFee = defaultPriorityFee
+        await env.relayServer._refreshPriorityFee()
+        sinon.assert.calledWith(spy, `Priority fee received from node is 0. Setting priority fee to ${defaultPriorityFee}`)
+        sinon.restore()
+        assert.equal(env.relayServer.minMaxPriorityFeePerGas, parseInt(defaultPriorityFee))
+      })
       it('should throw when min gas price is higher than max', async function () {
         await env.relayServer._refreshPriorityFee()
         const originalMaxPrice = env.relayServer.config.maxGasPrice
@@ -554,6 +571,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const serverSpy = sinon.spy(env.relayServer)
 
         assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
+        await env.relayServer._refreshPriorityFee()
         await env.relayServer.createRelayTransaction(req)
         const pendingTransactions = await env.relayServer.txStoreManager.getAll()
         assert.equal(pendingTransactions.length, 1)
