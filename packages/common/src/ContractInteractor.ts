@@ -22,7 +22,6 @@ import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
 import { LoggerInterface } from './LoggerInterface'
 import {
-  PaymasterGasAndDataLimits,
   address2topic,
   calculateCalldataBytesZeroNonzero,
   decodeRevertReason,
@@ -30,6 +29,7 @@ import {
   event2topic,
   formatTokenAmount,
   packRelayUrlForRegistrar,
+  PaymasterGasAndDataLimits,
   splitRelayUrlForRegistrar,
   toNumber
 } from './Utils'
@@ -217,8 +217,19 @@ export class ContractInteractor {
       throw new Error('init was already called')
     }
     const block = await this.web3.eth.getBlock('latest').catch((e: Error) => { throw new Error(`getBlock('latest') failed: ${e.message}\nCheck your internet/ethereum node connection`) })
-    if (block.baseFeePerGas != null) {
+    // if (block.baseFeePerGas != null) {
+    //   this.transactionType = TransactionType.TYPE_TWO
+    // }
+    try {
+      await this.getFeeHistory('0x1', 'latest', [0.5])
       this.transactionType = TransactionType.TYPE_TWO
+    } catch (e: any) {
+      if (e.message.includes('the method eth_feeHistory does not exist/is not available')) {
+        this.logger.debug(' No eip 1559 support. Initializing to legacy transaction.')
+        this.transactionType = TransactionType.LEGACY
+      } else {
+        throw e
+      }
     }
     await this._resolveDeployment()
     await this._initializeContracts()
