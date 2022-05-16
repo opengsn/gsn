@@ -310,19 +310,12 @@ export class ContractInteractor {
   }
 
   async _validateERC165InterfacesRelay (): Promise<void> {
-    const allNull = [
-      this.penalizerInstance,
-      this.relayRegistrar,
-      this.relayHubInstance,
-      this.stakeManagerInstance].every(it => it == null)
-    if (allNull) {
-      throw new Error('ERC-165 interface check failed. Not a single contract instance initialized')
-    }
     this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
-    const pn = await this._trySupportsInterface(this.penalizerInstance, erc165Interfaces.penalizer)
-    const rr = await this._trySupportsInterface(this.relayRegistrar, erc165Interfaces.relayRegistrar)
-    const rh = await this._trySupportsInterface(this.relayHubInstance, erc165Interfaces.relayHub)
-    const sm = await this._trySupportsInterface(this.stakeManagerInstance, erc165Interfaces.stakeManager)
+    const pnPromise = this._trySupportsInterface('Penalizer', this.penalizerInstance, erc165Interfaces.penalizer)
+    const rrPromise = this._trySupportsInterface('RelayRegistrar', this.relayRegistrar, erc165Interfaces.relayRegistrar)
+    const rhPromise = this._trySupportsInterface('RelayHub', this.relayHubInstance, erc165Interfaces.relayHub)
+    const smPromise = this._trySupportsInterface('StakeManager', this.stakeManagerInstance, erc165Interfaces.stakeManager)
+    const [pn, rr, rh, sm] = await Promise.all([pnPromise, rrPromise, rhPromise, smPromise])
     const all = pn && rr && rh && sm
     if (!all) {
       throw new Error(`ERC-165 interface check failed. PN: ${pn} RR: ${rr} RH: ${rh} SM: ${sm}`)
@@ -330,15 +323,10 @@ export class ContractInteractor {
   }
 
   async _validateERC165InterfacesClient (): Promise<void> {
-    const allNull = [
-      this.forwarderInstance,
-      this.paymasterInstance].every(it => it == null)
-    if (allNull) {
-      throw new Error('ERC-165 interface check failed. Not a single contract instance initialized')
-    }
     this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
-    const fw = await this._trySupportsInterface(this.forwarderInstance, erc165Interfaces.forwarder)
-    const pm = await this._trySupportsInterface(this.paymasterInstance, erc165Interfaces.paymaster)
+    const fwPromise = this._trySupportsInterface('Forwarder', this.forwarderInstance, erc165Interfaces.forwarder)
+    const pmPromise = this._trySupportsInterface('Paymaster', this.paymasterInstance, erc165Interfaces.paymaster)
+    const [fw, pm] = await Promise.all([fwPromise, pmPromise])
     const all = fw && pm
     if (!all) {
       throw new Error(`ERC-165 interface check failed. FW: ${fw} PM: ${pm}`)
@@ -346,15 +334,17 @@ export class ContractInteractor {
   }
 
   private async _trySupportsInterface (
+    contractName: string,
     contractInstance: IERC165Instance | null,
     interfaceId: PrefixedHexString): Promise<boolean> {
     if (contractInstance == null) {
-      return true
+      throw new Error(`ERC-165 interface check failed. ${contractName} instance is not initialized`)
     }
     try {
       return await contractInstance.supportsInterface(interfaceId)
     } catch (e: any) {
-      throw new Error(`Failed call to supportsInterface at address: ${contractInstance.address} with error: ${e.message as string}`)
+      const isContractDeployed = await this.isContractDeployed(contractInstance.address)
+      throw new Error(`Failed call to ${contractName} supportsInterface at address: ${contractInstance.address} (isContractDeployed: ${isContractDeployed}) with error: ${e.message as string}`)
     }
   }
 

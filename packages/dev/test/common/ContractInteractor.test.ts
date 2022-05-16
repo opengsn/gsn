@@ -405,9 +405,9 @@ contract('ContractInteractor', function (accounts) {
         const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
         await contractInteractor.init()
         await expect(contractInteractor._validateERC165InterfacesRelay())
-          .to.eventually.be.rejectedWith('ERC-165 interface check failed. Not a single contract instance initialized')
+          .to.eventually.be.rejectedWith('ERC-165 interface check failed. Penalizer instance is not initialized')
         await expect(contractInteractor._validateERC165InterfacesClient())
-          .to.eventually.be.rejectedWith('ERC-165 interface check failed. Not a single contract instance initialized')
+          .to.eventually.be.rejectedWith('ERC-165 interface check failed. Forwarder instance is not initialized')
       })
 
       it('should verify ERC-165 interfaces of all contracts in the resolved deployment', async function () {
@@ -425,7 +425,7 @@ contract('ContractInteractor', function (accounts) {
         let contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
         await contractInteractor.init()
         await expect(contractInteractor._validateERC165InterfacesRelay())
-          .to.eventually.be.rejectedWith(new RegExp(`Failed call to supportsInterface at address: ${constants.BURN_ADDRESS}`))
+          .to.eventually.be.rejectedWith(new RegExp(`Failed call to RelayRegistrar supportsInterface at address: ${constants.BURN_ADDRESS}`))
 
         // incorrect contract at address
         deployment.relayRegistrarAddress = sm.address
