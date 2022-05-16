@@ -1,6 +1,7 @@
 /* eslint-disable no-void */
 import Web3 from 'web3'
 import chaiAsPromised from 'chai-as-promised'
+import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
@@ -45,7 +46,7 @@ const underlyingProvider = web3.currentProvider as HttpProvider
 const paymasterData = '0x'
 const clientId = '1'
 
-const config: Partial<GSNConfig> = { loggerConfiguration: { logLevel: 'error' } }
+const config: Partial<GSNConfig> = { loggerConfiguration: { logLevel: 'error' }, skipErc165Check: true }
 
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
@@ -135,6 +136,11 @@ contract('RelayProvider', function (accounts) {
   after(async function () {
     await stopRelay(relayProcess)
   })
+
+  afterEach(async function () {
+    await web3.eth.sendTransaction({ from: accounts[0], to: accounts[0], maxPriorityFeePerGas: 0 })
+  })
+
   describe('Use Provider to relay transparently', () => {
     let testRecipient: TestRecipientInstance
     before(async () => {
@@ -148,6 +154,7 @@ contract('RelayProvider', function (accounts) {
           ...config
         }
       })
+      await relayProvider.init()
       // NOTE: in real application its enough to set the provider in web3.
       // however, in Truffle, all contracts are built BEFORE the test have started, and COPIED the web3,
       // so changing the global one is not enough.
@@ -157,6 +164,7 @@ contract('RelayProvider', function (accounts) {
       await emptyBalance(gasLess, accounts[0])
       console.log('gasLess is', gasLess)
     })
+
     it('should relay transparently', async function () {
       const res = await testRecipient.emitMessage('hello world', {
         from: gasLess,
@@ -174,6 +182,26 @@ contract('RelayProvider', function (accounts) {
       })
     })
 
+    it('should initiate lookup for forgotten transaction based on its identifier having a prefix', async function () {
+      // @ts-ignore
+      const stubGet = sinon.stub(relayProvider.submittedRelayRequests, 'get').returns(undefined)
+      const res = await testRecipient.emitMessage('hello world', {
+        from: gasLess,
+        gasPrice: '0x51f4d5c00',
+        gas: '100000',
+        // @ts-ignore
+        paymaster
+      })
+
+      expectEvent.inLogs(res.logs, 'SampleRecipientEmitted', {
+        message: 'hello world',
+        realSender: gasLess,
+        msgValue: '0',
+        balance: '0'
+      })
+      stubGet.restore()
+    })
+
     it('should relay transparently with value', async function () {
       const value = 1e18.toString()
       // note: this test only validates we process the "value" parameter of the request properly.
@@ -186,7 +214,7 @@ contract('RelayProvider', function (accounts) {
       })
       const res = await testRecipient.emitMessage('hello world', {
         from: gasLess,
-        gasPrice: '0x51f4d5c00',
+        gasPrice: '0x61f4d5c00',
         value,
         gas: '100000',
         // @ts-ignore
@@ -218,6 +246,7 @@ contract('RelayProvider', function (accounts) {
       await testRecipient.emitMessage('hello again', {
         from: gasLess,
         gas: '100000',
+        gasPrice: '0x71f4d5c00',
         // @ts-ignore
         paymaster
       })
@@ -255,7 +284,7 @@ contract('RelayProvider', function (accounts) {
           {
             from: gasLess,
             gas: '0x186a0',
-            gasPrice: '0x51f4d5c00',
+            gasPrice: '0x81f4d5c00',
             paymaster,
             forwarder: forwarderAddress,
             to: testRecipient.address,

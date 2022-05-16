@@ -42,7 +42,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
     /// @inheritdoc IRelayHub
     function versionHub() override virtual public pure returns (string memory){
-        return "2.2.3+opengsn.hub.irelayhub";
+        return "3.0.0-alpha.5+opengsn.hub.irelayhub";
     }
 
     IStakeManager internal immutable stakeManager;
@@ -274,7 +274,13 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     override
     returns (bool paymasterAccepted, bytes memory returnValue)
     {
+        RelayCallData memory vars;
+        vars.initialGasLeft = aggregateGasleft();
+        vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
+
         // #if ENABLE_CONSOLE_LOG
+        console.log("relayCall relayRequestId");
+        console.logBytes32(vars.relayRequestId);
         console.log("relayCall relayRequest.request.from", relayRequest.request.from);
         console.log("relayCall relayRequest.request.to", relayRequest.request.to);
         console.log("relayCall relayRequest.request.value", relayRequest.request.value);
@@ -302,9 +308,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         console.logBytes(relayRequest.relayData.paymasterData);
         console.log("relayCall maxAcceptanceBudget", maxAcceptanceBudget);
         // #endif
-        RelayCallData memory vars;
-        vars.initialGasLeft = aggregateGasleft();
-        vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
+
         require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
 

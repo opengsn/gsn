@@ -157,6 +157,7 @@ contract('RelayClient', function (accounts) {
     const loggerConfiguration: LoggerConfiguration = { logLevel: 'debug' }
     gsnConfig = {
       loggerConfiguration,
+      skipErc165Check: true,
       performDryRunViewRelayCall: false,
       paymasterAddress: paymaster.address
     }
@@ -773,6 +774,20 @@ contract('RelayClient', function (accounts) {
       assert.equal(relayingResult.pingErrors.size, 0)
       assert.exists(relayingResult.transaction)
     })
+
+    it('should not use blacklisted relays', async () => {
+      relayClient = new RelayClient({
+        provider: underlyingProvider,
+        config: {
+          ...gsnConfig,
+          blacklistedRelays: ['localhost:8090', accounts[2], accounts[4]]
+        }
+      })
+      await relayClient.init()
+
+      await expect(relayClient.relayTransaction(options))
+        .to.eventually.be.rejectedWith('no registered relayers')
+    })
   })
 
   describe('_resolveConfiguration()', function () {
@@ -824,7 +839,7 @@ contract('RelayClient', function (accounts) {
         jsonConfig = await relayClient.dependencies.httpClient.getNetworkConfiguration(defaultGsnConfig.clientDefaultConfigUrl)
         supportedNetworks = Object.keys(jsonConfig.networks).map(k => parseInt(k))
       })
-      it('should get configuration from opengsn for all supported networks', async function () {
+      it.skip('should get configuration from opengsn for all supported networks', async function () {
         for (const network of supportedNetworks) {
           const config = await relayClient._resolveConfigurationFromServer(network, defaultGsnConfig.clientDefaultConfigUrl)
           const GSNConfigKeys = Object.keys(defaultGsnConfig)

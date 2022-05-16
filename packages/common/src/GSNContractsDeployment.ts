@@ -6,7 +6,6 @@ export interface GSNContractsDeployment {
   penalizerAddress?: Address
   relayRegistrarAddress?: Address
   relayHubAddress?: Address
-  relayRegistrar?: Address
   stakeManagerAddress?: Address
   managerStakeTokenAddress?: Address
 }

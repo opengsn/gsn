@@ -1,7 +1,7 @@
 {
   "name": "@opengsn/contracts",
   "license": "GPL-3.0-only",
-  "version": "2.2.4",
+  "version": "3.0.0-alpha.5",
   "main": "types/truffle-contracts/index.d.ts",
   "scripts": {
     "solpp": "yarn --cwd=\"../..\" solpp",
@@ -23,8 +23,8 @@
     "@openzeppelin/contracts": "^4.2.0"
   },
   "devDependencies": {
+    "solc-0.8": "npm:solc@0.8.11",
     "solhint": "^3.3.2",
-    "solidity-docgen": "^0.5.16",
-    "solc-0.8": "npm:solc@0.8.11"
+    "solidity-docgen": "^0.5.16"
   }
 }

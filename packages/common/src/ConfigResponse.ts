@@ -23,9 +23,8 @@ export interface ConfigEntry {
 
 export interface GSNConfig {
   preferredRelays: string[]
-  // in order to avoid pinging relays that are long dead, the client can filter out older registrations
-  // must match Relay Server's "registrationRateSeconds" to be able to discover relays consistently
-  relayRegistrationMaximumAge: number
+  // either a url host or a manager address
+  blacklistedRelays: string[]
   // in case querying large block ranges is restricted, set limit and use pagination
   pastEventsQueryMaxPageSize: number
   // allows use of versioned methods, i.e. 'eth_signTypedData_v4'. Should be '_v4' for Metamask
@@ -42,6 +41,7 @@ export interface GSNConfig {
   minMaxPriorityFeePerGas: number
   maxRelayNonceGap: number
   paymasterAddress?: Address
+  skipErc165Check: boolean
   clientId: IntString
   auditorsCount: number
   requestValidSeconds: number

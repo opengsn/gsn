@@ -500,6 +500,9 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     await this.transactionManager._init(this.transactionType)
     await this._initTrustedPaymasters(this.config.trustedPaymasters)
+    if (!this.config.skipErc165Check) {
+      await this.contractInteractor._validateERC165InterfacesRelay()
+    }
     this.relayHubContract = await this.contractInteractor.relayHubInstance
 
     const relayHubAddress = this.relayHubContract.address
@@ -707,20 +710,16 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _shouldRegisterAgain (currentBlock: number, currentBlockTimestamp: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
-    if (this.config.registrationRateSeconds === 0) {
-      // this.logger.debug(`_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
-      return false
-    }
+    const relayRegistrationMaxAge = await this.contractInteractor.getRelayRegistrationMaxAge()
     const latestRegisterTxBlockTimestamp = this._getLatestRegisterTxBlockTimestamp()
     const isPendingRegistration = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
     const registrationExpired =
-      this.config.registrationRateSeconds !== 0 &&
-      (currentBlockTimestamp - latestRegisterTxBlockTimestamp >= this.config.registrationRateSeconds) &&
+      (currentBlockTimestamp - latestRegisterTxBlockTimestamp >= relayRegistrationMaxAge.toNumber()) &&
       !isPendingRegistration
     const shouldRegister = registrationExpired
     if (!registrationExpired) {
       this.logger.debug(
-        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestRegisterTxBlockTimestamp} registrationBlockRate=${this.config.registrationRateSeconds}`)
+        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestRegisterTxBlockTimestamp} relayRegistrationMaxAge=${relayRegistrationMaxAge.toString()}`)
     }
     return shouldRegister
   }
