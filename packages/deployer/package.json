@@ -7,6 +7,7 @@
     "deploy": "yarn --cwd ../dev solpp; hardhat deploy --export-all all-networks.json ",
     "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
     "depinfo": "hardhat run ./src/depinfo.ts",
+    "applyConfig": "hardhat run ./src/applyConfig.ts",
     "lint": "eslint -f unix .",
     "lint-fix": "yarn lint --fix"
   },

@@ -19,6 +19,13 @@ if (mnemonicFileName != null && fs.existsSync(mnemonicFileName)) {
 }
 
 function getNetwork (url: string): NetworkUserConfig {
+  // if "FORK" is set, then "hardhat node --fork" should be active for this chainId
+  if (process.env.FORK != null) {
+    return {
+      url: 'http://localhost:8545',
+      chainId: parseInt(process.env.FORK)
+    }
+  }
   return {
     url,
     accounts: { mnemonic }
