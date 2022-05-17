@@ -240,6 +240,9 @@ export class CommandsLogic {
       if (response.chainId !== chainId.toString()) {
         throw new Error(`wrong chain-id: Relayer on (${response.chainId}) but our provider is on (${chainId})`)
       }
+      if (!isSameAddress(response.ownerAddress, options.from)) {
+        throw new Error(`Relayer configured with wrong owner: ${response.ownerAddress}, our account: ${options.from}`)
+      }
       const relayAddress = response.relayManagerAddress
       const relayHubAddress = response.relayHubAddress
 
