@@ -9,6 +9,7 @@ const commander = gsnCommander(['g'])
   .option('-k, --keystore-path <keystorePath>', 'relay manager keystore directory', process.cwd() + '/gsndata/manager/')
   .option('-s, --server-config <serverConfig>', 'server config file', process.cwd() + '/config/gsn-relay-config.json')
   .option('-b, --broadcast', 'broadcast tx after logging it to console', false)
+  .option('-t, --target <address>', 'target address for withdraw (defaults to owner)')
   .option('-a, --eth-account-amount <ethAccountAmount>', 'withdraw from relay manager eth account balance, in eth')
   .option('-d, --hub-balance-amount <hubBalanceAmount>', 'withdraw from relay manager hub balance, in eth')
   .parse(process.argv);
@@ -34,12 +35,14 @@ const commander = gsnCommander(['g'])
     keyManager,
     config,
     broadcast: commander.broadcast,
+    withdrawTarget: commander.target,
     gasPrice: commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : undefined,
     useAccountBalance: commander.ethAccountAmount != null
   }
 
   console.log(`Withdrawal amount is ${fromWei(withdrawOptions.withdrawAmount)}eth`)
   console.log('Should broadcast?', withdrawOptions.broadcast)
+  console.log('Withdrawing to', withdrawOptions.withdrawTarget ?? '(owner)')
   const result = await logic.withdrawToOwner(withdrawOptions)
   if (result.success) {
     if (withdrawOptions.broadcast) {
