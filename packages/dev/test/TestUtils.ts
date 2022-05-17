@@ -19,7 +19,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-import { Environment, toNumber } from '@opengsn/common'
+import { constants, Environment, toNumber } from '@opengsn/common'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
@@ -103,7 +103,7 @@ export async function startRelay (
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   let relaylog = function (_: string): void {}
   if (options.relaylog) {
-    relaylog = (msg: string) => msg.split('\n').forEach(line => console.log(`relay-${proc.pid.toString()}> ${line}`))
+    relaylog = (msg: string) => msg.split('\n').forEach(line => console.log(`relay-${proc.pid?.toString()}> ${line}`))
   }
 
   await new Promise((resolve, reject) => {
@@ -309,13 +309,14 @@ export async function deployHub (
   testTokenMinimumStake: IntString,
   configOverride: Partial<RelayHubConfiguration> = {},
   environment: Environment = defaultEnvironment,
-  hubContract: any = undefined): Promise<RelayHubInstance> {
+  hubContract: any = undefined,
+  relayRegistrationMaxAge = constants.yearInSec): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
     ...environment.relayHubConfiguration,
     ...configOverride
   }
   const HubContract: RelayHubContract = hubContract ?? RelayHub
-  const relayRegistrar = await RelayRegistrar.new()
+  const relayRegistrar = await RelayRegistrar.new(relayRegistrationMaxAge)
   const hub: RelayHubInstance = await HubContract.new(
     stakeManager,
     penalizer,

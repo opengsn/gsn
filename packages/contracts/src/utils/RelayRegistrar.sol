@@ -8,6 +8,7 @@ import "hardhat/console.sol";
 // #endif
 
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./MinLibBytes.sol";
 import "../interfaces/IRelayHub.sol";
@@ -21,8 +22,10 @@ import "../interfaces/IRelayRegistrar.sol";
  *
  * @notice Protects the list from spamming entries: only staked relayers are added.
  */
-contract RelayRegistrar is IRelayRegistrar, ERC165 {
+contract RelayRegistrar is IRelayRegistrar, Ownable, ERC165 {
     using MinLibBytes for bytes;
+
+    uint256 private constant MAX_RELAYS_RETURNED_COUNT = 1000;
 
     /// @notice Mapping from `RelayHub` address to a mapping from a Relay Manager address to its registration details.
     mapping(address => mapping(address => RelayInfo)) internal values;
@@ -32,13 +35,26 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
 
     uint256 private immutable creationBlock;
 
-    constructor() {
+    uint256 private relayRegistrationMaxAge;
+
+    constructor(uint256 _relayRegistrationMaxAge) {
+        setRelayRegistrationMaxAge(_relayRegistrationMaxAge);
         creationBlock = block.number;
     }
 
     /// @inheritdoc IRelayRegistrar
     function getCreationBlock() external override view returns (uint256){
         return creationBlock;
+    }
+
+    /// @inheritdoc IRelayRegistrar
+    function getRelayRegistrationMaxAge() external override view returns (uint256){
+        return relayRegistrationMaxAge;
+    }
+
+    /// @inheritdoc IRelayRegistrar
+    function setRelayRegistrationMaxAge(uint256 _relayRegistrationMaxAge) public override onlyOwner {
+        relayRegistrationMaxAge = _relayRegistrationMaxAge;
     }
 
     /// @inheritdoc IERC165
@@ -97,6 +113,21 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
 
     /// @inheritdoc IRelayRegistrar
     function readRelayInfos(
+        address relayHub
+    )
+    public
+    view
+    override
+    returns (
+        RelayInfo[] memory info
+    ) {
+        uint256 blockTimestamp = block.timestamp;
+        uint256 oldestBlockTimestamp = blockTimestamp >= relayRegistrationMaxAge ? blockTimestamp - relayRegistrationMaxAge : 0;
+        return readRelayInfosInRange(relayHub, 0, oldestBlockTimestamp, MAX_RELAYS_RETURNED_COUNT);
+    }
+
+    /// @inheritdoc IRelayRegistrar
+    function readRelayInfosInRange(
         address relayHub,
         uint256 oldestBlockNumber,
         uint256 oldestBlockTimestamp,
@@ -131,5 +162,4 @@ contract RelayRegistrar is IRelayRegistrar, ERC165 {
         }
         assembly { mstore(info, filled) }
     }
-
 }

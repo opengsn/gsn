@@ -34,6 +34,7 @@ import {
   toNumber
 } from './Utils'
 import {
+  IERC165Instance,
   IERC20TokenInstance,
   IERC2771RecipientInstance,
   IForwarderInstance,
@@ -67,7 +68,7 @@ import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from 'bignumber.js'
 import { TransactionType } from './types/TransactionType'
-import { constants } from './Constants'
+import { constants, erc165Interfaces } from './Constants'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -305,6 +306,45 @@ export class ContractInteractor {
     if (!versionSatisfied) {
       throw new Error(
         `Provided ${contractName} version(${version}) does not satisfy the requirement(${this.versionManager.requiredVersionRange})`)
+    }
+  }
+
+  async _validateERC165InterfacesRelay (): Promise<void> {
+    this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
+    const pnPromise = this._trySupportsInterface('Penalizer', this.penalizerInstance, erc165Interfaces.penalizer)
+    const rrPromise = this._trySupportsInterface('RelayRegistrar', this.relayRegistrar, erc165Interfaces.relayRegistrar)
+    const rhPromise = this._trySupportsInterface('RelayHub', this.relayHubInstance, erc165Interfaces.relayHub)
+    const smPromise = this._trySupportsInterface('StakeManager', this.stakeManagerInstance, erc165Interfaces.stakeManager)
+    const [pn, rr, rh, sm] = await Promise.all([pnPromise, rrPromise, rhPromise, smPromise])
+    const all = pn && rr && rh && sm
+    if (!all) {
+      throw new Error(`ERC-165 interface check failed. PN: ${pn} RR: ${rr} RH: ${rh} SM: ${sm}`)
+    }
+  }
+
+  async _validateERC165InterfacesClient (): Promise<void> {
+    this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
+    const fwPromise = this._trySupportsInterface('Forwarder', this.forwarderInstance, erc165Interfaces.forwarder)
+    const pmPromise = this._trySupportsInterface('Paymaster', this.paymasterInstance, erc165Interfaces.paymaster)
+    const [fw, pm] = await Promise.all([fwPromise, pmPromise])
+    const all = fw && pm
+    if (!all) {
+      throw new Error(`ERC-165 interface check failed. FW: ${fw} PM: ${pm}`)
+    }
+  }
+
+  private async _trySupportsInterface (
+    contractName: string,
+    contractInstance: IERC165Instance | null,
+    interfaceId: PrefixedHexString): Promise<boolean> {
+    if (contractInstance == null) {
+      throw new Error(`ERC-165 interface check failed. ${contractName} instance is not initialized`)
+    }
+    try {
+      return await contractInstance.supportsInterface(interfaceId)
+    } catch (e: any) {
+      const isContractDeployed = await this.isContractDeployed(contractInstance.address)
+      throw new Error(`Failed call to ${contractName} supportsInterface at address: ${contractInstance.address} (isContractDeployed: ${isContractDeployed}) with error: ${e.message as string}`)
     }
   }
 
@@ -708,7 +748,7 @@ export class ContractInteractor {
   }
 
   async _getPastEvents (contract: any, names: EventName[], extraTopics: Array<string[] | string | undefined>, options: PastEventOptions): Promise<EventData[]> {
-    const topics: Array<string[] | string| undefined> = []
+    const topics: Array<string[] | string | undefined> = []
     const eventTopic = event2topic(contract, names)
     topics.push(eventTopic)
 
@@ -1101,10 +1141,13 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   /**
    * discover registered relays
-   * @param relayRegistrationMaximumAge - the oldest registrations to be counted
    */
-  async getRegisteredRelays (relayRegistrationMaximumAge: number): Promise<RelayRegisteredEventInfo[]> {
-    return await this.getRegisteredRelaysFromRegistrar(relayRegistrationMaximumAge)
+  async getRegisteredRelays (): Promise<RelayRegisteredEventInfo[]> {
+    return await this.getRegisteredRelaysFromRegistrar()
+  }
+
+  async getRelayRegistrationMaxAge (): Promise<BN> {
+    return await this.relayRegistrar.getRelayRegistrationMaxAge()
   }
 
   async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
@@ -1136,7 +1179,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
    * get registered relayers from registrar
    * (output format matches event info)
    */
-  async getRegisteredRelaysFromRegistrar (relayRegistrationMaximumAge: number): Promise<RelayRegisteredEventInfo[]> {
+  async getRegisteredRelaysFromRegistrar (): Promise<RelayRegisteredEventInfo[]> {
     if (this.relayRegistrar == null) {
       throw new Error('Relay Registrar is not initialized')
     }
@@ -1144,12 +1187,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     if (relayHub == null) {
       throw new Error('RelayHub is not initialized!')
     }
-    let oldestBlockTimestamp = 0
-    if (relayRegistrationMaximumAge !== 0) {
-      const block = await this.getBlock('latest')
-      oldestBlockTimestamp = Math.max(0, toNumber(block.timestamp) - relayRegistrationMaximumAge)
-    }
-    const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub, 0, oldestBlockTimestamp, 100)
+    const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub)
 
     return relayInfos.map(info => {
       return {

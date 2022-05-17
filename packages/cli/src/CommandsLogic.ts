@@ -239,6 +239,9 @@ export class CommandsLogic {
       if (response.chainId !== chainId.toString()) {
         throw new Error(`wrong chain-id: Relayer on (${response.chainId}) but our provider is on (${chainId})`)
       }
+      if (!isSameAddress(response.ownerAddress, options.from)) {
+        throw new Error(`Relayer configured with wrong owner: ${response.ownerAddress}, our account: ${options.from}`)
+      }
       const relayAddress = response.relayManagerAddress
       const relayHubAddress = response.relayHubAddress
 
@@ -513,7 +516,9 @@ export class CommandsLogic {
     }
 
     const rrInstance = await this.getContractInstance(RelayRegistrar, {
-      arguments: []
+      arguments: [
+        constants.yearInSec
+      ]
     }, deployOptions.relayRegistryAddress, { ...options }, deployOptions.skipConfirmation)
     const sInstance = await this.getContractInstance(StakeManager, {
       arguments: [defaultEnvironment.maxUnstakeDelay, defaultEnvironment.abandonmentDelay, defaultEnvironment.escheatmentDelay, deployOptions.burnAddress, deployOptions.devAddress]

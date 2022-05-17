@@ -36,8 +36,6 @@ export interface ServerConfigParams {
   checkInterval: number
   devMode: boolean
   loggingProvider: LoggingProviderMode
-  // if set, must match clients' "relayRegistrationMaximumAge" parameter for relay to remain discoverable
-  registrationRateSeconds: number
   maxAcceptanceBudget: number
   alertedDelaySeconds: number
   minAlertedDelayMS: number
@@ -84,6 +82,7 @@ export interface ServerConfigParams {
   environmentName?: string
   // number of blocks the server will not repeat a ServerAction for regardless of blockchain state to avoid duplicates
   recentActionAvoidRepeatDistanceBlocks: number
+  skipErc165Check: boolean
 }
 
 export interface ServerDependencies {
@@ -113,7 +112,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   gasPriceFactor: 1,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
-  registrationRateSeconds: 0,
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
@@ -148,7 +146,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
   runPaymasterReputations: true,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
-  recentActionAvoidRepeatDistanceBlocks: 10
+  recentActionAvoidRepeatDistanceBlocks: 10,
+  skipErc165Check: false
 }
 
 const ConfigParamsTypes = {
@@ -175,7 +174,6 @@ const ConfigParamsTypes = {
   customerToken: 'string',
   hostOverride: 'string',
   userId: 'string',
-  registrationRateSeconds: 'number',
   maxAcceptanceBudget: 'number',
   alertedDelaySeconds: 'number',
 
@@ -215,7 +213,8 @@ const ConfigParamsTypes = {
   pastEventsQueryMaxPageSize: 'number',
   confirmationsNeeded: 'number',
   environmentName: 'string',
-  recentActionAvoidRepeatDistanceBlocks: 'number'
+  recentActionAvoidRepeatDistanceBlocks: 'number',
+  skipErc165Check: 'boolean'
 } as any
 
 // helper function: throw and never return..
