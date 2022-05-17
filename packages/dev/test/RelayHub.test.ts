@@ -23,7 +23,7 @@ import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUt
 
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { constants, splitRelayUrlForRegistrar } from '@opengsn/common'
+import { RelayCallStatusCodes, constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -51,16 +51,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
   let sharedRelayRequestData: RelayRequest
   const paymasterData = '0x'
   const clientId = '1'
-
-  const RelayCallStatusCodes = {
-    OK: new BN('0'),
-    RelayedCallFailed: new BN('1'),
-    RejectedByPreRelayed: new BN('2'),
-    RejectedByForwarder: new BN('3'),
-    RejectedByRecipientRevert: new BN('4'),
-    PostRelayedFailed: new BN('5'),
-    PaymasterBalanceChanged: new BN('6')
-  }
 
   const chainId = defaultEnvironment.chainId
   const oneEther = ether('1')

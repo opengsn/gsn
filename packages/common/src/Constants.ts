@@ -42,3 +42,13 @@ export const erc165Interfaces = {
   relayHub: getERC165InterfaceID(relayHubAbi as any),
   stakeManager: getERC165InterfaceID(stakeManagerAbi as any)
 }
+
+export const RelayCallStatusCodes = {
+  OK: new BN('0'),
+  RelayedCallFailed: new BN('1'),
+  RejectedByPreRelayed: new BN('2'),
+  RejectedByForwarder: new BN('3'),
+  RejectedByRecipientRevert: new BN('4'),
+  PostRelayedFailed: new BN('5'),
+  PaymasterBalanceChanged: new BN('6')
+}

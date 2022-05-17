@@ -208,7 +208,7 @@ interface IRelayHub is IERC165 {
         bytes calldata approvalData
     )
     external
-    returns (bool paymasterAccepted, bytes memory returnValue);
+    returns (bool paymasterAccepted, IRelayHub.RelayCallStatus status, bytes memory returnValue);
 
     /**
      * @notice In case the Relay Worker has been found to be in violation of some rules by the `Penalizer` contract,

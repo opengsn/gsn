@@ -32,6 +32,10 @@ contract TestRecipient is ERC2771Recipient {
 
     event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin, uint256 msgValue, uint256 gasLeft, uint256 balance);
 
+    function recipientRevert() public {
+        revert("this method reverts consistently");
+    }
+
     function emitMessage(string memory message) public payable returns (string memory) {
         uint256 gasLeft = gasleft();
         if (paymaster != address(0)) {
