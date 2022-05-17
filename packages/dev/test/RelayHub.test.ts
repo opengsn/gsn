@@ -481,7 +481,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
                 gas: 7e6,
                 gasPrice: 1e9
               })
-            assert.equal(relayCallView.returnValue, null)
+            assert.equal(relayCallView.returnValue, web3.eth.abi.encodeParameter('string', 'emitMessage return value'))
             assert.equal(relayCallView.paymasterAccepted, true)
           })
 
