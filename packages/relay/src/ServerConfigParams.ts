@@ -21,7 +21,7 @@ export enum LoggingProviderMode {
   CHATTY
 }
 
-export const HUB_FILE = '/hub.lock'
+export const HUB_FILE = 'hub.lock'
 
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
@@ -376,7 +376,9 @@ export async function validateHub (hubFile: string, hubAddress: string, managerA
   const workerNonce = await contractInteractor.getTransactionCount(workerAddress, 'pending')
   if (!fs.existsSync(hubFile) || (managerNonce === 0 && workerNonce === 0)) {
     fs.writeFileSync(hubFile, hubAddress)
+    console.log(`RelayHub lock file ${hubFile} created.\n`)
   } else {
+    console.log(`Using existing lock file ${hubFile}.\n`)
     const lockedHub = fs.readFileSync(hubFile, 'utf8')
     if (lockedHub !== hubAddress) {
       error('RelayHub address modified after relay manager and worker addresses generated: this may lead to penalization. Aborting.\n' +

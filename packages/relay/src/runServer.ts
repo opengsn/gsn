@@ -158,7 +158,7 @@ async function run (): Promise<void> {
   console.log('Initializing interactor...\n')
   await contractInteractor.init()
   await validateHub(
-    config.workdir + HUB_FILE,
+    `${config.workdir}/${HUB_FILE}`,
     config.relayHubAddress,
     managerKeyManager.getAddress(0),
     workersKeyManager.getAddress(0),

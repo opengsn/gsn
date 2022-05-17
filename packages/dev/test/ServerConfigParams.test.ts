@@ -279,7 +279,7 @@ context('#ServerConfigParams', () => {
 
   context('runServer', () => {
     const workdir = '/tmp/gsn/test/validateHub/'
-    const hubPath = workdir + HUB_FILE
+    const hubPath = `${workdir}/${HUB_FILE}`
     const hub = '0xdeadbeef'
     // @ts-ignore
     const contractInteractor: ContractInteractor = { getTransactionCount: async function () { return await Promise.resolve() } }
