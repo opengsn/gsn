@@ -216,15 +216,15 @@ export class ContractInteractor {
     if (this.rawTxOptions != null) {
       throw new Error('init was already called')
     }
-    await this.web3.eth.getBlock('latest').catch((e: Error) => { throw new Error(`getBlock('latest') failed: ${e.message}\nCheck your internet/ethereum node connection`) })
-    try {
-      await this.getFeeHistory('0x1', 'latest', [0.5])
-      this.transactionType = TransactionType.TYPE_TWO
-    } catch (e: any) {
-      if ((e as Error).message.includes('the method eth_feeHistory does not exist/is not available')) {
-        this.logger.debug(' No eip 1559 support. Initializing to legacy transaction.')
-        this.transactionType = TransactionType.LEGACY
-      } else {
+    const block = await this.web3.eth.getBlock('latest').catch((e: Error) => { throw new Error(`getBlock('latest') failed: ${e.message}\nCheck your internet/ethereum node connection`) })
+    if (block.baseFeePerGas != null) {
+      this.logger.debug('Network supports type two (eip 1559) transactions. Checking rpc node eth_feeHistory method')
+      try {
+        await this.getFeeHistory('0x1', 'latest', [0.5])
+        this.transactionType = TransactionType.TYPE_TWO
+        this.logger.debug('Rpc node supports eth_feeHistory. Initializing to type two transactions')
+      } catch (e: any) {
+        this.logger.debug('eth_feeHistory failed. Aborting.')
         throw e
       }
     }
