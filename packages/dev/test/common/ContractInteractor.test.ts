@@ -145,6 +145,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       const stub = sinon.stub(contractInteractor, 'getFeeHistory').rejects(new Error('No fee history for you'))
+      // @ts-ignore
       const spy = sinon.spy(contractInteractor.logger, 'debug')
       try {
         await expect(contractInteractor.init())
