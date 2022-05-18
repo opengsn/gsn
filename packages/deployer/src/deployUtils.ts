@@ -193,7 +193,7 @@ async function updateTokenStakeOrNull (hub: Contract, tokenAddr: string, configM
 async function applyStakingTokenConfiguration (hre: HardhatRuntimeEnvironment, env: Environment, hub: Contract): Promise<void> {
   const testStakingTokenAddress = await hre.deployments.get('WrappedEthToken').then(t => t?.address).catch(null)
 
-  const configChanges = await Promise.all(Object.entries(env.deploymentConfiguration!.minimumStakePerToken)
+  const configChanges = await Promise.all(Object.entries(env.deploymentConfiguration?.minimumStakePerToken ?? [])
     .map(async ([tokenAddr, configMinimumStake]) =>
       await updateTokenStakeOrNull(hub, tokenAddr === 'test' ? testStakingTokenAddress : tokenAddr, configMinimumStake)))
 
@@ -250,6 +250,9 @@ export async function applyDeploymentConfig (hre: HardhatRuntimeEnvironment): Pr
     await deployments.execute('StakeManager', { from: deployer }, 'setDevAddress', env.relayHubConfiguration.devAddress)
   }
 
+  if (env.deploymentConfiguration == null) {
+    throw new Error('deploymentConfiguration is null')
+  }
   await setField(deployments, 'RelayRegistrar', 'getRelayRegistrationMaxAge', 'setRelayRegistrationMaxAge',
-    env.deploymentConfiguration!.registrationMaxAge.toString(), deployer)
+    env.deploymentConfiguration.registrationMaxAge.toString(), deployer)
 }
