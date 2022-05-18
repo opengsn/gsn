@@ -6,22 +6,15 @@ import {
   resolveServerConfig,
   ServerConfigParams,
   serverDefaultConfiguration,
-  validateBalanceParams,
-  validateHub,
-  HUB_FILE
+  validateBalanceParams
 } from '@opengsn/relay/dist/ServerConfigParams'
 import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
 import {
   RelayHubInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { constants, ContractInteractor } from '@opengsn/common/dist'
+import { constants } from '@opengsn/common/dist'
 import { deployHub } from './TestUtils'
-import sinon from 'sinon'
-import chai from 'chai'
-import chaiAsPromised from 'chai-as-promised'
-
-const { expect } = chai.use(chaiAsPromised)
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -273,62 +266,6 @@ context('#ServerConfigParams', () => {
           ownerAddress: '0x1111111111111111111111111111111111111111'
         }
         await resolveServerConfig(config, provider)
-      })
-    })
-  })
-
-  context('runServer', () => {
-    const workdir = '/tmp/gsn/test/validateHub/'
-    const hubPath = `${workdir}/${HUB_FILE}`
-    const hub = '0xdeadbeef'
-    // @ts-ignore
-    const contractInteractor: ContractInteractor = { getTransactionCount: async function () { return await Promise.resolve() } }
-    describe('#validateHub()', function () {
-      before(async function () {
-        fs.mkdirSync(workdir, { recursive: true })
-      })
-      after(function () {
-        if (fs.existsSync(hubPath)) {
-          fs.unlinkSync(hubPath)
-        }
-        if (fs.existsSync(workdir)) {
-          fs.rmdirSync(workdir)
-        }
-      })
-      beforeEach(function () {
-        if (fs.existsSync(hubPath)) {
-          fs.unlinkSync(hubPath)
-        }
-      })
-      afterEach(function () {
-        sinon.restore()
-      })
-      it('should save hub address to lockfile if doesn\'t exist yet', async function () {
-        sinon.stub(contractInteractor, 'getTransactionCount').returns(Promise.resolve(0))
-        assert.isFalse(fs.existsSync(hubPath))
-        await validateHub(hubPath, hub, '0x1', '0x2', contractInteractor)
-        assert.isTrue(fs.existsSync(hubPath))
-        const hubFromFile = fs.readFileSync(hubPath, 'utf8')
-        assert.equal(hubFromFile, hub)
-      })
-      it('should override hub address to lockfile if both manager and worker addresses have nonce 0', async function () {
-        sinon.stub(contractInteractor, 'getTransactionCount').returns(Promise.resolve(0))
-        fs.writeFileSync(hubPath, 'differentHub')
-        await validateHub(hubPath, hub, '0x1', '0x2', contractInteractor)
-        const hubFromFile = fs.readFileSync(hubPath, 'utf8')
-        assert.equal(hubFromFile, hub)
-      })
-      it('should not throw if hub address on lockfile is equal to the configured hub', async function () {
-        fs.writeFileSync(hubPath, hub)
-        sinon.stub(contractInteractor, 'getTransactionCount').returns(Promise.resolve(1))
-        await validateHub(hubPath, hub, '0x1', '0x2', contractInteractor)
-      })
-      it('should throw if hub address on lockfile is not equal to the configured hub', async function () {
-        fs.writeFileSync(hubPath, 'wrongHub')
-        sinon.stub(contractInteractor, 'getTransactionCount').returns(Promise.resolve(1))
-        await expect(validateHub(hubPath, hub, '0x1', '0x2', contractInteractor)).to.eventually.rejectedWith(
-          'RelayHub address modified after relay manager and worker addresses generated: this may lead to penalization. Aborting.\n' +
-          `If you are sure that these addresses are safe to use, remove the lock file ${hubPath} and run the process again.`)
       })
     })
   })
