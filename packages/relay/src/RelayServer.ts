@@ -168,7 +168,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  validateInput (req: RelayTransactionRequest, currentBlockNumber: number): void {
+  validateInput (req: RelayTransactionRequest): void {
     // Check that the relayHub is the correct one
     if (req.metadata.relayHubAddress !== this.relayHubContract.address) {
       throw new Error(
@@ -286,8 +286,6 @@ export class RelayServer extends EventEmitter {
       throw new Error(`Refusing to relay a transaction due to calldata cost. ${message}`)
     }
     const msgDataLength = toBuffer(msgData).length
-    // estimated cost of transferring the TX between GSN functions (innerRelayCall, preRelayedCall, forwarder, etc)
-    // const msgDataGasCostInsideTransaction = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
     if (gasAndDataLimits == null) {
       try {
         const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
@@ -304,16 +302,17 @@ export class RelayServer extends EventEmitter {
       }
       const msgDataGasCostInsideTransaction = msgDataLength * this.environment.dataOnChainHandlingGasCostPerByte
       const paymasterAcceptanceBudget = toNumber(gasAndDataLimits.acceptanceBudget)
-      if (paymasterAcceptanceBudget + msgDataGasCostInsideTransaction > acceptanceBudget) {
+      const effectiveAcceptanceBudget = paymasterAcceptanceBudget + msgDataGasCostInsideTransaction + relayTransactionCalldataGasUsedCalculation
+      if (effectiveAcceptanceBudget > acceptanceBudget) {
         if (!this._isTrustedPaymaster(paymaster)) {
           throw new Error(
-            `paymaster acceptance budget + msg.data gas cost too high. given: ${paymasterAcceptanceBudget + msgDataGasCostInsideTransaction} max allowed: ${this.config.maxAcceptanceBudget}`)
+            `paymaster acceptance budget + msg.data gas cost too high. given: ${effectiveAcceptanceBudget} max allowed: ${this.config.maxAcceptanceBudget}`)
         }
         this.logger.debug(`Using trusted paymaster's higher than max acceptance budget: ${paymasterAcceptanceBudget}`)
         acceptanceBudget = paymasterAcceptanceBudget
       }
     } else {
-      // its a trusted paymaster. just use its acceptance budget as-is
+      // it is a trusted paymaster. just use its acceptance budget as-is
       acceptanceBudget = toNumber(gasAndDataLimits.acceptanceBudget)
     }
 
@@ -393,7 +392,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     const currentBlockNumber = await this.contractInteractor.getBlockNumber()
     const block = await this.contractInteractor.getBlock(currentBlockNumber)
     const currentBlockTimestamp = toNumber(block.timestamp)
-    this.validateInput(req, currentBlockNumber)
+    this.validateInput(req)
     this.validateRelayFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
     if (this.config.runPaymasterReputations) {
