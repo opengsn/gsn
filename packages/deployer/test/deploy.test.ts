@@ -98,6 +98,9 @@ describe('deployer', function () {
       process.env.DEPLOY_CONFIG = tmpConfigFile
       fs.rmSync(tmpConfigFile, { force: true })
     })
+    after(()=>{
+      fs.rmSync(tmpConfigFile, {force: true})
+    })
 
     it('should dump sample config if none is found', async function () {
       fs.writeFileSync(tmpConfigFile, '{}')
