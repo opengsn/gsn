@@ -1,31 +1,32 @@
 import { DeployFunction, DeploymentsExtension } from 'hardhat-deploy/types'
 
 import { constants } from '@opengsn/common/dist/Constants'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
 import { formatEther, parseEther } from 'ethers/lib/utils'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { ethers } from 'hardhat'
+
 import {
   applyDeploymentConfig,
   fatal, getDeploymentEnv,
   printRelayInfo,
   setField
 } from '../src/deployUtils'
+import { GsnDomainSeparatorType, GsnRequestType } from "@opengsn/common/dist/EIP712/TypedRequestData";
 
 const { AddressZero } = ethers.constants
 
 // helper: nicer logging view fo deployed contracts
 async function deploy (deployments: DeploymentsExtension, name: string, options: DeployOptions): Promise<DeployResult> {
   console.log('Deploying: ', name)
-  const res = await deployments.deploy(name, options)
+  const res = await deployments.deploy(name, { ...options, log:true})
   console.log(name, res.address, res.newlyDeployed ? chalk.yellow('newlyDeployed') : chalk.gray('existing'))
   return res
 }
 
-export default async function deploymentFunc (this: DeployFunction, hre: HardhatRuntimeEnvironment): Promise<void> {
-  const { env, deployments, deployer } = await getEnv(hre)
+export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): Promise<void> {
+  const { env, deployments, deployer } = await getDeploymentEnv(hre)
 
   const balance = await ethers.provider.getBalance(deployer)
   console.log('deployer=', deployer, 'balance=', formatEther(balance.toString()))
@@ -58,11 +59,10 @@ export default async function deploymentFunc (this: DeployFunction, hre: Hardhat
   })
 
   if (deployedForwarder.newlyDeployed) {
-    const f = new web3.eth.Contract(deployedForwarder.abi, deployedForwarder.address)
 
-    await registerForwarderForGsn(f, {
-      from: deployer
-    })
+    const options = {from: deployer, log: true}
+    await deployments.execute('Forwarder', options, 'registerRequestType', GsnRequestType.typeName,GsnRequestType.typeSuffix)
+    await deployments.execute('Forwarder', options, 'registerDomainSeparator', GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
   }
 
   const penalizer = await deploy(deployments, 'Penalizer', {

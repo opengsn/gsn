@@ -64,7 +64,8 @@ const config: HardhatUserConfig = {
       saveDeployments: false
     },
     npmtest: { // used from "npm test". see package.json
-      url: 'http://127.0.0.1:8544'
+      url: 'http://127.0.0.1:8544',
+      saveDeployments: false
     },
 
     dev: getNetwork('http://localhost:8545'),

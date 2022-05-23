@@ -1,15 +1,18 @@
 {
   "name": "deployer",
+  "version": "3.0.0-alpha.5",
   "private": true,
   "author": "Dror Tirosh",
   "license": "MIT",
   "scripts": {
     "deploy": "yarn --cwd ../dev solpp; hardhat deploy --export-all all-networks.json ",
+    "export": "hardhat export --export-all  /tmp/all-networks.json ; jq .[][] /tmp/all-networks.json | jq -s > gsn-networks.json",
     "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
     "depinfo": "hardhat run ./src/depinfo.ts",
     "applyConfig": "hardhat run ./src/applyConfig.ts",
     "lint": "eslint -f unix .",
-    "lint-fix": "yarn lint --fix"
+    "lint-fix": "yarn lint --fix",
+    "test": "hardhat test --network npmtest"
   },
   "dependencies": {
     "@opengsn/common": "^3.0.0-alpha.4",
@@ -20,7 +23,7 @@
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "ethers": "^5.5.1",
     "hardhat": "^2.6.8",
-    "hardhat-deploy": "^0.11.4",
+    "hardhat-deploy": "^0.11.5",
     "hardhat-deploy-ethers": "0.3.0-beta.13"
   }
 }

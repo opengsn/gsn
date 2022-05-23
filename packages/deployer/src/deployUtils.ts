@@ -17,13 +17,16 @@ import { HttpNetworkConfig } from 'hardhat/src/types/config'
 import { Contract } from 'ethers'
 import { formatUnits, parseUnits } from 'ethers/lib/utils'
 
-export const deploymentConfigFile = path.resolve(__dirname, '../deployments', 'deployment-config.ts')
+export function deploymentConfigFile(): string {
+  return process.env.DEPLOY_CONFIG ?? path.resolve(__dirname, '../deployments', 'deployment-config.ts')
+}
 
 export interface DeploymentConfig {
   [key: number]: Environment
 }
 
 export function fatal (...params: any): never {
+  throw new Error(params.join())
   console.error(chalk.red('fatal:'), ...params)
   process.exit(1)
 }
@@ -36,9 +39,12 @@ export function getMergedEnvironment (chainId: number, defaultDevAddress: string
     }
     console.log('loading env ( based on chainId', chainId, ')', env.name)
     let config: any
-    if (fs.existsSync(deploymentConfigFile)) {
-      const fileConfig = require(deploymentConfigFile) as DeploymentConfig
+    if (fs.existsSync(deploymentConfigFile())) {
+      console.log('loading config file', deploymentConfigFile())
+      const fileConfig = require(deploymentConfigFile()) as DeploymentConfig
       config = fileConfig[chainId]
+    } else {
+      console.log(chalk.red('Unable to read ', deploymentConfigFile()))
     }
     if (config == null) {
       printSampleEnvironment(defaultDevAddress, chainId)
@@ -47,7 +53,8 @@ export function getMergedEnvironment (chainId: number, defaultDevAddress: string
 
     return merge(env.environment, config)
   } catch (e: any) {
-    fatal(`Error reading config file ${deploymentConfigFile}: ${(e as Error).message}`)
+    throw e
+    // fatal(`Error reading config file ${deploymentConfigFile()}: ${(e as Error).message}`)
   }
 }
 
@@ -65,7 +72,7 @@ export function printSampleEnvironment (defaultDevAddress: string, chainId: numb
     },
     deploymentConfiguration
   }
-  console.log(chalk.red('No configuration found:'), '\nPlease add the following to', chalk.whiteBright(`"${deploymentConfigFile}"`), ':\n\nmodule.exports = ',
+  console.log(chalk.red('No configuration found:'), '\nPlease add the following to', chalk.whiteBright(`"${deploymentConfigFile()}"`), ':\n\nmodule.exports = ',
     util.inspect({ [chainId]: sampleEnv }, false, 10, false))
 }
 
