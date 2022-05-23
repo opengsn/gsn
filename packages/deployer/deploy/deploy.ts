@@ -9,7 +9,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { ethers } from 'hardhat'
 import {
   applyDeploymentConfig,
-  fatal, getEnv,
+  fatal, getDeploymentEnv,
   printRelayInfo,
   setField
 } from '../src/deployUtils'

@@ -161,7 +161,7 @@ export async function printRelayInfo (hre: HardhatRuntimeEnvironment): Promise<v
   console.log(chalk.grey(`gsn relayer-register -m $SECRET --network ${network.url} --relayUrl https://${hre.hardhatArguments.network}.v3.opengsn.org/v3 --token ${stakingTokenAddress} --stake ${stakingTokenValue} --wrap`))
 }
 
-export async function getEnv (hre: HardhatRuntimeEnvironment): Promise<{ deployer: string, deployments: DeploymentsExtension, env: Environment }> {
+export async function getDeploymentEnv (hre: HardhatRuntimeEnvironment): Promise<{ deployer: string, deployments: DeploymentsExtension, env: Environment }> {
   const { deployments, getChainId } = hre
   console.log('Connected to URL: ', (hre.network.config as HttpNetworkConfig).url)
   const accounts = await hre.ethers.provider.listAccounts()
@@ -177,7 +177,7 @@ export async function getEnv (hre: HardhatRuntimeEnvironment): Promise<{ deploye
 }
 
 // check if token's minimum stake is correct. return null if no need to change.
-async function updateTokenStakeOrNull (hub: Contract, tokenAddr: string, configMinimumStake: string): Promise<{ token: string, minimumStake: string } | null> {
+async function getTokenUpdateStakeOrNull (hub: Contract, tokenAddr: string, configMinimumStake: string): Promise<{ token: string, minimumStake: string } | null> {
   const token = await getToken(tokenAddr)
   const minStake = await hub.getMinimumStakePerToken(tokenAddr)
   const parsedConfigMinimumStake = parseUnits(configMinimumStake, token.decimals).toString()
@@ -195,7 +195,7 @@ async function applyStakingTokenConfiguration (hre: HardhatRuntimeEnvironment, e
 
   const configChanges = await Promise.all(Object.entries(env.deploymentConfiguration?.minimumStakePerToken ?? [])
     .map(async ([tokenAddr, configMinimumStake]) =>
-      await updateTokenStakeOrNull(hub, tokenAddr === 'test' ? testStakingTokenAddress : tokenAddr, configMinimumStake)))
+      await getTokenUpdateStakeOrNull(hub, tokenAddr === 'test' ? testStakingTokenAddress : tokenAddr, configMinimumStake)))
 
   const tokens = configChanges.filter(x => x != null)
 
@@ -235,7 +235,7 @@ async function applyHubConfiguration (env: Environment, hub: Contract): Promise<
 }
 
 export async function applyDeploymentConfig (hre: HardhatRuntimeEnvironment): Promise<void> {
-  const { deployments, env, deployer } = await getEnv(hre)
+  const { deployments, env, deployer } = await getDeploymentEnv(hre)
 
   const contracts = await deployments.all()
   const relayHub = contracts.RelayHub
