@@ -1,11 +1,12 @@
-import deploymentFunc from "../deploy/deploy"
+import deploymentFunc from '../deploy/deploy'
 
 import hre from 'hardhat'
 import { expect } from 'chai'
-import fs from "fs"
-import { DeploymentConfiguration, Environment } from "@opengsn/common"
-import { Contract } from "ethers"
-import { applyDeploymentConfig } from "../src/deployUtils"
+import fs from 'fs'
+import { DeploymentConfiguration, Environment } from '@opengsn/common'
+import { Contract } from 'ethers'
+import { applyDeploymentConfig } from '../src/deployUtils'
+import { Deployment } from "hardhat-deploy/dist/types";
 
 const tmpConfigFile = `${__dirname}/tmp-deploy-test-config-${process.pid}.js`
 
@@ -21,11 +22,10 @@ const defaultDeploymentConfiguration: DeploymentConfiguration = {
   minimumStakePerToken: { test: '0.5' }
 }
 
-async function getHub () {
+async function getHub (): Promise<Contract> {
   const hub = await hre.deployments.get('RelayHub')
   return new Contract(hub.address, hub.abi, hre.ethers.provider)
 }
-
 
 type DeepPartial<T> = T extends object ? {
   [P in keyof T]?: DeepPartial<T[P]>
@@ -33,21 +33,21 @@ type DeepPartial<T> = T extends object ? {
 
 function writeTmpDeployConfig (env: DeepPartial<Environment> = {}, deploymentConfiguration = defaultDeploymentConfiguration): void {
   fs.writeFileSync(tmpConfigFile, `module.exports = ${JSON.stringify({
-    '1337': {
+    1337: {
       ...env,
       deploymentConfiguration
     }
   }, null, 2)}`)
 }
 
-function hookLogs (doLog: boolean = false) {
-  if (!saveLog) {
+function hookLogs (doLog: boolean = false): void {
+  if (saveLog == null) {
     saveLog = console.log
     saveError = console.error
   }
   logBuf = ''
   console.log = function (...args: any) {
-    logBuf = logBuf + [...args].join(' ') + "\n"
+    logBuf = logBuf + [...args].join(' ') + '\n'
     if (doLog) {
       saveLog(...args)
     }
@@ -56,7 +56,6 @@ function hookLogs (doLog: boolean = false) {
 }
 
 function restoreLogs (): void {
-
   global.console.log = saveLog
   global.console.error = saveError
 
@@ -66,7 +65,7 @@ function restoreLogs (): void {
 describe('deployer', function () {
   this.timeout(10000)
 
-  //helper, to allow using "console.log" within THIS file, bypassing the log hook..
+  // helper, to allow using "console.log" within THIS file, bypassing the log hook..
   const console = { log: global.console.log, error: global.console.error }
 
   const provider = hre.ethers.provider
@@ -135,9 +134,9 @@ describe('deployer', function () {
       })
       await deploymentFunc(hre)
       const postConfig = await hre.deployments.all()
-      expect(preConfig.Penalizer.address).to.equal(postConfig['Penalizer'].address, 'stake manager change should not redeploy Penalizer')
-      expect(preConfig.StakeManager.address).to.not.equal(postConfig['StakeManager'].address, 'should re-deploy StakeManager')
-      expect(preConfig.RelayHub.address).to.not.equal(postConfig['RelayHub'].address, 'should re-deploy RelayHub on SM change')
+      expect(preConfig.Penalizer.address).to.equal(postConfig.Penalizer.address, 'stake manager change should not redeploy Penalizer')
+      expect(preConfig.StakeManager.address).to.not.equal(postConfig.StakeManager.address, 'should re-deploy StakeManager')
+      expect(preConfig.RelayHub.address).to.not.equal(postConfig.RelayHub.address, 'should re-deploy RelayHub on SM change')
     })
 
     describe('#yarn applyConfig', () => {

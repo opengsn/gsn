@@ -26,7 +26,6 @@ export interface DeploymentConfig {
 }
 
 export function fatal (...params: any): never {
-  throw new Error(params.join())
   console.error(chalk.red('fatal:'), ...params)
   process.exit(1)
 }
@@ -53,8 +52,7 @@ export function getMergedEnvironment (chainId: number, defaultDevAddress: string
 
     return merge(env.environment, config)
   } catch (e: any) {
-    throw e
-    // fatal(`Error reading config file ${deploymentConfigFile()}: ${(e as Error).message}`)
+    fatal(`Error reading config file ${deploymentConfigFile()}: ${(e as Error).message}`)
   }
 }
 
