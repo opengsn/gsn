@@ -1,11 +1,11 @@
 {
-  "name": "deployer",
+  "name": "@opengsn/deployer",
   "version": "3.0.0-alpha.5",
   "private": true,
   "author": "Dror Tirosh",
   "license": "MIT",
   "scripts": {
-    "deploy": "yarn --cwd ../dev solpp; hardhat deploy --export-all all-networks.json ",
+    "deploy": "yarn --cwd ../dev solpp; hardhat deploy",
     "export": "hardhat export --export-all  /tmp/all-networks.json ; jq .[][] /tmp/all-networks.json | jq -s > gsn-networks.json",
     "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
     "depinfo": "hardhat run ./src/depinfo.ts",
