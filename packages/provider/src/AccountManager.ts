@@ -32,7 +32,7 @@ export class AccountManager {
     this.config = config
   }
 
-  addAccount (privateKey: PrefixedHexString): void {
+  addAccount (privateKey: PrefixedHexString): AccountKeypair {
     // TODO: backwards-compatibility 101 - remove on next version bump
     // addAccount used to accept AccountKeypair with Buffer in it
     // @ts-ignore
@@ -49,6 +49,7 @@ export class AccountManager {
       address
     }
     this.accounts.push(keypair)
+    return keypair
   }
 
   newAccount (): AccountKeypair {
