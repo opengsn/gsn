@@ -6,7 +6,6 @@ import fs from 'fs'
 import { DeploymentConfiguration, Environment } from '@opengsn/common'
 import { Contract } from 'ethers'
 import { applyDeploymentConfig } from '../src/deployUtils'
-import { Deployment } from "hardhat-deploy/dist/types";
 
 const tmpConfigFile = `${__dirname}/tmp-deploy-test-config-${process.pid}.js`
 
