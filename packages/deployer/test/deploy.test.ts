@@ -1,13 +1,13 @@
-import deploymentFunc from "../deploy/deploy";
+import deploymentFunc from "../deploy/deploy"
 
 import hre from 'hardhat'
-import { expect } from 'chai';
-import fs from "fs";
-import { DeploymentConfiguration, Environment } from "@opengsn/common";
-import { Contract } from "ethers";
-import { applyDeploymentConfig } from "../src/deployUtils";
+import { expect } from 'chai'
+import fs from "fs"
+import { DeploymentConfiguration, Environment } from "@opengsn/common"
+import { Contract } from "ethers"
+import { applyDeploymentConfig } from "../src/deployUtils"
 
-const tmpConfigFile = `${__dirname}/tmp-deploy-test-config-${process.pid}.js`;
+const tmpConfigFile = `${__dirname}/tmp-deploy-test-config-${process.pid}.js`
 
 let saveLog: any
 let saveError: any
@@ -28,10 +28,10 @@ async function getHub () {
 
 
 type DeepPartial<T> = T extends object ? {
-  [P in keyof T]?: DeepPartial<T[P]>;
-} : T;
+  [P in keyof T]?: DeepPartial<T[P]>
+} : T
 
-function writeTmpDeployConfig (env: DeepPartial<Environment> = {}, deploymentConfiguration = defaultDeploymentConfiguration) {
+function writeTmpDeployConfig (env: DeepPartial<Environment> = {}, deploymentConfiguration = defaultDeploymentConfiguration): void {
   fs.writeFileSync(tmpConfigFile, `module.exports = ${JSON.stringify({
     '1337': {
       ...env,
@@ -55,7 +55,7 @@ function hookLogs (doLog: boolean = false) {
   global.console.error = global.console.log
 }
 
-function restoreLogs () {
+function restoreLogs (): void {
 
   global.console.log = saveLog
   global.console.error = saveError
@@ -71,14 +71,14 @@ describe('deployer', function () {
 
   const provider = hre.ethers.provider
   let saveExit: any
-  before((() => {
-    fs.rmSync(tmpConfigFile, {force: true})
+  before(() => {
+    fs.rmSync(tmpConfigFile, { force: true })
     hookLogs(true)
     saveExit = process.exit
     process.exit = (code) => {
       throw Error(`process.exit(${code})`)
     }
-  }))
+  })
 
   after(() => {
     delete process.env.HARDHAT_NETWORK
@@ -86,11 +86,12 @@ describe('deployer', function () {
 
     restoreLogs()
     process.exit = saveExit
-    fs.rmSync(tmpConfigFile, {force: true})
+    fs.rmSync(tmpConfigFile, { force: true })
   })
 
   describe('#yarn deploy', () => {
     afterEach(() => {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete require.cache[require.resolve(tmpConfigFile)]
     })
     before(() => {
@@ -98,19 +99,19 @@ describe('deployer', function () {
       process.env.DEPLOY_CONFIG = tmpConfigFile
       fs.rmSync(tmpConfigFile, { force: true })
     })
-    after(()=>{
-      fs.rmSync(tmpConfigFile, {force: true})
+    after(() => {
+      fs.rmSync(tmpConfigFile, { force: true })
     })
 
     it('should dump sample config if none is found', async function () {
       fs.writeFileSync(tmpConfigFile, '{}')
-      logBuf = ""
+      logBuf = ''
       const ret = await deploymentFunc(hre).catch(e => e.message)
       console.log('==ret=', ret)
       expect(ret).to.match(/process.exit.1/)
 
       expect(logBuf).to.match(/Please add the following/)
-    });
+    })
 
     it('should run deploy', async function () {
       writeTmpDeployConfig()
@@ -124,7 +125,7 @@ describe('deployer', function () {
       const b = await provider.getBlockNumber()
       await deploymentFunc(hre)
       expect(await provider.getBlockNumber()).to.equal(b)
-    });
+    })
 
     it('re-deploy on constructor params change', async function () {
       const preConfig = JSON.parse(JSON.stringify(await hre.deployments.all()))
@@ -134,10 +135,10 @@ describe('deployer', function () {
       })
       await deploymentFunc(hre)
       const postConfig = await hre.deployments.all()
-      expect(preConfig['Penalizer'].address).to.equal(postConfig['Penalizer'].address, 'stake manager change should not redeploy Penalizer')
-      expect(preConfig['StakeManager'].address).to.not.equal(postConfig['StakeManager'].address, 'should re-deploy StakeManager')
-      expect(preConfig['RelayHub'].address).to.not.equal(postConfig['RelayHub'].address, 'should re-deploy RelayHub on SM change')
-    });
+      expect(preConfig.Penalizer.address).to.equal(postConfig['Penalizer'].address, 'stake manager change should not redeploy Penalizer')
+      expect(preConfig.StakeManager.address).to.not.equal(postConfig['StakeManager'].address, 'should re-deploy StakeManager')
+      expect(preConfig.RelayHub.address).to.not.equal(postConfig['RelayHub'].address, 'should re-deploy RelayHub on SM change')
+    })
 
     describe('#yarn applyConfig', () => {
       it('should apply new hub config on change', async function () {
@@ -150,13 +151,13 @@ describe('deployer', function () {
         await applyDeploymentConfig(hre)
         const postConfig = await hub.getConfiguration()
         expect(postConfig.gasReserve.toString()).to.equal('100')
-      });
+      })
 
       it('should do nothing if no config change', async function () {
         const b = await provider.getBlockNumber()
         await applyDeploymentConfig(hre)
         expect(await provider.getBlockNumber()).to.equal(b)
-      });
+      })
     })
   })
 })

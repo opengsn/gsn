@@ -17,7 +17,7 @@ import { HttpNetworkConfig } from 'hardhat/src/types/config'
 import { Contract } from 'ethers'
 import { formatUnits, parseUnits } from 'ethers/lib/utils'
 
-export function deploymentConfigFile(): string {
+export function deploymentConfigFile (): string {
   return process.env.DEPLOY_CONFIG ?? path.resolve(__dirname, '../deployments', 'deployment-config.ts')
 }
 

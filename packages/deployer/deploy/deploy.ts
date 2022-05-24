@@ -1,4 +1,4 @@
-import { DeployFunction, DeploymentsExtension } from 'hardhat-deploy/types'
+import { DeploymentsExtension } from 'hardhat-deploy/types'
 
 import { constants } from '@opengsn/common/dist/Constants'
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
@@ -13,14 +13,14 @@ import {
   printRelayInfo,
   setField
 } from '../src/deployUtils'
-import { GsnDomainSeparatorType, GsnRequestType } from "@opengsn/common/dist/EIP712/TypedRequestData";
+import { GsnDomainSeparatorType, GsnRequestType } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
 const { AddressZero } = ethers.constants
 
 // helper: nicer logging view fo deployed contracts
 async function deploy (deployments: DeploymentsExtension, name: string, options: DeployOptions): Promise<DeployResult> {
   console.log('Deploying: ', name)
-  const res = await deployments.deploy(name, { ...options, log:true})
+  const res = await deployments.deploy(name, { ...options, log: true })
   console.log(name, res.address, res.newlyDeployed ? chalk.yellow('newlyDeployed') : chalk.gray('existing'))
   return res
 }
@@ -59,9 +59,8 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
   })
 
   if (deployedForwarder.newlyDeployed) {
-
-    const options = {from: deployer, log: true}
-    await deployments.execute('Forwarder', options, 'registerRequestType', GsnRequestType.typeName,GsnRequestType.typeSuffix)
+    const options = { from: deployer, log: true }
+    await deployments.execute('Forwarder', options, 'registerRequestType', GsnRequestType.typeName, GsnRequestType.typeSuffix)
     await deployments.execute('Forwarder', options, 'registerDomainSeparator', GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
   }
 
