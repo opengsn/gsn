@@ -30,6 +30,8 @@ const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const localhostOne = 'http://localhost:8090'
 
+export const serverWorkDir = '/tmp/gsn/test/server'
+
 // start a background relay process.
 // rhub - relay hub contract
 // options:
@@ -42,13 +44,13 @@ export async function startRelay (
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
 
-  const serverWorkDir = '/tmp/gsn/test/server'
-
-  // @ts-ignore
-  fs.rmSync(serverWorkDir, {
-    recursive: true,
-    force: true
-  })
+  const rmPrevWorkdir = options.rmPrevWorkdir ?? true
+  if (rmPrevWorkdir) {
+    fs.rmSync(serverWorkDir, {
+      recursive: true,
+      force: true
+    })
+  }
   args.push('--workdir', serverWorkDir)
   args.push('--devMode')
   if (options.checkInterval) {
