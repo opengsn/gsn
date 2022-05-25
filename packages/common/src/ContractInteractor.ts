@@ -22,7 +22,6 @@ import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
 import { LoggerInterface } from './LoggerInterface'
 import {
-  PaymasterGasAndDataLimits,
   address2topic,
   calculateCalldataBytesZeroNonzero,
   decodeRevertReason,
@@ -30,6 +29,7 @@ import {
   event2topic,
   formatTokenAmount,
   packRelayUrlForRegistrar,
+  PaymasterGasAndDataLimits,
   splitRelayUrlForRegistrar,
   toNumber
 } from './Utils'
@@ -219,7 +219,15 @@ export class ContractInteractor {
     }
     const block = await this.web3.eth.getBlock('latest').catch((e: Error) => { throw new Error(`getBlock('latest') failed: ${e.message}\nCheck your internet/ethereum node connection`) })
     if (block.baseFeePerGas != null) {
-      this.transactionType = TransactionType.TYPE_TWO
+      this.logger.debug('Network supports type two (eip 1559) transactions. Checking rpc node eth_feeHistory method')
+      try {
+        await this.getFeeHistory('0x1', 'latest', [0.5])
+        this.transactionType = TransactionType.TYPE_TWO
+        this.logger.debug('Rpc node supports eth_feeHistory. Initializing to type two transactions')
+      } catch (e: any) {
+        this.logger.debug('eth_feeHistory failed. Aborting.')
+        throw e
+      }
     }
     await this._resolveDeployment()
     await this._initializeContracts()

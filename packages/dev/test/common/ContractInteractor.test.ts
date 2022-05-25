@@ -132,7 +132,28 @@ contract('ContractInteractor', function (accounts) {
           maxPageSize,
           deployment: { paymasterAddress: pm.address }
         })
-      await contractInteractor.init().catch((e: Error) => { assert.equal(e.message, 'init was already called') })
+      await contractInteractor.init()
+      await expect(contractInteractor.init()).to.be.rejectedWith('init was already called')
+    })
+    it('should throw if network returns block.baseFeePerGas but rpc node doesn\'t support eth_feeHistory', async function () {
+      const contractInteractor = new ContractInteractor(
+        {
+          environment,
+          provider: web3.currentProvider as HttpProvider,
+          logger,
+          maxPageSize,
+          deployment: { paymasterAddress: pm.address }
+        })
+      const stub = sinon.stub(contractInteractor, 'getFeeHistory').rejects(new Error('No fee history for you'))
+      // @ts-ignore
+      const spy = sinon.spy(contractInteractor.logger, 'debug')
+      try {
+        await expect(contractInteractor.init())
+          .to.eventually.rejectedWith('No fee history for you')
+        sinon.assert.calledWith(spy, 'eth_feeHistory failed. Aborting.')
+      } finally {
+        stub.restore()
+      }
     })
   })
 
