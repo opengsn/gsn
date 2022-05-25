@@ -31,6 +31,7 @@ const TestRelayHub = artifacts.require('TestRelayHub')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
 contract('RelayServer', function (accounts: Truffle.Accounts) {
+  const registrationRateSeconds = 500
   const alertedDelaySeconds = 0
   const baseRelayFee = '12'
 
@@ -46,7 +47,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     }
 
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
-    await env.init(relayClientConfig, undefined, undefined, TestRelayHub)
+    await env.init(relayClientConfig, undefined, undefined, TestRelayHub, registrationRateSeconds)
     const overrideParams: Partial<ServerConfigParams> = {
       alertedDelaySeconds,
       baseRelayFee
@@ -214,7 +215,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.relayWorker = accounts[1]
         try {
-          env.relayServer.validateInput(req, 0)
+          env.relayServer.validateInput(req)
           assert.fail()
         } catch (e: any) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -227,7 +228,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.maxPriorityFeePerGas = wrongPriorityFee.toString()
         try {
-          env.relayServer.validateInput(req, 0)
+          env.relayServer.validateInput(req)
           assert.fail()
         } catch (e: any) {
           assert.include(e.message,
@@ -239,7 +240,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       it('should fail to relay with maxPriorityFeePerGas > maxFeePerGas', async function () {
         const req = await env.createRelayHttpRequest({ maxFeePerGas: toHex(1e9), maxPriorityFeePerGas: toHex(1e10) })
         try {
-          env.relayServer.validateInput(req, 0)
+          env.relayServer.validateInput(req)
           assert.fail()
         } catch (e: any) {
           assert.include(e.message,
@@ -253,7 +254,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.maxFeePerGas = wrongFee.toString()
         try {
-          env.relayServer.validateInput(req, 0)
+          env.relayServer.validateInput(req)
           assert.fail()
         } catch (e: any) {
           assert.include(e.message,
@@ -280,7 +281,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         req.metadata.relayHubAddress = wrongHubAddress
         try {
-          env.relayServer.validateInput(req, 0)
+          env.relayServer.validateInput(req)
           assert.fail()
         } catch (e: any) {
           assert.include(e.message,
@@ -293,7 +294,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.request.validUntilTime = '1234567890'
         try {
-          env.relayServer.validateInput(req, 1000)
+          env.relayServer.validateInput(req)
           assert.fail()
         } catch (e: any) {
           assert.include(e.message,
@@ -305,7 +306,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.paymaster = blacklistedPaymaster
         try {
-          env.relayServer.validateInput(req, 0)
+          env.relayServer.validateInput(req)
           assert.fail()
         } catch (e: any) {
           assert.include(e.message,
@@ -851,7 +852,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   })
 
   describe('server keepalive re-registration', function () {
-    const registrationRateSeconds = 5000
     const refreshStateTimeoutBlocks = 1
     let relayServer: RelayServer
     let latestBlockNumber: number
@@ -875,7 +875,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     beforeEach(async function () {
       id = (await snapshot()).result
       await env.newServerInstance({
-        registrationRateSeconds,
         refreshStateTimeoutBlocks
       })
       relayServer = env.relayServer

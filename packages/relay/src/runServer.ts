@@ -138,8 +138,8 @@ async function run (): Promise<void> {
   console.log('Creating server logger...\n')
   const logger = createServerLogger(config.logLevel, config.loggerUrl, config.loggerUserId)
   console.log('Creating managers...\n')
-  const managerKeyManager = new KeyManager(1, workdir + '/manager')
-  const workersKeyManager = new KeyManager(1, workdir + '/workers')
+  const managerKeyManager = new KeyManager(1, `${workdir}/manager`)
+  const workersKeyManager = new KeyManager(1, `${workdir}/workers/${config.relayHubAddress}`)
   const txStoreManager = new TxStoreManager({ workdir, autoCompactionInterval: config.dbAutoCompactionInterval }, logger)
   console.log('Creating interactor...\n')
   const contractInteractor = new ContractInteractor({

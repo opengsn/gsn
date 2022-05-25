@@ -62,6 +62,16 @@ interface IRelayRegistrar is IERC165 {
     function getCreationBlock() external view returns (uint256);
 
     /**
+     * @return The maximum age the relay is considered registered by default by this `RelayRegistrar`.
+     */
+    function getRelayRegistrationMaxAge() external view returns (uint256);
+
+    /**
+     * @notice Change the maximum relay registration age.
+     */
+    function setRelayRegistrationMaxAge(uint256) external;
+
+    /**
      * @param relayManager An address of a Relay Manager.
      * @param relayHub The address of the `RelayHub` contract for which this action is performed.
      * @return info All the details of the given Relay Manager's registration. Throws if relay not found for `RelayHub`.
@@ -71,12 +81,23 @@ interface IRelayRegistrar is IERC165 {
     /**
      * @notice Read relay info of registered Relay Server from an on-chain storage.
      * @param relayHub The address of the `RelayHub` contract for which this action is performed.
+     * @return info The list of `RelayInfo`s of registered Relay Servers
+     */
+    function readRelayInfos(
+        address relayHub
+    ) external view returns (
+        RelayInfo[] memory info
+    );
+
+    /**
+     * @notice Read relay info of registered Relay Server from an on-chain storage.
+     * @param relayHub The address of the `RelayHub` contract for which this action is performed.
      * @param maxCount The maximum amount of relays to be returned by this function.
      * @param oldestBlockNumber The latest block number in which a Relay Server may be registered.
      * @param oldestBlockTimestamp The latest block timestamp in which a Relay Server may be registered.
      * @return info The list of `RelayInfo`s of registered Relay Servers
      */
-    function readRelayInfos(
+    function readRelayInfosInRange(
         address relayHub,
         uint256 oldestBlockNumber,
         uint256 oldestBlockTimestamp,

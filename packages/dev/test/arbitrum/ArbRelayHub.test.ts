@@ -42,7 +42,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
     forwarder = await Forwarder.new()
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
     const testArbSys = await TestArbSys.new()
-    relayRegistrar = await RelayRegistrar.new()
+    relayRegistrar = await RelayRegistrar.new(constants.yearInSec)
     arbRelayHub = await ArbRelayHub.new(testArbSys.address, stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, relayRegistrar.address, environments.arbitrum.relayHubConfiguration)
     await arbRelayHub.setMinimumStakes([testToken.address], [stake])
   })
@@ -137,7 +137,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
       })
 
       // just an observed value
-      const expectedGasUsed = 22000000
+      const expectedGasUsed = 24000000
 
       const transactionRelayedEvent = res.logs[0].args as TransactionRelayed['args']
       const charge = transactionRelayedEvent.charge.div(new BN('100000000'))

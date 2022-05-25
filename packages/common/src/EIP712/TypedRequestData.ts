@@ -73,7 +73,7 @@ interface Types extends MessageTypes {
 export const GsnDomainSeparatorType = {
   prefix: 'string name,string version',
   name: 'GSN Relayed Transaction',
-  version: '2'
+  version: '3'
 }
 
 export function getDomainSeparator (verifier: Address, chainId: number): Record<string, unknown> {

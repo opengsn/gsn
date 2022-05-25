@@ -117,6 +117,9 @@ export class RelayClient {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
     this.dependencies = await this._resolveDependencies(this.rawConstructorInput)
+    if (!this.config.skipErc165Check) {
+      await this.dependencies.contractInteractor._validateERC165InterfacesClient()
+    }
   }
 
   /**
@@ -472,9 +475,9 @@ export class RelayClient {
     return this.dependencies.accountManager.newAccount()
   }
 
-  addAccount (privateKey: PrefixedHexString): void {
+  addAccount (privateKey: PrefixedHexString): AccountKeypair {
     this._verifyInitialized()
-    this.dependencies.accountManager.addAccount(privateKey)
+    return this.dependencies.accountManager.addAccount(privateKey)
   }
 
   _verifyInitialized (): void {

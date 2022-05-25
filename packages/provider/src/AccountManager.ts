@@ -32,7 +32,7 @@ export class AccountManager {
     this.config = config
   }
 
-  addAccount (privateKey: PrefixedHexString): void {
+  addAccount (privateKey: PrefixedHexString): AccountKeypair {
     // TODO: backwards-compatibility 101 - remove on next version bump
     // addAccount used to accept AccountKeypair with Buffer in it
     // @ts-ignore
@@ -49,11 +49,12 @@ export class AccountManager {
       address
     }
     this.accounts.push(keypair)
+    return keypair
   }
 
   newAccount (): AccountKeypair {
     const a = ethWallet.generate()
-    const privateKey = `0x${(a.privKey as Buffer).toString('hex')}`
+    const privateKey = a.getPrivateKeyString()
     this.addAccount(privateKey)
     const address = toAddress(privateKey)
     return {

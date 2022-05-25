@@ -289,6 +289,7 @@ contract('ContractInteractor', function (accounts) {
         sinon.assert.calledOnce(spy)
         const rpcPayload = spy.getCall(0).args[0]
         assert.equal(rpcPayload.method, 'eth_call')
+        // @ts-ignore
         assert.equal(rpcPayload.params[0].gasPrice, toHex(relayRequest.relayData.maxFeePerGas))
         spy.restore()
       }
@@ -313,8 +314,8 @@ contract('ContractInteractor', function (accounts) {
         sinon.assert.calledOnce(spy)
         const rpcPayload = spy.getCall(0).args[0]
         assert.equal(rpcPayload.method, 'eth_call')
-        assert.equal(rpcPayload.params[0].maxFeePerGas, toHex(relayRequest.relayData.maxFeePerGas))
-        assert.equal(rpcPayload.params[0].maxPriorityFeePerGas, toHex(relayRequest.relayData.maxPriorityFeePerGas))
+        assert.equal(rpcPayload.params![0].maxFeePerGas, toHex(relayRequest.relayData.maxFeePerGas))
+        assert.equal(rpcPayload.params![0].maxPriorityFeePerGas, toHex(relayRequest.relayData.maxPriorityFeePerGas))
         spy.restore()
       }
     })
@@ -417,6 +418,50 @@ contract('ContractInteractor', function (accounts) {
       })
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith(/Provided.*version.*does not satisfy the requirement/)
+    })
+
+    describe('#_validateERC165Interfaces()', function () {
+      it('should fail verification of ERC-165 interfaces if no contract instance is initialized', async function () {
+        const deployment = {}
+        const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+        await contractInteractor.init()
+        await expect(contractInteractor._validateERC165InterfacesRelay())
+          .to.eventually.be.rejectedWith('ERC-165 interface check failed. Penalizer instance is not initialized')
+        await expect(contractInteractor._validateERC165InterfacesClient())
+          .to.eventually.be.rejectedWith('ERC-165 interface check failed. Forwarder instance is not initialized')
+      })
+
+      it('should verify ERC-165 interfaces of all contracts in the resolved deployment', async function () {
+        const fw = await Forwarder.new()
+
+        // no contract at address
+        const deployment = {
+          forwarderAddress: fw.address,
+          relayHubAddress: rh.address,
+          paymasterAddress: pm.address,
+          penalizerAddress: pen.address,
+          relayRegistrarAddress: constants.BURN_ADDRESS,
+          stakeManagerAddress: sm.address
+        }
+        let contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+        await contractInteractor.init()
+        await expect(contractInteractor._validateERC165InterfacesRelay())
+          .to.eventually.be.rejectedWith(new RegExp(`Failed call to RelayRegistrar supportsInterface at address: ${constants.BURN_ADDRESS}`))
+
+        // incorrect contract at address
+        deployment.relayRegistrarAddress = sm.address
+        contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+        await contractInteractor.init()
+        await expect(contractInteractor._validateERC165InterfacesRelay())
+          .to.eventually.be.rejectedWith('ERC-165 interface check failed. PN: true RR: false RH: true SM: true')
+
+        // all contracts correct
+        const rr = await RelayRegistrar.new(constants.yearInSec)
+        deployment.relayRegistrarAddress = rr.address
+        contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+        await contractInteractor.init()
+        await contractInteractor._validateERC165InterfacesRelay()
+      })
     })
   })
 
@@ -627,7 +672,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      relayReg = await RelayRegistrar.new()
+      relayReg = await RelayRegistrar.new(constants.yearInSec)
       lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
       testRelayHub = await TestRelayHubForRegistrar.new()
 
@@ -647,8 +692,8 @@ contract('ContractInteractor', function (accounts) {
     })
     // note: this is no longer true - we retype tuples to BN in LightTruffleContracts while actual Truffle doesn't do so
     it.skip('should get matching mixed return values', async () => {
-      expect(await lightreg.readRelayInfos(constants.ZERO_ADDRESS, 0, 0, 100))
-        .to.eql(await relayReg.readRelayInfos(constants.ZERO_ADDRESS, 0, 0, 100))
+      expect(await lightreg.readRelayInfosInRange(constants.ZERO_ADDRESS, 0, 0, 100))
+        .to.eql(await relayReg.readRelayInfosInRange(constants.ZERO_ADDRESS, 0, 0, 100))
     })
   })
 })

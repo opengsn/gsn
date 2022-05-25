@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import "./utils/RLPReader.sol";
 import "./utils/GsnUtils.sol";
@@ -14,11 +15,11 @@ import "./interfaces/IPenalizer.sol";
  *
  * @notice This Penalizer supports parsing Legacy, Type 1 and Type 2 raw RLP Encoded transactions.
  */
-contract Penalizer is IPenalizer {
+contract Penalizer is IPenalizer, ERC165 {
     using ECDSA for bytes32;
 
     /// @inheritdoc IPenalizer
-    string public override versionPenalizer = "2.2.3+opengsn.penalizer.ipenalizer";
+    string public override versionPenalizer = "3.0.0-alpha.5+opengsn.penalizer.ipenalizer";
 
     uint256 internal immutable penalizeBlockDelay;
     uint256 internal immutable penalizeBlockExpiration;
@@ -29,6 +30,12 @@ contract Penalizer is IPenalizer {
     ) {
         penalizeBlockDelay = _penalizeBlockDelay;
         penalizeBlockExpiration = _penalizeBlockExpiration;
+    }
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
+        return interfaceId == type(IPenalizer).interfaceId ||
+        super.supportsInterface(interfaceId);
     }
 
     /// @inheritdoc IPenalizer

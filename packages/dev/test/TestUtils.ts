@@ -19,7 +19,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
 import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-import { Environment, toNumber } from '@opengsn/common'
+import { constants, Environment, toNumber } from '@opengsn/common'
 import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
 import { toBN } from 'web3-utils'
 
@@ -29,6 +29,8 @@ const RelayHub = artifacts.require('RelayHub')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const localhostOne = 'http://localhost:8090'
+
+export const serverWorkDir = '/tmp/gsn/test/server'
 
 // start a background relay process.
 // rhub - relay hub contract
@@ -42,13 +44,13 @@ export async function startRelay (
   options: any): Promise<ChildProcessWithoutNullStreams> {
   const args = []
 
-  const serverWorkDir = '/tmp/gsn/test/server'
-
-  // @ts-ignore
-  fs.rmSync(serverWorkDir, {
-    recursive: true,
-    force: true
-  })
+  const rmPrevWorkdir = options.rmPrevWorkdir ?? true
+  if (rmPrevWorkdir) {
+    fs.rmSync(serverWorkDir, {
+      recursive: true,
+      force: true
+    })
+  }
   args.push('--workdir', serverWorkDir)
   args.push('--devMode')
   if (options.checkInterval) {
@@ -103,7 +105,7 @@ export async function startRelay (
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   let relaylog = function (_: string): void {}
   if (options.relaylog) {
-    relaylog = (msg: string) => msg.split('\n').forEach(line => console.log(`relay-${proc.pid.toString()}> ${line}`))
+    relaylog = (msg: string) => msg.split('\n').forEach(line => console.log(`relay-${proc.pid?.toString()}> ${line}`))
   }
 
   await new Promise((resolve, reject) => {
@@ -309,13 +311,14 @@ export async function deployHub (
   testTokenMinimumStake: IntString,
   configOverride: Partial<RelayHubConfiguration> = {},
   environment: Environment = defaultEnvironment,
-  hubContract: any = undefined): Promise<RelayHubInstance> {
+  hubContract: any = undefined,
+  relayRegistrationMaxAge = constants.yearInSec): Promise<RelayHubInstance> {
   const relayHubConfiguration: RelayHubConfiguration = {
     ...environment.relayHubConfiguration,
     ...configOverride
   }
   const HubContract: RelayHubContract = hubContract ?? RelayHub
-  const relayRegistrar = await RelayRegistrar.new()
+  const relayRegistrar = await RelayRegistrar.new(relayRegistrationMaxAge)
   const hub: RelayHubInstance = await HubContract.new(
     stakeManager,
     penalizer,

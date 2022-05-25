@@ -168,7 +168,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  validateInput (req: RelayTransactionRequest, currentBlockNumber: number): void {
+  validateInput (req: RelayTransactionRequest): void {
     // Check that the relayHub is the correct one
     if (req.metadata.relayHubAddress !== this.relayHubContract.address) {
       throw new Error(
@@ -286,8 +286,6 @@ export class RelayServer extends EventEmitter {
       throw new Error(`Refusing to relay a transaction due to calldata cost. ${message}`)
     }
     const msgDataLength = toBuffer(msgData).length
-    // estimated cost of transferring the TX between GSN functions (innerRelayCall, preRelayedCall, forwarder, etc)
-    // const msgDataGasCostInsideTransaction = (await this.relayHubContract.calldataGasCost(msgDataLength)).toNumber()
     if (gasAndDataLimits == null) {
       try {
         const paymasterContract = await this.contractInteractor._createPaymaster(paymaster)
@@ -304,16 +302,17 @@ export class RelayServer extends EventEmitter {
       }
       const msgDataGasCostInsideTransaction = msgDataLength * this.environment.dataOnChainHandlingGasCostPerByte
       const paymasterAcceptanceBudget = toNumber(gasAndDataLimits.acceptanceBudget)
-      if (paymasterAcceptanceBudget + msgDataGasCostInsideTransaction > acceptanceBudget) {
+      const effectiveAcceptanceBudget = paymasterAcceptanceBudget + msgDataGasCostInsideTransaction + relayTransactionCalldataGasUsedCalculation
+      if (effectiveAcceptanceBudget > acceptanceBudget) {
         if (!this._isTrustedPaymaster(paymaster)) {
           throw new Error(
-            `paymaster acceptance budget + msg.data gas cost too high. given: ${paymasterAcceptanceBudget + msgDataGasCostInsideTransaction} max allowed: ${this.config.maxAcceptanceBudget}`)
+            `paymaster acceptance budget + msg.data gas cost too high. given: ${effectiveAcceptanceBudget} max allowed: ${this.config.maxAcceptanceBudget}`)
         }
         this.logger.debug(`Using trusted paymaster's higher than max acceptance budget: ${paymasterAcceptanceBudget}`)
         acceptanceBudget = paymasterAcceptanceBudget
       }
     } else {
-      // its a trusted paymaster. just use its acceptance budget as-is
+      // it is a trusted paymaster. just use its acceptance budget as-is
       acceptanceBudget = toNumber(gasAndDataLimits.acceptanceBudget)
     }
 
@@ -393,7 +392,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     const currentBlockNumber = await this.contractInteractor.getBlockNumber()
     const block = await this.contractInteractor.getBlock(currentBlockNumber)
     const currentBlockTimestamp = toNumber(block.timestamp)
-    this.validateInput(req, currentBlockNumber)
+    this.validateInput(req)
     this.validateRelayFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
     if (this.config.runPaymasterReputations) {
@@ -500,6 +499,9 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     await this.transactionManager._init(this.transactionType)
     await this._initTrustedPaymasters(this.config.trustedPaymasters)
+    if (!this.config.skipErc165Check) {
+      await this.contractInteractor._validateERC165InterfacesRelay()
+    }
     this.relayHubContract = await this.contractInteractor.relayHubInstance
 
     const relayHubAddress = this.relayHubContract.address
@@ -707,20 +709,16 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _shouldRegisterAgain (currentBlock: number, currentBlockTimestamp: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
-    if (this.config.registrationRateSeconds === 0) {
-      // this.logger.debug(`_shouldRegisterAgain returns false isPendingActivityTransaction=${isPendingActivityTransaction} registrationBlockRate=${this.config.registrationBlockRate}`)
-      return false
-    }
+    const relayRegistrationMaxAge = await this.contractInteractor.getRelayRegistrationMaxAge()
     const latestRegisterTxBlockTimestamp = this._getLatestRegisterTxBlockTimestamp()
     const isPendingRegistration = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
     const registrationExpired =
-      this.config.registrationRateSeconds !== 0 &&
-      (currentBlockTimestamp - latestRegisterTxBlockTimestamp >= this.config.registrationRateSeconds) &&
+      (currentBlockTimestamp - latestRegisterTxBlockTimestamp >= relayRegistrationMaxAge.toNumber()) &&
       !isPendingRegistration
     const shouldRegister = registrationExpired
     if (registrationExpired) {
       this.logger.debug(
-        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestRegisterTxBlockTimestamp} registrationBlockRate=${this.config.registrationRateSeconds}`)
+        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestRegisterTxBlockTimestamp} relayRegistrationMaxAge=${relayRegistrationMaxAge.toString()}`)
     }
     return shouldRegister
   }
