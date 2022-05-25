@@ -91,7 +91,8 @@ export class AccountManager {
       // @ts-ignore
       transaction = new FeeMarketEIP1559Transaction(fixGasLimitName, commonTxOptions)
     }
-    const raw = '0x' + transaction.sign(Buffer.from(removeHexPrefix(this.findPrivateKey(from)))).serialize().toString('hex')
+    const privateKeyBuf = Buffer.from(removeHexPrefix(this.findPrivateKey(from)), 'hex')
+    const raw = '0x' + transaction.sign(privateKeyBuf).serialize().toString('hex')
     // even more annoying is that 'RLPEncodedTransaction', which is expected return type here, is not yet 1559-ready
     // @ts-ignore
     return { raw, tx: transaction }
