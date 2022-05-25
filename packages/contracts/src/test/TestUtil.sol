@@ -2,11 +2,15 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 import "../utils/GsnTypes.sol";
 import "../utils/GsnEip712Library.sol";
 import "../utils/GsnUtils.sol";
 
 contract TestUtil {
+    using ECDSA for bytes;
+    using ECDSA for bytes32;
 
     function libRelayRequestName() public pure returns (string memory) {
         return GsnEip712Library.RELAY_REQUEST_NAME;
@@ -45,7 +49,7 @@ contract TestUtil {
     ) {
         bool forwarderSuccess;
         (forwarderSuccess, success, ret) = GsnEip712Library.execute(relayRequest, signature);
-        if ( !forwarderSuccess) {
+        if (!forwarderSuccess) {
             GsnUtils.revertWithData(ret);
         }
         emit Called(success, success == false ? ret : bytes(""));
@@ -72,5 +76,9 @@ contract TestUtil {
 
     function libGetChainID() public view returns (uint256) {
         return GsnEip712Library.getChainID();
+    }
+
+    function _ecrecover(string memory message, bytes memory signature) public pure returns (address) {
+        return bytes(message).toEthSignedMessageHash().recover(signature);
     }
 }
