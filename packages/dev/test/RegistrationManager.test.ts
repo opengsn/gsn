@@ -225,27 +225,28 @@ contract('RegistrationManager', function (accounts) {
       // await assertRelayAdded(receipts, relayServer)
       // await relayServer._worker(latestBlock.number + 1)
 
-      let transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, toNumber(latestBlock.timestamp), 0, false)
+      const block = await env.web3.eth.getBlock(0)
+      let transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       assert.equal(transactionHashes.length, 0, 'should not re-register if already registered')
 
-      const currentBlockFake = 1000000
+      block.number = 1000000
 
       relayServer.config.baseRelayFee = (parseInt(relayServer.config.baseRelayFee) + 1).toString()
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, toNumber(latestBlock.timestamp), currentBlockFake, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
       latestBlock = await env.web3.eth.getBlock('latest')
       await relayServer._worker(latestBlock)
 
       relayServer.config.pctRelayFee++
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, toNumber(latestBlock.timestamp), currentBlockFake, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
       latestBlock = await env.web3.eth.getBlock('latest')
       await relayServer._worker(latestBlock)
 
       relayServer.config.url = 'fakeUrl'
-      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, toNumber(latestBlock.timestamp), currentBlockFake, false)
+      transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       await assertRelayAdded(transactionHashes, relayServer, false)
     })
   })

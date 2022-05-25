@@ -672,7 +672,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       await this._shouldRegisterAgain(currentBlock.number, currentBlockTimestamp, hubEventsSinceLastScan)
     transactionHashes = transactionHashes.concat(
       await this.registrationManager.handlePastEvents(
-        hubEventsSinceLastScan, this.lastScannedBlock, currentBlock.number, currentBlockTimestamp, shouldRegisterAgain))
+        hubEventsSinceLastScan, this.lastScannedBlock, currentBlock, currentBlockTimestamp, shouldRegisterAgain))
     await this.transactionManager.removeConfirmedTransactions(currentBlock.number)
     await this._boostStuckPendingTransactions(currentBlock.number, currentBlockTimestamp)
     this.lastScannedBlock = currentBlock.number
