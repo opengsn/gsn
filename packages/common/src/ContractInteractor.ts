@@ -4,7 +4,7 @@ import { BlockTransactionString, FeeHistoryResult } from 'web3-eth'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { TxOptions } from '@ethereumjs/tx'
-import { toBN, toHex } from 'web3-utils'
+import { fromWei, toBN, toHex } from 'web3-utils'
 import { BlockNumber, Transaction, TransactionReceipt } from 'web3-core'
 
 import abi from 'web3-eth-abi'
@@ -499,6 +499,19 @@ export class ContractInteractor {
     const from = isDryRun ? constants.DRY_RUN_ADDRESS : relayCallABIData.relayRequest.relayData.relayWorker
     try {
       const encodedRelayCall = this.encodeABI(relayCallABIData)
+      const paymasterBalance = await this.relayHubInstance.balanceOf(relayCallABIData.relayRequest.relayData.paymaster)
+      // maximum gas limit paymaster can pay with its current balance
+      // paymaster pays from deposit: gasPrice * gasUsed * (100+pct)/100 + baseRelayFee
+      // we extract maximum gasUsed as: (deposit-baseRelayFee)*100/(100+pct) / gasPrice
+      // (gasPrice can be min(baseFee+prio, maxFeePerGas), but we use here only maxFeePerGas.)
+      const paymasterMaxGasLimit = paymasterBalance
+        .sub(toBN(relayCallABIData.relayRequest.relayData.baseRelayFee))
+        .muln(100).div(toBN(relayCallABIData.relayRequest.relayData.pctRelayFee).addn(100))
+        .div(toBN(relayCallABIData.relayRequest.relayData.maxFeePerGas))
+      if (paymasterMaxGasLimit.lt(viewCallGasLimit)) {
+        console.log(`== too high viewCallGasLimit ${fromWei(viewCallGasLimit, 'gwei')}. paymaster can pay ${fromWei(paymasterMaxGasLimit, 'gwei')}`)
+        viewCallGasLimit = paymasterMaxGasLimit
+      }
       const res: string = await new Promise((resolve, reject) => {
         const gasFees = this._fixGasFees(relayCallABIData.relayRequest)
         const rpcPayload = {
