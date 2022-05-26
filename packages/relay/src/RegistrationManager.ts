@@ -36,6 +36,7 @@ import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { isRegistrationValid } from './Utils'
 import { constants } from '@opengsn/common/dist/Constants'
 import { toNumber } from '@opengsn/common'
+import { BlockTransactionString } from 'web3-eth'
 
 const mintxgascost = defaultEnvironment.mintxgascost
 
@@ -166,7 +167,7 @@ export class RegistrationManager {
   async handlePastEvents (
     hubEventsSinceLastScan: EventData[],
     lastScannedBlock: number,
-    currentBlockNumber: number,
+    currentBlock: BlockTransactionString,
     currentBlockTimestamp: number,
     forceRegistration: boolean): Promise<PrefixedHexString[]> {
     if (!this.isInitialized || this.balanceRequired == null) {
@@ -186,7 +187,7 @@ export class RegistrationManager {
         // TODO: _isSetOwnerCalled is different from 'isActionPending' only cause we handle owner outside the event loop
         if (!this._isSetOwnerCalled) {
           this._isSetOwnerCalled = true
-          transactionHashes = transactionHashes.concat(await this.setOwnerInStakeManager(currentBlockNumber, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this.setOwnerInStakeManager(currentBlock.number, currentBlockTimestamp))
         }
       } else {
         this.logger.debug('owner is not set and balance requirement is not satisfied')
@@ -199,32 +200,32 @@ export class RegistrationManager {
     for (const eventData of decodedEvents) {
       switch (eventData.event) {
         case HubAuthorized:
-          this.logger.warn(`Handling HubAuthorized event: ${JSON.stringify(eventData)} in block ${currentBlockNumber}`)
+          this.logger.warn(`Handling HubAuthorized event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           await this._handleHubAuthorizedEvent(eventData)
           break
         case OwnerSet:
           await this.refreshStake()
-          this.logger.warn(`Handling OwnerSet event: ${JSON.stringify(eventData)} in block ${currentBlockNumber}`)
+          this.logger.warn(`Handling OwnerSet event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           break
         case StakeAdded:
           await this.refreshStake()
-          this.logger.warn(`Handling StakeAdded event: ${JSON.stringify(eventData)} in block ${currentBlockNumber}`)
+          this.logger.warn(`Handling StakeAdded event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           break
         case HubUnauthorized:
-          this.logger.warn(`Handling HubUnauthorized event: ${JSON.stringify(eventData)} in block ${currentBlockNumber}`)
+          this.logger.warn(`Handling HubUnauthorized event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           if (isSameAddress(eventData.returnValues.relayHub, this.hubAddress)) {
             this.isHubAuthorized = false
             this.delayedEvents.push({ time: eventData.returnValues.removalTime.toString(), eventData })
           }
           break
         case StakeUnlocked:
-          this.logger.warn(`Handling StakeUnlocked event: ${JSON.stringify(eventData)} in block ${currentBlockNumber}`)
+          this.logger.warn(`Handling StakeUnlocked event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           await this.refreshStake()
           break
         case StakeWithdrawn:
-          this.logger.warn(`Handling StakeWithdrawn event: ${JSON.stringify(eventData)} in block ${currentBlockNumber}`)
+          this.logger.warn(`Handling StakeWithdrawn event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           await this.refreshStake()
-          transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlockNumber, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock.number, currentBlockTimestamp))
           break
       }
     }
@@ -232,22 +233,19 @@ export class RegistrationManager {
     await this.updateLatestRegistrationTxs(hubEventsSinceLastScan)
 
     // handle HubUnauthorized only after the due time
-    // TODO: avoid querying time from RPC; reorganize code
-    const currentBlockObject = await this.contractInteractor.getBlock(currentBlockNumber)
-    // In case 'currentBlock' is not found on the node, nothing is due
-    const currentBlockTime = currentBlockObject?.timestamp ?? 0
+    const currentBlockTime = currentBlock.timestamp
     for (const eventData of this._extractDuePendingEvents(currentBlockTime)) {
       switch (eventData.event) {
         case HubUnauthorized:
-          transactionHashes = transactionHashes.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlockNumber, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock.number, currentBlockTimestamp))
           break
       }
     }
     const isRegistrationCorrect = this._isRegistrationCorrect()
-    const isRegistrationPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
+    const isRegistrationPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlock.number, this.config.recentActionAvoidRepeatDistanceBlocks)
     if (!(isRegistrationPending || isRegistrationCorrect) || forceRegistration) {
       this.logger.debug(`will attempt registration: isRegistrationPending=${isRegistrationPending} isRegistrationCorrect=${isRegistrationCorrect} forceRegistration=${forceRegistration}`)
-      transactionHashes = transactionHashes.concat(await this.attemptRegistration(currentBlockNumber, currentBlockTimestamp))
+      transactionHashes = transactionHashes.concat(await this.attemptRegistration(currentBlock.number, currentBlockTimestamp))
     }
     return transactionHashes
   }

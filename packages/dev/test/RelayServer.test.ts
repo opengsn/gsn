@@ -24,6 +24,7 @@ import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 import { toNumber } from '@opengsn/common'
+import { BlockTransactionString } from 'web3-eth'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -90,7 +91,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       relayServer = env.relayServer
       // force "ready
       assert.equal(relayServer.isReady(), true)
-      const stub = sinon.stub(relayServer.contractInteractor, 'getBlockNumber').rejects(Error('simulate getBlock failed'))
+      const stub = sinon.stub(relayServer.contractInteractor, 'getBlock').rejects(Error('simulate getBlock failed'))
       try {
         await relayServer.intervalHandler()
       } finally {
@@ -366,7 +367,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         beforeEach(async function () {
           // this is a new worker account - create transaction
           await evmMineMany(1)
-          const latestBlock = (await env.web3.eth.getBlock('latest')).number
+          const latestBlock = (await env.web3.eth.getBlock('latest'))
           await env.relayServer._worker(latestBlock)
           const signer = env.relayServer.workerAddress
           await env.relayServer.transactionManager.sendTransaction({
@@ -854,18 +855,18 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   describe('server keepalive re-registration', function () {
     const refreshStateTimeoutBlocks = 1
     let relayServer: RelayServer
-    let latestBlockNumber: number
+    let latestBlock: BlockTransactionString
     let receipts: string[]
 
     async function checkRegistration (shouldRegister: boolean): Promise<void> {
-      latestBlockNumber = await env.web3.eth.getBlockNumber()
-      receipts = await relayServer._worker(latestBlockNumber)
+      latestBlock = await env.web3.eth.getBlock('latest')
+      receipts = await relayServer._worker(latestBlock)
       expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any,
         shouldRegister)
       if (shouldRegister) {
         await assertRelayAdded(receipts, relayServer, false)
-        latestBlockNumber = await env.web3.eth.getBlockNumber()
-        receipts = await relayServer._worker(latestBlockNumber)
+        latestBlock = await env.web3.eth.getBlock('latest')
+        receipts = await relayServer._worker(latestBlock)
         expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any,
           false)
       }
@@ -911,7 +912,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
   describe('listener task', function () {
     let relayServer: RelayServer
-    let origWorker: (blockNumber: number) => Promise<PrefixedHexString[]>
+    let origWorker: (block: BlockTransactionString) => Promise<PrefixedHexString[]>
     let started: boolean
     beforeEach(function () {
       relayServer = env.relayServer
@@ -990,7 +991,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       await env.relayServer.createRelayTransaction(req)
       // await relayTransaction(relayTransactionParams2, options2, { paymaster: rejectingPaymaster.address }, false)
       const currentBlock = await env.web3.eth.getBlock('latest')
-      await server._worker(currentBlock.number)
+      await server._worker(currentBlock)
       assert.isTrue(server.alerted, 'server not alerted')
       assert.equal(server.alertedByTransactionBlockTimestamp, currentBlock.timestamp, 'server alerted block incorrect')
     }
@@ -1009,11 +1010,11 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     it('should exit alerted state after the configured blocks delay', async function () {
       await increaseTime(newServer.config.alertedDelaySeconds - 1)
       let latestBlock = await env.web3.eth.getBlock('latest')
-      await newServer._worker(latestBlock.number)
+      await newServer._worker(latestBlock)
       assert.isTrue(newServer.alerted, 'server not alerted')
       await evmMineMany(2)
       latestBlock = await env.web3.eth.getBlock('latest')
-      await newServer._worker(latestBlock.number)
+      await newServer._worker(latestBlock)
       assert.isFalse(newServer.alerted, 'server alerted')
     })
   })
