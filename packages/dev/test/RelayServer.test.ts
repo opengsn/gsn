@@ -375,6 +375,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
             serverAction: ServerAction.VALUE_TRANSFER,
             destination: accounts[0],
             creationBlockNumber: 0,
+            creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
             creationBlockTimestamp: 0
           })
         })
@@ -629,6 +630,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
   describe('withdrawToOwnerIfNeeded', function () {
     let currentBlockNumber: number
+    let currentBlockHash: string
     let currentBlockTimestamp: number
     const withdrawToOwnerOnBalance = 3e18
     beforeEach(async function () {
@@ -636,6 +638,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, withdrawToOwnerOnBalance)
       const latestBlock = await env.web3.eth.getBlock('latest')
       currentBlockNumber = latestBlock.number
+      currentBlockHash = latestBlock.hash
       currentBlockTimestamp = toNumber(latestBlock.timestamp)
     })
     afterEach(async function () {
@@ -644,7 +647,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     it('should not withdraw if relayer is not ready', async function () {
       env.relayServer.setReadyState(false)
       const serverSpy = sinon.spy(env.relayServer)
-      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockTimestamp)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockHash, currentBlockTimestamp)
       assert.deepEqual(txHashes, [])
       sinon.assert.calledOnce(serverSpy.isReady)
       assert.isFalse(serverSpy.isReady.returnValues[0])
@@ -654,7 +657,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       await env.newServerInstance({}, getTemporaryWorkdirs())
       assert.equal(env.relayServer.config.withdrawToOwnerOnBalance, undefined)
       const serverSpy = sinon.spy(env.relayServer)
-      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockTimestamp)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockHash, currentBlockTimestamp)
       assert.deepEqual(txHashes, [])
       sinon.assert.calledOnce(serverSpy.isReady)
       assert.isTrue(serverSpy.isReady.returnValues[0])
@@ -674,7 +677,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const managerHubBalanceBefore = await env.relayHub.balanceOf(env.relayServer.managerAddress)
       assert.isTrue(managerHubBalanceBefore.gte(toBN(withdrawToOwnerOnBalance).add(reserveBalance)))
       const withdrawalAmount = managerHubBalanceBefore.sub(reserveBalance)
-      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockTimestamp)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockHash, currentBlockTimestamp)
       const balanceAfter = await env.web3.eth.getBalance(owner)
       assert.deepEqual(txHashes.length, 1)
       assert.equal(balanceBefore.add(withdrawalAmount).toString(), balanceAfter)
@@ -684,7 +687,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         loggerSpy
       )
       sinon.assert.calledWith(loggerSpy, `Withdrew ${withdrawalAmount.toString()} to owner`)
-      sinon.assert.calledWith(sendBalanceSpy, currentBlockNumber, currentBlockTimestamp, withdrawalAmount)
+      sinon.assert.calledWith(sendBalanceSpy, currentBlockNumber, currentBlockHash, currentBlockTimestamp, withdrawalAmount)
     })
 
     it('should not withdraw to owner when hub balance is too low', async function () {
@@ -701,7 +704,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const managerHubBalanceBefore = await env.relayHub.balanceOf(env.relayServer.managerAddress)
       assert.isTrue(managerHubBalanceBefore.gte(toBN(withdrawToOwnerOnBalance)))
       assert.isTrue(managerHubBalanceBefore.lt(toBN(withdrawToOwnerOnBalance).add(reserveBalance)))
-      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockTimestamp)
+      const txHashes = await env.relayServer.withdrawToOwnerIfNeeded(currentBlockNumber, currentBlockHash, currentBlockTimestamp)
       const balanceAfter = await env.web3.eth.getBalance(owner)
       assert.deepEqual(txHashes.length, 0)
       assert.equal(balanceBefore.toString(), balanceAfter)
@@ -733,6 +736,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
         creationBlockNumber: 0,
+        creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
         creationBlockTimestamp: 0,
         value: toHex(workerBalanceBefore.sub(txCost))
       })
@@ -765,7 +769,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       await env.web3.eth.sendTransaction(
         { from: accounts[0], to: relayServer.workerAddress, value: relayServer.config.workerTargetBalance })
       const currentBlockNumber = await env.web3.eth.getBlockNumber()
-      const receipts = await relayServer.replenishServer(workerIndex, 0, 0)
+      const receipts = await relayServer.replenishServer(workerIndex, 0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
       assert.deepEqual(receipts, [])
       assert.equal(currentBlockNumber, await env.web3.eth.getBlockNumber())
     })
@@ -777,6 +781,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         signer: relayServer.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
+        creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
         creationBlockTimestamp: 0,
         destination: accounts[0],
         maxFeePerGas: gasPrice,
@@ -794,7 +799,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.isTrue(managerHubBalanceBefore.gte(refill), 'manager hub balance should be sufficient to replenish worker')
       assert.isTrue(managerEthBalanceBefore.lt(toBN(relayServer.config.managerTargetBalance.toString())),
         'manager eth balance should be lower than target to withdraw hub balance')
-      const receipts = await relayServer.replenishServer(workerIndex, 0, 0)
+      const receipts = await relayServer.replenishServer(workerIndex, 0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
       const totalTxCosts = await getTotalTxCosts(receipts, await env.web3.eth.getGasPrice())
       const managerHubBalanceAfter = await env.relayHub.balanceOf(relayServer.managerAddress)
       assert.isTrue(managerHubBalanceAfter.eqn(0), 'manager hub balance should be zero')
@@ -819,7 +824,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const refill = toBN(relayServer.config.workerTargetBalance).sub(workerBalanceBefore)
       assert.isTrue(managerHubBalanceBefore.lt(refill), 'manager hub balance should be insufficient to replenish worker')
       assert.isTrue(managerEthBalance.gte(refill), 'manager eth balance should be sufficient to replenish worker')
-      await relayServer.replenishServer(workerIndex, 0, 0)
+      await relayServer.replenishServer(workerIndex, 0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -831,6 +836,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         signer: relayServer.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
         creationBlockNumber: 0,
+        creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
         creationBlockTimestamp: 0,
         destination: accounts[0],
         maxFeePerGas: gasPrice,
@@ -847,7 +853,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       relayServer.on('fundingNeeded', () => {
         fundingNeededEmitted = true
       })
-      await relayServer.replenishServer(workerIndex, 0, 0)
+      await relayServer.replenishServer(workerIndex, 0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
       assert.isTrue(fundingNeededEmitted, 'fundingNeeded not emitted')
     })
   })

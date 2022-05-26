@@ -39,6 +39,7 @@ export interface SendTransactionDetails {
   maxFeePerGas?: IntString
   maxPriorityFeePerGas?: IntString
   creationBlockNumber: number
+  creationBlockHash: string
   creationBlockTimestamp: number
 }
 
@@ -80,14 +81,14 @@ export class TransactionManager {
     }
   }
 
-  printBoostedTransactionLog (txHash: string, creationBlockNumber: number, maxFeePerGas: number, maxPriorityFeePerGas: number, isMaxGasPriceReached: boolean): void {
+  printBoostedTransactionLog (txHash: string, creationBlockNumber: number, creationBlockHash: string, maxFeePerGas: number, maxPriorityFeePerGas: number, isMaxGasPriceReached: boolean): void {
     const maxFeePerGasHumanReadableOld: string = new EthVal(maxFeePerGas).toGwei().toFixed(4)
     const maxPriorityFeePerGasHumanReadableOld: string = new EthVal(maxPriorityFeePerGas).toGwei().toFixed(4)
     this.logger.info(`Boosting stale transaction:
 hash                     | ${txHash}
 maxFeePerGas             | ${maxFeePerGas} (${maxFeePerGasHumanReadableOld} gwei) ${isMaxGasPriceReached ? chalk.red('(MAX GAS PRICE REACHED)') : ''}
 maxPriorityFeePerGas     | ${maxPriorityFeePerGas} (${maxPriorityFeePerGasHumanReadableOld} gwei) ${isMaxGasPriceReached ? chalk.red('(MAX GAS PRICE REACHED)') : ''}
-created at               | block #${creationBlockNumber}
+created at               | block #${creationBlockNumber} hash ${creationBlockHash}
 `)
   }
 
@@ -195,6 +196,7 @@ data                     | ${transaction.data}
         attempts: 1,
         serverAction: txDetails.serverAction,
         creationBlockNumber: txDetails.creationBlockNumber,
+        creationBlockHash: txDetails.creationBlockHash,
         creationBlockTimestamp: txDetails.creationBlockTimestamp
       }
       storedTx = createStoredTransaction(signedTransaction.signedEthJsTx, metadata)
@@ -225,6 +227,7 @@ data                     | ${transaction.data}
       from: tx.from,
       serverAction: tx.serverAction,
       creationBlockNumber: tx.creationBlockNumber,
+      creationBlockHash: tx.creationBlockHash,
       creationBlockTimestamp: tx.creationBlockTimestamp,
       minedBlockNumber: tx.minedBlockNumber
     }
@@ -272,7 +275,7 @@ data                     | ${transaction.data}
       await this.updateTransactionWithAttempt(signedTransaction.signedEthJsTx, tx, currentBlockNumber, currentBlockTimestamp)
     // Print boosted-log only if transaction is boosted (might be resent without boosting)
     if (tx.maxFeePerGas < storedTx.maxFeePerGas || tx.maxPriorityFeePerGas < storedTx.maxPriorityFeePerGas) {
-      this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.maxFeePerGas, tx.maxPriorityFeePerGas, isMaxGasPriceReached)
+      this.printBoostedTransactionLog(tx.txId, tx.creationBlockNumber, tx.creationBlockHash, tx.maxFeePerGas, tx.maxPriorityFeePerGas, isMaxGasPriceReached)
     }
     this.printSendTransactionLog(storedTx, tx.from)
     const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
@@ -401,7 +404,7 @@ data                     | ${transaction.data}
     const lastSentAtBlockTimestamp = oldestPendingTx.boostBlockTimestamp ?? oldestPendingTx.creationBlockTimestamp
     // If the tx is still pending, check how long ago we sent it, and resend it if needed
     if (currentBlockTimestamp - lastSentAtBlockTimestamp < this.config.pendingTransactionTimeoutSeconds) {
-      this.logger.debug(`${signer} : awaiting transaction with ID: ${oldestPendingTx.txId} to be mined. creationBlockNumber: ${oldestPendingTx.creationBlockNumber} nonce: ${nonce}`)
+      this.logger.debug(`${signer} : awaiting transaction with ID: ${oldestPendingTx.txId} to be mined. creationBlockNumber: ${oldestPendingTx.creationBlockNumber} creationBlockHash: ${oldestPendingTx.creationBlockHash} nonce: ${nonce}`)
       return boostedTransactions
     }
 

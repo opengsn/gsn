@@ -421,13 +421,14 @@ returnValue        | ${viewRelayCallRet.returnValue}
         destination: req.metadata.relayHubAddress,
         gasLimit: maxPossibleGas,
         creationBlockNumber: currentBlock.number,
+        creationBlockHash: currentBlock.hash,
         creationBlockTimestamp: currentBlockTimestamp,
         maxFeePerGas: req.relayRequest.relayData.maxFeePerGas,
         maxPriorityFeePerGas: req.relayRequest.relayData.maxPriorityFeePerGas
       }
     const { signedTx } = await this.transactionManager.sendTransaction(details)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
-    await this.replenishServer(0, currentBlock.number, currentBlockTimestamp)
+    await this.replenishServer(0, currentBlock.number, currentBlock.hash, currentBlockTimestamp)
     return signedTx
   }
 
@@ -546,6 +547,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   async replenishServer (
     workerIndex: number,
     currentBlockNumber: number,
+    currentBlockHash: string,
     currentBlockTimestamp: number
   ): Promise<PrefixedHexString[]> {
     const transactionHashes: PrefixedHexString[] = []
@@ -568,6 +570,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
         serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
         destination: this.relayHubContract.address,
         creationBlockNumber: currentBlockNumber,
+        creationBlockHash: currentBlockHash,
         creationBlockTimestamp: currentBlockTimestamp,
         method
       }
@@ -590,6 +593,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
           destination: this.workerAddress,
           value: toHex(refill),
           creationBlockNumber: currentBlockNumber,
+          creationBlockHash: currentBlockHash,
           creationBlockTimestamp: currentBlockTimestamp
         }
         const { transactionHash } = await this.transactionManager.sendTransaction(details)
@@ -640,7 +644,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       return []
     }
     const currentBlockTimestamp = toNumber(block.timestamp)
-    await this.withdrawToOwnerIfNeeded(block.number, currentBlockTimestamp)
+    await this.withdrawToOwnerIfNeeded(block.number, block.hash, currentBlockTimestamp)
     this.lastRefreshBlock = block.number
     await this._refreshPriorityFee()
     await this.registrationManager.refreshBalance()
@@ -684,7 +688,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
     await this.handlePastHubEvents(currentBlock, hubEventsSinceLastScan)
     const workerIndex = 0
-    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, currentBlock.number, currentBlockTimestamp))
+    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, currentBlock.number, currentBlock.hash, currentBlockTimestamp))
     const workerBalance = await this.getWorkerBalance(workerIndex)
     if (workerBalance.lt(toBN(this.config.workerMinBalance))) {
       this.logger.debug('Worker balance too low')
@@ -803,7 +807,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return getLatestEventData(events)
   }
 
-  async withdrawToOwnerIfNeeded (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
+  async withdrawToOwnerIfNeeded (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
     try {
       let txHashes: PrefixedHexString[] = []
       if (!this.isReady() || this.config.withdrawToOwnerOnBalance == null) {
@@ -817,7 +821,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
         return txHashes
       }
       const withdrawalAmount = managerHubBalance.sub(reserveBalance)
-      txHashes = txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(currentBlockNumber, currentBlockTimestamp, withdrawalAmount))
+      txHashes = txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(currentBlockNumber, currentBlockHash, currentBlockTimestamp, withdrawalAmount))
       this.logger.info(`Withdrew ${withdrawalAmount.toString()} to owner`)
       return txHashes
     } catch (e) {

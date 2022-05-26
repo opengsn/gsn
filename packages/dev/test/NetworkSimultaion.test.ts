@@ -185,7 +185,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
         const latestNonce = await env.web3.eth.getTransactionCount(storedTxs[0].from)
         assert.equal(storedTxs[0].nonce, latestNonce)
         const spy = sinon.spy(env.relayServer.logger, 'debug')
-        const message = `${storedTxs[0].from} : awaiting transaction with ID: ${storedTxs[0].txId} to be mined. creationBlockNumber: ${storedTxs[0].creationBlockNumber} nonce: ${storedTxs[0].nonce}`
+        const message = `${storedTxs[0].from} : awaiting transaction with ID: ${storedTxs[0].txId} to be mined. creationBlockNumber: ${storedTxs[0].creationBlockNumber} creationBlockHash: ${storedTxs[0].creationBlockHash} nonce: ${storedTxs[0].nonce}`
         let latestBlock = await web3.eth.getBlock('latest')
         await env.relayServer._boostStuckPendingTransactions(latestBlock.number, toNumber(latestBlock.timestamp))
         sinon.assert.calledWith(spy, message)

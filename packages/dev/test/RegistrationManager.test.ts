@@ -325,6 +325,7 @@ contract('RegistrationManager', function (accounts) {
           serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
           destination: env.relayHub.address,
           creationBlockNumber: 0,
+          creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
           creationBlockTimestamp: 0,
           method
         })
@@ -512,7 +513,7 @@ contract('RegistrationManager', function (accounts) {
         let allStoredTransactions = await newServer.txStoreManager.getAll()
         assert.equal(allStoredTransactions.length, 1)
         assert.equal(allStoredTransactions[0].serverAction, ServerAction.SET_OWNER)
-        const receipts = await newServer.registrationManager.attemptRegistration(0, 0)
+        const receipts = await newServer.registrationManager.attemptRegistration(0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
         await assertRelayAdded(receipts, newServer)
         allStoredTransactions = await newServer.txStoreManager.getAll()
         assert.equal(allStoredTransactions.length, 3)
@@ -547,7 +548,7 @@ contract('RegistrationManager', function (accounts) {
       it('should not attempt registration if unstake delay is too low on hub', async function () {
         await env.stakeAndAuthorizeHub(ether('1'), unstakeDelay - 1)
         await newServer.registrationManager.refreshStake()
-        const receipts = await newServer.registrationManager.attemptRegistration(0, 0)
+        const receipts = await newServer.registrationManager.attemptRegistration(0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
         assert.equal(receipts.length, 0)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
@@ -556,7 +557,7 @@ contract('RegistrationManager', function (accounts) {
       it('should not attempt registration if stake amount is too low on hub', async function () {
         await env.stakeAndAuthorizeHub(ether('0.1'), unstakeDelay)
         await newServer.registrationManager.refreshStake()
-        const receipts = await newServer.registrationManager.attemptRegistration(0, 0)
+        const receipts = await newServer.registrationManager.attemptRegistration(0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
         assert.equal(receipts.length, 0)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
@@ -574,7 +575,7 @@ contract('RegistrationManager', function (accounts) {
           from: env.relayOwner
         })
         await newServer.registrationManager.refreshStake()
-        const receipts = await newServer.registrationManager.attemptRegistration(0, 0)
+        const receipts = await newServer.registrationManager.attemptRegistration(0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
         assert.equal(receipts.length, 0)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage2)
