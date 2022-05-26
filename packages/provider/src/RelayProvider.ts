@@ -437,8 +437,8 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     return await this.relayClient.calculateGasFees()
   }
 
-  addAccount (privateKey: PrefixedHexString): void {
-    this.relayClient.addAccount(privateKey)
+  addAccount (privateKey: PrefixedHexString): AccountKeypair {
+    return this.relayClient.addAccount(privateKey)
   }
 
   _getAccounts (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
