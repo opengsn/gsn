@@ -187,7 +187,7 @@ export class RegistrationManager {
         // TODO: _isSetOwnerCalled is different from 'isActionPending' only cause we handle owner outside the event loop
         if (!this._isSetOwnerCalled) {
           this._isSetOwnerCalled = true
-          transactionHashes = transactionHashes.concat(await this.setOwnerInStakeManager(currentBlock.number, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this.setOwnerInStakeManager(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
         }
       } else {
         this.logger.debug('owner is not set and balance requirement is not satisfied')
@@ -225,7 +225,7 @@ export class RegistrationManager {
         case StakeWithdrawn:
           this.logger.warn(`Handling StakeWithdrawn event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           await this.refreshStake()
-          transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock.number, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock.number, currentBlock.hash, currentBlockTimestamp))
           break
       }
     }
@@ -237,7 +237,7 @@ export class RegistrationManager {
     for (const eventData of this._extractDuePendingEvents(currentBlockTime)) {
       switch (eventData.event) {
         case HubUnauthorized:
-          transactionHashes = transactionHashes.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock.number, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock.number, currentBlock.hash, currentBlockTimestamp))
           break
       }
     }
@@ -245,7 +245,7 @@ export class RegistrationManager {
     const isRegistrationPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlock.number, this.config.recentActionAvoidRepeatDistanceBlocks)
     if (!(isRegistrationPending || isRegistrationCorrect) || forceRegistration) {
       this.logger.debug(`will attempt registration: isRegistrationPending=${isRegistrationPending} isRegistrationCorrect=${isRegistrationCorrect} forceRegistration=${forceRegistration}`)
-      transactionHashes = transactionHashes.concat(await this.attemptRegistration(currentBlock.number, currentBlockTimestamp))
+      transactionHashes = transactionHashes.concat(await this.attemptRegistration(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
     }
     return transactionHashes
   }
@@ -300,13 +300,13 @@ export class RegistrationManager {
     }
   }
 
-  async _handleHubUnauthorizedEvent (dlog: EventData, currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
-    return await this.withdrawAllFunds(false, currentBlockNumber, currentBlockTimestamp)
+  async _handleHubUnauthorizedEvent (dlog: EventData, currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
+    return await this.withdrawAllFunds(false, currentBlockNumber, currentBlockHash, currentBlockTimestamp)
   }
 
-  async _handleStakeWithdrawnEvent (dlog: EventData, currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
+  async _handleStakeWithdrawnEvent (dlog: EventData, currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
     this.logger.warn(`Handling StakeWithdrawn event: ${JSON.stringify(dlog)}`)
-    return await this.withdrawAllFunds(true, currentBlockNumber, currentBlockTimestamp)
+    return await this.withdrawAllFunds(true, currentBlockNumber, currentBlockHash, currentBlockTimestamp)
   }
 
   /**
@@ -314,12 +314,12 @@ export class RegistrationManager {
    *        Note that more than one relay process could be using the same manager account.
    * @param currentBlock
    */
-  async withdrawAllFunds (withdrawManager: boolean, currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
+  async withdrawAllFunds (withdrawManager: boolean, currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
     let transactionHashes: PrefixedHexString[] = []
-    transactionHashes = transactionHashes.concat(await this._sendManagerHubBalanceToOwner(currentBlockNumber, currentBlockTimestamp))
-    transactionHashes = transactionHashes.concat(await this._sendWorkersEthBalancesToOwner(currentBlockNumber, currentBlockTimestamp))
+    transactionHashes = transactionHashes.concat(await this._sendManagerHubBalanceToOwner(currentBlockNumber, currentBlockHash, currentBlockTimestamp))
+    transactionHashes = transactionHashes.concat(await this._sendWorkersEthBalancesToOwner(currentBlockNumber, currentBlockHash, currentBlockTimestamp))
     if (withdrawManager) {
-      transactionHashes = transactionHashes.concat(await this._sendManagerEthBalanceToOwner(currentBlockNumber, currentBlockTimestamp))
+      transactionHashes = transactionHashes.concat(await this._sendManagerEthBalanceToOwner(currentBlockNumber, currentBlockHash, currentBlockTimestamp))
     }
 
     this.eventEmitter.emit('unstaked')
@@ -364,7 +364,7 @@ export class RegistrationManager {
     }
   }
 
-  async addRelayWorker (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString> {
+  async addRelayWorker (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString> {
     // register on chain
     const addRelayWorkerMethod = await this.contractInteractor.getAddRelayWorkersMethod([this.workerAddress])
     const details: SendTransactionDetails = {
@@ -373,6 +373,7 @@ export class RegistrationManager {
       method: addRelayWorkerMethod,
       destination: this.hubAddress,
       creationBlockNumber: currentBlockNumber,
+      creationBlockHash: currentBlockHash,
       creationBlockTimestamp: currentBlockTimestamp
     }
     this.logger.info(`adding relay worker ${this.workerAddress}`)
@@ -383,6 +384,7 @@ export class RegistrationManager {
   // TODO: extract worker registration sub-flow
   async attemptRegistration (
     currentBlockNumber: number,
+    currentBlockHash: string,
     currentBlockTimestamp: number
   ): Promise<PrefixedHexString[]> {
     if (this.balanceRequired == null || this.stakeRequired == null) {
@@ -410,7 +412,7 @@ export class RegistrationManager {
     const addWorkersPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.ADD_WORKER, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
     let skipGasEstimationForRegisterRelay = false
     if (!(workersAdded || addWorkersPending)) {
-      const txHash = await this.addRelayWorker(currentBlockNumber, currentBlockTimestamp)
+      const txHash = await this.addRelayWorker(currentBlockNumber, currentBlockHash, currentBlockTimestamp)
       transactions = transactions.concat(txHash)
       skipGasEstimationForRegisterRelay = true
     }
@@ -426,6 +428,7 @@ export class RegistrationManager {
       method: registerMethod,
       destination: this.contractInteractor.relayRegistrar.address,
       creationBlockNumber: currentBlockNumber,
+      creationBlockHash: currentBlockHash,
       creationBlockTimestamp: currentBlockTimestamp
     }
     const { transactionHash } = await this.transactionManager.sendTransaction(details)
@@ -434,7 +437,7 @@ export class RegistrationManager {
     return transactions
   }
 
-  async _sendManagerEthBalanceToOwner (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
+  async _sendManagerEthBalanceToOwner (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
     // todo add better maxFeePerGas, maxPriorityFeePerGas
     const gasPrice = await this.contractInteractor.getGasPrice()
     const transactionHashes: PrefixedHexString[] = []
@@ -454,6 +457,7 @@ export class RegistrationManager {
         maxPriorityFeePerGas: gasPrice,
         value: toHex(managerBalance.sub(txCost)),
         creationBlockNumber: currentBlockNumber,
+        creationBlockHash: currentBlockHash,
         creationBlockTimestamp: currentBlockTimestamp
       }
       const { transactionHash } = await this.transactionManager.sendTransaction(details)
@@ -464,7 +468,7 @@ export class RegistrationManager {
     return transactionHashes
   }
 
-  async _sendWorkersEthBalancesToOwner (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
+  async _sendWorkersEthBalancesToOwner (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
     // sending workers' balance to owner (currently one worker, todo: extend to multiple)
     const transactionHashes: PrefixedHexString[] = []
     // todo add better maxFeePerGas, maxPriorityFeePerGas
@@ -483,6 +487,7 @@ export class RegistrationManager {
         maxPriorityFeePerGas: gasPrice,
         value: toHex(workerBalance.sub(txCost)),
         creationBlockNumber: currentBlockNumber,
+        creationBlockHash: currentBlockHash,
         creationBlockTimestamp: currentBlockTimestamp
       }
       const { transactionHash } = await this.transactionManager.sendTransaction(details)
@@ -495,6 +500,7 @@ export class RegistrationManager {
 
   async _sendManagerHubBalanceToOwner (
     currentBlockNumber: number,
+    currentBlockHash: string,
     currentBlockTimestamp: number,
     amount?: BN): Promise<PrefixedHexString[]> {
     if (this.ownerAddress == null) {
@@ -521,6 +527,7 @@ export class RegistrationManager {
         serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
         destination: this.hubAddress,
         creationBlockNumber: currentBlockNumber,
+        creationBlockHash: currentBlockHash,
         creationBlockTimestamp: currentBlockTimestamp,
         method
       }
@@ -602,7 +609,7 @@ TxHash    | ${decodedEvent.transactionHash}
   }
 
   // TODO: duplicated code; another leaked web3 'method' abstraction
-  async setOwnerInStakeManager (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString> {
+  async setOwnerInStakeManager (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString> {
     const setRelayManagerMethod = await this.contractInteractor.getSetRelayManagerMethod(this.config.ownerAddress)
     const stakeManagerAddress = this.contractInteractor.stakeManagerAddress()
     const details: SendTransactionDetails = {
@@ -611,6 +618,7 @@ TxHash    | ${decodedEvent.transactionHash}
       method: setRelayManagerMethod,
       destination: stakeManagerAddress,
       creationBlockNumber: currentBlockNumber,
+      creationBlockHash: currentBlockHash,
       creationBlockTimestamp: currentBlockTimestamp
     }
     this.logger.info(`setting relay owner ${this.config.ownerAddress} at StakeManager ${stakeManagerAddress}`)
