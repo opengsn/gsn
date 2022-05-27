@@ -1158,6 +1158,19 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.relayRegistrar.getRelayRegistrationMaxAge()
   }
 
+  async getRelayInfo (relayHubAddress: string, relayManagerAddress: string): Promise<{
+    lastSeenBlockNumber: BN
+    lastSeenTimestamp: BN
+    firstSeenBlockNumber: BN
+    firstSeenTimestamp: BN
+    baseRelayFee: BN
+    pctRelayFee: BN
+    urlParts: string[]
+    relayManager: string
+  }> {
+    return await this.relayRegistrar.getRelayInfo(relayHubAddress, relayManagerAddress)
+  }
+
   async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
     // each topic in getPastEvent is either a string or array-of-strings, to search for any.
     const extraTopics = subsetManagers == null ? [] : [subsetManagers?.map(address2topic)] as any

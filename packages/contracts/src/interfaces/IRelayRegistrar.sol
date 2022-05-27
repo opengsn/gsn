@@ -62,7 +62,7 @@ interface IRelayRegistrar is IERC165 {
     function getCreationBlock() external view returns (uint256);
 
     /**
-     * @return The maximum age the relay is considered registered by default by this `RelayRegistrar`.
+     * @return The maximum age the relay is considered registered by default by this `RelayRegistrar`, in seconds.
      */
     function getRelayRegistrationMaxAge() external view returns (uint256);
 
