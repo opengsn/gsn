@@ -295,7 +295,7 @@ export class ServerTestEnvironment {
     txHash: PrefixedHexString
   }> {
     const req = await this.createRelayHttpRequest(overrideDetails)
-    const signedTx = await this.relayServer.createRelayTransaction(req)
+    const { signedTx } = await this.relayServer.createRelayTransaction(req)
     const txHash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
 
     if (assertRelayed) {

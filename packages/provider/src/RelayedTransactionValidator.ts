@@ -1,13 +1,53 @@
-import { TransactionFactory } from '@ethereumjs/tx'
-import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import Web3 from 'web3'
+import { PrefixedHexString, toBuffer, bufferToHex } from 'ethereumjs-util'
+import { TypedTransaction, Transaction, FeeMarketEIP1559Transaction, TransactionFactory } from '@ethereumjs/tx'
+import { toBN } from 'web3-utils'
 
+import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
+import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { isSameAddress } from '@opengsn/common/dist/Utils'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { GSNConfig } from './GSNConfigurator'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { toBN } from 'web3-utils'
+
+export interface GasPriceValidationResult {
+  isTransactionTypeValid: boolean
+  isFeeMarket1559Transaction: boolean
+  isLegacyGasPriceValid: boolean
+  isMaxFeePerGasValid: boolean
+  isMaxPriorityFeePerGasValid: boolean
+}
+
+export interface TransactionValidationResult {
+  gasPriceValidationResult: GasPriceValidationResult
+  nonceGapFilledValidationResult: TransactionValidationResult[]
+  isNonceGapFilledSizeValid: boolean
+  isTransactionTargetValid: boolean
+  isTransactionSenderValid: boolean
+  isTransactionContentValid: boolean
+  isTransactionNonceValid: boolean
+}
+
+export function isTransactionValid (result: TransactionValidationResult): boolean {
+  const isValid1559GasFee =
+    result.gasPriceValidationResult.isFeeMarket1559Transaction &&
+    result.gasPriceValidationResult.isMaxFeePerGasValid &&
+    result.gasPriceValidationResult.isMaxPriorityFeePerGasValid
+  const isGasPriceValid =
+    result.gasPriceValidationResult.isTransactionTypeValid &&
+    (result.gasPriceValidationResult.isLegacyGasPriceValid || isValid1559GasFee)
+
+  // this call is 'recursive' but transactions inside nonce gap have empty arrays here and function is not called
+  const isNonceGapFilled = !result.nonceGapFilledValidationResult.map(it => isTransactionValid(it)).includes(false)
+  return isGasPriceValid &&
+    isNonceGapFilled &&
+    result.isTransactionTargetValid &&
+    result.isTransactionSenderValid &&
+    result.isTransactionContentValid &&
+    result.isNonceGapFilledSizeValid &&
+    result.isTransactionNonceValid
+}
 
 export class RelayedTransactionValidator {
   private readonly contractInteractor: ContractInteractor
@@ -23,77 +63,132 @@ export class RelayedTransactionValidator {
   /**
    * Decode the signed transaction returned from the Relay Server, compare it to the
    * requested transaction and validate its signature.
-   * @returns a signed {@link Transaction} instance for broadcasting, or null if returned
-   * transaction is not valid.
+   * @returns true if relay response is valid, false otherwise
    */
+  validateTransactionInNonceGap (request: RelayTransactionRequest, transaction: TypedTransaction, expectedNonce: number): TransactionValidationResult {
+    const isTransactionSenderValid = this._validateTransactionSender(request, transaction)
+    const isTransactionTargetValid = this.validateTransactionTarget(transaction)
+    const isTransactionContentValid = this._validateTransactionMethodSignature(transaction)
+    const gasPriceValidationResult = this._validateGasPrice(request, transaction)
+    const isTransactionNonceValid = parseInt(transaction.nonce.toString()) === expectedNonce
+    return {
+      nonceGapFilledValidationResult: [],
+      isNonceGapFilledSizeValid: true,
+      isTransactionTargetValid,
+      isTransactionSenderValid,
+      isTransactionContentValid,
+      gasPriceValidationResult,
+      isTransactionNonceValid
+    }
+  }
+
   validateRelayResponse (
     request: RelayTransactionRequest,
-    returnedTx: PrefixedHexString
+    returnedTx: PrefixedHexString,
+    nonceGapFilled: PrefixedHexString[]
+  ): TransactionValidationResult {
+    const transaction = TransactionFactory.fromSerializedData(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
+    this.logger.debug(`returnedTx: ${JSON.stringify(transaction.toJSON(), null, 2)}`)
+
+    const nonce = parseInt(transaction.nonce.toString())
+    const expectedNonceGapLength = nonce - request.metadata.relayLastKnownNonce
+    const isNonceGapFilledSizeValid = nonceGapFilled.length === expectedNonceGapLength
+    const isTransactionTargetValid = this.validateTransactionTarget(transaction)
+    const isTransactionSenderValid = this._validateTransactionSender(request, transaction)
+    const isTransactionContentValid = this._validateTransactionContent(request, transaction)
+    const gasPriceValidationResult = this._validateGasPrice(request, transaction)
+    const isTransactionNonceValid = nonce > request.metadata.relayMaxNonce
+    const nonceGapFilledValidationResult =
+      this._validateNonceGapFilled(
+        request,
+        nonceGapFilled
+      )
+
+    return {
+      gasPriceValidationResult,
+      isTransactionTargetValid,
+      isTransactionSenderValid,
+      isTransactionContentValid,
+      isTransactionNonceValid,
+      isNonceGapFilledSizeValid,
+      nonceGapFilledValidationResult
+    }
+  }
+
+  private validateTransactionTarget (transaction: TypedTransaction): boolean {
+    const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress
+    return transaction.to != null && relayHubAddress != null && isSameAddress(transaction.to.toString(), relayHubAddress)
+  }
+
+  _validateTransactionSender (
+    request: RelayTransactionRequest,
+    transaction: TypedTransaction
   ): boolean {
-    const tx = TransactionFactory.fromSerializedData(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
-    const transaction = {
-      signer: tx.getSenderAddress().toString(),
-      ...tx.toJSON()
-    }
+    const signer = transaction.getSenderAddress().toString()
+    return isSameAddress(request.relayRequest.relayData.relayWorker, signer)
+  }
 
-    if (transaction.to == null) {
-      throw new Error('transaction.to must be defined')
-    }
-    if (transaction.s == null || transaction.r == null || transaction.v == null) {
-      throw new Error('tx signature must be defined')
-    }
+  /**
+   * For transactions that are filling the nonce gap, we only check that the transaction is not penalizable.
+   */
+  _validateTransactionMethodSignature (transaction: TypedTransaction): boolean {
+    const relayCallSignature = new Web3().eth.abi.encodeFunctionSignature(RelayHubABI.find(it => it.name === 'relayCall') as any)
+    return bufferToHex(transaction.data).startsWith(relayCallSignature)
+  }
 
-    this.logger.debug(`returnedTx: ${JSON.stringify(transaction, null, 2)}`)
-
-    const signer = transaction.signer
-
+  _validateTransactionContent (request: RelayTransactionRequest, transaction: TypedTransaction): boolean {
     const relayRequestAbiEncode = this.contractInteractor.encodeABI({
       relayRequest: request.relayRequest,
       signature: request.metadata.signature,
       approvalData: request.metadata.approvalData,
       maxAcceptanceBudget: request.metadata.maxAcceptanceBudget
     })
+    return relayRequestAbiEncode === bufferToHex(transaction.data)
+  }
 
-    const relayHubAddress = this.contractInteractor.getDeployment().relayHubAddress
-    if (relayHubAddress == null) {
-      throw new Error('no hub address')
-    }
+  // throw new Error(`Relay used a tx nonce higher than requested. Requested ${request.metadata.relayMaxNonce} got ${receivedNonce}`)
 
-    if (
-      isSameAddress(transaction.to, relayHubAddress) &&
-      relayRequestAbiEncode === transaction.data &&
-      isSameAddress(request.relayRequest.relayData.relayWorker, signer)
-    ) {
-      if (transaction.gasPrice != null) {
-        if (toBN(transaction.gasPrice).lt(toBN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
-          throw new Error(`Relay Server signed gas price too low (${transaction.gasPrice}). Requested transaction with gas price at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
-        }
-      } else if (transaction.maxFeePerGas != null && transaction.maxPriorityFeePerGas != null) {
-        if (toBN(transaction.maxPriorityFeePerGas).lt(toBN(request.relayRequest.relayData.maxPriorityFeePerGas))) {
-          throw new Error(`Relay Server signed max priority fee too low (${transaction.maxPriorityFeePerGas}). Requested transaction with priority fee at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
-        }
-        if (toBN(transaction.maxFeePerGas).lt(toBN(request.relayRequest.relayData.maxFeePerGas))) {
-          throw new Error(`Relay Server signed max fee too low (${transaction.maxFeePerGas}). Requested transaction with max fee at least ${request.relayRequest.relayData.maxFeePerGas}`)
-        }
-      } else {
-        throw new Error('Transaction must have either gasPrice or (maxFeePerGas and maxPriorityFeePerGas)')
-      }
-      // eslint-disable-next-line  @typescript-eslint/no-non-null-assertion
-      const receivedNonce = parseInt(transaction.nonce!)
-      if (receivedNonce > request.metadata.relayMaxNonce) {
-        // TODO: need to validate that client retries the same request and doesn't double-spend.
-        // Note that this transaction is totally valid from the EVM's point of view
+  _validateGasPrice (request: RelayTransactionRequest, transaction: TypedTransaction): GasPriceValidationResult {
+    let isTransactionTypeValid = true
+    let isFeeMarket1559Transaction = false
+    let isLegacyGasPriceValid = false
+    let isMaxFeePerGasValid = false
+    let isMaxPriorityFeePerGasValid = false
 
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        throw new Error(`Relay used a tx nonce higher than requested. Requested ${request.metadata.relayMaxNonce} got ${receivedNonce}`)
-      }
-
-      this.logger.info('validateRelayResponse - valid transaction response')
-      return true
+    if (transaction instanceof Transaction) {
+      isLegacyGasPriceValid = transaction.gasPrice.gte(toBN(request.relayRequest.relayData.maxFeePerGas))
+      // throw new Error(`Relay Server signed gas price too low (${transaction.gasPrice}). Requested transaction with gas price at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
+    } else if (transaction instanceof FeeMarketEIP1559Transaction) {
+      isFeeMarket1559Transaction = true
+      isMaxPriorityFeePerGasValid = transaction.maxPriorityFeePerGas.gte(toBN(request.relayRequest.relayData.maxPriorityFeePerGas))
+      // throw new Error(`Relay Server signed max priority fee too low (${transaction.maxPriorityFeePerGas}). Requested transaction with priority fee at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
+      isMaxFeePerGasValid = transaction.maxFeePerGas.gte(toBN(request.relayRequest.relayData.maxFeePerGas))
+      // throw new Error(`Relay Server signed max fee too low (${transaction.maxFeePerGas}). Requested transaction with max fee at least ${request.relayRequest.relayData.maxFeePerGas}`)
     } else {
-      console.error('validateRelayResponse: req', relayRequestAbiEncode, relayHubAddress, request.relayRequest.relayData.relayWorker)
-      console.error('validateRelayResponse: rsp', transaction.data, transaction.to, signer)
-      return false
+      isTransactionTypeValid = false
+      // throw new Error('Transaction must have either gasPrice or (maxFeePerGas and maxPriorityFeePerGas)')
     }
+    return {
+      isTransactionTypeValid,
+      isFeeMarket1559Transaction,
+      isLegacyGasPriceValid,
+      isMaxFeePerGasValid,
+      isMaxPriorityFeePerGasValid
+    }
+  }
+
+  _validateNonceGapFilled (
+    request: RelayTransactionRequest,
+    transactionsInGap: PrefixedHexString[]
+  ): TransactionValidationResult[] {
+    const result: TransactionValidationResult[] = []
+    let expectedNonce = request.metadata.relayLastKnownNonce
+    for (const rawTransaction of transactionsInGap) {
+      const transaction = TransactionFactory.fromSerializedData(toBuffer(rawTransaction), this.contractInteractor.getRawTxOptions())
+      const validationResult = this.validateTransactionInNonceGap(request, transaction, expectedNonce)
+      result.push(validationResult)
+      expectedNonce++
+    }
+    return result
   }
 }

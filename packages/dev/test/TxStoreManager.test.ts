@@ -61,7 +61,8 @@ contract('TxStoreManager', function (accounts) {
       creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
       creationBlockTimestamp: 0,
       minedBlockNumber: 0,
-      attempts: 1
+      attempts: 1,
+      rawSerializedTx: '0xdeadbeef'
     }
     tx2 = {
       from: '',
@@ -78,7 +79,8 @@ contract('TxStoreManager', function (accounts) {
       creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
       creationBlockTimestamp: 0,
       minedBlockNumber: 0,
-      attempts: 1
+      attempts: 1,
+      rawSerializedTx: '0xdeadbeef'
     }
     tx3 =
       {
@@ -96,7 +98,8 @@ contract('TxStoreManager', function (accounts) {
         creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
         creationBlockTimestamp: 0,
         minedBlockNumber: 0,
-        attempts: 1
+        attempts: 1,
+        rawSerializedTx: '0xdeadbeef'
       }
   })
 

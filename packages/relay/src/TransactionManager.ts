@@ -27,6 +27,7 @@ import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 export interface SignedTransactionDetails {
   transactionHash: PrefixedHexString
   signedTx: PrefixedHexString
+  nonce: number
 }
 
 export interface SendTransactionDetails {
@@ -125,7 +126,7 @@ data                     | ${transaction.data}
     }
   }
 
-  async broadcastTransaction (signedTx: string, verifiedTxId: string): Promise<SignedTransactionDetails> {
+  async broadcastTransaction (signedTx: string, verifiedTxId: string, nonce: number): Promise<SignedTransactionDetails> {
     try {
       const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
       if (transactionHash.toLowerCase() !== verifiedTxId.toLowerCase()) {
@@ -133,11 +134,17 @@ data                     | ${transaction.data}
       }
       return {
         transactionHash,
-        signedTx
+        signedTx,
+        nonce
       }
     } catch (e: any) {
       throw new Error(`Tx broadcast failed: ${(e as Error).message}`)
     }
+  }
+
+  async getNonceGapFilled (signer: Address, fromNonce: number, toNonce: number): Promise<PrefixedHexString[]> {
+    const transactions = await this.txStoreManager.getTxsInNonceRange(signer, fromNonce, toNonce)
+    return transactions.map(it => it.rawSerializedTx)
   }
 
   async sendTransaction (txDetails: SendTransactionDetails): Promise<SignedTransactionDetails> {
@@ -164,8 +171,9 @@ data                     | ${transaction.data}
     const releaseMutex = await this.nonceMutex.acquire()
     let signedTransaction: SignedTransaction
     let storedTx: StoredTransaction
+    let nonce: number | undefined
     try {
-      const nonce = await this.pollNonce(txDetails.signer)
+      nonce = await this.pollNonce(txDetails.signer)
 
       let txToSign: TypedTransaction
       if (this.transactionType === TransactionType.TYPE_TWO) {
@@ -206,7 +214,7 @@ data                     | ${transaction.data}
     } finally {
       releaseMutex()
     }
-    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId)
+    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId, storedTx.nonce)
   }
 
   async updateTransactionWithMinedBlock (tx: StoredTransaction, minedBlockNumber: number): Promise<void> {
@@ -281,7 +289,7 @@ data                     | ${transaction.data}
     const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
     this.logger.debug(`Current account nonce for ${tx.from} is ${currentNonce}`)
 
-    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId)
+    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId, storedTx.nonce)
   }
 
   _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number, minMaxPriorityFee: number, minMaxFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {

@@ -380,7 +380,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
   }
 
-  async createRelayTransaction (req: RelayTransactionRequest): Promise<PrefixedHexString> {
+  async createRelayTransaction (req: RelayTransactionRequest): Promise<{ signedTx: PrefixedHexString, nonceGapFilled: PrefixedHexString[] }> {
     this.logger.debug(`dump request params: ${JSON.stringify(req)}`)
     if (!this.isReady()) {
       throw new Error('relay not ready')
@@ -426,10 +426,11 @@ returnValue        | ${viewRelayCallRet.returnValue}
         maxFeePerGas: req.relayRequest.relayData.maxFeePerGas,
         maxPriorityFeePerGas: req.relayRequest.relayData.maxPriorityFeePerGas
       }
-    const { signedTx } = await this.transactionManager.sendTransaction(details)
+    const { signedTx, nonce } = await this.transactionManager.sendTransaction(details)
+    const nonceGapFilled = await this.transactionManager.getNonceGapFilled(this.workerAddress, nonce, req.metadata.relayLastKnownNonce)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishServer(0, currentBlock.number, currentBlock.hash, currentBlockTimestamp)
-    return signedTx
+    return { signedTx, nonceGapFilled }
   }
 
   start (): void {

@@ -86,6 +86,14 @@ export class TxStoreManager {
     })
   }
 
+  async getTxsInNonceRange (signer: PrefixedHexString, fromNonce: number, toNonce: number): Promise<StoredTransaction[]> {
+    return await this.txstore.asyncFind({
+      $and: [
+        { 'nonceSigner.nonce': { $lte: toNonce, $gte: fromNonce } },
+        { 'nonceSigner.signer': signer.toLowerCase() }]
+    })
+  }
+
   async removeTxsUntilNonce (signer: PrefixedHexString, nonce: number): Promise<unknown> {
     ow(nonce, ow.number)
     ow(signer, ow.string)

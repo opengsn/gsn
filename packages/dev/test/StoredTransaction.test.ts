@@ -34,7 +34,8 @@ contract('StoredTransaction', function (accounts) {
       data: '0x12345678',
       nonce: 111,
       txId: '0x437a03ff976c96807aad1bc895f1535292e4ddf798fd8232600d89912961fc57',
-      value: `0x0${1e18.toString(16)}`
+      value: `0x0${1e18.toString(16)}`,
+      rawSerializedTx: '0xdeadbeef'
     }
     storedTx = { ...serialized, ...metadata }
     storedFromLegacyTx = { ...serialized, ...metadata, txId: '0xa0a6b19c7b6cad00eedb0442f55afa636b985a3b2477a1fc073c685ba3e4326b' }

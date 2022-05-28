@@ -34,6 +34,7 @@ export interface StoredTransactionSerialized {
   readonly nonce: number
   readonly txId: PrefixedHexString
   readonly value: PrefixedHexString
+  readonly rawSerializedTx: PrefixedHexString
 }
 
 export interface NonceSigner {
@@ -61,7 +62,8 @@ export function createStoredTransaction (tx: TypedTransaction, metadata: StoredT
       data: ethUtils.bufferToHex(tx.data),
       nonce: ethUtils.bufferToInt(tx.nonce.toBuffer()),
       txId: ethUtils.bufferToHex(tx.hash()),
-      value: ethUtils.bufferToHex(tx.value.toBuffer())
+      value: ethUtils.bufferToHex(tx.value.toBuffer()),
+      rawSerializedTx: ethUtils.bufferToHex(tx.serialize())
     }
   if (tx.supports(Capability.EIP1559FeeMarket)) {
     tx = tx as FeeMarketEIP1559Transaction

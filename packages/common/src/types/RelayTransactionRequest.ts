@@ -7,6 +7,7 @@ import { RelayRequest } from '../EIP712/RelayRequest'
 export interface RelayMetadata {
   approvalData: PrefixedHexString
   relayHubAddress: Address
+  relayLastKnownNonce: number
   relayMaxNonce: number
   signature: PrefixedHexString
   maxAcceptanceBudget: PrefixedHexString
