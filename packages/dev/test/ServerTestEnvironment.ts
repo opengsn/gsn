@@ -169,13 +169,14 @@ export class ServerTestEnvironment {
     // initialize server - gas price, stake, owner, etc, whatever
     let latestBlock = await this.web3.eth.getBlock('latest')
 
-    await this.relayServer._worker(latestBlock.number)
+    await this.relayServer._worker(latestBlock)
     latestBlock = await this.web3.eth.getBlock('latest')
     await this.stakeAndAuthorizeHub(ether('1'), unstakeDelay)
     // This run should call 'registerRelayServer' and 'addWorkers'
-    const receipts = await this.relayServer._worker(latestBlock.number)
+    const receipts = await this.relayServer._worker(latestBlock)
     await assertRelayAdded(receipts, this.relayServer) // sanity check
-    await this.relayServer._worker(latestBlock.number + 1)
+    latestBlock = await this.web3.eth.getBlock('latest')
+    await this.relayServer._worker(latestBlock)
   }
 
   _createKeyManager (workdir?: string): KeyManager {
