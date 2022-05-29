@@ -347,6 +347,51 @@ contract('RelayProvider', function (accounts) {
       // I don't want to hard-code tx hash, so for now just checking it is there
       assert.equal(66, response.result.length)
     })
+    it('should call _fixGasFees()', async function () {
+      const spyFixGasFees = sinon.spy(relayProvider, '_fixGasFees')
+      await new Promise((resolve, reject) => {
+        void relayProvider._ethSendTransaction(jsonRpcPayload, (error: Error | null, result: JsonRpcResponse | undefined): void => {
+          if (error != null) {
+            reject(error)
+          } else {
+            // @ts-ignore
+            resolve(result)
+          }
+        })
+      })
+      sinon.assert.calledOnce(spyFixGasFees)
+      sinon.restore()
+    })
+    describe('_fixGasFees', function () {
+      it('should set maxFeePerGas and maxPriorityFeePerGas to gasPrice if only gasPrice given', async function () {
+        const gasPrice = 1234
+        const fixedTxDetails = await relayProvider._fixGasFees({ gasPrice })
+        assert.equal(gasPrice, fixedTxDetails.maxFeePerGas)
+        assert.equal(gasPrice, fixedTxDetails.maxPriorityFeePerGas)
+        // @ts-ignore
+        assert.notExists(fixedTxDetails.gasPrice)
+      })
+      it('should return only maxFeePerGas and maxPriorityFeePerGas', async function () {
+        const maxFeePerGas = 123
+        const maxPriorityFeePerGas = 456
+        const gasPrice = 789
+        const fixedTxDetails = await relayProvider._fixGasFees({ maxFeePerGas, maxPriorityFeePerGas, gasPrice })
+        assert.equal(maxFeePerGas, fixedTxDetails.maxFeePerGas)
+        assert.equal(maxPriorityFeePerGas, fixedTxDetails.maxPriorityFeePerGas)
+        // @ts-ignore
+        assert.notExists(fixedTxDetails.gasPrice)
+      })
+      it('should call calculateGasFees if no fees given', async function () {
+        const spyCalculate = sinon.spy(relayProvider, 'calculateGasFees')
+        await relayProvider._fixGasFees({})
+        sinon.assert.calledOnce(spyCalculate)
+        sinon.restore()
+      })
+      it('should throw error if only one of maxPriorityFeePerGas/maxFeePerGas given', async function () {
+        await expect(relayProvider._fixGasFees({ maxFeePerGas: 1 })).to.be.eventually.rejectedWith('Relay Provider: cannot provide only one of maxFeePerGas and maxPriorityFeePerGas')
+        await expect(relayProvider._fixGasFees({ maxPriorityFeePerGas: 1 })).to.be.eventually.rejectedWith('Relay Provider: cannot provide only one of maxFeePerGas and maxPriorityFeePerGas')
+      })
+    })
   })
 
   // TODO: most of this code is copy-pasted from the RelayHub.test.ts. Maybe extract better utils?

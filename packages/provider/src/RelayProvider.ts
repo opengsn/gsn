@@ -259,7 +259,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     this.logger.info('calling sendAsync' + JSON.stringify(payload))
     let gsnTransactionDetails: GsnTransactionDetails
     try {
-      gsnTransactionDetails = this._fixGasFees(payload.params?.[0])
+      gsnTransactionDetails = await this._fixGasFees(payload.params?.[0])
     } catch (e: any) {
       this.logger.error(e)
       callback(e)
@@ -273,7 +273,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     }
   }
 
-  async _onRelayTransactionFulfilled (relayingResult: RelayingResult, payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
+  _onRelayTransactionFulfilled (relayingResult: RelayingResult, payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     if (relayingResult.relayRequestID != null) {
       const jsonRpcSendResult = this._convertRelayRequestIdToRpcSendResponse(relayingResult.relayRequestID, payload)
       this.cacheSubmittedTransactionDetails(relayingResult)
@@ -285,7 +285,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     }
   }
 
-  async _onRelayTransactionRejected (reason: any, callback: JsonRpcCallback): Promise<void> {
+  _onRelayTransactionRejected (reason: any, callback: JsonRpcCallback): void {
     const reasonStr = reason instanceof Error ? reason.message : JSON.stringify(reason)
     const msg = `Rejected relayTransaction call with reason: ${reasonStr}`
     this.logger.info(msg)
@@ -401,7 +401,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     return gsnTransactionDetails?.useGSN ?? true
   }
 
-  _fixGasFees (_txDetails: any): GsnTransactionDetails {
+  async _fixGasFees (_txDetails: any): Promise<GsnTransactionDetails> {
     const txDetails = { ..._txDetails }
     if (txDetails.maxFeePerGas != null && txDetails.maxPriorityFeePerGas != null) {
       delete txDetails.gasPrice
@@ -413,7 +413,13 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       delete txDetails.gasPrice
       return txDetails
     }
-    throw new Error('Relay Provider: must provide either gasPrice or (maxFeePerGas and maxPriorityFeePerGas)')
+    if (txDetails.gasPrice == null && txDetails.maxFeePerGas == null && txDetails.maxPriorityFeePerGas == null) {
+      const gasFees = await this.calculateGasFees()
+      txDetails.maxPriorityFeePerGas = gasFees.maxPriorityFeePerGas
+      txDetails.maxFeePerGas = gasFees.maxFeePerGas
+      return txDetails
+    }
+    throw new Error('Relay Provider: cannot provide only one of maxFeePerGas and maxPriorityFeePerGas')
   }
 
   /* wrapping HttpProvider interface */
