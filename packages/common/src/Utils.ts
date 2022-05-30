@@ -2,7 +2,7 @@ import BN from 'bn.js'
 import Web3 from 'web3'
 import abi from 'web3-eth-abi'
 
-import web3Utils, { AbiItem, fromWei, toWei, toBN } from 'web3-utils'
+import { AbiItem, fromWei, toWei, toBN } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
 import {
@@ -17,6 +17,7 @@ import {
   bnToUnpaddedBuffer,
   bufferToHex,
   ecrecover,
+  hashPersonalMessage,
   PrefixedHexString,
   pubToAddress,
   toBuffer,
@@ -167,24 +168,18 @@ export function calculateCalldataBytesZeroNonzero (
   return { calldataZeroBytes, calldataNonzeroBytes }
 }
 
-export function getEcRecoverMeta (message: PrefixedHexString, signature: string | Signature): PrefixedHexString {
+export function getEcRecoverMeta (message: string, signature: string | Signature): PrefixedHexString {
   if (typeof signature === 'string') {
     const r = parseHexString(signature.substr(2, 65))
     const s = parseHexString(signature.substr(66, 65))
     const v = parseHexString(signature.substr(130, 2))
-
     signature = {
       v: v,
       r: r,
       s: s
     }
   }
-  const msg = Buffer.concat([Buffer.from('\x19Ethereum Signed Message:\n32'), Buffer.from(removeHexPrefix(message), 'hex')])
-  const signed = web3Utils.sha3('0x' + msg.toString('hex'))
-  if (signed == null) {
-    throw new Error('web3Utils.sha3 failed somehow')
-  }
-  const bufSigned = Buffer.from(removeHexPrefix(signed), 'hex')
+  const bufSigned = hashPersonalMessage(Buffer.from(message))
   const recoveredPubKey = ecrecover(bufSigned, signature.v[0], Buffer.from(signature.r), Buffer.from(signature.s))
   return bufferToHex(pubToAddress(recoveredPubKey))
 }
