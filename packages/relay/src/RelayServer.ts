@@ -22,7 +22,6 @@ import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Vers
 import {
   address2topic,
   decodeRevertReason,
-  getLatestEventData,
   PaymasterGasAndDataLimits,
   randomInRange,
   sleep
@@ -670,7 +669,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
     await this.registrationManager.updateLatestRegistrationTxs(hubEventsSinceLastScan)
     const shouldRegisterAgain =
-      await this._shouldRegisterAgain(currentBlock.number, currentBlockTimestamp, hubEventsSinceLastScan)
+      await this._shouldRegisterAgain(currentBlock.number, currentBlockTimestamp)
     transactionHashes = transactionHashes.concat(
       await this.registrationManager.handlePastEvents(
         hubEventsSinceLastScan, this.lastScannedBlock, currentBlock, currentBlockTimestamp, shouldRegisterAgain))
@@ -708,7 +707,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return toBN(await this.contractInteractor.getBalance(this.workerAddress, 'pending'))
   }
 
-  async _shouldRegisterAgain (currentBlockNumber: number, currentBlockTimestamp: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+  async _shouldRegisterAgain (currentBlockNumber: number, currentBlockTimestamp: number): Promise<boolean> {
     const relayRegistrationMaxAge = await this.contractInteractor.getRelayRegistrationMaxAge()
     const relayInfo = await this.contractInteractor.getRelayInfo(this.relayHubContract.address, this.managerAddress)
       .catch((e: Error) => {
@@ -784,16 +783,6 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.config.runPaymasterReputations) {
       await this.reputationManager.updatePaymasterStatus(paymaster, false, eventBlockNumber)
     }
-  }
-
-  async _queryLatestActiveEvent (): Promise<EventData | undefined> {
-    const hubEvents: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
-      fromBlock: this.lastScannedBlock + 1
-    })
-    const registrarEvents: EventData[] = await this.contractInteractor.getPastEventsForRegistrar([address2topic(this.managerAddress)], {
-      fromBlock: this.lastScannedBlock + 1
-    })
-    return getLatestEventData(hubEvents.concat(registrarEvents))
   }
 
   async withdrawToOwnerIfNeeded (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
