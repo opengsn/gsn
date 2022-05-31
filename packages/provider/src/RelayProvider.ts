@@ -6,8 +6,9 @@ import { HttpProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { EventData } from 'web3-eth-contract'
+import { TypedMessage } from 'eth-sig-util'
 
-import { gsnRuntimeVersion } from '@opengsn/common'
+import { Address, gsnRuntimeVersion, isSameAddress } from '@opengsn/common'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
 
@@ -145,6 +146,19 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       }
       if (payload.method === 'eth_accounts') {
         this._getAccounts(payload, callback)
+        return
+      }
+      if (payload.method === 'eth_sign') {
+        this._sign(payload, callback)
+        return
+      }
+      if (payload.method === 'eth_signTransaction') {
+        this._signTransaction(payload, callback)
+        return
+      }
+      if (payload.method === 'eth_signTypedData') {
+        this._signTypedData(payload, callback)
+        return
       }
     }
 
@@ -445,6 +459,61 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
 
   addAccount (privateKey: PrefixedHexString): AccountKeypair {
     return this.relayClient.addAccount(privateKey)
+  }
+
+  isEphemeralAccount (account: Address): boolean {
+    const ephemeralAccounts = this.relayClient.dependencies.accountManager.getAccounts()
+    return ephemeralAccounts.find(it => isSameAddress(account, it)) != null
+  }
+
+  _sign (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+    const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
+    const from = payload.params?.[0]
+    if (from != null && this.isEphemeralAccount(from)) {
+      const result = this.relayClient.dependencies.accountManager.signMessage(payload.params?.[1], from)
+      const rpcResponse = {
+        id,
+        result,
+        jsonrpc: '2.0'
+      }
+      callback(null, rpcResponse)
+      return
+    }
+    this.origProviderSend(payload, callback)
+  }
+
+  _signTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+    const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
+    const transactionConfig: TransactionConfig = payload.params?.[0]
+    const from = transactionConfig?.from as string
+    if (from != null && this.isEphemeralAccount(from)) {
+      const result = this.relayClient.dependencies.accountManager.signTransaction(transactionConfig, from)
+      const rpcResponse = {
+        id,
+        result,
+        jsonrpc: '2.0'
+      }
+      callback(null, rpcResponse)
+      return
+    }
+    this.origProviderSend(payload, callback)
+  }
+
+  _signTypedData (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+    const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
+    const from = payload.params?.[0]
+    if (from != null && this.isEphemeralAccount(from)) {
+      const typedData: TypedMessage<any> = payload.params?.[1]
+      const result = this.relayClient.dependencies.accountManager.signTypedData(typedData, from)
+      const rpcResponse = {
+        id,
+        result,
+        jsonrpc: '2.0'
+      }
+      callback(null, rpcResponse)
+      return
+    }
+    this.origProviderSend(payload, callback)
   }
 
   _getAccounts (payload: JsonRpcPayload, callback: JsonRpcCallback): void {

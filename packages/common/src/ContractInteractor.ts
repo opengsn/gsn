@@ -54,13 +54,10 @@ import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import {
   ActiveManagerEvents,
-  HubUnauthorized,
   RelayRegisteredEventInfo,
   RelayServerRegistered,
   RelayWorkersAdded,
-  StakeInfo,
-  StakePenalized,
-  StakeUnlocked
+  StakeInfo
 } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
 import { Environment } from './Environments'
@@ -1158,7 +1155,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.relayRegistrar.getRelayRegistrationMaxAge()
   }
 
-  async getRelayInfo (relayHubAddress: string, relayManagerAddress: string): Promise<{
+  async getRelayInfo (relayManagerAddress: string): Promise<{
     lastSeenBlockNumber: BN
     lastSeenTimestamp: BN
     firstSeenBlockNumber: BN
@@ -1168,32 +1165,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     urlParts: string[]
     relayManager: string
   }> {
-    return await this.relayRegistrar.getRelayInfo(relayHubAddress, relayManagerAddress)
-  }
-
-  async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
-    // each topic in getPastEvent is either a string or array-of-strings, to search for any.
-    const extraTopics = subsetManagers == null ? [] : [subsetManagers?.map(address2topic)] as any
-    const registerEvents = await this.getPastEventsForRegistrar(extraTopics,
-      { fromBlock },
-      [RelayServerRegistered])
-    const unregisterEvents = await this.getPastEventsForStakeManager([HubUnauthorized, StakePenalized, StakeUnlocked], [extraTopics], { fromBlock })
-    // we don't check event order: removed relayer can't be re-registered, so we simply ignore any "register" of a relayer that was ever removed/unauthorized/penalized
-    const removed = new Set(unregisterEvents.map(event => event.returnValues.relayManager))
-    const relaySet: { [relayManager: string]: RelayRegisteredEventInfo } = {}
-    registerEvents
-      .filter(event => !removed.has(event.returnValues.relayManager))
-      .map(event => {
-        const { relayManager, pctRelayFee, baseRelayFee, url } = event.returnValues
-        const ret: RelayRegisteredEventInfo = {
-          relayManager, pctRelayFee, baseRelayFee, relayUrl: url
-        }
-        return ret
-      })
-      .forEach(info => {
-        relaySet[info.relayManager] = info
-      })
-    return Object.values(relaySet)
+    return await this.relayRegistrar.getRelayInfo(this.relayHubInstance.address, relayManagerAddress)
   }
 
   /**
