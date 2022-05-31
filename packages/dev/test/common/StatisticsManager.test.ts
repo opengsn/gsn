@@ -43,7 +43,7 @@ contract('StatisticsManager', function (accounts) {
     await env.stakeManager.unlockStake(relayToUnregister, { from: accounts[4] })
 
     // second registration
-    await env.relayServer.registrationManager.attemptRegistration(currentBlockNumber, currentBlockTimestamp)
+    await env.relayServer.registrationManager.attemptRegistration(currentBlockNumber, block.hash, currentBlockTimestamp)
 
     // three transactions to relay, one transaction to be rejected
     await env.relayServer.createRelayTransaction(await env.createRelayHttpRequest())

@@ -1,6 +1,7 @@
 // TODO: convert to 'commander' format
 import fs from 'fs'
 import Web3 from 'web3'
+import chalk from 'chalk'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { HttpServer } from './HttpServer'
 import { RelayServer } from './RelayServer'
@@ -138,9 +139,11 @@ async function run (): Promise<void> {
   console.log('Creating server logger...\n')
   const logger = createServerLogger(config.logLevel, config.loggerUrl, config.loggerUserId)
   console.log('Creating managers...\n')
-  const managerKeyManager = new KeyManager(1, workdir + '/manager')
-  const workersKeyManager = new KeyManager(1, workdir + '/workers')
+  const managerKeyManager = new KeyManager(1, `${workdir}/manager`)
+  const workersKeyManager = new KeyManager(1, `${workdir}/workers/${config.relayHubAddress}`)
   const txStoreManager = new TxStoreManager({ workdir, autoCompactionInterval: config.dbAutoCompactionInterval }, logger)
+  console.log(chalk.redBright('Relay worker key manager created. This address is staked and meant only for internal (gsn) usage.' +
+    ' Using this address for any other purpose may result in loss of funds.'))
   console.log('Creating interactor...\n')
   const contractInteractor = new ContractInteractor({
     provider: web3provider,

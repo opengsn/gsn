@@ -310,6 +310,7 @@ export class PenalizerService {
         method,
         destination: this.contractInteractor.penalizerInstance.address,
         creationBlockNumber,
+        creationBlockHash: block.hash,
         creationBlockTimestamp,
         serverAction
       })

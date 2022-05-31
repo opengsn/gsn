@@ -2,13 +2,24 @@ import chalk from 'chalk'
 import * as util from 'util'
 import path from 'path'
 import fs from 'fs'
-import { defaultEnvironment, DeploymentConfiguration, Environment, getEnvironment, merge } from '@opengsn/common'
+import {
+  defaultEnvironment,
+  DeploymentConfiguration,
+  Environment,
+  getEnvironment,
+  isSameAddress,
+  merge
+} from '@opengsn/common'
 import { ethers } from 'hardhat'
 import { DeploymentsExtension, TxOptions } from 'hardhat-deploy/types'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { HttpNetworkConfig } from 'hardhat/src/types/config'
+import { Contract } from 'ethers'
+import { formatUnits, parseUnits } from 'ethers/lib/utils'
 
-export const deploymentConfigFile = path.resolve(__dirname, '../deployments', 'deployment-config.ts')
+export function deploymentConfigFile (): string {
+  return process.env.DEPLOY_CONFIG ?? path.resolve(__dirname, '../deployments', 'deployment-config.ts')
+}
 
 export interface DeploymentConfig {
   [key: number]: Environment
@@ -27,9 +38,12 @@ export function getMergedEnvironment (chainId: number, defaultDevAddress: string
     }
     console.log('loading env ( based on chainId', chainId, ')', env.name)
     let config: any
-    if (fs.existsSync(deploymentConfigFile)) {
-      const fileConfig = require(deploymentConfigFile) as DeploymentConfig
+    if (fs.existsSync(deploymentConfigFile())) {
+      console.log('loading config file', deploymentConfigFile())
+      const fileConfig = require(deploymentConfigFile()) as DeploymentConfig
       config = fileConfig[chainId]
+    } else {
+      console.log(chalk.red('Unable to read ', deploymentConfigFile()))
     }
     if (config == null) {
       printSampleEnvironment(defaultDevAddress, chainId)
@@ -38,7 +52,7 @@ export function getMergedEnvironment (chainId: number, defaultDevAddress: string
 
     return merge(env.environment, config)
   } catch (e: any) {
-    fatal(`Error reading config file ${deploymentConfigFile}: ${(e as Error).message}`)
+    fatal(`Error reading config file ${deploymentConfigFile()}: ${(e as Error).message}`)
   }
 }
 
@@ -56,7 +70,7 @@ export function printSampleEnvironment (defaultDevAddress: string, chainId: numb
     },
     deploymentConfiguration
   }
-  console.log(chalk.red('No configuration found:'), '\nPlease add the following to', chalk.whiteBright(`"${deploymentConfigFile}"`), ':\n\nmodule.exports = ',
+  console.log(chalk.red('No configuration found:'), '\nPlease add the following to', chalk.whiteBright(`"${deploymentConfigFile()}"`), ':\n\nmodule.exports = ',
     util.inspect({ [chainId]: sampleEnv }, false, 10, false))
 }
 
@@ -106,7 +120,7 @@ export async function setField (deployments: DeploymentsExtension, contract: str
     log: true
   }
   const currentVal = await deployments.read(contract, options, getFunc)
-  if (currentVal !== val) {
+  if (currentVal.toString() !== val) {
     console.log('calling', `${contract}.${setFunc}( ${val} )`)
     await deployments.execute(contract, options, setFunc, val)
   }
@@ -150,4 +164,100 @@ export async function printRelayInfo (hre: HardhatRuntimeEnvironment): Promise<v
   }, null, 2)))
   console.log(chalk.white('Relayer register:'))
   console.log(chalk.grey(`gsn relayer-register -m $SECRET --network ${network.url} --relayUrl https://${hre.hardhatArguments.network}.v3.opengsn.org/v3 --token ${stakingTokenAddress} --stake ${stakingTokenValue} --wrap`))
+}
+
+export async function getDeploymentEnv (hre: HardhatRuntimeEnvironment): Promise<{ deployer: string, deployments: DeploymentsExtension, env: Environment }> {
+  const { deployments, getChainId } = hre
+  console.log('Connected to URL: ', (hre.network.config as HttpNetworkConfig).url)
+  const accounts = await hre.ethers.provider.listAccounts()
+  const deployer = accounts[0]
+  const chainId = parseInt(await getChainId())
+  const env: Environment = getMergedEnvironment(chainId, deployer)
+
+  return {
+    deployer,
+    deployments,
+    env
+  }
+}
+
+// check if token's minimum stake is correct. return null if no need to change.
+async function getTokenUpdateStakeOrNull (hub: Contract, tokenAddr: string, configMinimumStake: string): Promise<{ token: string, minimumStake: string } | null> {
+  const token = await getToken(tokenAddr)
+  const minStake = await hub.getMinimumStakePerToken(tokenAddr)
+  const parsedConfigMinimumStake = parseUnits(configMinimumStake, token.decimals).toString()
+  const modified = parsedConfigMinimumStake !== minStake.toString()
+  console.log(`- Staking Token "${token.symbol}" ${token.address} current ${formatUnits(minStake, token.decimals)} config ${configMinimumStake}, ${modified ? '' : '(unchanged)'}`)
+  if (modified) {
+    return { token: tokenAddr, minimumStake: parsedConfigMinimumStake }
+  } else {
+    return null
+  }
+}
+
+async function applyStakingTokenConfiguration (hre: HardhatRuntimeEnvironment, env: Environment, hub: Contract): Promise<void> {
+  const testStakingTokenAddress = await hre.deployments.get('WrappedEthToken').then(t => t?.address).catch(null)
+
+  const configChanges = await Promise.all(Object.entries(env.deploymentConfiguration?.minimumStakePerToken ?? [])
+    .map(async ([tokenAddr, configMinimumStake]) =>
+      await getTokenUpdateStakeOrNull(hub, tokenAddr === 'test' ? testStakingTokenAddress : tokenAddr, configMinimumStake)))
+
+  const tokens = configChanges.filter(x => x != null)
+
+  if (tokens.length !== 0) {
+    console.log('Adding/Updating token stakes', tokens)
+    const ret = await hub.setMinimumStakes(tokens.map(x => x?.token), tokens.map(x => x?.minimumStake))
+    await ret.wait()
+  }
+}
+
+// clean object values, so we can compare configuration to values we read from the chain
+// - ignore numeric index
+// - values are toString'ed (to unify number/BN/string) and lower-cased
+function clean (obj: any): string {
+  return JSON.stringify(Object.keys(obj)
+    .sort()
+    .filter(key => key.match(/^\d+$/) == null)
+    .reduce((set, key) => ({
+      [key]: obj[key].toString().toLowerCase(),
+      ...set
+    }), {}))
+}
+
+async function applyHubConfiguration (env: Environment, hub: Contract): Promise<void> {
+  const currentConfig = clean(await hub.getConfiguration())
+  const newConfig = clean(env.relayHubConfiguration)
+  if (currentConfig === newConfig) {
+    console.log('RelayHub: no configuration change')
+  } else {
+    console.log('RelayHub: apply new config', newConfig)
+    await hub.setConfiguration(JSON.parse(newConfig))
+    const updatedConfig = clean(await hub.getConfiguration())
+    if (updatedConfig !== newConfig) {
+      throw new Error(`FATAL: get/set configuration mismatch\nset=${newConfig}\nget=${updatedConfig}}`)
+    }
+  }
+}
+
+export async function applyDeploymentConfig (hre: HardhatRuntimeEnvironment): Promise<void> {
+  const { deployments, env, deployer } = await getDeploymentEnv(hre)
+
+  const contracts = await deployments.all()
+  const relayHub = contracts.RelayHub
+  const hub = new ethers.Contract(relayHub.address, relayHub.abi, ethers.provider.getSigner())
+
+  await applyHubConfiguration(env, hub)
+  await applyStakingTokenConfiguration(hre, env, hub)
+
+  const { devAddress: stakeManagerDevAddress } = await deployments.read('StakeManager', 'getAbandonedRelayServerConfig')
+  if (!isSameAddress(stakeManagerDevAddress, env.relayHubConfiguration.devAddress)) {
+    console.log('StakeManager: update devAddress')
+    await deployments.execute('StakeManager', { from: deployer }, 'setDevAddress', env.relayHubConfiguration.devAddress)
+  }
+
+  if (env.deploymentConfiguration == null) {
+    throw new Error('deploymentConfiguration is null')
+  }
+  await setField(deployments, 'RelayRegistrar', 'getRelayRegistrationMaxAge', 'setRelayRegistrationMaxAge',
+    env.deploymentConfiguration.registrationMaxAge.toString(), deployer)
 }
