@@ -22,7 +22,6 @@ import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Vers
 import {
   address2topic,
   decodeRevertReason,
-  getLatestEventData,
   PaymasterGasAndDataLimits,
   randomInRange,
   sleep
@@ -54,7 +53,7 @@ const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
-  lastScannedBlock: number
+  lastScannedBlock = 0
   lastRefreshBlock = 0
   ready = false
   readonly managerAddress: PrefixedHexString
@@ -74,8 +73,6 @@ export class RelayServer extends EventEmitter {
   maxGasLimit: number = 0
   transactionType = TransactionType.LEGACY
 
-  lastMinedActiveTransaction?: EventData
-
   reputationManager!: ReputationManager
   registrationManager!: RegistrationManager
   chainId!: number
@@ -94,7 +91,6 @@ export class RelayServer extends EventEmitter {
     dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
-    this.lastScannedBlock = config.coldRestartLogsFromBlock ?? 0
     this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
@@ -491,9 +487,10 @@ returnValue        | ${viewRelayCallRet.returnValue}
       throw new Error('_init was already called')
     }
     const latestBlock = await this.contractInteractor.getBlock('latest')
-    if (this.config.coldRestartLogsFromBlock == null || latestBlock.number < this.config.coldRestartLogsFromBlock) {
-      throw new Error(
-        `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${latestBlock.number}`)
+    const registrationAge = await this.contractInteractor.getRelayRegistrationMaxAge()
+    this.lastScannedBlock = latestBlock.number - registrationAge.toNumber()
+    if (this.lastScannedBlock < 0) {
+      this.lastScannedBlock = 0
     }
     if (latestBlock.baseFeePerGas != null) {
       this.transactionType = TransactionType.TYPE_TWO
@@ -521,7 +518,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.managerAddress,
       this.workerAddress
     )
-    await this.registrationManager.init()
+    await this.registrationManager.init(this.lastScannedBlock)
 
     this.chainId = this.contractInteractor.chainId
     this.networkId = this.contractInteractor.getNetworkId()
@@ -670,10 +667,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   async _handleChanges (currentBlock: BlockTransactionString, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
     let transactionHashes: PrefixedHexString[] = []
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
-    await this._updateLatestTxBlockNumber(hubEventsSinceLastScan)
     await this.registrationManager.updateLatestRegistrationTxs(hubEventsSinceLastScan)
     const shouldRegisterAgain =
-      await this._shouldRegisterAgain(currentBlock.number, currentBlockTimestamp, hubEventsSinceLastScan)
+      await this._shouldRegisterAgain(currentBlock.number, currentBlockTimestamp)
     transactionHashes = transactionHashes.concat(
       await this.registrationManager.handlePastEvents(
         hubEventsSinceLastScan, this.lastScannedBlock, currentBlock, currentBlockTimestamp, shouldRegisterAgain))
@@ -711,9 +707,18 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return toBN(await this.contractInteractor.getBalance(this.workerAddress, 'pending'))
   }
 
-  async _shouldRegisterAgain (currentBlockNumber: number, currentBlockTimestamp: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+  async _shouldRegisterAgain (currentBlockNumber: number, currentBlockTimestamp: number): Promise<boolean> {
     const relayRegistrationMaxAge = await this.contractInteractor.getRelayRegistrationMaxAge()
-    const latestRegisterTxBlockTimestamp = this._getLatestRegisterTxBlockTimestamp()
+    const relayInfo = await this.contractInteractor.getRelayInfo(this.managerAddress)
+      .catch((e: Error) => {
+        if (e.message.includes('relayManager not found')) {
+          return { lastSeenTimestamp: 0 }
+        } else {
+          this.logger.error(`getRelayInfo failed ${e.message}`)
+          throw e
+        }
+      })
+    const latestRegisterTxBlockTimestamp = toNumber(relayInfo.lastSeenTimestamp)
     const isPendingRegistration = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
     const registrationExpired =
       (currentBlockTimestamp - latestRegisterTxBlockTimestamp >= relayRegistrationMaxAge.toNumber()) &&
@@ -778,33 +783,6 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.config.runPaymasterReputations) {
       await this.reputationManager.updatePaymasterStatus(paymaster, false, eventBlockNumber)
     }
-  }
-
-  _getLatestTxBlockNumber (): number {
-    return this.lastMinedActiveTransaction?.blockNumber ?? -1
-  }
-
-  _getLatestRegisterTxBlockTimestamp (): number {
-    return this.registrationManager.lastMinedRegisterTransaction?.blockTimestamp ?? -1
-  }
-
-  async _updateLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<void> {
-    const latestTransactionSinceLastScan = getLatestEventData(eventsSinceLastScan)
-    if (latestTransactionSinceLastScan != null) {
-      this.lastMinedActiveTransaction = latestTransactionSinceLastScan
-      this.logger.debug(`found newer block ${this.lastMinedActiveTransaction?.blockNumber}`)
-    }
-    if (this.lastMinedActiveTransaction == null) {
-      this.lastMinedActiveTransaction = await this._queryLatestActiveEvent()
-      this.logger.debug(`queried node for last active server event, found in block ${this.lastMinedActiveTransaction?.blockNumber}`)
-    }
-  }
-
-  async _queryLatestActiveEvent (): Promise<EventData | undefined> {
-    const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
-      fromBlock: this.config.coldRestartLogsFromBlock
-    })
-    return getLatestEventData(events)
   }
 
   async withdrawToOwnerIfNeeded (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
