@@ -709,7 +709,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async _shouldRegisterAgain (currentBlockNumber: number, currentBlockTimestamp: number): Promise<boolean> {
     const relayRegistrationMaxAge = await this.contractInteractor.getRelayRegistrationMaxAge()
-    const relayInfo = await this.contractInteractor.getRelayInfo(this.relayHubContract.address, this.managerAddress)
+    const relayInfo = await this.contractInteractor.getRelayInfo(this.managerAddress)
       .catch((e: Error) => {
         if (e.message.includes('relayManager not found')) {
           return { lastSeenTimestamp: 0 }

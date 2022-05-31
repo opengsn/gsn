@@ -1155,7 +1155,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.relayRegistrar.getRelayRegistrationMaxAge()
   }
 
-  async getRelayInfo (relayHubAddress: string, relayManagerAddress: string): Promise<{
+  async getRelayInfo (relayManagerAddress: string): Promise<{
     lastSeenBlockNumber: BN
     lastSeenTimestamp: BN
     firstSeenBlockNumber: BN
@@ -1165,7 +1165,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     urlParts: string[]
     relayManager: string
   }> {
-    return await this.relayRegistrar.getRelayInfo(relayHubAddress, relayManagerAddress)
+    return await this.relayRegistrar.getRelayInfo(this.relayHubInstance.address, relayManagerAddress)
   }
 
   /**
