@@ -512,7 +512,7 @@ contract('RelayClient', function (accounts) {
     })
   })
 
-  describe('#_calculateDefaultGasPrice()', function () {
+  describe('#_calculateGasFees()', function () {
     it('should use minimum gas price if calculated is too low', async function () {
       const minMaxPriorityFeePerGas = 1e18
       const gsnConfig: Partial<GSNConfig> = {
