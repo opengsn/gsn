@@ -209,7 +209,8 @@ contract('ContractInteractor', function (accounts) {
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'view call to \'relayCall\' reverted in client: Paymaster balance too low',
-        reverted: true
+        relayHubReverted: true,
+        recipientReverted: false
       })
     })
 
@@ -265,7 +266,8 @@ contract('ContractInteractor', function (accounts) {
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'You asked me to revert, remember?',
-        reverted: false
+        relayHubReverted: false,
+        recipientReverted: false
       })
     })
 

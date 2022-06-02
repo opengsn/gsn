@@ -65,7 +65,7 @@ import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from 'bignumber.js'
 import { TransactionType } from './types/TransactionType'
-import { constants, erc165Interfaces } from './Constants'
+import { constants, erc165Interfaces, RelayCallStatusCodes } from './Constants'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -106,8 +106,9 @@ export interface ERC20TokenMetadata {
 
 export interface ViewCallVerificationResult {
   paymasterAccepted: boolean
+  recipientReverted: boolean
   returnValue: string
-  reverted: boolean
+  relayHubReverted: boolean
 }
 
 export class ContractInteractor {
@@ -540,24 +541,26 @@ export class ContractInteractor {
       this.logger.debug('relayCall res=' + res)
 
       // @ts-ignore
-      const decoded = abi.decodeParameters(['bool', 'bytes'], res)
+      const decoded = abi.decodeParameters(['bool', 'uint256', 'bytes'], res)
       const paymasterAccepted: boolean = decoded[0]
-      let returnValue: string
-      if (paymasterAccepted) {
-        returnValue = decoded[1]
-      } else {
-        returnValue = this._decodeRevertFromResponse({}, { result: decoded[1] }) ?? decoded[1]
+      const relayCallStatus: number = parseInt(decoded[1])
+      let returnValue: string = decoded[2]
+      const recipientReverted = RelayCallStatusCodes.RelayedCallFailed.eqn(relayCallStatus)
+      if (!paymasterAccepted || recipientReverted) {
+        returnValue = this._decodeRevertFromResponse({}, { result: returnValue }) ?? returnValue
       }
       return {
         returnValue: returnValue,
-        paymasterAccepted: paymasterAccepted,
-        reverted: false
+        paymasterAccepted,
+        recipientReverted,
+        relayHubReverted: false
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : JSON.stringify(e, replaceErrors)
       return {
         paymasterAccepted: false,
-        reverted: true,
+        recipientReverted: false,
+        relayHubReverted: true,
         returnValue: `view call to 'relayCall' reverted in client: ${message}`
       }
     }
