@@ -8,8 +8,6 @@ import "./TestPaymasterConfigurableMisbehavior.sol";
 
 contract TestRecipientWithoutFallback is ERC2771Recipient {
 
-    string public override versionRecipient = "3.0.0-alpha.5+opengsn.test.irelayrecipient";
-
     constructor(address forwarder) {
         _setTrustedForwarder(forwarder);
     }
