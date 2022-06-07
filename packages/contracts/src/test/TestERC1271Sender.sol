@@ -1,3 +1,9 @@
+pragma solidity ^0.8.0;
+pragma abicoder v2;
+
+// solhint-disable reason-string
+// SPDX-License-Identifier: GPL-3.0-only
+
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
