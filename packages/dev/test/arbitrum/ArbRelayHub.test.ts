@@ -137,7 +137,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
       })
 
       // just an observed value
-      const expectedGasUsed = 24000000
+      const expectedGasUsed = 25000000
 
       const transactionRelayedEvent = res.logs[0].args as TransactionRelayed['args']
       const charge = transactionRelayedEvent.charge.div(new BN('100000000'))
