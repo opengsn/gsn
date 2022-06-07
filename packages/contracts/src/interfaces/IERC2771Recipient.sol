@@ -33,9 +33,4 @@ abstract contract IERC2771Recipient {
      * Otherwise (if the call was made directly and not through the forwarder) simply returns `msg.data`.
      */
     function _msgData() internal virtual view returns (bytes calldata);
-
-    /**
-     * @return version The SemVer string of this Recipient's version.
-     */
-    function versionRecipient() external virtual view returns (string memory);
 }
