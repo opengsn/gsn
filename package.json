@@ -64,15 +64,14 @@
     "lerna-run-test": "yarn lerna-tsc && lerna run test --stream --no-prefix",
     "lerna-run-gas-calculations": "lerna run gas-calculations --stream --no-prefix",
     "lerna-run-test-webpack": "lerna run test-webpack --stream --no-prefix",
-    "lerna-run-test-webpack-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test-webpack'",
-    "lerna-run-gas-calculations-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-gas-calculations'",
+    "lerna-run-test-webpack-with-hardhat": "run-with-hardhat-node --port 8544 'yarn lerna-run-test-webpack'",
+    "lerna-run-gas-calculations-with-hardhat": "run-with-hardhat-node --port 8544 'yarn lerna-run-gas-calculations'",
     "lerna-run-test-fork": "lerna run test-fork --stream --no-prefix",
     "lerna-run-test-only": "lerna run test-only --stream --ignore @opengsn/paymasters",
     "lerna-run-test-paymasters-only": "lerna run test-only --stream --scope @opengsn/paymasters",
-    "lerna-run-test-with-testrpc": "run-with-testrpc --chainId 1337 --hardfork 'istanbul' --port 8544 --gasLimit 12000000 --defaultBalanceEther 1000 --deterministic 'yarn lerna-run-test'",
-    "lerna-run-test-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test'",
-    "lerna-run-test-only-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test-only'",
-    "lerna-run-test-paymasters-only-with-hardhat": "run-with-testrpc --testrpc-cmd ./scripts/hardhat-node --port 8544 'yarn lerna-run-test-paymasters-only'",
+    "lerna-run-test-with-hardhat": "run-with-hardhat-node --port 8544 'yarn lerna-run-test'",
+    "lerna-run-test-only-with-hardhat": "run-with-hardhat-node --port 8544 'yarn lerna-run-test-only'",
+    "lerna-run-test-paymasters-only-with-hardhat": "run-with-hardhat-node --port 8544 'yarn lerna-run-test-paymasters-only'",
     "verdaccio-start": "yarn verdaccio-clean && yarn verdaccio-run",
     "verdaccio-publish": "lerna publish --no-git-tag-version --no-push --registry http://localhost:4873",
     "verdaccio-run": "verdaccio --config verdaccio/verdaccio.yaml",
@@ -101,7 +100,6 @@
     "ganache-cli": "^6.12.2",
     "lerna": "^3.22.1",
     "patch-package": "^6.2.2",
-    "run-with-testrpc": "^0.3.1",
     "solpp": "^0.11.5",
     "truffle": "5.1.26",
     "ts-node": "8.6.2",
@@ -117,5 +115,9 @@
     "web3-utils": "^1.7.3",
     "webpack": "^4.37.0",
     "webpack-cli": "^3.3.6"
+  },
+  "dependencies": {
+    "hardhat": "^2.9.7",
+    "run-with-hardhat-node": "^0.4.1"
   }
 }
