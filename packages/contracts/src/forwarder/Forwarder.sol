@@ -4,7 +4,9 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import "./IForwarder.sol";
 
@@ -13,6 +15,7 @@ import "./IForwarder.sol";
  * @notice This implementation of the `IForwarder` interface uses ERC-712 signatures and stored nonces for verification.
  */
 contract Forwarder is IForwarder, ERC165 {
+    using Address for address;
     using ECDSA for bytes32;
 
     address private constant DRY_RUN_ADDRESS = 0x0000000000000000000000000000000000000000;
@@ -60,7 +63,6 @@ contract Forwarder is IForwarder, ERC165 {
         _verifySig(req, domainSeparator, requestTypeHash, suffixData, sig);
     }
 
-    /// @inheritdoc IForwarder
     function execute(
         ForwardRequest calldata req,
         bytes32 domainSeparator,
@@ -154,8 +156,27 @@ contract Forwarder is IForwarder, ERC165 {
                 "\x19\x01", domainSeparator,
                 keccak256(_getEncoded(req, requestTypeHash, suffixData))
             ));
+        bool isContract = req.from.isContract();
+        require(!isContract || req.value == 0, "FWD: illegal ERC1271 msg.value");
         // solhint-disable-next-line avoid-tx-origin
-        require(tx.origin == DRY_RUN_ADDRESS || digest.recover(sig) == req.from, "FWD: signature mismatch");
+        require(tx.origin == DRY_RUN_ADDRESS || isValidSignature(isContract, req.from, digest, sig), "FWD: signature mismatch");
+    }
+
+    function isValidSignature(
+        bool isContract,
+        address signer,
+        bytes32 hash,
+        bytes memory signature
+    ) internal view returns (bool) {
+        if (isContract) {
+            try IERC1271(signer).isValidSignature(hash, signature) returns (bytes4 magicValue) {
+                return magicValue == IERC1271.isValidSignature.selector;
+            } catch {
+                return false;
+            }
+        } else {
+            return hash.recover(signature) == signer;
+        }
     }
 
     /**

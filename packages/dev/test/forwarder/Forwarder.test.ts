@@ -1,6 +1,7 @@
 import {
   ForwarderInstance,
   TestForwarderInstance,
+  TestERC1271SenderInstance,
   TestForwarderTargetInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
@@ -19,6 +20,7 @@ const TestForwarderTarget = artifacts.require('TestForwarderTarget')
 
 const Forwarder = artifacts.require('Forwarder')
 const TestForwarder = artifacts.require('TestForwarder')
+const TestERC1271Sender = artifacts.require('TestERC1271Sender')
 
 const keccak256 = web3.utils.keccak256
 
@@ -228,6 +230,42 @@ contract('Forwarder', ([from]) => {
         const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', data.domain, data.types)
 
         await fwd.verify(req, bufferToHex(domainSeparator), typeHash, '0x', sig)
+      })
+
+      describe('with ERC-1271', function () {
+        let testErc1271Sender: TestERC1271SenderInstance
+        let erc1271req: ForwardRequest
+        let erc1271data: EIP712TypedData
+
+        before(async function () {
+          testErc1271Sender = await TestERC1271Sender.new()
+          await testErc1271Sender.transferOwnership(senderAddress)
+          erc1271req = {
+            to: addr(1),
+            data: '0x',
+            value: '0',
+            from: testErc1271Sender.address,
+            nonce: '0',
+            gas: '123',
+            validUntilTime: '0'
+          }
+          erc1271data = Object.assign({}, data, { message: erc1271req })
+        })
+
+        it('should verify valid signature with ERC-1271', async () => {
+          const sig = signTypedData_v4(senderPrivateKey, { data: erc1271data })
+          const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', erc1271data.domain, erc1271data.types)
+          await fwd.verify(erc1271req, bufferToHex(domainSeparator), typeHash, '0x', sig)
+        })
+
+        it('should reject relay request with message value using ERC-1271', async () => {
+          const erc1271reqValue = Object.assign({}, erc1271req, { value: ether('1').toString() })
+          const erc1271dataValue = Object.assign({}, erc1271data, { message: erc1271reqValue })
+          const sig = signTypedData_v4(senderPrivateKey, { data: erc1271dataValue })
+          const domainSeparator = TypedDataUtils.hashStruct('EIP712Domain', erc1271data.domain, erc1271data.types)
+
+          await expectRevert(fwd.verify(erc1271reqValue, bufferToHex(domainSeparator), typeHash, '0x', sig), 'FWD: illegal ERC1271 msg.value')
+        })
       })
 
       it('should verify valid signature of extended type', async () => {
