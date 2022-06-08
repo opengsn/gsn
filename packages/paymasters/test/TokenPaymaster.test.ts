@@ -160,7 +160,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
 
       it('should reject if no token approval', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
-        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), transferErc20Error)
+        assert.equal(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), transferErc20Error)
       })
 
       context('with token approved for paymaster', function () {
