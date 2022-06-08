@@ -4,12 +4,16 @@ import { GsnTestEnvironment } from '../GsnTestEnvironment'
 
 gsnCommander(['n'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
+  .option('--withNode', 'start with "hardhat node" in the background', false)
   .parse(process.argv);
 
 (async () => {
   try {
     const network: string = commander.network
-    const env = await GsnTestEnvironment.startGsn(network)
+    if (network !== 'localhost' && commander.withNode) {
+      throw new Error('can\'t have both --network and --withNode')
+    }
+    const env = await GsnTestEnvironment.startGsn(network, commander.withNode)
     saveDeployment(env.contractsDeployment, commander.workdir)
     showDeployment(env.contractsDeployment, 'GSN started')
 

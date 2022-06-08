@@ -23,12 +23,17 @@ import { GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClien
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 import { constants } from '@opengsn/common'
+import { ChildProcess } from 'child_process'
+
+const { waitForCmdToStart } = require('run-with-hardhat-node')
+const onExit = require('signal-exit')
 
 export interface TestEnvironment {
   contractsDeployment: GSNContractsDeployment
   relayProvider: RelayProvider
   httpServer: HttpServer
   relayUrl: string
+  hardhatNode?: ChildProcess
 }
 
 class GsnTestEnvironmentClass {
@@ -39,8 +44,15 @@ class GsnTestEnvironmentClass {
    * @param host:
    * @return
    */
-  async startGsn (host: string): Promise<TestEnvironment> {
+  async startGsn (host: string, withNode = false): Promise<TestEnvironment> {
     await this.stopGsn()
+    let hardhatNode: ChildProcess | undefined
+    if (withNode) {
+      hardhatNode = await waitForCmdToStart({ cmd: 'hardhat', args: ['node'], waitFor: 'Started HTTP' })
+      onExit(() => {
+        if (hardhatNode != null) { hardhatNode.kill() }
+      })
+    }
     const _host: string = getNetworkUrl(host)
     if (_host == null) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -112,7 +124,8 @@ class GsnTestEnvironmentClass {
       contractsDeployment: deploymentResult,
       relayProvider,
       relayUrl,
-      httpServer: this.httpServer
+      httpServer: this.httpServer,
+      hardhatNode
     }
   }
 
