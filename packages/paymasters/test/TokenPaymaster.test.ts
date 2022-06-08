@@ -36,7 +36,7 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestProxy = artifacts.require('TestProxy')
 
-export const transferErc20Error = 'ERC20: insufficient allowance'
+export const transferErc20Error = '\'ERC20: insufficient allowance\''
 
 // TODO: this test recreates GSN manually. Use GSN tools to do it instead.
 contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) => {
