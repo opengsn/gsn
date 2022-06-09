@@ -4,7 +4,8 @@
   "license": "GPL-3.0-only",
   "main": "dist/commands/gsn.js",
   "bin": {
-    "gsn": "dist/commands/gsn.js"
+    "gsn": "dist/commands/gsn.js",
+    "run-with-gsn": "scripts/run-with-gsn"
   },
   "scripts": {
     "tsc": "tsc",
@@ -16,6 +17,7 @@
   },
   "files": [
     "dist/*",
+    "scripts/run-with-gsn",
     "README.md"
   ],
   "publishConfig": {

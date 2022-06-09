@@ -50,7 +50,9 @@ class GsnTestEnvironmentClass {
     if (withNode) {
       hardhatNode = await waitForCmdToStart({ cmd: 'hardhat', args: ['node'], waitFor: 'Started HTTP' })
       onExit(() => {
-        if (hardhatNode != null) { hardhatNode.kill() }
+        if (hardhatNode != null) {
+          hardhatNode.kill()
+        }
       })
     }
     const _host: string = getNetworkUrl(host)
