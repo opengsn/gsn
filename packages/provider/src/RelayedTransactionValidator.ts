@@ -97,7 +97,7 @@ export class RelayedTransactionValidator {
     const isTransactionSenderValid = this._validateTransactionSender(request, transaction)
     const isTransactionContentValid = this._validateTransactionContent(request, transaction)
     const gasPriceValidationResult = this._validateGasPrice(request, transaction)
-    const isTransactionNonceValid = nonce > request.metadata.relayMaxNonce
+    const isTransactionNonceValid = nonce <= request.metadata.relayMaxNonce
     const nonceGapFilledValidationResult =
       this._validateNonceGapFilled(
         request,
@@ -145,8 +145,6 @@ export class RelayedTransactionValidator {
     })
     return relayRequestAbiEncode === bufferToHex(transaction.data)
   }
-
-  // throw new Error(`Relay used a tx nonce higher than requested. Requested ${request.metadata.relayMaxNonce} got ${receivedNonce}`)
 
   _validateGasPrice (request: RelayTransactionRequest, transaction: TypedTransaction): GasPriceValidationResult {
     let isTransactionTypeValid = true

@@ -17,12 +17,9 @@ export interface StoredTransactionMetadata {
   readonly from: Address
   readonly attempts: number
   readonly serverAction: ServerAction
-  readonly creationBlockNumber: number
-  readonly creationBlockTimestamp: number
-  readonly creationBlockHash: string
-  readonly boostBlockNumber?: number
-  readonly boostBlockTimestamp?: number
-  readonly minedBlockNumber?: number
+  readonly creationBlock: ShortBlockInfo
+  readonly boostBlock?: ShortBlockInfo
+  readonly minedBlock?: ShortBlockInfo
 }
 
 export interface StoredTransactionSerialized {
@@ -42,6 +39,12 @@ export interface NonceSigner {
     nonce: number
     signer: Address
   }
+}
+
+export interface ShortBlockInfo {
+  hash: PrefixedHexString
+  number: number
+  timestamp: number | string
 }
 
 export type StoredTransaction = StoredTransactionSerialized & StoredTransactionMetadata & NonceSigner

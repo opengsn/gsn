@@ -403,13 +403,27 @@ contract('RelayClient', function (accounts) {
       ]
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
-      sinon.stub(relayClient.dependencies.transactionValidator, 'validateRelayResponse').rejects(new Error('fail returned tx'))
+      sinon.stub(relayClient.dependencies.transactionValidator, 'validateRelayResponse').returns({
+        gasPriceValidationResult: {
+          isTransactionTypeValid: false,
+          isFeeMarket1559Transaction: false,
+          isLegacyGasPriceValid: false,
+          isMaxFeePerGasValid: false,
+          isMaxPriorityFeePerGasValid: false
+        },
+        nonceGapFilledValidationResult: [],
+        isNonceGapFilledSizeValid: false,
+        isTransactionTargetValid: false,
+        isTransactionSenderValid: false,
+        isTransactionContentValid: false,
+        isTransactionNonceValid: false
+      })
 
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 2)
-      assert.equal(Array.from(relayingErrors.values())[0]!.message, 'fail returned tx')
+      assert.match(Array.from(relayingErrors.values())[0]!.message, /Transaction response verification failed. Validation results/)
     })
 
     it('should continue looking up relayers after relayer error', async function () {
@@ -650,7 +664,12 @@ contract('RelayClient', function (accounts) {
         maxPageSize,
         deployment: { paymasterAddress: paymaster.address }
       }).init()
-      const badHttpClient = new BadHttpClient(logger, false, false, false, pingResponse, '0xc6808080808080')
+      const wallet = ethWallet.generate()
+      const txOptions = getRawTxOptions(1337, 0)
+      const signedTx = bufferToHex(new Transaction(
+        { nonce: 1, to: relayHub.address, data, gasPrice: '0x1000000000' }, txOptions
+      ).sign(wallet.getPrivateKey()).serialize())
+      const badHttpClient = new BadHttpClient(logger, false, false, false, pingResponse, signedTx)
       const badTransactionValidator = new BadRelayedTransactionValidator(logger, true, contractInteractor, configureGSN(gsnConfig))
       const relayClient =
         new RelayClient({
@@ -670,8 +689,7 @@ contract('RelayClient', function (accounts) {
       const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, relayRequest)
       assert.isUndefined(transaction)
       assert.equal(isRelayError, true)
-      // @ts-ignore
-      assert.equal(error.message, 'Returned transaction did not pass validation')
+      assert.match(error!.message, /Transaction response verification failed. Validation results/)
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
     })
 

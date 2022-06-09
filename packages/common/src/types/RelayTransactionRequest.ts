@@ -43,6 +43,7 @@ export const RelayTransactionRequestShape = {
     }
   },
   metadata: {
+    relayLastKnownNonce: ow.number,
     approvalData: ow.string,
     relayHubAddress: ow.string,
     relayMaxNonce: ow.number,

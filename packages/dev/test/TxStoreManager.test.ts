@@ -57,10 +57,16 @@ contract('TxStoreManager', function (accounts) {
       value: toHex(1e18),
       txId: '123456',
       serverAction: ServerAction.VALUE_TRANSFER,
-      creationBlockNumber: 0,
-      creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      creationBlockTimestamp: 0,
-      minedBlockNumber: 0,
+      creationBlock: {
+        hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        number: 0,
+        timestamp: 0
+      },
+      minedBlock: {
+        hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        number: 10,
+        timestamp: 100
+      },
       attempts: 1,
       rawSerializedTx: '0xdeadbeef'
     }
@@ -75,10 +81,16 @@ contract('TxStoreManager', function (accounts) {
       value: toHex(1e18),
       txId: '1234567',
       serverAction: ServerAction.VALUE_TRANSFER,
-      creationBlockNumber: 0,
-      creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      creationBlockTimestamp: 0,
-      minedBlockNumber: 0,
+      creationBlock: {
+        hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        number: 0,
+        timestamp: 0
+      },
+      minedBlock: {
+        hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        number: 20,
+        timestamp: 200
+      },
       attempts: 1,
       rawSerializedTx: '0xdeadbeef'
     }
@@ -94,10 +106,16 @@ contract('TxStoreManager', function (accounts) {
         value: toHex(1e18),
         txId: '12345678',
         serverAction: ServerAction.VALUE_TRANSFER,
-        creationBlockNumber: 0,
-        creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-        creationBlockTimestamp: 0,
-        minedBlockNumber: 0,
+        creationBlock: {
+          hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+          number: 0,
+          timestamp: 0
+        },
+        minedBlock: {
+          hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+          number: 30,
+          timestamp: 300
+        },
         attempts: 1,
         rawSerializedTx: '0xdeadbeef'
       }
@@ -117,7 +135,7 @@ contract('TxStoreManager', function (accounts) {
     assert.equal(tx.txId, txByNonce.txId)
   })
 
-  it('should remove txs until nonce', async function () {
+  it('should remove txs until block and time', async function () {
     await txmanager.putTx(tx2)
     await txmanager.putTx(tx3)
     let txByNonce = await txmanager.getTxByNonce(tx.from, tx.nonce)
@@ -127,7 +145,7 @@ contract('TxStoreManager', function (accounts) {
     let tx3ByNonce = await txmanager.getTxByNonce(tx.from, tx3.nonce)
     assert.equal(tx3.txId, tx3ByNonce.txId)
     assert.deepEqual(3, (await txmanager.getAll()).length)
-    await txmanager.removeTxsUntilNonce(tx.from, tx2.nonce)
+    await txmanager.removeArchivedTransactions(20, 200)
     txByNonce = await txmanager.getTxByNonce(tx.from, tx.nonce)
     assert.equal(null, txByNonce)
     tx2ByNonce = await txmanager.getTxByNonce(tx.from, tx2.nonce)
@@ -173,7 +191,10 @@ contract('TxStoreManager', function (accounts) {
     assert.equal(9, linesCount)
     const clock = sinon.useFakeTimers(Date.now())
     try {
-      txmanager = new TxStoreManager({ workdir, autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval }, logger)
+      txmanager = new TxStoreManager({
+        workdir,
+        autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval
+      }, logger)
       // @ts-ignore
       sinon.spy(txmanager.txstore.persistence, 'compactDatafile')
       await clock.tickAsync(serverDefaultConfiguration.dbAutoCompactionInterval)
