@@ -100,6 +100,7 @@
     "ganache-cli": "^6.12.2",
     "lerna": "^3.22.1",
     "patch-package": "^6.2.2",
+    "run-with-hardhat-node": "^0.4.3",
     "solpp": "^0.11.5",
     "truffle": "5.1.26",
     "ts-node": "8.6.2",
@@ -115,9 +116,5 @@
     "web3-utils": "^1.7.3",
     "webpack": "^4.37.0",
     "webpack-cli": "^3.3.6"
-  },
-  "dependencies": {
-    "hardhat": "^2.9.7",
-    "run-with-hardhat-node": "^0.4.1"
   }
 }
