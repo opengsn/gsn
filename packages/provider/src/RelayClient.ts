@@ -625,10 +625,12 @@ export class RelayClient {
         relayCallABI,
         toBN(this.config.maxViewableGasLimit),
         isDryRun)
-    if (!acceptRelayCallResult.paymasterAccepted) {
+    if (!acceptRelayCallResult.paymasterAccepted || acceptRelayCallResult.recipientReverted) {
       let message: string
-      if (acceptRelayCallResult.reverted) {
+      if (acceptRelayCallResult.relayHubReverted) {
         message = `${isDryRun ? 'DRY-RUN' : 'local'} view call to 'relayCall()' reverted`
+      } else if (acceptRelayCallResult.recipientReverted) {
+        message = `paymaster accepted but recipient reverted in ${isDryRun ? 'DRY-RUN' : 'local'} view call to 'relayCall()'`
       } else {
         message = `paymaster rejected in ${isDryRun ? 'DRY-RUN' : 'local'} view call to 'relayCall()'`
       }

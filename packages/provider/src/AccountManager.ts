@@ -1,14 +1,18 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
 import Web3 from 'web3'
-import { recoverTypedSignature_v4, signTypedData_v4 } from 'eth-sig-util'
 import { PrefixedHexString } from 'ethereumjs-util'
+import { RLPEncodedTransaction } from 'web3-core'
+import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
+import { personalSign, recoverTypedSignature_v4, signTypedData_v4, TypedMessage } from 'eth-sig-util'
 
+import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/common/dist/Utils'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
+
 import { GSNConfig } from './GSNConfigurator'
-import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/common/dist/Utils'
+import { getRawTxOptions } from '@opengsn/common'
 
 export interface AccountKeypair {
   privateKey: PrefixedHexString
@@ -63,6 +67,49 @@ export class AccountManager {
     }
   }
 
+  signMessage (message: string, from: Address): PrefixedHexString {
+    const keypair = this.accounts.find(account => isSameAddress(account.address, from))
+    if (keypair == null) {
+      throw new Error(`Account ${from} not found`)
+    }
+    const bufferKey = Buffer.from(removeHexPrefix(keypair.privateKey), 'hex')
+    return personalSign(bufferKey, { data: message })
+  }
+
+  signTransaction (transactionConfig: TransactionConfig, from: Address): RLPEncodedTransaction {
+    let transaction: Transaction | FeeMarketEIP1559Transaction
+    if (transactionConfig.chainId != null && transactionConfig.chainId !== this.chainId) {
+      throw new Error(`This provider is initialized for chainId ${this.chainId} but transaction targets chainId ${transactionConfig.chainId}`)
+    }
+    const commonTxOptions = getRawTxOptions(this.chainId, 0)
+    const fixGasLimitName = { ...transactionConfig, gasLimit: transactionConfig.gas }
+    if (transactionConfig.gasPrice != null) {
+      // annoying - '@ethereumjs/tx' imports BN.js@^4.x.x while we use ^5.x.x
+      // @ts-ignore
+      transaction = new Transaction(fixGasLimitName, commonTxOptions)
+    } else {
+      // @ts-ignore
+      transaction = new FeeMarketEIP1559Transaction(fixGasLimitName, commonTxOptions)
+    }
+    const privateKeyBuf = Buffer.from(removeHexPrefix(this.findPrivateKey(from)), 'hex')
+    const raw = '0x' + transaction.sign(privateKeyBuf).serialize().toString('hex')
+    // even more annoying is that 'RLPEncodedTransaction', which is expected return type here, is not yet 1559-ready
+    // @ts-ignore
+    return { raw, tx: transaction }
+  }
+
+  private findPrivateKey (from: Address): PrefixedHexString {
+    const keypair = this.accounts.find(account => isSameAddress(account.address, from))
+    if (keypair == null) {
+      throw new Error(`Account ${from} not found`)
+    }
+    return keypair.privateKey
+  }
+
+  signTypedData (typedMessage: TypedMessage<any>, from: Address): PrefixedHexString {
+    return this._signWithControlledKey(this.findPrivateKey(from), typedMessage)
+  }
+
   async sign (relayRequest: RelayRequest): Promise<PrefixedHexString> {
     let signature
     const forwarder = relayRequest.relayData.forwarder
@@ -110,7 +157,7 @@ export class AccountManager {
     )
   }
 
-  _signWithControlledKey (privateKey: PrefixedHexString, signedData: TypedRequestData): string {
+  _signWithControlledKey (privateKey: PrefixedHexString, signedData: TypedMessage<any>): string {
     return signTypedData_v4(Buffer.from(removeHexPrefix(privateKey), 'hex'), { data: signedData })
   }
 

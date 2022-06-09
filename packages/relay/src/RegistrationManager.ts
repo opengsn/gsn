@@ -69,7 +69,6 @@ export class RegistrationManager {
   logger: LoggerInterface
 
   lastMinedRegisterTransaction?: CachedEventData
-  lastWorkerAddedTransaction?: CachedEventData
   private delayedEvents: Array<{ time: number, eventData: EventData }> = []
 
   get isHubAuthorized (): boolean {
@@ -121,13 +120,9 @@ export class RegistrationManager {
     this.config = config
   }
 
-  async init (): Promise<void> {
-    if (this.lastWorkerAddedTransaction == null) {
-      this.lastWorkerAddedTransaction = await this._queryLatestWorkerAddedEvent()
-    }
-
+  async init (lastScannedBlock: number): Promise<void> {
     if (this.lastMinedRegisterTransaction == null) {
-      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent()
+      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent(lastScannedBlock)
     }
 
     const tokenMetadata = await this.contractInteractor.getErc20TokenMetadata()
@@ -153,12 +148,7 @@ export class RegistrationManager {
           }
           break
         case RelayWorkersAdded:
-          if (this.lastWorkerAddedTransaction == null || isSecondEventLater(this.lastWorkerAddedTransaction.eventData, eventData)) {
-            this.logger.debug('New lastWorkerAddedTransaction: ' + JSON.stringify(eventData))
-            const block = await this.contractInteractor.getBlock(eventData.blockNumber)
-            const blockTimestamp = toNumber(block.timestamp)
-            this.lastWorkerAddedTransaction = { eventData, blockTimestamp }
-          }
+          this.logger.debug('New RelayWorkersAdded event: ' + JSON.stringify(eventData))
           break
       }
     }
@@ -261,11 +251,11 @@ export class RegistrationManager {
     return isRegistrationValid(this.lastMinedRegisterTransaction?.eventData, this.config, this.managerAddress)
   }
 
-  async _queryLatestRegistrationEvent (): Promise<CachedEventData | undefined> {
+  async _queryLatestRegistrationEvent (lastScannedBlock: number): Promise<CachedEventData | undefined> {
     const topics = address2topic(this.managerAddress)
     const registerEvents = await this.contractInteractor.getPastEventsForRegistrar([topics],
       {
-        fromBlock: this.config.coldRestartLogsFromBlock
+        fromBlock: lastScannedBlock + 1
       },
       [RelayServerRegistered])
     const eventData = getLatestEventData(registerEvents)
@@ -539,29 +529,12 @@ export class RegistrationManager {
     return transactionHashes
   }
 
-  async _queryLatestWorkerAddedEvent (): Promise<CachedEventData | undefined> {
-    const workersAddedEvents = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)],
-      {
-        fromBlock: this.config.coldRestartLogsFromBlock
-      },
-      [RelayWorkersAdded])
-    const eventData = getLatestEventData(workersAddedEvents)
-    if (eventData == null) {
-      return undefined
-    }
-    const block = await this.contractInteractor.getBlock(eventData.blockNumber)
-    const blockTimestamp = toNumber(block.timestamp)
-    return { eventData, blockTimestamp }
-  }
-
   async _isWorkerValid (): Promise<boolean> {
     const managerFromHub = await this.contractInteractor.workerToManager(this.workerAddress)
     if (managerFromHub.toLowerCase() === this.managerAddress.toLowerCase()) {
       return true
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-    return this.lastWorkerAddedTransaction != null && this.lastWorkerAddedTransaction.eventData.returnValues.newRelayWorkers
-      .map((a: string) => a.toLowerCase()).includes(this.workerAddress.toLowerCase())
+    return false
   }
 
   async isRegistered (): Promise<boolean> {

@@ -117,7 +117,6 @@ contract('RegistrationManager', function (accounts) {
 
     it('should start again after restarting process', async () => {
       const params: Partial<ServerConfigParams> = {
-        coldRestartLogsFromBlock: 1,
         relayHubAddress: env.relayHub.address,
         ownerAddress: env.relayOwner,
         url: LocalhostOne,

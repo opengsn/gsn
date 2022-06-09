@@ -209,7 +209,6 @@ export class ServerTestEnvironment {
 
   newServerInstanceNoFunding (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): void {
     const shared: Partial<ServerConfigParams> = {
-      coldRestartLogsFromBlock: 1,
       runPaymasterReputations: false,
       ownerAddress: this.relayOwner,
       relayHubAddress: this.relayHub.address,
