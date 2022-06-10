@@ -129,8 +129,9 @@ export class RegistrationManager {
     const listener = (): void => {
       this.printNotRegisteredMessage()
     }
+    const minimumStakePerToken = await this.contractInteractor.getMinimumStakePerToken(this.config.managerStakeTokenAddress)
     this.balanceRequired = new AmountRequired('Balance', toBN(this.config.managerMinBalance), this.logger, listener)
-    this.stakeRequired = new AmountRequired('Stake', toBN(this.config.managerMinStake), this.logger, listener, tokenMetadata)
+    this.stakeRequired = new AmountRequired('Stake', minimumStakePerToken, this.logger, listener, tokenMetadata)
     await this.refreshBalance()
     await this.refreshStake()
     this.isInitialized = true
