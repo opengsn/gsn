@@ -51,7 +51,7 @@
     "solpp": "./scripts/solpp.js",
     "lerna-typechain-generate": "lerna run typechain-generate --stream --ignore @opengsn/paymasters",
     "lerna-typechain-generate-paymasters": "lerna run typechain-generate --stream --scope @opengsn/paymasters",
-    "lerna-publish": "lerna publish",
+    "lerna-publish": "lerna publish --pre-dist-tag next",
     "lerna-publish-force-no-git": "lerna publish --no-push --no-git-tag-version --force-publish",
     "lerna-chmod-commands": "lerna run chmod-commands",
     "lerna-tsc": "lerna run tsc --ignore @opengsn/paymasters",

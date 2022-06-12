@@ -22,7 +22,6 @@ import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
 import { LoggerInterface } from './LoggerInterface'
 import {
-  PaymasterGasAndDataLimits,
   address2topic,
   calculateCalldataBytesZeroNonzero,
   decodeRevertReason,
@@ -30,6 +29,7 @@ import {
   event2topic,
   formatTokenAmount,
   packRelayUrlForRegistrar,
+  PaymasterGasAndDataLimits,
   splitRelayUrlForRegistrar,
   toNumber
 } from './Utils'
@@ -54,13 +54,10 @@ import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import {
   ActiveManagerEvents,
-  HubUnauthorized,
   RelayRegisteredEventInfo,
   RelayServerRegistered,
   RelayWorkersAdded,
-  StakeInfo,
-  StakePenalized,
-  StakeUnlocked
+  StakeInfo
 } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
 import { Environment } from './Environments'
@@ -68,7 +65,7 @@ import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from 'bignumber.js'
 import { TransactionType } from './types/TransactionType'
-import { constants, erc165Interfaces } from './Constants'
+import { constants, erc165Interfaces, RelayCallStatusCodes } from './Constants'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -109,8 +106,9 @@ export interface ERC20TokenMetadata {
 
 export interface ViewCallVerificationResult {
   paymasterAccepted: boolean
+  recipientReverted: boolean
   returnValue: string
-  reverted: boolean
+  relayHubReverted: boolean
 }
 
 export class ContractInteractor {
@@ -219,7 +217,15 @@ export class ContractInteractor {
     }
     const block = await this.web3.eth.getBlock('latest').catch((e: Error) => { throw new Error(`getBlock('latest') failed: ${e.message}\nCheck your internet/ethereum node connection`) })
     if (block.baseFeePerGas != null) {
-      this.transactionType = TransactionType.TYPE_TWO
+      this.logger.debug('Network supports type two (eip 1559) transactions. Checking rpc node eth_feeHistory method')
+      try {
+        await this.getFeeHistory('0x1', 'latest', [0.5])
+        this.transactionType = TransactionType.TYPE_TWO
+        this.logger.debug('Rpc node supports eth_feeHistory. Initializing to type two transactions')
+      } catch (e: any) {
+        this.logger.debug('eth_feeHistory failed. Aborting.')
+        throw e
+      }
     }
     await this._resolveDeployment()
     await this._initializeContracts()
@@ -535,24 +541,26 @@ export class ContractInteractor {
       this.logger.debug('relayCall res=' + res)
 
       // @ts-ignore
-      const decoded = abi.decodeParameters(['bool', 'bytes'], res)
+      const decoded = abi.decodeParameters(['bool', 'uint256', 'bytes'], res)
       const paymasterAccepted: boolean = decoded[0]
-      let returnValue: string
-      if (paymasterAccepted) {
-        returnValue = decoded[1]
-      } else {
-        returnValue = this._decodeRevertFromResponse({}, { result: decoded[1] }) ?? decoded[1]
+      const relayCallStatus: number = parseInt(decoded[1])
+      let returnValue: string = decoded[2]
+      const recipientReverted = RelayCallStatusCodes.RelayedCallFailed.eqn(relayCallStatus)
+      if (!paymasterAccepted || recipientReverted) {
+        returnValue = this._decodeRevertFromResponse({}, { result: returnValue }) ?? returnValue
       }
       return {
         returnValue: returnValue,
-        paymasterAccepted: paymasterAccepted,
-        reverted: false
+        paymasterAccepted,
+        recipientReverted,
+        relayHubReverted: false
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : JSON.stringify(e, replaceErrors)
       return {
         paymasterAccepted: false,
-        reverted: true,
+        recipientReverted: false,
+        relayHubReverted: true,
         returnValue: `view call to 'relayCall' reverted in client: ${message}`
       }
     }
@@ -1134,29 +1142,17 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.relayRegistrar.getRelayRegistrationMaxAge()
   }
 
-  async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
-    // each topic in getPastEvent is either a string or array-of-strings, to search for any.
-    const extraTopics = subsetManagers == null ? [] : [subsetManagers?.map(address2topic)] as any
-    const registerEvents = await this.getPastEventsForRegistrar(extraTopics,
-      { fromBlock },
-      [RelayServerRegistered])
-    const unregisterEvents = await this.getPastEventsForStakeManager([HubUnauthorized, StakePenalized, StakeUnlocked], [extraTopics], { fromBlock })
-    // we don't check event order: removed relayer can't be re-registered, so we simply ignore any "register" of a relayer that was ever removed/unauthorized/penalized
-    const removed = new Set(unregisterEvents.map(event => event.returnValues.relayManager))
-    const relaySet: { [relayManager: string]: RelayRegisteredEventInfo } = {}
-    registerEvents
-      .filter(event => !removed.has(event.returnValues.relayManager))
-      .map(event => {
-        const { relayManager, pctRelayFee, baseRelayFee, url } = event.returnValues
-        const ret: RelayRegisteredEventInfo = {
-          relayManager, pctRelayFee, baseRelayFee, relayUrl: url
-        }
-        return ret
-      })
-      .forEach(info => {
-        relaySet[info.relayManager] = info
-      })
-    return Object.values(relaySet)
+  async getRelayInfo (relayManagerAddress: string): Promise<{
+    lastSeenBlockNumber: BN
+    lastSeenTimestamp: BN
+    firstSeenBlockNumber: BN
+    firstSeenTimestamp: BN
+    baseRelayFee: BN
+    pctRelayFee: BN
+    urlParts: string[]
+    relayManager: string
+  }> {
+    return await this.relayRegistrar.getRelayInfo(this.relayHubInstance.address, relayManagerAddress)
   }
 
   /**

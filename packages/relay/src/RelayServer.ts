@@ -22,7 +22,6 @@ import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Vers
 import {
   address2topic,
   decodeRevertReason,
-  getLatestEventData,
   PaymasterGasAndDataLimits,
   randomInRange,
   sleep
@@ -36,6 +35,7 @@ import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
 import { isSameAddress, toNumber } from '@opengsn/common'
+import { BlockTransactionString } from 'web3-eth'
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -53,7 +53,7 @@ const GAS_RESERVE = 100000
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
-  lastScannedBlock: number
+  lastScannedBlock = 0
   lastRefreshBlock = 0
   ready = false
   readonly managerAddress: PrefixedHexString
@@ -73,8 +73,6 @@ export class RelayServer extends EventEmitter {
   maxGasLimit: number = 0
   transactionType = TransactionType.LEGACY
 
-  lastMinedActiveTransaction?: EventData
-
   reputationManager!: ReputationManager
   registrationManager!: RegistrationManager
   chainId!: number
@@ -93,7 +91,6 @@ export class RelayServer extends EventEmitter {
     dependencies: ServerDependencies) {
     super()
     this.logger = dependencies.logger
-    this.lastScannedBlock = config.coldRestartLogsFromBlock ?? 0
     this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
@@ -389,9 +386,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.logger.error('Alerted state: slowing down traffic')
       await sleep(randomInRange(this.config.minAlertedDelayMS, this.config.maxAlertedDelayMS))
     }
-    const currentBlockNumber = await this.contractInteractor.getBlockNumber()
-    const block = await this.contractInteractor.getBlock(currentBlockNumber)
-    const currentBlockTimestamp = toNumber(block.timestamp)
+    const currentBlock = await this.contractInteractor.getBlock('latest')
+    const currentBlockTimestamp = toNumber(currentBlock.timestamp)
     this.validateInput(req)
     this.validateRelayFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
@@ -420,14 +416,15 @@ returnValue        | ${viewRelayCallRet.returnValue}
         method,
         destination: req.metadata.relayHubAddress,
         gasLimit: maxPossibleGas,
-        creationBlockNumber: currentBlockNumber,
+        creationBlockNumber: currentBlock.number,
+        creationBlockHash: currentBlock.hash,
         creationBlockTimestamp: currentBlockTimestamp,
         maxFeePerGas: req.relayRequest.relayData.maxFeePerGas,
         maxPriorityFeePerGas: req.relayRequest.relayData.maxPriorityFeePerGas
       }
     const { signedTx } = await this.transactionManager.sendTransaction(details)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
-    await this.replenishServer(0, currentBlockNumber, currentBlockTimestamp)
+    await this.replenishServer(0, currentBlock.number, currentBlock.hash, currentBlockTimestamp)
     return signedTx
   }
 
@@ -490,9 +487,10 @@ returnValue        | ${viewRelayCallRet.returnValue}
       throw new Error('_init was already called')
     }
     const latestBlock = await this.contractInteractor.getBlock('latest')
-    if (this.config.coldRestartLogsFromBlock == null || latestBlock.number < this.config.coldRestartLogsFromBlock) {
-      throw new Error(
-        `Cannot start relay worker with coldRestartLogsFromBlock=${this.config.coldRestartLogsFromBlock} when "latest" block returned is ${latestBlock.number}`)
+    const registrationAge = await this.contractInteractor.getRelayRegistrationMaxAge()
+    this.lastScannedBlock = latestBlock.number - registrationAge.toNumber()
+    if (this.lastScannedBlock < 0) {
+      this.lastScannedBlock = 0
     }
     if (latestBlock.baseFeePerGas != null) {
       this.transactionType = TransactionType.TYPE_TWO
@@ -520,7 +518,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.managerAddress,
       this.workerAddress
     )
-    await this.registrationManager.init()
+    await this.registrationManager.init(this.lastScannedBlock)
 
     this.chainId = this.contractInteractor.chainId
     this.networkId = this.contractInteractor.getNetworkId()
@@ -546,6 +544,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   async replenishServer (
     workerIndex: number,
     currentBlockNumber: number,
+    currentBlockHash: string,
     currentBlockTimestamp: number
   ): Promise<PrefixedHexString[]> {
     const transactionHashes: PrefixedHexString[] = []
@@ -568,6 +567,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
         serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
         destination: this.relayHubContract.address,
         creationBlockNumber: currentBlockNumber,
+        creationBlockHash: currentBlockHash,
         creationBlockTimestamp: currentBlockTimestamp,
         method
       }
@@ -590,6 +590,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
           destination: this.workerAddress,
           value: toHex(refill),
           creationBlockNumber: currentBlockNumber,
+          creationBlockHash: currentBlockHash,
           creationBlockTimestamp: currentBlockTimestamp
         }
         const { transactionHash } = await this.transactionManager.sendTransaction(details)
@@ -605,12 +606,12 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async intervalHandler (): Promise<void> {
     try {
-      const blockNumber = await this.contractInteractor.getBlockNumber()
-      if (blockNumber > this.lastScannedBlock) {
-        await this._worker(blockNumber)
+      const block = await this.contractInteractor.getBlock('latest')
+      if (block.number > this.lastScannedBlock) {
+        await this._worker(block)
           .then((transactions) => {
             if (transactions.length !== 0) {
-              this.logger.debug(`Done handling block #${blockNumber}. Created ${transactions.length} transactions.`)
+              this.logger.debug(`Done handling block #${block.number}. Created ${transactions.length} transactions.`)
             }
           })
       }
@@ -629,33 +630,32 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
   }
 
-  async _worker (blockNumber: number): Promise<PrefixedHexString[]> {
+  async _worker (block: BlockTransactionString): Promise<PrefixedHexString[]> {
     if (!this.initialized || this.registrationManager.balanceRequired == null) {
       throw new Error('Please run init() first')
     }
-    if (blockNumber <= this.lastScannedBlock) {
+    if (block.number <= this.lastScannedBlock) {
       throw new Error('Attempt to scan older block, aborting')
     }
-    if (!this._shouldRefreshState(blockNumber)) {
+    if (!this._shouldRefreshState(block)) {
       return []
     }
-    const block = await this.contractInteractor.getBlock(blockNumber)
     const currentBlockTimestamp = toNumber(block.timestamp)
-    await this.withdrawToOwnerIfNeeded(blockNumber, currentBlockTimestamp)
-    this.lastRefreshBlock = blockNumber
+    await this.withdrawToOwnerIfNeeded(block.number, block.hash, currentBlockTimestamp)
+    this.lastRefreshBlock = block.number
     await this._refreshPriorityFee()
     await this.registrationManager.refreshBalance()
     if (!this.registrationManager.balanceRequired.isSatisfied) {
       this.setReadyState(false)
       return []
     }
-    return await this._handleChanges(blockNumber, currentBlockTimestamp)
+    return await this._handleChanges(block, currentBlockTimestamp)
   }
 
   async _refreshPriorityFee (): Promise<void> {
     const minMaxPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
     this.minMaxPriorityFeePerGas = Math.floor(minMaxPriorityFeePerGas * this.config.gasPriceFactor)
-    if (this.minMaxPriorityFeePerGas === 0) {
+    if (this.minMaxPriorityFeePerGas === 0 && parseInt(this.config.defaultPriorityFee) > 0) {
       this.logger.debug(`Priority fee received from node is 0. Setting priority fee to ${this.config.defaultPriorityFee}`)
       this.minMaxPriorityFeePerGas = parseInt(this.config.defaultPriorityFee)
     }
@@ -664,28 +664,27 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
   }
 
-  async _handleChanges (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
+  async _handleChanges (currentBlock: BlockTransactionString, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
     let transactionHashes: PrefixedHexString[] = []
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
-    await this._updateLatestTxBlockNumber(hubEventsSinceLastScan)
     await this.registrationManager.updateLatestRegistrationTxs(hubEventsSinceLastScan)
     const shouldRegisterAgain =
-      await this._shouldRegisterAgain(currentBlockNumber, currentBlockTimestamp, hubEventsSinceLastScan)
+      await this._shouldRegisterAgain(currentBlock.number, currentBlockTimestamp)
     transactionHashes = transactionHashes.concat(
       await this.registrationManager.handlePastEvents(
-        hubEventsSinceLastScan, this.lastScannedBlock, currentBlockNumber, currentBlockTimestamp, shouldRegisterAgain))
-    await this.transactionManager.removeConfirmedTransactions(currentBlockNumber)
-    await this._boostStuckPendingTransactions(currentBlockNumber, currentBlockTimestamp)
-    this.lastScannedBlock = currentBlockNumber
+        hubEventsSinceLastScan, this.lastScannedBlock, currentBlock, currentBlockTimestamp, shouldRegisterAgain))
+    await this.transactionManager.removeConfirmedTransactions(currentBlock.number)
+    await this._boostStuckPendingTransactions(currentBlock.number, currentBlockTimestamp)
+    this.lastScannedBlock = currentBlock.number
     const isRegistered = await this.registrationManager.isRegistered()
     if (!isRegistered) {
       this.logger.debug('Not registered yet')
       this.setReadyState(false)
       return transactionHashes
     }
-    await this.handlePastHubEvents(currentBlockNumber, hubEventsSinceLastScan)
+    await this.handlePastHubEvents(currentBlock, hubEventsSinceLastScan)
     const workerIndex = 0
-    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, currentBlockNumber, currentBlockTimestamp))
+    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, currentBlock.number, currentBlock.hash, currentBlockTimestamp))
     const workerBalance = await this.getWorkerBalance(workerIndex)
     if (workerBalance.lt(toBN(this.config.workerMinBalance))) {
       this.logger.debug('Worker balance too low')
@@ -708,31 +707,40 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return toBN(await this.contractInteractor.getBalance(this.workerAddress, 'pending'))
   }
 
-  async _shouldRegisterAgain (currentBlock: number, currentBlockTimestamp: number, hubEventsSinceLastScan: EventData[]): Promise<boolean> {
+  async _shouldRegisterAgain (currentBlockNumber: number, currentBlockTimestamp: number): Promise<boolean> {
     const relayRegistrationMaxAge = await this.contractInteractor.getRelayRegistrationMaxAge()
-    const latestRegisterTxBlockTimestamp = this._getLatestRegisterTxBlockTimestamp()
-    const isPendingRegistration = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlock, this.config.recentActionAvoidRepeatDistanceBlocks)
+    const relayInfo = await this.contractInteractor.getRelayInfo(this.managerAddress)
+      .catch((e: Error) => {
+        if (e.message.includes('relayManager not found')) {
+          return { lastSeenTimestamp: 0 }
+        } else {
+          this.logger.error(`getRelayInfo failed ${e.message}`)
+          throw e
+        }
+      })
+    const latestRegisterTxBlockTimestamp = toNumber(relayInfo.lastSeenTimestamp)
+    const isPendingRegistration = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
     const registrationExpired =
       (currentBlockTimestamp - latestRegisterTxBlockTimestamp >= relayRegistrationMaxAge.toNumber()) &&
       !isPendingRegistration
     const shouldRegister = registrationExpired
-    if (!registrationExpired) {
+    if (registrationExpired) {
       this.logger.debug(
-        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlock} latestTxBlockNumber=${latestRegisterTxBlockTimestamp} relayRegistrationMaxAge=${relayRegistrationMaxAge.toString()}`)
+        `_shouldRegisterAgain registrationExpired=${registrationExpired} currentBlock=${currentBlockNumber} latestTxBlockNumber=${latestRegisterTxBlockTimestamp} relayRegistrationMaxAge=${relayRegistrationMaxAge.toString()}`)
     }
     return shouldRegister
   }
 
-  _shouldRefreshState (currentBlock: number): boolean {
-    return currentBlock - this.lastRefreshBlock >= this.config.refreshStateTimeoutBlocks || !this.isReady()
+  _shouldRefreshState (currentBlock: BlockTransactionString): boolean {
+    return currentBlock.number - this.lastRefreshBlock >= this.config.refreshStateTimeoutBlocks || !this.isReady()
   }
 
-  async handlePastHubEvents (currentBlockNumber: number, hubEventsSinceLastScan: EventData[]): Promise<void> {
+  async handlePastHubEvents (currentBlock: BlockTransactionString, hubEventsSinceLastScan: EventData[]): Promise<void> {
     for (const event of hubEventsSinceLastScan) {
       switch (event.event) {
         case TransactionRejectedByPaymaster:
           this.logger.debug(`handle TransactionRejectedByPaymaster event: ${JSON.stringify(event)}`)
-          await this._handleTransactionRejectedByPaymasterEvent(event.returnValues.paymaster, currentBlockNumber, event.blockNumber)
+          await this._handleTransactionRejectedByPaymasterEvent(event.returnValues.paymaster, event.blockNumber)
           break
         case TransactionRelayed:
           this.logger.debug(`handle TransactionRelayed event: ${JSON.stringify(event)}`)
@@ -764,7 +772,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   // TODO: do not call this method when events are processed already (stateful server thing)
-  async _handleTransactionRejectedByPaymasterEvent (paymaster: Address, currentBlockNumber: number, eventBlockNumber: number): Promise<void> {
+  async _handleTransactionRejectedByPaymasterEvent (paymaster: Address, eventBlockNumber: number): Promise<void> {
     this.alerted = true
     const block = await this.contractInteractor.getBlock(eventBlockNumber)
     const eventBlockTimestamp = toNumber(block.timestamp)
@@ -777,34 +785,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
   }
 
-  _getLatestTxBlockNumber (): number {
-    return this.lastMinedActiveTransaction?.blockNumber ?? -1
-  }
-
-  _getLatestRegisterTxBlockTimestamp (): number {
-    return this.registrationManager.lastMinedRegisterTransaction?.blockTimestamp ?? -1
-  }
-
-  async _updateLatestTxBlockNumber (eventsSinceLastScan: EventData[]): Promise<void> {
-    const latestTransactionSinceLastScan = getLatestEventData(eventsSinceLastScan)
-    if (latestTransactionSinceLastScan != null) {
-      this.lastMinedActiveTransaction = latestTransactionSinceLastScan
-      this.logger.debug(`found newer block ${this.lastMinedActiveTransaction?.blockNumber}`)
-    }
-    if (this.lastMinedActiveTransaction == null) {
-      this.lastMinedActiveTransaction = await this._queryLatestActiveEvent()
-      this.logger.debug(`queried node for last active server event, found in block ${this.lastMinedActiveTransaction?.blockNumber}`)
-    }
-  }
-
-  async _queryLatestActiveEvent (): Promise<EventData | undefined> {
-    const events: EventData[] = await this.contractInteractor.getPastEventsForHub([address2topic(this.managerAddress)], {
-      fromBlock: this.config.coldRestartLogsFromBlock
-    })
-    return getLatestEventData(events)
-  }
-
-  async withdrawToOwnerIfNeeded (currentBlockNumber: number, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
+  async withdrawToOwnerIfNeeded (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
     try {
       let txHashes: PrefixedHexString[] = []
       if (!this.isReady() || this.config.withdrawToOwnerOnBalance == null) {
@@ -818,7 +799,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
         return txHashes
       }
       const withdrawalAmount = managerHubBalance.sub(reserveBalance)
-      txHashes = txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(currentBlockNumber, currentBlockTimestamp, withdrawalAmount))
+      txHashes = txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(currentBlockNumber, currentBlockHash, currentBlockTimestamp, withdrawalAmount))
       this.logger.info(`Withdrew ${withdrawalAmount.toString()} to owner`)
       return txHashes
     } catch (e) {

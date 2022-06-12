@@ -272,7 +272,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     )
     external
     override
-    returns (bool paymasterAccepted, bytes memory returnValue)
+    returns (bool paymasterAccepted, IRelayHub.RelayCallStatus status, bytes memory returnValue)
     {
         RelayCallData memory vars;
         vars.initialGasLeft = aggregateGasleft();
@@ -370,8 +370,6 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
                     vars.status == RelayCallStatus.RejectedByForwarder ||
                     vars.status == RelayCallStatus.RejectedByRecipientRevert  //can only be thrown if rejectOnRecipientRevert==true
                 )) {
-                paymasterAccepted=false;
-
                 emit TransactionRejectedByPaymaster(
                     vars.relayManager,
                     relayRequest.relayData.paymaster,
@@ -382,7 +380,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
                     vars.functionSelector,
                     vars.innerGasUsed,
                     vars.relayedCallReturnValue);
-                return (false, vars.relayedCallReturnValue);
+                return (false, vars.status, vars.relayedCallReturnValue);
             }
         }
 
@@ -412,7 +410,12 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
                 vars.status,
                 charge);
         }
-        return (true, "");
+
+        // avoid variable size memory copying after gas calculation completed on-chain
+        if (tx.origin == DRY_RUN_ADDRESS) {
+            return (true, vars.status, vars.relayedCallReturnValue);
+        }
+        return (true, vars.status, "");
     }
     }
 

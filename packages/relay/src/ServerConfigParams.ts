@@ -72,8 +72,6 @@ export interface ServerConfigParams {
 
   requiredVersionRange?: string
 
-  // when server starts, it will look for relevant Relay Hub, Stake Manager events starting at this block
-  coldRestartLogsFromBlock?: number
   // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
   pastEventsQueryMaxPageSize: number
 
@@ -207,7 +205,6 @@ const ConfigParamsTypes = {
   maxAlertedDelayMS: 'number',
   maxGasPrice: 'string',
   defaultPriorityFee: 'string',
-  coldRestartLogsFromBlock: 'number',
   pastEventsQueryMaxPageSize: 'number',
   confirmationsNeeded: 'number',
   environmentName: 'string',
@@ -327,10 +324,6 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
 
   if (config.relayHubAddress == null) {
     error('missing param: must have relayHubAddress')
-  }
-  if (config.coldRestartLogsFromBlock == null) {
-    const block = await contractInteractor.getCreationBlockFromRelayHub()
-    config.coldRestartLogsFromBlock = block.toNumber()
   }
   if (config.url == null) error('missing param: url')
   if (config.workdir == null) error('missing param: workdir')

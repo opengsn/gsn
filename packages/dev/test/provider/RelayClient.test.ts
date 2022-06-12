@@ -16,6 +16,7 @@ import {
   TestTokenInstance,
   StakeManagerInstance,
   TestRecipientInstance,
+  TestRecipientWithoutFallbackInstance,
   TestPaymasterEverythingAcceptedInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
@@ -56,6 +57,7 @@ import { ConfigResponse } from '@opengsn/common/dist/ConfigResponse'
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
+const TestRecipientWithoutFallback = artifacts.require('TestRecipientWithoutFallback')
 const TestToken = artifacts.require('TestToken')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const Forwarder = artifacts.require('Forwarder')
@@ -91,6 +93,7 @@ contract('RelayClient', function (accounts) {
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
+  let testRecipientWithoutFallback: TestRecipientWithoutFallbackInstance
   let testToken: TestTokenInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
   const gasLess = accounts[10]
@@ -137,6 +140,7 @@ contract('RelayClient', function (accounts) {
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)
+    testRecipientWithoutFallback = await TestRecipientWithoutFallback.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
     await registerForwarderForGsn(forwarderInstance)
     paymaster = await TestPaymasterEverythingAccepted.new()
@@ -512,7 +516,7 @@ contract('RelayClient', function (accounts) {
     })
   })
 
-  describe('#_calculateDefaultGasPrice()', function () {
+  describe('#_calculateGasFees()', function () {
     it('should use minimum gas price if calculated is too low', async function () {
       const minMaxPriorityFeePerGas = 1e18
       const gsnConfig: Partial<GSNConfig> = {
@@ -867,11 +871,41 @@ contract('RelayClient', function (accounts) {
       const getSenderNonceStub = sinon.stub(relayClient.dependencies.contractInteractor, 'getSenderNonce')
       getSenderNonceStub.returns(Promise.resolve('1'))
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      sinon.restore()
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
       assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
       assert.match(relayingErrors.values().next().value.message, /paymaster rejected in DRY-RUN.*FWD: nonce mismatch/s)
+    })
+
+    it('should report the recipient revert reason without requesting client signature', async function () {
+      // @ts-ignore
+      options.data = testRecipient.contract.methods.recipientRevert().encodeABI()
+      options.gas = '0xfffff'
+
+      const relayClient =
+        new RelayClient({
+          provider: underlyingProvider,
+          config: { ...gsnConfig, performDryRunViewRelayCall: true }
+        })
+      await relayClient.init()
+      let { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
+      assert.match(relayingErrors.values().next().value.message, /paymaster accepted but recipient reverted in DRY-RUN.*this method reverts consistently/s)
+
+      // also check recipient that does not have specified method or a fallback function
+      // @ts-ignore
+      options.to = testRecipientWithoutFallback.address;
+      ({ transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options))
+      assert.isUndefined(transaction)
+      assert.equal(pingErrors.size, 0)
+      assert.equal(relayingErrors.size, 1)
+      assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
+      assert.match(relayingErrors.values().next().value.message, /paymaster accepted but recipient reverted in DRY-RUN.*Reported reason: : null/s)
     })
   })
 })
