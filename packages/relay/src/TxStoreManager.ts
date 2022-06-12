@@ -101,15 +101,6 @@ export class TxStoreManager {
     await this.txstore.asyncRemove({}, { multi: true })
   }
 
-  async getPendingBySigner (signer: PrefixedHexString): Promise<StoredTransaction[]> {
-    return (await this.txstore.asyncFind({
-      'nonceSigner.signer': signer.toLowerCase(),
-      minedBlock: { $exists: false }
-    })).sort(function (tx1, tx2) {
-      return tx1.nonce - tx2.nonce
-    })
-  }
-
   async getAll (): Promise<StoredTransaction[]> {
     return (await this.txstore.asyncFind({})).sort(function (tx1, tx2) {
       return tx1.nonce - tx2.nonce

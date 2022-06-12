@@ -381,14 +381,14 @@ data                     | ${transaction.data}
     minMaxPriorityFee: number
   ): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const boostedTransactions = new Map<PrefixedHexString, SignedTransactionDetails>()
+    const nonce = await this.contractInteractor.getTransactionCount(signer)
 
-    // Load unconfirmed transactions from store again
-    const pendingTxs = await this.txStoreManager.getPendingBySigner(signer)
+    // Load all transactions above currently mined nonce. If it is already mined, the boosting will not affect it.
+    const pendingTxs = await this.txStoreManager.getTxsInNonceRange(signer, nonce, Number.MAX_SAFE_INTEGER)
     if (pendingTxs.length === 0) {
       return boostedTransactions
     }
     // Check if the tx was mined by comparing its nonce against the latest one
-    const nonce = await this.contractInteractor.getTransactionCount(signer)
     const oldestPendingTx = pendingTxs[0]
     if (oldestPendingTx.nonce < nonce) {
       this.logger.debug(`${signer} : transaction is mined, awaiting confirmations. Account nonce: ${nonce}, oldest transaction: nonce: ${oldestPendingTx.nonce} txId: ${oldestPendingTx.txId}`)
