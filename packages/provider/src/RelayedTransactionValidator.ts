@@ -10,6 +10,7 @@ import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransac
 import { isSameAddress } from '@opengsn/common/dist/Utils'
 
 import { GSNConfig } from './GSNConfigurator'
+import { ObjectMap } from '@opengsn/common'
 
 export interface GasPriceValidationResult {
   isTransactionTypeValid: boolean
@@ -69,7 +70,7 @@ export class RelayedTransactionValidator {
     const isTransactionSenderValid = this._validateTransactionSender(request, transaction)
     const isTransactionTargetValid = this.validateTransactionTarget(transaction)
     const isTransactionContentValid = this._validateTransactionMethodSignature(transaction)
-    const gasPriceValidationResult = this._validateGasPrice(request, transaction)
+    const gasPriceValidationResult = this._validateNonceGapGasPrice(request, transaction)
     const isTransactionNonceValid = parseInt(transaction.nonce.toString()) === expectedNonce
     return {
       nonceGapFilledValidationResult: [],
@@ -85,14 +86,14 @@ export class RelayedTransactionValidator {
   validateRelayResponse (
     request: RelayTransactionRequest,
     returnedTx: PrefixedHexString,
-    nonceGapFilled: Map<number, PrefixedHexString>
+    nonceGapFilled: ObjectMap<PrefixedHexString>
   ): TransactionValidationResult {
     const transaction = TransactionFactory.fromSerializedData(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
     this.logger.debug(`returnedTx: ${JSON.stringify(transaction.toJSON(), null, 2)}`)
 
     const nonce = parseInt(transaction.nonce.toString())
     const expectedNonceGapLength = nonce - request.metadata.relayLastKnownNonce
-    const isNonceGapFilledSizeValid = nonceGapFilled.size === expectedNonceGapLength
+    const isNonceGapFilledSizeValid = Object.keys(nonceGapFilled).length === expectedNonceGapLength
     const isTransactionTargetValid = this.validateTransactionTarget(transaction)
     const isTransactionSenderValid = this._validateTransactionSender(request, transaction)
     const isTransactionContentValid = this._validateTransactionContent(request, transaction)
@@ -146,6 +147,18 @@ export class RelayedTransactionValidator {
     return relayRequestAbiEncode === bufferToHex(transaction.data)
   }
 
+  _validateNonceGapGasPrice (_request: RelayTransactionRequest, _transaction: TypedTransaction): GasPriceValidationResult {
+    // TODO: implement logic for verifying gas price is valid for transactions in the nonce gap
+    this.logger.debug('not checking gas prices for transaction in nonce gap - not implemented')
+    return {
+      isTransactionTypeValid: true,
+      isFeeMarket1559Transaction: true,
+      isLegacyGasPriceValid: true,
+      isMaxFeePerGasValid: true,
+      isMaxPriorityFeePerGasValid: true
+    }
+  }
+
   _validateGasPrice (request: RelayTransactionRequest, transaction: TypedTransaction): GasPriceValidationResult {
     let isTransactionTypeValid = true
     let isFeeMarket1559Transaction = false
@@ -177,11 +190,11 @@ export class RelayedTransactionValidator {
 
   _validateNonceGapFilled (
     request: RelayTransactionRequest,
-    transactionsInGap: Map<number, PrefixedHexString>
+    transactionsInGap: ObjectMap<PrefixedHexString>
   ): TransactionValidationResult[] {
     const result: TransactionValidationResult[] = []
     let expectedNonce = request.metadata.relayLastKnownNonce
-    for (const rawTransaction of transactionsInGap.values()) {
+    for (const rawTransaction of Object.values(transactionsInGap)) {
       const transaction = TransactionFactory.fromSerializedData(toBuffer(rawTransaction), this.contractInteractor.getRawTxOptions())
       const validationResult = this.validateTransactionInNonceGap(request, transaction, expectedNonce)
       result.push(validationResult)

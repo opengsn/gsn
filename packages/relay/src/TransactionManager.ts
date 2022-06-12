@@ -24,6 +24,7 @@ import { constants } from '@opengsn/common/dist/Constants'
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { toBN } from 'web3-utils'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
+import { ObjectMap } from '@opengsn/common'
 
 export interface SignedTransactionDetails {
   transactionHash: PrefixedHexString
@@ -143,11 +144,11 @@ data                     | ${transaction.data}
     }
   }
 
-  async getNonceGapFilled (signer: Address, fromNonce: number, toNonce: number): Promise<Map<number, PrefixedHexString>> {
-    const nonceGap = new Map<number, PrefixedHexString>()
+  async getNonceGapFilled (signer: Address, fromNonce: number, toNonce: number): Promise<ObjectMap<PrefixedHexString>> {
+    const nonceGap: ObjectMap<PrefixedHexString> = {}
     const transactions = await this.txStoreManager.getTxsInNonceRange(signer, fromNonce, toNonce)
     for (const transaction of transactions) {
-      nonceGap.set(transaction.nonce, transaction.rawSerializedTx)
+      nonceGap[transaction.nonce] = transaction.rawSerializedTx
     }
     return nonceGap
   }

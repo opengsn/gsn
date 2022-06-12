@@ -4,6 +4,7 @@ import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { PingResponse } from '@opengsn/common/dist/PingResponse'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { ObjectMap } from '@opengsn/common'
 
 export class BadHttpClient extends HttpClient {
   static readonly message = 'This is not the relay you are looking for'
@@ -35,7 +36,7 @@ export class BadHttpClient extends HttpClient {
 
   async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{
     signedTx: PrefixedHexString
-    nonceGapFilled: Map<number, PrefixedHexString>
+    nonceGapFilled: ObjectMap<PrefixedHexString>
   }> {
     if (this.failRelay) {
       throw new Error(BadHttpClient.message)
@@ -44,7 +45,7 @@ export class BadHttpClient extends HttpClient {
       throw new Error('some error describing how timeout occurred somewhere')
     }
     if (this.stubRelay != null) {
-      return { signedTx: this.stubRelay, nonceGapFilled: new Map() }
+      return { signedTx: this.stubRelay, nonceGapFilled: {} }
     }
     return await super.relayTransaction(relayUrl, request)
   }

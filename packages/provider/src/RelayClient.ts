@@ -15,7 +15,7 @@ import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { decodeRevertReason, removeNullValues } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
-import { constants, getRelayRequestID, RelayCallABI } from '@opengsn/common'
+import { constants, getRelayRequestID, ObjectMap, RelayCallABI } from '@opengsn/common'
 
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
@@ -307,7 +307,7 @@ export class RelayClient {
       return { error }
     }
     let signedTx: PrefixedHexString
-    let nonceGapFilled: Map<number, PrefixedHexString>
+    let nonceGapFilled: ObjectMap<PrefixedHexString>
     let transaction: TypedTransaction
     let auditPromise: Promise<AuditResponse>
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
