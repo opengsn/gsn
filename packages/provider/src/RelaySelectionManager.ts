@@ -76,8 +76,8 @@ export class RelaySelectionManager {
             relayInfo
           }
         } else {
-          // TODO: do not throw! The preferred relay may be removed since.
-          throw new Error('Could not find register event for the winning preferred relay')
+          this.logger.error('Could not find registration info in the RelayRegistrar for the selected preferred relay')
+          return undefined
         }
       }
     }
