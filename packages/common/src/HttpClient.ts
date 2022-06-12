@@ -27,8 +27,8 @@ export class HttpClient {
     return pingResponse
   }
 
-  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{signedTx: PrefixedHexString, nonceGapFilled: PrefixedHexString[]}> {
-    const { signedTx, nonceGapFilled, error }: { signedTx: PrefixedHexString, nonceGapFilled: PrefixedHexString[], error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relay', request)
+  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{signedTx: PrefixedHexString, nonceGapFilled: Map<number, PrefixedHexString>}> {
+    const { signedTx, nonceGapFilled, error }: { signedTx: PrefixedHexString, nonceGapFilled: Map<number, PrefixedHexString>, error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relay', request)
     this.logger.info(`relayTransaction response: ${signedTx}, error: ${error}`)
     if (error != null) {
       throw new Error(`Got error response from relay: ${error}`)

@@ -35,7 +35,7 @@ export class BadHttpClient extends HttpClient {
 
   async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{
     signedTx: PrefixedHexString
-    nonceGapFilled: PrefixedHexString[]
+    nonceGapFilled: Map<number, PrefixedHexString>
   }> {
     if (this.failRelay) {
       throw new Error(BadHttpClient.message)
@@ -44,7 +44,7 @@ export class BadHttpClient extends HttpClient {
       throw new Error('some error describing how timeout occurred somewhere')
     }
     if (this.stubRelay != null) {
-      return { signedTx: this.stubRelay, nonceGapFilled: [] }
+      return { signedTx: this.stubRelay, nonceGapFilled: new Map() }
     }
     return await super.relayTransaction(relayUrl, request)
   }

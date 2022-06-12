@@ -84,7 +84,7 @@ class MockHttpClient extends HttpClient {
     super(httpWrapper, logger)
   }
 
-  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{ signedTx: PrefixedHexString, nonceGapFilled: PrefixedHexString[] }> {
+  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{ signedTx: PrefixedHexString, nonceGapFilled: Map<number, PrefixedHexString> }> {
     return await super.relayTransaction(this.mapUrl(relayUrl), request)
   }
 
@@ -755,9 +755,21 @@ contract('RelayClient', function (accounts) {
           maxAcceptanceBudget: ''
         }
       }
-      const allTransactionsRight = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, [tx1Right, tx2Right, tx3Right])
-      const oneWrongTransaction = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, [tx1Right, tx2Wrong, tx3Right])
-      const transactionFromOutsideRange = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, [tx1Right, tx2Right, tx9Right])
+      const allTransactionsRightMap = new Map<number, PrefixedHexString>()
+      allTransactionsRightMap.set(1, tx1Right)
+      allTransactionsRightMap.set(2, tx2Right)
+      allTransactionsRightMap.set(3, tx3Right)
+      const oneWrongTransactionMap = new Map<number, PrefixedHexString>()
+      oneWrongTransactionMap.set(1, tx1Right)
+      oneWrongTransactionMap.set(2, tx2Wrong)
+      oneWrongTransactionMap.set(3, tx3Right)
+      const transactionFromOutsideRangeMap = new Map<number, PrefixedHexString>()
+      transactionFromOutsideRangeMap.set(1, tx1Right)
+      transactionFromOutsideRangeMap.set(2, tx2Right)
+      transactionFromOutsideRangeMap.set(9, tx9Right)
+      const allTransactionsRight = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, allTransactionsRightMap)
+      const oneWrongTransaction = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, oneWrongTransactionMap)
+      const transactionFromOutsideRange = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, transactionFromOutsideRangeMap)
 
       const legacyGasRight = {
         isTransactionTypeValid: true,

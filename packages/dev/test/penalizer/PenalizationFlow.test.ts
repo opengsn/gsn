@@ -90,7 +90,7 @@ contract('PenalizationFlow', function (accounts) {
 
     sinon
       .stub(httpClient, 'relayTransaction')
-      .returns(Promise.resolve({ signedTx: signedTxToPenalize.rawTx, nonceGapFilled: [] }))
+      .returns(Promise.resolve({ signedTx: signedTxToPenalize.rawTx, nonceGapFilled: new Map() }))
 
     const overrideDependencies: Partial<GSNDependencies> = {
       httpClient

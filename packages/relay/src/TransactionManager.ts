@@ -143,9 +143,13 @@ data                     | ${transaction.data}
     }
   }
 
-  async getNonceGapFilled (signer: Address, fromNonce: number, toNonce: number): Promise<PrefixedHexString[]> {
+  async getNonceGapFilled (signer: Address, fromNonce: number, toNonce: number): Promise<Map<number, PrefixedHexString>> {
+    const nonceGap = new Map<number, PrefixedHexString>()
     const transactions = await this.txStoreManager.getTxsInNonceRange(signer, fromNonce, toNonce)
-    return transactions.map(it => it.rawSerializedTx)
+    for (const transaction of transactions) {
+      nonceGap.set(transaction.nonce, transaction.rawSerializedTx)
+    }
+    return nonceGap
   }
 
   async sendTransaction (txDetails: SendTransactionDetails): Promise<SignedTransactionDetails> {

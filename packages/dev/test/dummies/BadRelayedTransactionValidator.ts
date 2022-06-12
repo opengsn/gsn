@@ -15,7 +15,7 @@ export class BadRelayedTransactionValidator extends RelayedTransactionValidator 
     this.failValidation = failValidation
   }
 
-  validateRelayResponse (transactionJsonRequest: RelayTransactionRequest, returnedTx: string, nonceGapFilled: string[]): TransactionValidationResult {
+  validateRelayResponse (transactionJsonRequest: RelayTransactionRequest, returnedTx: string, nonceGapFilled: Map<number, string>): TransactionValidationResult {
     const superCallResult = super.validateRelayResponse(transactionJsonRequest, returnedTx, nonceGapFilled)
     if (this.failValidation) {
       superCallResult.isTransactionContentValid = false

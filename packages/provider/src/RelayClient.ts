@@ -307,7 +307,7 @@ export class RelayClient {
       return { error }
     }
     let signedTx: PrefixedHexString
-    let nonceGapFilled: PrefixedHexString[]
+    let nonceGapFilled: Map<number, PrefixedHexString>
     let transaction: TypedTransaction
     let auditPromise: Promise<AuditResponse>
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))

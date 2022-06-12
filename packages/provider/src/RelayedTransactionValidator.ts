@@ -85,14 +85,14 @@ export class RelayedTransactionValidator {
   validateRelayResponse (
     request: RelayTransactionRequest,
     returnedTx: PrefixedHexString,
-    nonceGapFilled: PrefixedHexString[]
+    nonceGapFilled: Map<number, PrefixedHexString>
   ): TransactionValidationResult {
     const transaction = TransactionFactory.fromSerializedData(toBuffer(returnedTx), this.contractInteractor.getRawTxOptions())
     this.logger.debug(`returnedTx: ${JSON.stringify(transaction.toJSON(), null, 2)}`)
 
     const nonce = parseInt(transaction.nonce.toString())
     const expectedNonceGapLength = nonce - request.metadata.relayLastKnownNonce
-    const isNonceGapFilledSizeValid = nonceGapFilled.length === expectedNonceGapLength
+    const isNonceGapFilledSizeValid = nonceGapFilled.size === expectedNonceGapLength
     const isTransactionTargetValid = this.validateTransactionTarget(transaction)
     const isTransactionSenderValid = this._validateTransactionSender(request, transaction)
     const isTransactionContentValid = this._validateTransactionContent(request, transaction)
@@ -177,11 +177,11 @@ export class RelayedTransactionValidator {
 
   _validateNonceGapFilled (
     request: RelayTransactionRequest,
-    transactionsInGap: PrefixedHexString[]
+    transactionsInGap: Map<number, PrefixedHexString>
   ): TransactionValidationResult[] {
     const result: TransactionValidationResult[] = []
     let expectedNonce = request.metadata.relayLastKnownNonce
-    for (const rawTransaction of transactionsInGap) {
+    for (const rawTransaction of transactionsInGap.values()) {
       const transaction = TransactionFactory.fromSerializedData(toBuffer(rawTransaction), this.contractInteractor.getRawTxOptions())
       const validationResult = this.validateTransactionInNonceGap(request, transaction, expectedNonce)
       result.push(validationResult)
