@@ -566,22 +566,6 @@ export class ContractInteractor {
     }
   }
 
-  async getMaxViewableGasLimit (relayRequest: RelayRequest, maxViewableGasLimit: IntString): Promise<BN> {
-    const maxViewableGasLimitBN = toBN(maxViewableGasLimit)
-    const gasPrice = toBN(relayRequest.relayData.maxFeePerGas)
-    if (gasPrice.eqn(0)) {
-      return maxViewableGasLimitBN
-    }
-    const workerBalanceString = await this.getBalance(relayRequest.relayData.relayWorker)
-    if (workerBalanceString == null) {
-      this.logger.error('getMaxViewableGasLimit: failed to get relay worker balance')
-      return maxViewableGasLimitBN
-    }
-    const workerBalance = toBN(workerBalanceString)
-    const workerGasLimit = workerBalance.div(gasPrice)
-    return BN.min(maxViewableGasLimitBN, workerGasLimit)
-  }
-
   /**
    * decode revert from rpc response.
    * called from the callback of the provider "eth_call" call.
