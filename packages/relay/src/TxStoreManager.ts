@@ -79,10 +79,12 @@ export class TxStoreManager {
   }
 
   async getTxsInNonceRange (signer: PrefixedHexString, fromNonce: number, toNonce: number): Promise<StoredTransaction[]> {
-    return await this.txstore.asyncFind({
+    return (await this.txstore.asyncFind({
       $and: [
         { 'nonceSigner.nonce': { $lte: toNonce, $gte: fromNonce } },
         { 'nonceSigner.signer': signer.toLowerCase() }]
+    })).sort(function (tx1, tx2) {
+      return tx1.nonce - tx2.nonce
     })
   }
 
