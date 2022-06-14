@@ -175,4 +175,8 @@ export class KnownRelaysManager {
       relayFailures.push(newFailureInfo)
     }
   }
+
+  isPreferred (relayUrl: string): boolean {
+    return this.preferredRelayers.find(it => it.relayUrl.toLowerCase() === relayUrl.toLowerCase()) != null
+  }
 }
