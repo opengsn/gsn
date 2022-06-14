@@ -34,13 +34,12 @@ export class HttpServer {
       // used to work before workspaces, needs research
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       this.app.get('/getaddr', this.pingHandler.bind(this))
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       this.app.post('/stats', this.statsHandler.bind(this))
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       this.app.get('/stats', this.statsHandler.bind(this))
       // used to work before workspaces, needs research
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       this.app.post('/relay', this.relayHandler.bind(this))
+      this.app.get('/config', this.configDumpHandler.bind(this))
       this.relayService.on('error', (e) => { console.error('httpServer:', e) })
     }
 
@@ -86,6 +85,21 @@ export class HttpServer {
       const message: string = e.message
       res.send({ message })
       this.logger.error(`ping handler rejected: ${message}`)
+    }
+  }
+
+  configDumpHandler (req: Request, res: Response): void {
+    if (this.relayService == null) {
+      throw new Error('RelayServer not initialized')
+    }
+    try {
+      const config = this.relayService.configDumpHandler()
+      res.send(config)
+      this.logger.info('config sent.')
+    } catch (e: any) {
+      const message: string = e.message
+      res.send({ message })
+      this.logger.error(`stats handler rejected: ${message}`)
     }
   }
 
