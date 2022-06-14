@@ -41,12 +41,12 @@ export class RelaySelectionManager {
    * Ping those relays that were not pinged yet, and remove both the returned relay or relays re from {@link remainingRelays}
    * @returns the first relay to respond to a ping message. Note: will never return the same relay twice.
    */
-  async selectNextRelay (paymaster?: Address): Promise<RelayInfo | undefined> {
+  async selectNextRelay (relayHub: Address, paymaster?: Address): Promise<RelayInfo | undefined> {
     while (true) {
       const slice = this._getNextSlice()
       let relayInfo: RelayInfo | undefined
       if (slice.length > 0) {
-        relayInfo = await this._nextRelayInternal(slice, paymaster)
+        relayInfo = await this._nextRelayInternal(slice, relayHub, paymaster)
         if (relayInfo == null) {
           continue
         }
@@ -55,9 +55,9 @@ export class RelaySelectionManager {
     }
   }
 
-  async _nextRelayInternal (relays: RelayInfoUrl[], paymaster?: Address): Promise<RelayInfo | undefined> {
+  async _nextRelayInternal (relays: RelayInfoUrl[], relayHub: Address, paymaster?: Address): Promise<RelayInfo | undefined> {
     this.logger.info('nextRelay: find fastest relay from: ' + JSON.stringify(relays))
-    const raceResult = await this._raceToSuccess(relays, paymaster)
+    const raceResult = await this._raceToSuccess(relays, relayHub, paymaster)
     this.logger.info(`race finished with a result: ${JSON.stringify(raceResult, replaceErrors)}`)
     this._handleRaceResults(raceResult)
     if (raceResult.winner != null) {
@@ -111,14 +111,14 @@ export class RelaySelectionManager {
   /**
    * @returns JSON response from the relay server, but adds the requested URL to it :'-(
    */
-  async _getRelayAddressPing (relayInfo: RelayInfoUrl, paymaster?: Address): Promise<PartialRelayInfo> {
+  async _getRelayAddressPing (relayInfo: RelayInfoUrl, relayHub: Address, paymaster?: Address): Promise<PartialRelayInfo> {
     this.logger.info(`getRelayAddressPing URL: ${relayInfo.relayUrl}`)
     const pingResponse = await this.httpClient.getPingResponse(relayInfo.relayUrl, paymaster)
 
     if (!pingResponse.ready) {
       throw new Error(`Relay not ready ${JSON.stringify(pingResponse)}`)
     }
-    this.pingFilter(pingResponse, this.gsnTransactionDetails)
+    this.pingFilter(relayHub, pingResponse, this.gsnTransactionDetails)
     return {
       pingResponse,
       relayInfo
@@ -130,11 +130,11 @@ export class RelaySelectionManager {
    * Accepts an array of promises.
    * Resolves once any promise resolves, ignores the rest. Exceptions returned separately.
    */
-  async _raceToSuccess (relays: RelayInfoUrl[], paymaster?: Address): Promise<RaceResult> {
+  async _raceToSuccess (relays: RelayInfoUrl[], relayHub: Address, paymaster?: Address): Promise<RaceResult> {
     const errors: Map<string, Error> = new Map<string, Error>()
     return await new Promise((resolve) => {
       relays.forEach((relay: RelayInfoUrl) => {
-        this._getRelayAddressPing(relay, paymaster)
+        this._getRelayAddressPing(relay, relayHub, paymaster)
           .then((winner: PartialRelayInfo) => {
             resolve({
               winner,

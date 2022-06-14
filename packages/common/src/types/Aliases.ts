@@ -16,7 +16,7 @@ export type SemVerString = string
  * For legacy reasons, to filter out the relay this filter has to throw.
  * TODO: make ping filtering sane!
  */
-export type PingFilter = (pingResponse: PingResponse, gsnTransactionDetails: GsnTransactionDetails) => void
+export type PingFilter = (relayHubAddress: Address, pingResponse: PingResponse, gsnTransactionDetails: GsnTransactionDetails) => void
 
 export type AsyncDataCallback = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
 
