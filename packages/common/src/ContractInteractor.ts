@@ -895,11 +895,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
   }
 
-  async getMaxPriorityFee (): Promise<string> {
-    const gasFees = await this.getGasFees()
-    return gasFees.priorityFeePerGas
-  }
-
   async getGasFees (): Promise<{ baseFeePerGas: string, priorityFeePerGas: string }> {
     if (this.transactionType === TransactionType.LEGACY) {
       const gasPrice = await this.getGasPrice()
