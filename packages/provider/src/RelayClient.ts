@@ -427,6 +427,13 @@ export class RelayClient {
     relayRequest.relayData.relayWorker = relayInfo.pingResponse.relayWorkerAddress
     relayRequest.relayData.pctRelayFee = relayInfo.relayInfo.pctRelayFee
     relayRequest.relayData.baseRelayFee = relayInfo.relayInfo.baseRelayFee
+    if (
+      this.dependencies.knownRelaysManager.isPreferred(relayInfo.relayInfo.relayUrl) &&
+      this.config.preferredRelaysRelayingFees != null
+    ) {
+      relayRequest.relayData.pctRelayFee = this.config.preferredRelaysRelayingFees.pctRelayFee
+      relayRequest.relayData.baseRelayFee = this.config.preferredRelaysRelayingFees.baseRelayFee
+    }
 
     // cannot estimate before relay info is filled in
     relayRequest.relayData.transactionCalldataGasUsed =
