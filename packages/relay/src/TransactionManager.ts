@@ -309,10 +309,10 @@ data                     | ${transaction.data}
     }
     // TODO: use BN for ETH values
     // Sanity check to ensure we are not burning all our balance in gas fees
-    if (newMaxFee > parseInt(this.config.maxGasPrice)) {
+    if (newMaxFee > parseInt(this.config.maxFeePerGas)) {
       isMaxGasPriceReached = true
-      this.logger.warn(`Adjusting newMaxFee ${newMaxFee} to maxGasPrice ${this.config.maxGasPrice}`)
-      newMaxFee = parseInt(this.config.maxGasPrice)
+      this.logger.warn(`Adjusting newMaxFee ${newMaxFee} to maxFeePerGas ${this.config.maxFeePerGas}`)
+      newMaxFee = parseInt(this.config.maxFeePerGas)
     }
     if (newMaxPriorityFee > newMaxFee) {
       this.logger.warn(`Adjusting newMaxPriorityFee ${newMaxPriorityFee} to newMaxFee ${newMaxFee}`)
@@ -423,7 +423,7 @@ data                     | ${transaction.data}
         this.logger.debug(`Replaced transaction: nonce: ${transaction.nonce} sender: ${signer} | ${transaction.txId} => ${boostedTransactionDetails.transactionHash}`)
       } else { // The tx is ok, just rebroadcast it
         try {
-          await this.resendTransaction(transaction, currentBlock, transaction.maxFeePerGas, transaction.maxPriorityFeePerGas, transaction.maxFeePerGas > parseInt(this.config.maxGasPrice))
+          await this.resendTransaction(transaction, currentBlock, transaction.maxFeePerGas, transaction.maxPriorityFeePerGas, transaction.maxFeePerGas > parseInt(this.config.maxFeePerGas))
         } catch (e: any) {
           this.logger.error(`Rebroadcasting existing transaction: ${(e as Error).message}`)
         }
