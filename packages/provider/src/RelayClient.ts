@@ -246,7 +246,8 @@ export class RelayClient {
 
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
-      const activeRelay = await relaySelectionManager.selectNextRelay(paymaster)
+      const relayHub = this.dependencies.contractInteractor.getDeployment().relayHubAddress ?? ''
+      const activeRelay = await relaySelectionManager.selectNextRelay(relayHub, paymaster)
       if (activeRelay != null) {
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
         relayingAttempt = await this._attemptRelay(activeRelay, relayRequest)
