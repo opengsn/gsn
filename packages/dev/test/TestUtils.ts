@@ -67,8 +67,11 @@ export async function startRelay (
   if (options.loggingProvider) {
     args.push('--loggingProvider', options.loggingProvider)
   }
-  if (options.confirmationsNeeded) {
-    args.push('--confirmationsNeeded', options.confirmationsNeeded)
+  if (options.dbPruneTxAfterBlocks) {
+    args.push('--dbPruneTxAfterBlocks', options.dbPruneTxAfterBlocks)
+  }
+  if (options.dbPruneTxAfterSeconds) {
+    args.push('--dbPruneTxAfterSeconds', options.dbPruneTxAfterSeconds)
   }
 
   if (options.ethereumNodeUrl) {

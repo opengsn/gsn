@@ -257,7 +257,10 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         RelayCallStatus status;
         uint256 innerGasUsed;
         uint256 maxPossibleGas;
+        uint256 innerGasLimit;
         uint256 gasBeforeInner;
+        uint256 gasUsed;
+        uint256 devCharge;
         bytes retData;
         address relayManager;
         bytes32 relayRequestId;
@@ -272,7 +275,11 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     )
     external
     override
-    returns (bool paymasterAccepted, IRelayHub.RelayCallStatus status, bytes memory returnValue)
+    returns (
+        bool paymasterAccepted,
+        uint256 charge,
+        IRelayHub.RelayCallStatus status,
+        bytes memory returnValue)
     {
         RelayCallData memory vars;
         vars.initialGasLeft = aggregateGasleft();
@@ -333,7 +340,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
         //How much gas to pass down to innerRelayCall. must be lower than the default 63/64
         // actually, min(gasleft*63/64, gasleft-GAS_RESERVE) might be enough.
-        uint256 innerGasLimit = gasleft()*63/64- config.gasReserve;
+        vars.innerGasLimit = gasleft()*63/64- config.gasReserve;
         vars.gasBeforeInner = aggregateGasleft();
 
         /*
@@ -345,11 +352,11 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         TGO = config.gasOverhead + config.postOverhead :: extra that will be added to the charge to cover hidden costs
         GWP = GWP1 + TGO :: transaction "gas used without postRelayCall"
         */
-        uint256 _tmpInitialGas = relayRequest.relayData.transactionCalldataGasUsed + vars.initialGasLeft + innerGasLimit + config.gasOverhead + config.postOverhead;
+        uint256 _tmpInitialGas = relayRequest.relayData.transactionCalldataGasUsed + vars.initialGasLeft + vars.innerGasLimit + config.gasOverhead + config.postOverhead;
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
-        (bool success, bytes memory relayCallStatus) = address(this).call{gas:innerGasLimit}(
+        (bool success, bytes memory relayCallStatus) = address(this).call{gas:vars.innerGasLimit}(
             abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasAndDataLimits,
             _tmpInitialGas - aggregateGasleft(), /* totalInitialGas */
             vars.maxPossibleGas
@@ -380,19 +387,19 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
                     vars.functionSelector,
                     vars.innerGasUsed,
                     vars.relayedCallReturnValue);
-                return (false, vars.status, vars.relayedCallReturnValue);
+                return (false, 0, vars.status, vars.relayedCallReturnValue);
             }
         }
 
         // We now perform the actual charge calculation, based on the measured gas used
-        uint256 gasUsed = relayRequest.relayData.transactionCalldataGasUsed + (vars.initialGasLeft - aggregateGasleft()) + config.gasOverhead;
-        uint256 charge = calculateCharge(gasUsed, relayRequest.relayData);
-        uint256 devCharge = calculateDevCharge(charge);
+        vars.gasUsed = relayRequest.relayData.transactionCalldataGasUsed + (vars.initialGasLeft - aggregateGasleft()) + config.gasOverhead;
+        charge = calculateCharge(vars.gasUsed, relayRequest.relayData);
+        vars.devCharge = calculateDevCharge(charge);
 
         balances[relayRequest.relayData.paymaster] = balances[relayRequest.relayData.paymaster] - charge;
-        balances[vars.relayManager] = balances[vars.relayManager] + (charge - devCharge);
-        if (devCharge > 0) { // save some gas in case of zero dev charge
-            balances[config.devAddress] = balances[config.devAddress] + devCharge;
+        balances[vars.relayManager] = balances[vars.relayManager] + (charge - vars.devCharge);
+        if (vars.devCharge > 0) { // save some gas in case of zero dev charge
+            balances[config.devAddress] = balances[config.devAddress] + vars.devCharge;
         }
 
         {
@@ -413,9 +420,9 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
         // avoid variable size memory copying after gas calculation completed on-chain
         if (tx.origin == DRY_RUN_ADDRESS) {
-            return (true, vars.status, vars.relayedCallReturnValue);
+            return (true, charge, vars.status, vars.relayedCallReturnValue);
         }
-        return (true, vars.status, "");
+        return (true, charge, vars.status, "");
     }
     }
 

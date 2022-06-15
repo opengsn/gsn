@@ -1,4 +1,6 @@
-import { Transaction } from '@ethereumjs/tx'
+// @ts-ignore
+import ethWallet from 'ethereumjs-wallet'
+import { Transaction, FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
 import Web3 from 'web3'
 import axios from 'axios'
 import chai from 'chai'
@@ -8,7 +10,8 @@ import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
-import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { PrefixedHexString, toBuffer, bufferToHex } from 'ethereumjs-util'
+import { toHex } from 'web3-utils'
 
 import {
   RelayHubInstance,
@@ -51,8 +54,12 @@ import { BadContractInteractor } from '../dummies/BadContractInteractor'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { constants, splitRelayUrlForRegistrar } from '@opengsn/common'
+import { constants, getRawTxOptions, ObjectMap, splitRelayUrlForRegistrar } from '@opengsn/common'
 import { ConfigResponse } from '@opengsn/common/dist/ConfigResponse'
+import {
+  RelayedTransactionValidator,
+  TransactionValidationResult
+} from '@opengsn/provider/dist/RelayedTransactionValidator'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -77,7 +84,7 @@ class MockHttpClient extends HttpClient {
     super(httpWrapper, logger)
   }
 
-  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<PrefixedHexString> {
+  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{ signedTx: PrefixedHexString, nonceGapFilled: ObjectMap<PrefixedHexString> }> {
     return await super.relayTransaction(this.mapUrl(relayUrl), request)
   }
 
@@ -400,13 +407,27 @@ contract('RelayClient', function (accounts) {
       ]
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
-      sinon.stub(relayClient.dependencies.transactionValidator, 'validateRelayResponse').throws(new Error('fail returned tx'))
+      sinon.stub(relayClient.dependencies.transactionValidator, 'validateRelayResponse').returns({
+        gasPriceValidationResult: {
+          isTransactionTypeValid: false,
+          isFeeMarket1559Transaction: false,
+          isLegacyGasPriceValid: false,
+          isMaxFeePerGasValid: false,
+          isMaxPriorityFeePerGasValid: false
+        },
+        nonceGapFilledValidationResult: [],
+        isNonceGapFilledSizeValid: false,
+        isTransactionTargetValid: false,
+        isTransactionSenderValid: false,
+        isTransactionContentValid: false,
+        isTransactionNonceValid: false
+      })
 
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 2)
-      assert.equal(Array.from(relayingErrors.values())[0]!.message, 'fail returned tx')
+      assert.match(Array.from(relayingErrors.values())[0]!.message, /Transaction response verification failed. Validation results/)
     })
 
     it('should continue looking up relayers after relayer error', async function () {
@@ -637,6 +658,7 @@ contract('RelayClient', function (accounts) {
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.not.been.called
     })
 
+    // TODO: this test stubs the actual object under test. This must be rewritten and extracted to a separate test.
     it('should return error if transaction returned by a relay does not pass validation', async function () {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = await new ContractInteractor({
@@ -646,7 +668,12 @@ contract('RelayClient', function (accounts) {
         maxPageSize,
         deployment: { paymasterAddress: paymaster.address }
       }).init()
-      const badHttpClient = new BadHttpClient(logger, false, false, false, pingResponse, '0xc6808080808080')
+      const wallet = ethWallet.generate()
+      const txOptions = getRawTxOptions(1337, 0)
+      const signedTx = bufferToHex(new Transaction(
+        { nonce: 1, to: relayHub.address, data, gasPrice: '0x1000000000' }, txOptions
+      ).sign(wallet.getPrivateKey()).serialize())
+      const badHttpClient = new BadHttpClient(logger, false, false, false, pingResponse, signedTx)
       const badTransactionValidator = new BadRelayedTransactionValidator(logger, true, contractInteractor, configureGSN(gsnConfig))
       const relayClient =
         new RelayClient({
@@ -666,9 +693,110 @@ contract('RelayClient', function (accounts) {
       const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, relayRequest)
       assert.isUndefined(transaction)
       assert.equal(isRelayError, true)
-      // @ts-ignore
-      assert.equal(error.message, 'Returned transaction did not pass validation')
+      assert.match(error!.message, /Transaction response verification failed. Validation results/)
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
+    })
+
+    it('should return error if the relay did not provide correct signed transactions filling the nonce gap', async function () {
+      const wallet = ethWallet.generate()
+      const wrongWallet = ethWallet.generate()
+      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+      relayRequest.relayData.relayWorker = wallet.getChecksumAddressString()
+      const maxPageSize = Number.MAX_SAFE_INTEGER
+      const contractInteractor = await new ContractInteractor({
+        environment: defaultEnvironment,
+        provider: web3.currentProvider as HttpProvider,
+        logger,
+        maxPageSize,
+        deployment: { paymasterAddress: paymaster.address }
+      }).init()
+      const transactionValidator = new RelayedTransactionValidator(contractInteractor, logger, defaultGsnConfig)
+
+      const data = '0xd17da3e80000deadbeef' // relayCall method
+      const wrongData = '0xdeadbeef' // relayCall method
+      const txOptions = getRawTxOptions(1337, 0)
+      // prepare transactions
+      const tx1Right = bufferToHex(new Transaction(
+        { nonce: 1, to: relayHub.address, data, gasPrice: toHex(relayRequest.relayData.maxFeePerGas) }, txOptions
+      ).sign(wallet.getPrivateKey()).serialize())
+      const tx2Right = bufferToHex(new Transaction(
+        { nonce: 2, to: relayHub.address, data, gasPrice: toHex(relayRequest.relayData.maxFeePerGas) }, txOptions
+      ).sign(wallet.getPrivateKey()).serialize())
+      const tx2Wrong = bufferToHex(new FeeMarketEIP1559Transaction(
+        {
+          nonce: 2,
+          to: accounts[1],
+          data: wrongData,
+          maxFeePerGas: toHex(12),
+          maxPriorityFeePerGas: toHex(3)
+        }, txOptions
+      ).sign(wrongWallet.getPrivateKey()).serialize())
+      const tx3Right = bufferToHex(new FeeMarketEIP1559Transaction(
+        {
+          nonce: 3,
+          to: relayHub.address,
+          data,
+          maxFeePerGas: toHex(relayRequest.relayData.maxFeePerGas),
+          maxPriorityFeePerGas: toHex(relayRequest.relayData.maxPriorityFeePerGas)
+        }, txOptions
+      ).sign(wallet.getPrivateKey()).serialize())
+      const tx9Right = bufferToHex(new Transaction(
+        { nonce: 9, to: relayHub.address, data, gasPrice: toHex(relayRequest.relayData.maxFeePerGas) }, txOptions
+      ).sign(wallet.getPrivateKey()).serialize())
+
+      const relayTransactionRequest: RelayTransactionRequest = {
+        relayRequest,
+        metadata: {
+          relayMaxNonce: 4,
+          relayLastKnownNonce: 1,
+          signature: '',
+          approvalData: '',
+          relayHubAddress: '',
+          maxAcceptanceBudget: ''
+        }
+      }
+
+      const allTransactionsRight = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, { 1: tx1Right, 2: tx2Right, 3: tx3Right })
+      const oneWrongTransaction = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, { 1: tx1Right, 2: tx2Wrong, 3: tx3Right })
+      const transactionFromOutsideRange = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, { 1: tx1Right, 2: tx2Right, 9: tx9Right })
+
+      // TODO: once logic is implemented, also fix the test
+      const placeholderAllGasRight = {
+        isTransactionTypeValid: true,
+        isFeeMarket1559Transaction: true,
+        isLegacyGasPriceValid: true,
+        isMaxFeePerGasValid: true,
+        isMaxPriorityFeePerGasValid: true
+      }
+      const allTrueLegacy: TransactionValidationResult = {
+        gasPriceValidationResult: placeholderAllGasRight,
+        nonceGapFilledValidationResult: [],
+        isNonceGapFilledSizeValid: true,
+        isTransactionTargetValid: true,
+        isTransactionSenderValid: true,
+        isTransactionContentValid: true,
+        isTransactionNonceValid: true
+      }
+      const tx2ExpectedResult: TransactionValidationResult = {
+        gasPriceValidationResult: {
+          isTransactionTypeValid: true,
+          isFeeMarket1559Transaction: true,
+          isLegacyGasPriceValid: true,
+          isMaxFeePerGasValid: true,
+          isMaxPriorityFeePerGasValid: true
+        },
+        nonceGapFilledValidationResult: [],
+        isNonceGapFilledSizeValid: true,
+        isTransactionTargetValid: false,
+        isTransactionSenderValid: false,
+        isTransactionContentValid: false,
+        isTransactionNonceValid: true
+      }
+      const tx9ExpectedResult: TransactionValidationResult = Object.assign({}, allTrueLegacy, { isTransactionNonceValid: false })
+
+      assert.deepEqual(allTransactionsRight, [allTrueLegacy, allTrueLegacy, allTrueLegacy], 'allTransactionsRight')
+      assert.deepEqual(oneWrongTransaction, [allTrueLegacy, tx2ExpectedResult, allTrueLegacy], 'oneWrongTransaction')
+      assert.deepEqual(transactionFromOutsideRange, [allTrueLegacy, allTrueLegacy, tx9ExpectedResult], 'transactionFromOutsideRange')
     })
 
     describe('#_prepareRelayHttpRequest()', function () {
@@ -777,6 +905,26 @@ contract('RelayClient', function (accounts) {
       const relayingResult = await relayClient.relayTransaction(options)
       assert.equal(relayingResult.pingErrors.size, 0)
       assert.exists(relayingResult.transaction)
+    })
+
+    it('should use preferred relay with specified fees if set', async () => {
+      relayClient = new RelayClient({
+        provider: underlyingProvider,
+        config: {
+          ...gsnConfig,
+          preferredRelays: ['http://localhost:8090'],
+          preferredRelaysRelayingFees: {
+            baseRelayFee: '777',
+            pctRelayFee: '888'
+          }
+        }
+      })
+      await relayClient.init()
+      const spy = sinon.spy(relayClient, '_prepareRelayHttpRequest')
+      await relayClient.relayTransaction(options)
+      const relayRequest = spy.getCall(0).args[0]
+      assert.equal(relayRequest.relayData.baseRelayFee, '777')
+      assert.equal(relayRequest.relayData.pctRelayFee, '888')
     })
 
     it('should not use blacklisted relays', async () => {

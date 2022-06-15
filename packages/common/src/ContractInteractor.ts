@@ -541,10 +541,10 @@ export class ContractInteractor {
       this.logger.debug('relayCall res=' + res)
 
       // @ts-ignore
-      const decoded = abi.decodeParameters(['bool', 'uint256', 'bytes'], res)
+      const decoded = abi.decodeParameters(['bool', 'uint256', 'uint256', 'bytes'], res)
       const paymasterAccepted: boolean = decoded[0]
-      const relayCallStatus: number = parseInt(decoded[1])
-      let returnValue: string = decoded[2]
+      const relayCallStatus: number = parseInt(decoded[2])
+      let returnValue: string = decoded[3]
       const recipientReverted = RelayCallStatusCodes.RelayedCallFailed.eqn(relayCallStatus)
       if (!paymasterAccepted || recipientReverted) {
         returnValue = this._decodeRevertFromResponse({}, { result: returnValue }) ?? returnValue
@@ -564,22 +564,6 @@ export class ContractInteractor {
         returnValue: `view call to 'relayCall' reverted in client: ${message}`
       }
     }
-  }
-
-  async getMaxViewableGasLimit (relayRequest: RelayRequest, maxViewableGasLimit: IntString): Promise<BN> {
-    const maxViewableGasLimitBN = toBN(maxViewableGasLimit)
-    const gasPrice = toBN(relayRequest.relayData.maxFeePerGas)
-    if (gasPrice.eqn(0)) {
-      return maxViewableGasLimitBN
-    }
-    const workerBalanceString = await this.getBalance(relayRequest.relayData.relayWorker)
-    if (workerBalanceString == null) {
-      this.logger.error('getMaxViewableGasLimit: failed to get relay worker balance')
-      return maxViewableGasLimitBN
-    }
-    const workerBalance = toBN(workerBalanceString)
-    const workerGasLimit = workerBalance.div(gasPrice)
-    return BN.min(maxViewableGasLimitBN, workerGasLimit)
   }
 
   /**
@@ -911,11 +895,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
   }
 
-  async getMaxPriorityFee (): Promise<string> {
-    const gasFees = await this.getGasFees()
-    return gasFees.priorityFeePerGas
-  }
-
   async getGasFees (): Promise<{ baseFeePerGas: string, priorityFeePerGas: string }> {
     if (this.transactionType === TransactionType.LEGACY) {
       const gasPrice = await this.getGasPrice()
@@ -969,6 +948,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   async workerToManager (worker: Address): Promise<string> {
     return await this.relayHubInstance.getWorkerManager(worker)
+  }
+
+  async getMinimumStakePerToken (tokenAddress: Address): Promise<BN> {
+    return await this.relayHubInstance.getMinimumStakePerToken(tokenAddress)
   }
 
   /**
