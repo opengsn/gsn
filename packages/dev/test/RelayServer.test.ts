@@ -238,6 +238,20 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         }
       })
 
+      it('should fail to relay with low maxFeePerGas', async function () {
+        const wrongFeePerGas = env.relayServer.minMaxFeePerGas - 1
+        const req = await env.createRelayHttpRequest()
+        req.relayRequest.relayData.maxFeePerGas = wrongFeePerGas.toString()
+        try {
+          env.relayServer.validateInput(req)
+          assert.fail()
+        } catch (e: any) {
+          assert.include(e.message,
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            `maxFeePerGas given ${wrongFeePerGas} too low. Minimum maxFeePerGas server accepts: ${env.relayServer.minMaxFeePerGas}`)
+        }
+      })
+
       it('should fail to relay with maxPriorityFeePerGas > maxFeePerGas', async function () {
         const req = await env.createRelayHttpRequest({ maxFeePerGas: toHex(1e9), maxPriorityFeePerGas: toHex(1e10) })
         try {
@@ -251,7 +265,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
 
       it('should fail to relay with high maxPriorityFeePerGas', async function () {
-        const wrongFee = parseInt(env.relayServer.config.maxGasPrice) + 1
+        const wrongFee = parseInt(env.relayServer.config.maxFeePerGas) + 1
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.maxFeePerGas = wrongFee.toString()
         try {
@@ -260,7 +274,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         } catch (e: any) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            `maxFee given ${wrongFee} too high : ${env.relayServer.config.maxGasPrice}`)
+            `maxFee given ${wrongFee} too high : ${env.relayServer.config.maxFeePerGas}`)
         }
       })
 
@@ -395,43 +409,46 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
     })
 
-    describe('#_refreshPriorityFee()', function () {
+    describe('#_refreshGasFees()', function () {
       it('should set min gas price to network average * gas price factor', async function () {
         env.relayServer.minMaxPriorityFeePerGas = 0
-        await env.relayServer._refreshPriorityFee()
-        const priorityFee = parseInt(await env.relayServer.contractInteractor.getMaxPriorityFee())
+        await env.relayServer._refreshGasFees()
+        const priorityFee = parseInt((await env.relayServer.contractInteractor.getGasFees()).priorityFeePerGas)
         assert.equal(env.relayServer.minMaxPriorityFeePerGas, env.relayServer.config.gasPriceFactor * priorityFee)
       })
       it('should fix zero minMaxPriorityFeePerGas only if config.defaultPriorityFee is greater than zero', async function () {
         let defaultPriorityFee = '0'
         env.relayServer.config.defaultPriorityFee = defaultPriorityFee
         env.relayServer.minMaxPriorityFeePerGas = 0
-        sinon.stub(env.relayServer.contractInteractor, 'getMaxPriorityFee').returns(Promise.resolve('0'))
+        sinon.stub(env.relayServer.contractInteractor, 'getGasFees').returns(Promise.resolve({
+          priorityFeePerGas: '0',
+          baseFeePerGas: '0'
+        }))
         const spy = sinon.spy(env.relayServer.logger, 'debug')
-        await env.relayServer._refreshPriorityFee()
+        await env.relayServer._refreshGasFees()
         sinon.assert.notCalled(spy)
         assert.equal(env.relayServer.minMaxPriorityFeePerGas, 0)
 
         defaultPriorityFee = '1234'
         env.relayServer.config.defaultPriorityFee = defaultPriorityFee
-        await env.relayServer._refreshPriorityFee()
+        await env.relayServer._refreshGasFees()
         sinon.assert.calledWith(spy, `Priority fee received from node is 0. Setting priority fee to ${defaultPriorityFee}`)
         sinon.restore()
         assert.equal(env.relayServer.minMaxPriorityFeePerGas, parseInt(defaultPriorityFee))
       })
       it('should throw when min gas price is higher than max', async function () {
-        await env.relayServer._refreshPriorityFee()
-        const originalMaxPrice = env.relayServer.config.maxGasPrice
-        env.relayServer.config.maxGasPrice = (env.relayServer.minMaxPriorityFeePerGas - 1).toString()
+        await env.relayServer._refreshGasFees()
+        const originalMaxPrice = env.relayServer.config.maxFeePerGas
+        env.relayServer.config.maxFeePerGas = (env.relayServer.minMaxPriorityFeePerGas - 1).toString()
         try {
-          await env.relayServer._refreshPriorityFee()
+          await env.relayServer._refreshGasFees()
           assert.fail()
         } catch (e: any) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message,
-            `network maxPriorityFeePerGas ${env.relayServer.minMaxPriorityFeePerGas} is higher than config.maxGasPrice ${env.relayServer.config.maxGasPrice}`)
+            `network maxPriorityFeePerGas ${env.relayServer.minMaxPriorityFeePerGas} is higher than config.maxFeePerGas ${env.relayServer.config.maxFeePerGas}`)
         } finally {
-          env.relayServer.config.maxGasPrice = originalMaxPrice
+          env.relayServer.config.maxFeePerGas = originalMaxPrice
         }
       })
     })
@@ -574,7 +591,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const serverSpy = sinon.spy(env.relayServer)
 
         assert.equal((await env.relayServer.txStoreManager.getAll()).length, 0)
-        await env.relayServer._refreshPriorityFee()
+        await env.relayServer._refreshGasFees()
         await env.relayServer.createRelayTransaction(req)
         const pendingTransactions = await env.relayServer.txStoreManager.getAll()
         assert.equal(pendingTransactions.length, 1)
@@ -625,6 +642,26 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         )
         sinon.restore()
       })
+    })
+
+    it('should return nonceGapFilled map containing transactions between relayLastKnownNonce and signed nonce', async function () {
+      const workerAddress = env.relayServer.transactionManager.workersKeyManager.getAddress(0)
+      const relayNonce = await web3.eth.getTransactionCount(workerAddress)
+      const txs = []
+      for (let i = 0; i < 10; i++) {
+        const req = await env.createRelayHttpRequest()
+        const { signedTx } = await env.relayServer.createRelayTransaction(req)
+        txs.push(signedTx)
+      }
+      const req = await env.createRelayHttpRequest()
+      req.metadata.relayLastKnownNonce = req.metadata.relayLastKnownNonce - 10
+      const res = await env.relayServer.createRelayTransaction(req)
+      assert.equal(Object.entries(res.nonceGapFilled).length, 10)
+      for (let i = 0; i < 10; i++) {
+        const nonce = relayNonce + i
+        assert.isNotNull(res.nonceGapFilled[nonce])
+        assert.equal(txs[i], res.nonceGapFilled[nonce])
+      }
     })
   })
 

@@ -264,8 +264,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             gasPrice: 1e9
           })
       assert.equal(viewRelayCallResponse[0], false)
-      assert.equal(viewRelayCallResponse[1], RelayCallStatusCodes.RejectedByPreRelayed.toString())
-      assert.equal(viewRelayCallResponse[2], null) // no revert string on out-of-gas
+      assert.equal(viewRelayCallResponse[2], RelayCallStatusCodes.RejectedByPreRelayed.toString())
+      assert.equal(viewRelayCallResponse[3], null) // no revert string on out-of-gas
 
       const res = await relayHub.relayCall(10e6, relayRequestMisbehaving, signature, '0x', {
         from: relayWorker,

@@ -541,10 +541,10 @@ export class ContractInteractor {
       this.logger.debug('relayCall res=' + res)
 
       // @ts-ignore
-      const decoded = abi.decodeParameters(['bool', 'uint256', 'bytes'], res)
+      const decoded = abi.decodeParameters(['bool', 'uint256', 'uint256', 'bytes'], res)
       const paymasterAccepted: boolean = decoded[0]
-      const relayCallStatus: number = parseInt(decoded[1])
-      let returnValue: string = decoded[2]
+      const relayCallStatus: number = parseInt(decoded[2])
+      let returnValue: string = decoded[3]
       const recipientReverted = RelayCallStatusCodes.RelayedCallFailed.eqn(relayCallStatus)
       if (!paymasterAccepted || recipientReverted) {
         returnValue = this._decodeRevertFromResponse({}, { result: returnValue }) ?? returnValue
@@ -895,11 +895,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
   }
 
-  async getMaxPriorityFee (): Promise<string> {
-    const gasFees = await this.getGasFees()
-    return gasFees.priorityFeePerGas
-  }
-
   async getGasFees (): Promise<{ baseFeePerGas: string, priorityFeePerGas: string }> {
     if (this.transactionType === TransactionType.LEGACY) {
       const gasPrice = await this.getGasPrice()
@@ -953,6 +948,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   async workerToManager (worker: Address): Promise<string> {
     return await this.relayHubInstance.getWorkerManager(worker)
+  }
+
+  async getMinimumStakePerToken (tokenAddress: Address): Promise<BN> {
+    return await this.relayHubInstance.getMinimumStakePerToken(tokenAddress)
   }
 
   /**

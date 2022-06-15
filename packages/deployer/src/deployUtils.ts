@@ -159,7 +159,7 @@ export async function printRelayInfo (hre: HardhatRuntimeEnvironment): Promise<v
     ownerAddress: deployer,
     managerStakeTokenAddress: stakingTokenAddress,
     gasPriceFactor: 1,
-    maxGasPrice: 1e12,
+    maxFeePerGas: 1e12,
     ethereumNodeUrl: network.url
   }, null, 2)))
   console.log(chalk.white('Relayer register:'))

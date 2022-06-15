@@ -17,12 +17,9 @@ export interface StoredTransactionMetadata {
   readonly from: Address
   readonly attempts: number
   readonly serverAction: ServerAction
-  readonly creationBlockNumber: number
-  readonly creationBlockTimestamp: number
-  readonly creationBlockHash: string
-  readonly boostBlockNumber?: number
-  readonly boostBlockTimestamp?: number
-  readonly minedBlockNumber?: number
+  readonly creationBlock: ShortBlockInfo
+  readonly boostBlock?: ShortBlockInfo
+  readonly minedBlock?: ShortBlockInfo
 }
 
 export interface StoredTransactionSerialized {
@@ -34,6 +31,7 @@ export interface StoredTransactionSerialized {
   readonly nonce: number
   readonly txId: PrefixedHexString
   readonly value: PrefixedHexString
+  readonly rawSerializedTx: PrefixedHexString
 }
 
 export interface NonceSigner {
@@ -41,6 +39,12 @@ export interface NonceSigner {
     nonce: number
     signer: Address
   }
+}
+
+export interface ShortBlockInfo {
+  hash: PrefixedHexString
+  number: number
+  timestamp: number | string
 }
 
 export type StoredTransaction = StoredTransactionSerialized & StoredTransactionMetadata & NonceSigner
@@ -61,7 +65,8 @@ export function createStoredTransaction (tx: TypedTransaction, metadata: StoredT
       data: ethUtils.bufferToHex(tx.data),
       nonce: ethUtils.bufferToInt(tx.nonce.toBuffer()),
       txId: ethUtils.bufferToHex(tx.hash()),
-      value: ethUtils.bufferToHex(tx.value.toBuffer())
+      value: ethUtils.bufferToHex(tx.value.toBuffer()),
+      rawSerializedTx: ethUtils.bufferToHex(tx.serialize())
     }
   if (tx.supports(Capability.EIP1559FeeMarket)) {
     tx = tx as FeeMarketEIP1559Transaction

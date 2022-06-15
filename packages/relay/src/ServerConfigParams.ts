@@ -52,17 +52,17 @@ export interface ServerConfigParams {
   workerMinBalance: number
   workerTargetBalance: number
   managerMinBalance: number
-  managerMinStake: string
   managerStakeTokenAddress: string
   managerTargetBalance: number
   minHubWithdrawalBalance: number
   withdrawToOwnerOnBalance?: number
   refreshStateTimeoutBlocks: number
   pendingTransactionTimeoutSeconds: number
-  confirmationsNeeded: number
+  dbPruneTxAfterBlocks: number
+  dbPruneTxAfterSeconds: number
   dbAutoCompactionInterval: number
   retryGasPriceFactor: number
-  maxGasPrice: string
+  maxFeePerGas: string
   defaultPriorityFee: string
   defaultGasLimit: number
   requestMinValidSeconds: number
@@ -111,7 +111,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
-  managerMinStake: '1', // 1 wei
   managerStakeTokenAddress: constants.ZERO_ADDRESS,
   managerTargetBalance: 0.3e18,
   minHubWithdrawalBalance: 0.1e18,
@@ -132,11 +131,12 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   workdir: '',
   refreshStateTimeoutBlocks: 5,
   pendingTransactionTimeoutSeconds: 300,
-  confirmationsNeeded: 12,
+  dbPruneTxAfterBlocks: 12,
+  dbPruneTxAfterSeconds: 3600, // One hour
   dbAutoCompactionInterval: 604800000, // Week in ms: 1000*60*60*24*7
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
-  maxGasPrice: 500e9.toString(),
+  maxFeePerGas: 500e9.toString(),
   defaultPriorityFee: 1e9.toString(),
 
   requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
@@ -203,10 +203,11 @@ const ConfigParamsTypes = {
   pendingTransactionTimeoutSeconds: 'number',
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
-  maxGasPrice: 'string',
+  maxFeePerGas: 'string',
   defaultPriorityFee: 'string',
   pastEventsQueryMaxPageSize: 'number',
-  confirmationsNeeded: 'number',
+  dbPruneTxAfterBlocks: 'number',
+  dbPruneTxAfterSeconds: 'number',
   environmentName: 'string',
   recentActionAvoidRepeatDistanceBlocks: 'number',
   skipErc165Check: 'boolean'

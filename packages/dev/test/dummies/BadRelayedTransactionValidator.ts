@@ -1,8 +1,12 @@
-import { RelayedTransactionValidator } from '@opengsn/provider/dist/RelayedTransactionValidator'
+import {
+  RelayedTransactionValidator,
+  TransactionValidationResult
+} from '@opengsn/provider/dist/RelayedTransactionValidator'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { GSNConfig } from '@opengsn/provider/dist'
 import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { ObjectMap } from '@opengsn/common'
 
 export class BadRelayedTransactionValidator extends RelayedTransactionValidator {
   private readonly failValidation: boolean
@@ -12,10 +16,11 @@ export class BadRelayedTransactionValidator extends RelayedTransactionValidator 
     this.failValidation = failValidation
   }
 
-  validateRelayResponse (transactionJsonRequest: RelayTransactionRequest, returnedTx: string): boolean {
+  validateRelayResponse (transactionJsonRequest: RelayTransactionRequest, returnedTx: string, nonceGapFilled: ObjectMap<string>): TransactionValidationResult {
+    const superCallResult = super.validateRelayResponse(transactionJsonRequest, returnedTx, nonceGapFilled)
     if (this.failValidation) {
-      return false
+      superCallResult.isTransactionContentValid = false
     }
-    return super.validateRelayResponse(transactionJsonRequest, returnedTx)
+    return superCallResult
   }
 }

@@ -30,11 +30,11 @@ import {
 import { RegistrationManager } from './RegistrationManager'
 import { PaymasterStatus, ReputationManager } from './ReputationManager'
 import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } from './TransactionManager'
-import { ServerAction } from './StoredTransaction'
+import { ServerAction, ShortBlockInfo } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import { isSameAddress, toNumber } from '@opengsn/common'
+import { isSameAddress, ObjectMap, toNumber } from '@opengsn/common'
 import { BlockTransactionString } from 'web3-eth'
 
 /**
@@ -59,6 +59,7 @@ export class RelayServer extends EventEmitter {
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
   minMaxPriorityFeePerGas: number = 0
+  minMaxFeePerGas: number = 0
   running = false
   alerted = false
   alertedByTransactionBlockTimestamp: number = 0
@@ -201,9 +202,13 @@ export class RelayServer extends EventEmitter {
       throw new Error(
         `priorityFee given ${requestPriorityFee} too low. Minimum maxPriorityFee server accepts: ${this.minMaxPriorityFeePerGas}`)
     }
-    if (parseInt(this.config.maxGasPrice) < requestMaxFee) {
+    if (this.minMaxFeePerGas > requestMaxFee) {
       throw new Error(
-        `maxFee given ${requestMaxFee} too high : ${this.config.maxGasPrice}`)
+        `maxFeePerGas given ${requestMaxFee} too low. Minimum maxFeePerGas server accepts: ${this.minMaxFeePerGas}`)
+    }
+    if (parseInt(this.config.maxFeePerGas) < requestMaxFee) {
+      throw new Error(
+        `maxFee given ${requestMaxFee} too high : ${this.config.maxFeePerGas}`)
     }
     if (requestMaxFee < requestPriorityFee) {
       throw new Error(
@@ -376,7 +381,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
   }
 
-  async createRelayTransaction (req: RelayTransactionRequest): Promise<PrefixedHexString> {
+  async createRelayTransaction (req: RelayTransactionRequest): Promise<{ signedTx: PrefixedHexString, nonceGapFilled: ObjectMap<PrefixedHexString> }> {
     this.logger.debug(`dump request params: ${JSON.stringify(req)}`)
     if (!this.isReady()) {
       throw new Error('relay not ready')
@@ -422,10 +427,11 @@ returnValue        | ${viewRelayCallRet.returnValue}
         maxFeePerGas: req.relayRequest.relayData.maxFeePerGas,
         maxPriorityFeePerGas: req.relayRequest.relayData.maxPriorityFeePerGas
       }
-    const { signedTx } = await this.transactionManager.sendTransaction(details)
+    const { signedTx, nonce } = await this.transactionManager.sendTransaction(details)
+    const nonceGapFilled = await this.transactionManager.getNonceGapFilled(this.workerAddress, req.metadata.relayLastKnownNonce, nonce - 1)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishServer(0, currentBlock.number, currentBlock.hash, currentBlockTimestamp)
-    return signedTx
+    return { signedTx, nonceGapFilled }
   }
 
   start (): void {
@@ -643,7 +649,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const currentBlockTimestamp = toNumber(block.timestamp)
     await this.withdrawToOwnerIfNeeded(block.number, block.hash, currentBlockTimestamp)
     this.lastRefreshBlock = block.number
-    await this._refreshPriorityFee()
+    await this._refreshGasFees()
     await this.registrationManager.refreshBalance()
     if (!this.registrationManager.balanceRequired.isSatisfied) {
       this.setReadyState(false)
@@ -652,15 +658,25 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return await this._handleChanges(block, currentBlockTimestamp)
   }
 
-  async _refreshPriorityFee (): Promise<void> {
-    const minMaxPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
+  async _refreshGasFees (): Promise<void> {
+    const { baseFeePerGas, priorityFeePerGas } = await this.contractInteractor.getGasFees()
+
+    // server will not accept Relay Requests with MaxFeePerGas lower than BaseFeePerGas of a recent block
+    this.minMaxFeePerGas = parseInt(baseFeePerGas)
+
+    const minMaxPriorityFeePerGas = parseInt(priorityFeePerGas)
     this.minMaxPriorityFeePerGas = Math.floor(minMaxPriorityFeePerGas * this.config.gasPriceFactor)
     if (this.minMaxPriorityFeePerGas === 0 && parseInt(this.config.defaultPriorityFee) > 0) {
       this.logger.debug(`Priority fee received from node is 0. Setting priority fee to ${this.config.defaultPriorityFee}`)
       this.minMaxPriorityFeePerGas = parseInt(this.config.defaultPriorityFee)
     }
-    if (this.minMaxPriorityFeePerGas > parseInt(this.config.maxGasPrice)) {
-      throw new Error(`network maxPriorityFeePerGas ${this.minMaxPriorityFeePerGas} is higher than config.maxGasPrice ${this.config.maxGasPrice}`)
+
+    if (this.minMaxPriorityFeePerGas > parseInt(this.config.maxFeePerGas)) {
+      throw new Error(`network maxPriorityFeePerGas ${this.minMaxPriorityFeePerGas} is higher than config.maxFeePerGas ${this.config.maxFeePerGas}`)
+    }
+
+    if (this.minMaxFeePerGas > parseInt(this.config.maxFeePerGas)) {
+      throw new Error(`network minMaxFeePerGas ${this.minMaxFeePerGas} is higher than config.maxFeePerGas ${this.config.maxFeePerGas}`)
     }
   }
 
@@ -673,8 +689,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     transactionHashes = transactionHashes.concat(
       await this.registrationManager.handlePastEvents(
         hubEventsSinceLastScan, this.lastScannedBlock, currentBlock, currentBlockTimestamp, shouldRegisterAgain))
-    await this.transactionManager.removeConfirmedTransactions(currentBlock.number)
-    await this._boostStuckPendingTransactions(currentBlock.number, currentBlockTimestamp)
+    await this.transactionManager.fillMinedBlockDetailsForTransactions(currentBlock)
+    await this.transactionManager.removeArchivedTransactions(currentBlock)
+    await this._boostStuckPendingTransactions(currentBlock)
     this.lastScannedBlock = currentBlock.number
     const isRegistered = await this.registrationManager.isRegistered()
     if (!isRegistered) {
@@ -812,15 +829,15 @@ latestBlock timestamp   | ${latestBlock.timestamp}
    * Resend all outgoing pending transactions with insufficient gas price by all signers (manager, workers)
    * @return the mapping of the previous transaction hash to details of a new boosted transaction
    */
-  async _boostStuckPendingTransactions (currentBlockNumber: number, currentBlockTimestamp: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+  async _boostStuckPendingTransactions (currentBlockInfo: ShortBlockInfo): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const transactionDetails = new Map<PrefixedHexString, SignedTransactionDetails>()
     // repeat separately for each signer (manager, all workers)
-    const managerBoostedTransactions = await this._boostStuckTransactionsForManager(currentBlockNumber, currentBlockTimestamp)
+    const managerBoostedTransactions = await this._boostStuckTransactionsForManager(currentBlockInfo)
     for (const [txHash, boostedTxDetails] of managerBoostedTransactions) {
       transactionDetails.set(txHash, boostedTxDetails)
     }
     for (const workerIndex of [0]) {
-      const workerBoostedTransactions = await this._boostStuckTransactionsForWorker(currentBlockNumber, currentBlockTimestamp, workerIndex)
+      const workerBoostedTransactions = await this._boostStuckTransactionsForWorker(currentBlockInfo, workerIndex)
       for (const [txHash, boostedTxDetails] of workerBoostedTransactions) {
         transactionDetails.set(txHash, boostedTxDetails)
       }
@@ -828,13 +845,13 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return transactionDetails
   }
 
-  async _boostStuckTransactionsForManager (currentBlockNumber: number, currentBlockTimestamp: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
-    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(this.managerAddress, currentBlockNumber, currentBlockTimestamp, this.minMaxPriorityFeePerGas)
+  async _boostStuckTransactionsForManager (currentBlockInfo: ShortBlockInfo): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(this.managerAddress, currentBlockInfo, this.minMaxPriorityFeePerGas)
   }
 
-  async _boostStuckTransactionsForWorker (currentBlockNumber: number, currentBlockTimestamp: number, workerIndex: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+  async _boostStuckTransactionsForWorker (currentBlockInfo: ShortBlockInfo, workerIndex: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const signer = this.workerAddress
-    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(signer, currentBlockNumber, currentBlockTimestamp, this.minMaxPriorityFeePerGas)
+    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(signer, currentBlockInfo, this.minMaxPriorityFeePerGas)
   }
 
   _isTrustedPaymaster (paymaster: string): boolean {

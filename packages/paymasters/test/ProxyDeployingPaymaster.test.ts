@@ -249,7 +249,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
 
           it('should reject if payer is an already deployed identity and approval is insufficient', async function () {
             await paymaster.setRelayHub(testHub.address)
-            assert.equal(await revertReason(testHub.callPreRC(relayRequest, signature, '0x', 1e6)), transferErc20Error)
+            assert.match(await revertReason(testHub.callPreRC(relayRequest, signature, '0x', 1e6)), transferErc20Error)
           })
         })
       })

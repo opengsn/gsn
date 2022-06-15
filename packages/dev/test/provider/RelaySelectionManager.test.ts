@@ -22,6 +22,7 @@ import { ether } from '@openzeppelin/test-helpers'
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
 contract('RelaySelectionManager', function (accounts) {
+  const relayHubAddress = constants.BURN_ADDRESS
   const sliceSize = 3
 
   let httpClient: HttpClient
@@ -45,7 +46,7 @@ contract('RelaySelectionManager', function (accounts) {
     ownerAddress: '',
     relayWorkerAddress: '',
     relayManagerAddress: '',
-    relayHubAddress: '',
+    relayHubAddress,
     minMaxPriorityFeePerGas: '1',
     maxAcceptanceBudget: 1e10.toString(),
     ready: true,
@@ -106,7 +107,7 @@ contract('RelaySelectionManager', function (accounts) {
           winner,
           errors
         }))
-      const nextRelay = await relaySelectionManager.selectNextRelay()
+      const nextRelay = await relaySelectionManager.selectNextRelay(relayHubAddress)
       assert.equal(nextRelay, winner)
     })
 
@@ -150,7 +151,7 @@ contract('RelaySelectionManager', function (accounts) {
         const pingResponse: PingResponse = {
           relayWorkerAddress: relayManager,
           relayManagerAddress: relayManager,
-          relayHubAddress: relayManager,
+          relayHubAddress: relayHub.address,
           minMaxPriorityFeePerGas: '1',
           ownerAddress: accounts[0],
           maxAcceptanceBudget: 1e10.toString(),
@@ -168,7 +169,7 @@ contract('RelaySelectionManager', function (accounts) {
           errors
         }))
         stubGetRelaysSorted.returns(Promise.resolve([[urlInfo]]))
-        const nextRelay: RelayInfo = (await relaySelectionManager.selectNextRelay())!
+        const nextRelay: RelayInfo = (await relaySelectionManager.selectNextRelay(relayHub.address))!
         assert.equal(nextRelay.relayInfo.relayUrl, preferredRelayUrl)
         assert.equal(nextRelay.relayInfo.relayManager, relayManager)
         assert.equal(nextRelay.relayInfo.baseRelayFee, '666')
@@ -184,7 +185,7 @@ contract('RelaySelectionManager', function (accounts) {
         .returns([])
       stubRaceToSuccess
         .returns(Promise.resolve({ errors }))
-      const nextRelay = await relaySelectionManager.selectNextRelay()
+      const nextRelay = await relaySelectionManager.selectNextRelay(relayHubAddress)
       assert.isUndefined(nextRelay)
     })
   })
@@ -251,7 +252,7 @@ contract('RelaySelectionManager', function (accounts) {
     it('should throw if the relay is not ready', async function () {
       stubPingResponse.returns(Promise.resolve(Object.assign({}, pingResponse, { ready: false })))
       const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, emptyFilter, logger, config)
-      const promise = rsm._getRelayAddressPing(eventInfo)
+      const promise = rsm._getRelayAddressPing(eventInfo, relayHubAddress)
       await expect(promise).to.be.eventually.rejectedWith('Relay not ready')
     })
 
@@ -261,15 +262,23 @@ contract('RelaySelectionManager', function (accounts) {
       const filter: PingFilter = (): void => { throw new Error(message) }
       stubPingResponse.returns(Promise.resolve(pingResponse))
       const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, filter, logger, config)
-      const promise = rsm._getRelayAddressPing(eventInfo)
+      const promise = rsm._getRelayAddressPing(eventInfo, relayHubAddress)
       await expect(promise).to.be.eventually.rejectedWith(message)
     })
 
     it('should return the relay info if it pinged as ready and passed filter successfully', async function () {
       stubPingResponse.returns(Promise.resolve(pingResponse))
       const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, emptyFilter, logger, config)
-      const relayInfo = await rsm._getRelayAddressPing(eventInfo)
+      const relayInfo = await rsm._getRelayAddressPing(eventInfo, relayHubAddress)
       assert.deepEqual(relayInfo, winner)
+    })
+
+    it('should throw if the Relay Server responded with a different RelayHub address', async function () {
+      const pingResponseWrongHub = Object.assign({}, pingResponse, { relayHubAddress: constants.ZERO_ADDRESS })
+      stubPingResponse.returns(Promise.resolve(pingResponseWrongHub))
+      const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config)
+      const promise = rsm._getRelayAddressPing(eventInfo, relayHubAddress)
+      await expect(promise).to.be.eventually.rejectedWith(`Client is using RelayHub ${constants.BURN_ADDRESS} while the server responded with RelayHub address ${constants.ZERO_ADDRESS}`)
     })
   })
 
@@ -326,7 +335,7 @@ contract('RelaySelectionManager', function (accounts) {
         throw new Error('Non test relay pinged')
       })
       const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config)
-      const raceResults = await rsm._raceToSuccess(relays)
+      const raceResults = await rsm._raceToSuccess(relays, relayHubAddress)
       assert.equal(raceResults.winner?.relayInfo.relayUrl, 'fastRelay')
       assert.equal(raceResults.errors.size, 1)
       assert.equal(raceResults.errors.get('fastFailRelay')?.message, fastFailedMessage)
