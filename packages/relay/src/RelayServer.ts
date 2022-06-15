@@ -30,11 +30,11 @@ import {
 import { RegistrationManager } from './RegistrationManager'
 import { PaymasterStatus, ReputationManager } from './ReputationManager'
 import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } from './TransactionManager'
-import { ServerAction } from './StoredTransaction'
+import { ServerAction, ShortBlockInfo } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import { isSameAddress, toNumber } from '@opengsn/common'
+import { isSameAddress, ObjectMap, toNumber } from '@opengsn/common'
 import { BlockTransactionString } from 'web3-eth'
 
 /**
@@ -376,7 +376,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
   }
 
-  async createRelayTransaction (req: RelayTransactionRequest): Promise<PrefixedHexString> {
+  async createRelayTransaction (req: RelayTransactionRequest): Promise<{ signedTx: PrefixedHexString, nonceGapFilled: ObjectMap<PrefixedHexString> }> {
     this.logger.debug(`dump request params: ${JSON.stringify(req)}`)
     if (!this.isReady()) {
       throw new Error('relay not ready')
@@ -422,10 +422,11 @@ returnValue        | ${viewRelayCallRet.returnValue}
         maxFeePerGas: req.relayRequest.relayData.maxFeePerGas,
         maxPriorityFeePerGas: req.relayRequest.relayData.maxPriorityFeePerGas
       }
-    const { signedTx } = await this.transactionManager.sendTransaction(details)
+    const { signedTx, nonce } = await this.transactionManager.sendTransaction(details)
+    const nonceGapFilled = await this.transactionManager.getNonceGapFilled(this.workerAddress, req.metadata.relayLastKnownNonce, nonce - 1)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishServer(0, currentBlock.number, currentBlock.hash, currentBlockTimestamp)
-    return signedTx
+    return { signedTx, nonceGapFilled }
   }
 
   start (): void {
@@ -673,8 +674,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     transactionHashes = transactionHashes.concat(
       await this.registrationManager.handlePastEvents(
         hubEventsSinceLastScan, this.lastScannedBlock, currentBlock, currentBlockTimestamp, shouldRegisterAgain))
-    await this.transactionManager.removeConfirmedTransactions(currentBlock.number)
-    await this._boostStuckPendingTransactions(currentBlock.number, currentBlockTimestamp)
+    await this.transactionManager.fillMinedBlockDetailsForTransactions(currentBlock)
+    await this.transactionManager.removeArchivedTransactions(currentBlock)
+    await this._boostStuckPendingTransactions(currentBlock)
     this.lastScannedBlock = currentBlock.number
     const isRegistered = await this.registrationManager.isRegistered()
     if (!isRegistered) {
@@ -812,15 +814,15 @@ latestBlock timestamp   | ${latestBlock.timestamp}
    * Resend all outgoing pending transactions with insufficient gas price by all signers (manager, workers)
    * @return the mapping of the previous transaction hash to details of a new boosted transaction
    */
-  async _boostStuckPendingTransactions (currentBlockNumber: number, currentBlockTimestamp: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+  async _boostStuckPendingTransactions (currentBlockInfo: ShortBlockInfo): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const transactionDetails = new Map<PrefixedHexString, SignedTransactionDetails>()
     // repeat separately for each signer (manager, all workers)
-    const managerBoostedTransactions = await this._boostStuckTransactionsForManager(currentBlockNumber, currentBlockTimestamp)
+    const managerBoostedTransactions = await this._boostStuckTransactionsForManager(currentBlockInfo)
     for (const [txHash, boostedTxDetails] of managerBoostedTransactions) {
       transactionDetails.set(txHash, boostedTxDetails)
     }
     for (const workerIndex of [0]) {
-      const workerBoostedTransactions = await this._boostStuckTransactionsForWorker(currentBlockNumber, currentBlockTimestamp, workerIndex)
+      const workerBoostedTransactions = await this._boostStuckTransactionsForWorker(currentBlockInfo, workerIndex)
       for (const [txHash, boostedTxDetails] of workerBoostedTransactions) {
         transactionDetails.set(txHash, boostedTxDetails)
       }
@@ -828,13 +830,13 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return transactionDetails
   }
 
-  async _boostStuckTransactionsForManager (currentBlockNumber: number, currentBlockTimestamp: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
-    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(this.managerAddress, currentBlockNumber, currentBlockTimestamp, this.minMaxPriorityFeePerGas)
+  async _boostStuckTransactionsForManager (currentBlockInfo: ShortBlockInfo): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(this.managerAddress, currentBlockInfo, this.minMaxPriorityFeePerGas)
   }
 
-  async _boostStuckTransactionsForWorker (currentBlockNumber: number, currentBlockTimestamp: number, workerIndex: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+  async _boostStuckTransactionsForWorker (currentBlockInfo: ShortBlockInfo, workerIndex: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
     const signer = this.workerAddress
-    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(signer, currentBlockNumber, currentBlockTimestamp, this.minMaxPriorityFeePerGas)
+    return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(signer, currentBlockInfo, this.minMaxPriorityFeePerGas)
   }
 
   _isTrustedPaymaster (paymaster: string): boolean {
