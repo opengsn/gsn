@@ -7,6 +7,7 @@ import { RelayRequest } from '../EIP712/RelayRequest'
 export interface RelayMetadata {
   approvalData: PrefixedHexString
   relayHubAddress: Address
+  relayLastKnownNonce: number
   relayMaxNonce: number
   signature: PrefixedHexString
   maxAcceptanceBudget: PrefixedHexString
@@ -42,6 +43,7 @@ export const RelayTransactionRequestShape = {
     }
   },
   metadata: {
+    relayLastKnownNonce: ow.number,
     approvalData: ow.string,
     relayHubAddress: ow.string,
     relayMaxNonce: ow.number,

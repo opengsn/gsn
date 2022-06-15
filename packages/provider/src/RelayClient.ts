@@ -15,14 +15,14 @@ import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { decodeRevertReason, removeNullValues } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
-import { constants, getRelayRequestID, RelayCallABI } from '@opengsn/common'
+import { constants, getRelayRequestID, ObjectMap, RelayCallABI } from '@opengsn/common'
 
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { AccountKeypair, AccountManager } from './AccountManager'
 import { DefaultRelayFilter, DefaultRelayScore, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
-import { RelayedTransactionValidator } from './RelayedTransactionValidator'
+import { isTransactionValid, RelayedTransactionValidator } from './RelayedTransactionValidator'
 import { createClientLogger } from './ClientWinstonLogger'
 import { defaultGsnConfig, defaultLoggerConfiguration, GSNConfig, GSNDependencies } from './GSNConfigurator'
 
@@ -306,15 +306,17 @@ export class RelayClient {
     if (error != null) {
       return { error }
     }
-    let hexTransaction: PrefixedHexString
+    let signedTx: PrefixedHexString
+    let nonceGapFilled: ObjectMap<PrefixedHexString>
     let transaction: TypedTransaction
     let auditPromise: Promise<AuditResponse>
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     const relayRequestID = this._getRelayRequestID(httpRequest.relayRequest, httpRequest.metadata.signature)
     try {
-      hexTransaction = await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest)
-      transaction = TransactionFactory.fromSerializedData(toBuffer(hexTransaction), this.dependencies.contractInteractor.getRawTxOptions())
-      auditPromise = this.auditTransaction(hexTransaction, relayInfo.relayInfo.relayUrl)
+      ({ signedTx, nonceGapFilled } =
+        await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest))
+      transaction = TransactionFactory.fromSerializedData(toBuffer(signedTx), this.dependencies.contractInteractor.getRawTxOptions())
+      auditPromise = this.auditTransaction(signedTx, relayInfo.relayInfo.relayUrl)
         .then((penalizeResponse) => {
           if (penalizeResponse.commitTxHash != null) {
             const txHash = bufferToHex(transaction.hash())
@@ -329,21 +331,16 @@ export class RelayClient {
       this.logger.info(`relayTransaction: ${JSON.stringify(httpRequest)}`)
       return { error, isRelayError: true }
     }
-    let validationError: Error | undefined
-    try {
-      if (!this.dependencies.transactionValidator.validateRelayResponse(httpRequest, hexTransaction)) {
-        validationError = new Error('Returned transaction did not pass validation')
-      }
-    } catch (e: any) {
-      validationError = e
-    }
-    if (validationError != null) {
+    const validationResponse = this.dependencies.transactionValidator.validateRelayResponse(httpRequest, signedTx, nonceGapFilled)
+    const isValid = isTransactionValid(validationResponse)
+    if (!isValid) {
       this.emit(new GsnRelayerResponseEvent(false))
       this.dependencies.knownRelaysManager.saveRelayFailure(new Date().getTime(), relayInfo.relayInfo.relayManager, relayInfo.relayInfo.relayUrl)
       return {
         auditPromise,
         isRelayError: true,
-        error: validationError
+        // TODO: return human-readable error messages
+        error: new Error(`Transaction response verification failed. Validation results: ${JSON.stringify(validationResponse)}`)
       }
     }
     this.emit(new GsnRelayerResponseEvent(true))
@@ -451,15 +448,16 @@ export class RelayClient {
     }
 
     // max nonce is not signed, as contracts cannot access addresses' nonces.
-    const transactionCount = await this.dependencies.contractInteractor.getTransactionCount(relayInfo.pingResponse.relayWorkerAddress)
-    const relayMaxNonce = transactionCount + this.config.maxRelayNonceGap
+    const relayLastKnownNonce = await this.dependencies.contractInteractor.getTransactionCount(relayInfo.pingResponse.relayWorkerAddress)
+    const relayMaxNonce = relayLastKnownNonce + this.config.maxRelayNonceGap
     const relayHubAddress = this.dependencies.contractInteractor.getDeployment().relayHubAddress ?? ''
     const metadata: RelayMetadata = {
       maxAcceptanceBudget: relayInfo.pingResponse.maxAcceptanceBudget,
       relayHubAddress,
       signature,
       approvalData,
-      relayMaxNonce
+      relayMaxNonce,
+      relayLastKnownNonce
     }
     const httpRequest: RelayTransactionRequest = {
       relayRequest,
