@@ -170,11 +170,12 @@ contract('Network Simulation for Relay Server', function (accounts) {
         const storedTxs = await env.relayServer.txStoreManager.getAll()
         const latestNonce = await env.web3.eth.getTransactionCount(storedTxs[0].from)
         assert.equal(storedTxs[0].nonce, latestNonce)
+        const signer = env.relayServer.transactionManager.workersKeyManager.getAddress(0).toLowerCase()
         // @ts-ignore
         await env.relayServer.txStoreManager.txstore.asyncRemove({
           $and: [
-            { 'nonceSigner.nonce': { $lte: latestNonce } }
-            // { 'nonceSigner.signer': signer.toLowerCase() }
+            { 'nonceSigner.nonce': { $lte: latestNonce } },
+            { 'nonceSigner.signer': signer }
           ]
         }, { multi: true })
         await increaseTime(pendingTransactionTimeoutSeconds)

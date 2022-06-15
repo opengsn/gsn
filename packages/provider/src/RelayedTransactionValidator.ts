@@ -168,16 +168,12 @@ export class RelayedTransactionValidator {
 
     if (transaction instanceof Transaction) {
       isLegacyGasPriceValid = transaction.gasPrice.gte(toBN(request.relayRequest.relayData.maxFeePerGas))
-      // throw new Error(`Relay Server signed gas price too low (${transaction.gasPrice}). Requested transaction with gas price at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
     } else if (transaction instanceof FeeMarketEIP1559Transaction) {
       isFeeMarket1559Transaction = true
       isMaxPriorityFeePerGasValid = transaction.maxPriorityFeePerGas.gte(toBN(request.relayRequest.relayData.maxPriorityFeePerGas))
-      // throw new Error(`Relay Server signed max priority fee too low (${transaction.maxPriorityFeePerGas}). Requested transaction with priority fee at least ${request.relayRequest.relayData.maxPriorityFeePerGas}`)
       isMaxFeePerGasValid = transaction.maxFeePerGas.gte(toBN(request.relayRequest.relayData.maxFeePerGas))
-      // throw new Error(`Relay Server signed max fee too low (${transaction.maxFeePerGas}). Requested transaction with max fee at least ${request.relayRequest.relayData.maxFeePerGas}`)
     } else {
       isTransactionTypeValid = false
-      // throw new Error('Transaction must have either gasPrice or (maxFeePerGas and maxPriorityFeePerGas)')
     }
     return {
       isTransactionTypeValid,
