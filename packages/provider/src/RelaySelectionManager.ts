@@ -9,6 +9,7 @@ import { isInfoFromEvent, RelayInfoUrl } from '@opengsn/common/dist/types/GSNCon
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { GSNConfig } from './GSNConfigurator'
 import { KnownRelaysManager } from './KnownRelaysManager'
+import { isSameAddress } from '@opengsn/common'
 
 interface RaceResult {
   winner?: PartialRelayInfo
@@ -117,6 +118,9 @@ export class RelaySelectionManager {
 
     if (!pingResponse.ready) {
       throw new Error(`Relay not ready ${JSON.stringify(pingResponse)}`)
+    }
+    if (!isSameAddress(relayHub, pingResponse.relayHubAddress)) {
+      throw new Error(`Client is using RelayHub ${relayHub} while the server responded with RelayHub address ${pingResponse.relayHubAddress}`)
     }
     this.pingFilter(relayHub, pingResponse, this.gsnTransactionDetails)
     return {

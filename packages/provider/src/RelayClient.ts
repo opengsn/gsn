@@ -15,7 +15,7 @@ import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { decodeRevertReason, removeNullValues } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
-import { constants, getRelayRequestID, isSameAddress, RelayCallABI } from '@opengsn/common'
+import { constants, getRelayRequestID, RelayCallABI } from '@opengsn/common'
 
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
@@ -48,9 +48,6 @@ export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHe
 }
 
 export const GasPricePingFilter: PingFilter = (relayHubAddress, pingResponse, gsnTransactionDetails) => {
-  if (!isSameAddress(relayHubAddress, pingResponse.relayHubAddress)) {
-    throw new Error(`Client is using RelayHub ${relayHubAddress} while the server responded with RelayHub address ${pingResponse.relayHubAddress}`)
-  }
   if (
     gsnTransactionDetails.maxPriorityFeePerGas != null &&
     parseInt(pingResponse.minMaxPriorityFeePerGas) > parseInt(gsnTransactionDetails.maxPriorityFeePerGas)
