@@ -122,7 +122,7 @@ export class RelaySelectionManager {
     if (!isSameAddress(relayHub, pingResponse.relayHubAddress)) {
       throw new Error(`Client is using RelayHub ${relayHub} while the server responded with RelayHub address ${pingResponse.relayHubAddress}`)
     }
-    this.pingFilter(relayHub, pingResponse, this.gsnTransactionDetails)
+    this.pingFilter(pingResponse, this.gsnTransactionDetails)
     return {
       pingResponse,
       relayInfo

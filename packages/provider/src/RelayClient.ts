@@ -47,7 +47,7 @@ export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHe
   return '0x'
 }
 
-export const GasPricePingFilter: PingFilter = (relayHubAddress, pingResponse, gsnTransactionDetails) => {
+export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
   if (
     gsnTransactionDetails.maxPriorityFeePerGas != null &&
     parseInt(pingResponse.minMaxPriorityFeePerGas) > parseInt(gsnTransactionDetails.maxPriorityFeePerGas)
