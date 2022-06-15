@@ -626,6 +626,26 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         sinon.restore()
       })
     })
+
+    it('should return nonceGapFilled map containing transactions between relayLastKnownNonce and signed nonce', async function () {
+      const workerAddress = env.relayServer.transactionManager.workersKeyManager.getAddress(0)
+      const relayNonce = await web3.eth.getTransactionCount(workerAddress)
+      const txs = []
+      for (let i = 0; i < 10; i++) {
+        const req = await env.createRelayHttpRequest()
+        const { signedTx } = await env.relayServer.createRelayTransaction(req)
+        txs.push(signedTx)
+      }
+      const req = await env.createRelayHttpRequest()
+      req.metadata.relayLastKnownNonce = req.metadata.relayLastKnownNonce - 10
+      const res = await env.relayServer.createRelayTransaction(req)
+      assert.equal(Object.entries(res.nonceGapFilled).length, 10)
+      for (let i = 0; i < 10; i++) {
+        const nonce = relayNonce + i
+        assert.isNotNull(res.nonceGapFilled[nonce])
+        assert.equal(txs[i], res.nonceGapFilled[nonce])
+      }
+    })
   })
 
   describe('withdrawToOwnerIfNeeded', function () {
