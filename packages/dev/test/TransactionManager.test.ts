@@ -3,22 +3,27 @@ import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import Mutex from 'async-mutex/lib/Mutex'
 import * as ethUtils from 'ethereumjs-util'
 
-import { evmMineMany } from './TestUtils'
+import { evmMine, evmMineMany, increaseTime } from './TestUtils'
 import { HttpProvider } from 'web3-core'
+import { BlockTransactionString } from 'web3-eth'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { SignedTransaction } from '@opengsn/relay/dist/KeyManager'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
-import { toNumber } from '@opengsn/common'
 
 contract('TransactionManager', function (accounts) {
-  const confirmationsNeeded = 12
+  const dbPruneTxAfterBlocks = 12
+  const dbPruneTxAfterSeconds = 100
   let transactionManager: TransactionManager
   let env: ServerTestEnvironment
 
   before(async function () {
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
     await env.init()
-    await env.newServerInstance()
+    await env.newServerInstance({
+      dbPruneTxAfterBlocks,
+      dbPruneTxAfterSeconds,
+      refreshStateTimeoutBlocks: 1
+    })
     transactionManager = env.relayServer.transactionManager
   })
 
@@ -141,32 +146,33 @@ contract('TransactionManager', function (accounts) {
 
   describe('local storage maintenance', function () {
     let parsedTxHash: PrefixedHexString
-    let latestBlockNumber: number
-    let latestBlockTimestamp: number
+    let latestBlock: BlockTransactionString
 
     beforeEach(async function () {
       await transactionManager.txStoreManager.clearAll()
       transactionManager._initNonces()
       const { signedTx } = await env.relayTransaction()
       parsedTxHash = ethUtils.bufferToHex((TransactionFactory.fromSerializedData(toBuffer(signedTx), transactionManager.rawTxOptions)).hash())
-      const latestBlock = await env.web3.eth.getBlock('latest')
-      latestBlockNumber = latestBlock.number
-      latestBlockTimestamp = toNumber(latestBlock.timestamp)
+      await evmMine()
+      latestBlock = await env.web3.eth.getBlock('latest')
+      // important part is marking a transaction as mined
+      await env.relayServer._worker(latestBlock)
     })
 
     it('should remove confirmed transactions from the recent transactions storage', async function () {
-      await transactionManager.removeConfirmedTransactions(latestBlockNumber)
+      await transactionManager.removeArchivedTransactions(latestBlock)
       let storedTransactions = await transactionManager.txStoreManager.getAll()
       assert.equal(storedTransactions[0].txId, parsedTxHash)
-      await evmMineMany(confirmationsNeeded)
+      await evmMineMany(dbPruneTxAfterBlocks)
+      await increaseTime(dbPruneTxAfterSeconds)
       const newLatestBlock = await env.web3.eth.getBlock('latest')
-      await transactionManager.removeConfirmedTransactions(newLatestBlock.number)
+      await transactionManager.removeArchivedTransactions(newLatestBlock)
       storedTransactions = await transactionManager.txStoreManager.getAll()
       assert.deepEqual([], storedTransactions)
     })
 
     it('should remove stale boosted unconfirmed transactions', async function () {
-      await transactionManager.removeConfirmedTransactions(latestBlockNumber)
+      await transactionManager.removeArchivedTransactions(latestBlock)
       let storedTransactions = await transactionManager.txStoreManager.getAll()
       const oldTransaction = storedTransactions[0]
       assert.equal(storedTransactions.length, 1)
@@ -175,16 +181,17 @@ contract('TransactionManager', function (accounts) {
       // Ganache is on auto-mine, so the server will throw after broadcasting on nonce error, after storing the boosted tx.
       try {
         await transactionManager.resendTransaction(
-          oldTransaction, latestBlockNumber, latestBlockTimestamp, oldTransaction.maxFeePerGas * 2, oldTransaction.maxPriorityFeePerGas * 2, false)
+          oldTransaction, latestBlock, oldTransaction.maxFeePerGas * 2, oldTransaction.maxPriorityFeePerGas * 2, false)
       } catch (e: any) {
         assert.include(e.message, 'Nonce too low. Expected nonce to be')
       }
       storedTransactions = await transactionManager.txStoreManager.getAll()
       assert.equal(storedTransactions.length, 1)
       assert.notEqual(storedTransactions[0].txId, parsedTxHash)
-      await evmMineMany(confirmationsNeeded)
+      await evmMineMany(dbPruneTxAfterBlocks)
+      await increaseTime(dbPruneTxAfterSeconds)
       const newLatestBlock = await env.web3.eth.getBlock('latest')
-      await transactionManager.removeConfirmedTransactions(newLatestBlock.number)
+      await transactionManager.removeArchivedTransactions(newLatestBlock)
       storedTransactions = await transactionManager.txStoreManager.getAll()
       assert.deepEqual([], storedTransactions)
     })

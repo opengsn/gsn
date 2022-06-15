@@ -950,6 +950,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.relayHubInstance.getWorkerManager(worker)
   }
 
+  async getMinimumStakePerToken (tokenAddress: Address): Promise<BN> {
+    return await this.relayHubInstance.getMinimumStakePerToken(tokenAddress)
+  }
+
   /**
    * Gets balance of an address on the current RelayHub.
    * @param address - can be a Paymaster or a Relay Manger
