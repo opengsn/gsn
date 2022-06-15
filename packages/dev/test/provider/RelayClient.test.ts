@@ -907,6 +907,26 @@ contract('RelayClient', function (accounts) {
       assert.exists(relayingResult.transaction)
     })
 
+    it('should use preferred relay with specified fees if set', async () => {
+      relayClient = new RelayClient({
+        provider: underlyingProvider,
+        config: {
+          ...gsnConfig,
+          preferredRelays: ['http://localhost:8090'],
+          preferredRelaysRelayingFees: {
+            baseRelayFee: '777',
+            pctRelayFee: '888'
+          }
+        }
+      })
+      await relayClient.init()
+      const spy = sinon.spy(relayClient, '_prepareRelayHttpRequest')
+      await relayClient.relayTransaction(options)
+      const relayRequest = spy.getCall(0).args[0]
+      assert.equal(relayRequest.relayData.baseRelayFee, '777')
+      assert.equal(relayRequest.relayData.pctRelayFee, '888')
+    })
+
     it('should not use blacklisted relays', async () => {
       relayClient = new RelayClient({
         provider: underlyingProvider,
