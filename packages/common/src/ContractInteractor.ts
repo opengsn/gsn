@@ -541,10 +541,10 @@ export class ContractInteractor {
       this.logger.debug('relayCall res=' + res)
 
       // @ts-ignore
-      const decoded = abi.decodeParameters(['bool', 'uint256', 'bytes'], res)
+      const decoded = abi.decodeParameters(['bool', 'uint256', 'uint256', 'bytes'], res)
       const paymasterAccepted: boolean = decoded[0]
-      const relayCallStatus: number = parseInt(decoded[1])
-      let returnValue: string = decoded[2]
+      const relayCallStatus: number = parseInt(decoded[2])
+      let returnValue: string = decoded[3]
       const recipientReverted = RelayCallStatusCodes.RelayedCallFailed.eqn(relayCallStatus)
       if (!paymasterAccepted || recipientReverted) {
         returnValue = this._decodeRevertFromResponse({}, { result: returnValue }) ?? returnValue
