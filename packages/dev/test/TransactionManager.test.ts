@@ -28,7 +28,7 @@ contract('TransactionManager', function (accounts) {
   })
 
   describe('_resolveNewGasPrice()', function () {
-    it('should return new gas fees when both below maxGasPrice', async function () {
+    it('should return new gas fees when both below maxFeePerGas', async function () {
       const maxFeePerGas = 1e10
       const maxPriorityFeePerGas = 1e9
       const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
@@ -36,17 +36,17 @@ contract('TransactionManager', function (accounts) {
       assert.equal(newFees.newMaxPriorityFee, maxPriorityFeePerGas * transactionManager.config.retryGasPriceFactor)
       assert.isFalse(newFees.isMaxGasPriceReached)
     })
-    it('should return new gas fees when new maxFee above maxGasPrice', async function () {
-      const maxFeePerGas = parseInt(transactionManager.config.maxGasPrice) - 1
+    it('should return new gas fees when new maxFee above maxFeePerGas', async function () {
+      const maxFeePerGas = parseInt(transactionManager.config.maxFeePerGas) - 1
       const maxPriorityFeePerGas = 1e9
       const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
-      assert.equal(newFees.newMaxFee.toString(), transactionManager.config.maxGasPrice)
+      assert.equal(newFees.newMaxFee.toString(), transactionManager.config.maxFeePerGas)
       assert.equal(newFees.newMaxPriorityFee, maxPriorityFeePerGas * transactionManager.config.retryGasPriceFactor)
       assert.isTrue(newFees.isMaxGasPriceReached)
     })
     it('should return new gas fees when new maxPriorityFee above maxFee', async function () {
       const maxFeePerGas = 1e9
-      const maxPriorityFeePerGas = parseInt(transactionManager.config.maxGasPrice) - 1
+      const maxPriorityFeePerGas = parseInt(transactionManager.config.maxFeePerGas) - 1
       assert.isTrue(maxFeePerGas < maxPriorityFeePerGas)
       const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
       assert.equal(newFees.newMaxFee, maxFeePerGas * transactionManager.config.retryGasPriceFactor)

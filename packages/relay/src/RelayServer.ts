@@ -59,6 +59,7 @@ export class RelayServer extends EventEmitter {
   readonly managerAddress: PrefixedHexString
   readonly workerAddress: PrefixedHexString
   minMaxPriorityFeePerGas: number = 0
+  minMaxFeePerGas: number = 0
   running = false
   alerted = false
   alertedByTransactionBlockTimestamp: number = 0
@@ -201,9 +202,13 @@ export class RelayServer extends EventEmitter {
       throw new Error(
         `priorityFee given ${requestPriorityFee} too low. Minimum maxPriorityFee server accepts: ${this.minMaxPriorityFeePerGas}`)
     }
-    if (parseInt(this.config.maxGasPrice) < requestMaxFee) {
+    if (this.minMaxFeePerGas > requestMaxFee) {
       throw new Error(
-        `maxFee given ${requestMaxFee} too high : ${this.config.maxGasPrice}`)
+        `maxFeePerGas given ${requestMaxFee} too low. Minimum maxFeePerGas server accepts: ${this.minMaxFeePerGas}`)
+    }
+    if (parseInt(this.config.maxFeePerGas) < requestMaxFee) {
+      throw new Error(
+        `maxFee given ${requestMaxFee} too high : ${this.config.maxFeePerGas}`)
     }
     if (requestMaxFee < requestPriorityFee) {
       throw new Error(
@@ -644,7 +649,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const currentBlockTimestamp = toNumber(block.timestamp)
     await this.withdrawToOwnerIfNeeded(block.number, block.hash, currentBlockTimestamp)
     this.lastRefreshBlock = block.number
-    await this._refreshPriorityFee()
+    await this._refreshGasFees()
     await this.registrationManager.refreshBalance()
     if (!this.registrationManager.balanceRequired.isSatisfied) {
       this.setReadyState(false)
@@ -653,15 +658,25 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return await this._handleChanges(block, currentBlockTimestamp)
   }
 
-  async _refreshPriorityFee (): Promise<void> {
-    const minMaxPriorityFeePerGas = parseInt(await this.contractInteractor.getMaxPriorityFee())
+  async _refreshGasFees (): Promise<void> {
+    const { baseFeePerGas, priorityFeePerGas } = await this.contractInteractor.getGasFees()
+
+    // server will not accept Relay Requests with MaxFeePerGas lower than BaseFeePerGas of a recent block
+    this.minMaxFeePerGas = parseInt(baseFeePerGas)
+
+    const minMaxPriorityFeePerGas = parseInt(priorityFeePerGas)
     this.minMaxPriorityFeePerGas = Math.floor(minMaxPriorityFeePerGas * this.config.gasPriceFactor)
     if (this.minMaxPriorityFeePerGas === 0 && parseInt(this.config.defaultPriorityFee) > 0) {
       this.logger.debug(`Priority fee received from node is 0. Setting priority fee to ${this.config.defaultPriorityFee}`)
       this.minMaxPriorityFeePerGas = parseInt(this.config.defaultPriorityFee)
     }
-    if (this.minMaxPriorityFeePerGas > parseInt(this.config.maxGasPrice)) {
-      throw new Error(`network maxPriorityFeePerGas ${this.minMaxPriorityFeePerGas} is higher than config.maxGasPrice ${this.config.maxGasPrice}`)
+
+    if (this.minMaxPriorityFeePerGas > parseInt(this.config.maxFeePerGas)) {
+      throw new Error(`network maxPriorityFeePerGas ${this.minMaxPriorityFeePerGas} is higher than config.maxFeePerGas ${this.config.maxFeePerGas}`)
+    }
+
+    if (this.minMaxFeePerGas > parseInt(this.config.maxFeePerGas)) {
+      throw new Error(`network minMaxFeePerGas ${this.minMaxFeePerGas} is higher than config.maxFeePerGas ${this.config.maxFeePerGas}`)
     }
   }
 

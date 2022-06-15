@@ -62,7 +62,7 @@ export interface ServerConfigParams {
   dbPruneTxAfterSeconds: number
   dbAutoCompactionInterval: number
   retryGasPriceFactor: number
-  maxGasPrice: string
+  maxFeePerGas: string
   defaultPriorityFee: string
   defaultGasLimit: number
   requestMinValidSeconds: number
@@ -136,7 +136,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   dbAutoCompactionInterval: 604800000, // Week in ms: 1000*60*60*24*7
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
-  maxGasPrice: 500e9.toString(),
+  maxFeePerGas: 500e9.toString(),
   defaultPriorityFee: 1e9.toString(),
 
   requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
@@ -203,7 +203,7 @@ const ConfigParamsTypes = {
   pendingTransactionTimeoutSeconds: 'number',
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
-  maxGasPrice: 'string',
+  maxFeePerGas: 'string',
   defaultPriorityFee: 'string',
   pastEventsQueryMaxPageSize: 'number',
   dbPruneTxAfterBlocks: 'number',
