@@ -1,7 +1,0 @@
-#!/bin/bash
-#start hardhat-node in a way that "run-with-testrpc" will work
-# (it looks up for "Listening on" string, to determine when the node is up)
-trap "pkill -9 -f 'hardhat node'" EXIT
-UNBUF=-u
-test `uname` == 'Darwin' && UNBUF=-l
-npx hardhat node $*| tee hardhat.log | sed  $UNBUF 's/Started HTTP and WebSocket/Listening on/'
