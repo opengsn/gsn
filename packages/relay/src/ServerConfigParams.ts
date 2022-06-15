@@ -52,7 +52,6 @@ export interface ServerConfigParams {
   workerMinBalance: number
   workerTargetBalance: number
   managerMinBalance: number
-  managerMinStake: string
   managerStakeTokenAddress: string
   managerTargetBalance: number
   minHubWithdrawalBalance: number
@@ -112,7 +111,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   workerMinBalance: 0.1e18,
   workerTargetBalance: 0.3e18,
   managerMinBalance: 0.1e18, // 0.1 eth
-  managerMinStake: '1', // 1 wei
   managerStakeTokenAddress: constants.ZERO_ADDRESS,
   managerTargetBalance: 0.3e18,
   minHubWithdrawalBalance: 0.1e18,
