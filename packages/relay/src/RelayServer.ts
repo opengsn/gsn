@@ -422,9 +422,8 @@ returnValue        | ${viewRelayCallRet.returnValue}
         maxFeePerGas: req.relayRequest.relayData.maxFeePerGas,
         maxPriorityFeePerGas: req.relayRequest.relayData.maxPriorityFeePerGas
       }
-
-    const nonceGapFilled = await this.transactionManager.getNonceGapFilled(this.workerAddress, req.metadata.relayLastKnownNonce)
-    const { signedTx } = await this.transactionManager.sendTransaction(details)
+    const { signedTx, nonce } = await this.transactionManager.sendTransaction(details)
+    const nonceGapFilled = await this.transactionManager.getNonceGapFilled(this.workerAddress, req.metadata.relayLastKnownNonce, nonce - 1)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
     await this.replenishServer(0, currentBlock.number, currentBlock.hash, currentBlockTimestamp)
     return { signedTx, nonceGapFilled }
