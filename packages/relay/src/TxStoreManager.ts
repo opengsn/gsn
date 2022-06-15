@@ -78,33 +78,29 @@ export class TxStoreManager {
     return await this.txstore.asyncFindOne({ txId: txId.toLowerCase() })
   }
 
-  async getTxsUntilNonce (signer: PrefixedHexString, nonce: number): Promise<StoredTransaction[]> {
-    return await this.txstore.asyncFind({
+  async getTxsInNonceRange (signer: PrefixedHexString, fromNonce: number, toNonce: number = Number.MAX_SAFE_INTEGER): Promise<StoredTransaction[]> {
+    return (await this.txstore.asyncFind({
       $and: [
-        { 'nonceSigner.nonce': { $lte: nonce } },
+        { 'nonceSigner.nonce': { $gte: fromNonce, $lte: toNonce } },
         { 'nonceSigner.signer': signer.toLowerCase() }]
+    })).sort(function (tx1, tx2) {
+      return tx1.nonce - tx2.nonce
     })
   }
 
-  async removeTxsUntilNonce (signer: PrefixedHexString, nonce: number): Promise<unknown> {
-    ow(nonce, ow.number)
-    ow(signer, ow.string)
-
+  /**
+   * NOTE: the transaction must satisfy *both* criteria to be removed
+   */
+  async removeArchivedTransactions (upToMinedBlockNumber: number, upToMinedTimestamp: number): Promise<unknown> {
     return await this.txstore.asyncRemove({
       $and: [
-        { 'nonceSigner.nonce': { $lte: nonce } },
-        { 'nonceSigner.signer': signer.toLowerCase() }]
+        { 'minedBlock.number': { $lte: upToMinedBlockNumber } },
+        { 'minedBlock.timestamp': { $lte: upToMinedTimestamp } }]
     }, { multi: true })
   }
 
   async clearAll (): Promise<void> {
     await this.txstore.asyncRemove({}, { multi: true })
-  }
-
-  async getAllBySigner (signer: PrefixedHexString): Promise<StoredTransaction[]> {
-    return (await this.txstore.asyncFind({ 'nonceSigner.signer': signer.toLowerCase() })).sort(function (tx1, tx2) {
-      return tx1.nonce - tx2.nonce
-    })
   }
 
   async getAll (): Promise<StoredTransaction[]> {
@@ -121,13 +117,13 @@ export class TxStoreManager {
   async isActionPendingOrRecentlyMined (serverAction: ServerAction, currentBlock: number, recencyBlockCount: number, destination: Address | undefined = undefined): Promise<boolean> {
     const allTransactions = await this.getAll()
     const storedMatchingTxs = allTransactions.filter(it => it.serverAction === serverAction && (destination == null || isSameAddress(it.to, destination)))
-    const pendingTxs = storedMatchingTxs.filter(it => it.minedBlockNumber == null)
+    const pendingTxs = storedMatchingTxs.filter(it => it.minedBlock?.number == null)
     if (pendingTxs.length !== 0) {
       this.logger.info(`Found ${pendingTxs.length} pending transactions that match a query: ${JSON.stringify(pendingTxs)}`)
       return true
     }
     const recentlyMinedTxs = storedMatchingTxs.filter(it => {
-      const minedBlockNumber = it.minedBlockNumber ?? 0
+      const minedBlockNumber = it.minedBlock?.number ?? 0
       return currentBlock - minedBlockNumber <= recencyBlockCount
     })
     if (recentlyMinedTxs.length !== 0) {
