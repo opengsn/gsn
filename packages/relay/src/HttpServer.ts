@@ -110,8 +110,8 @@ export class HttpServer {
     }
     try {
       ow(req.body, ow.object.exactShape(RelayTransactionRequestShape))
-      const signedTx = await this.relayService.createRelayTransaction(req.body)
-      res.send({ signedTx })
+      const { signedTx, nonceGapFilled } = await this.relayService.createRelayTransaction(req.body)
+      res.send({ signedTx, nonceGapFilled })
     } catch (e: any) {
       const error: string = e.message
       res.send({ error })

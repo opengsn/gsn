@@ -59,7 +59,8 @@ export interface ServerConfigParams {
   withdrawToOwnerOnBalance?: number
   refreshStateTimeoutBlocks: number
   pendingTransactionTimeoutSeconds: number
-  confirmationsNeeded: number
+  dbPruneTxAfterBlocks: number
+  dbPruneTxAfterSeconds: number
   dbAutoCompactionInterval: number
   retryGasPriceFactor: number
   maxGasPrice: string
@@ -132,7 +133,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   workdir: '',
   refreshStateTimeoutBlocks: 5,
   pendingTransactionTimeoutSeconds: 300,
-  confirmationsNeeded: 12,
+  dbPruneTxAfterBlocks: 12,
+  dbPruneTxAfterSeconds: 3600, // One hour
   dbAutoCompactionInterval: 604800000, // Week in ms: 1000*60*60*24*7
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
@@ -206,7 +208,8 @@ const ConfigParamsTypes = {
   maxGasPrice: 'string',
   defaultPriorityFee: 'string',
   pastEventsQueryMaxPageSize: 'number',
-  confirmationsNeeded: 'number',
+  dbPruneTxAfterBlocks: 'number',
+  dbPruneTxAfterSeconds: 'number',
   environmentName: 'string',
   recentActionAvoidRepeatDistanceBlocks: 'number',
   skipErc165Check: 'boolean'
