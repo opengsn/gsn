@@ -167,7 +167,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
               '0x',
               MAX_POSSIBLE_GAS
             )
-          ), /paymastaData: missing method sig/)
+          ), /paymasterData: must contain "permit"/)
       })
 
       it('should revert if paymasterData is not an encoded call to permit method', async function () {
