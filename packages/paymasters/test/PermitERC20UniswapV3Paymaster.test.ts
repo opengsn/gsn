@@ -10,7 +10,7 @@ import {
   TestHubInstance
 } from '../types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { constants } from '@opengsn/common'
+import { constants } from '@opengsn/common/dist/Constants'
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
 import {
   CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS,
@@ -45,7 +45,6 @@ const MAJOR_DAI_AND_UNI_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503'
 
 const GAS_USED_BY_POST = 204766
 const MAX_POSSIBLE_GAS = 1e6
-const PERMIT_DATA_LENGTH = 0
 const POOL_FEE = 3000
 
 const TOKEN_PRE_CHARGE = toWei('10', 'ether')
@@ -61,6 +60,22 @@ async function skipWithoutFork (test: any): Promise<void> {
   if (!isMainnet) {
     test.skip()
   }
+}
+
+interface PaymasterConfig {
+  weth: string
+  tokens: string[]
+  relayHub: string
+  priceFeeds: string[]
+  uniswap: string
+  trustedForwarder: string
+  uniswapPoolFee: number | BN | string
+  gasUsedByPost: number | BN | string
+  permitMethodSignatures: string[]
+  minHubBalance: number | BN | string
+  targetHubBalance: number | BN | string
+  minWithdrawalAmount: number | BN | string
+  paymasterFee: number | BN | string
 }
 
 contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay]) {
@@ -93,18 +108,22 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
     })
     // we cannot sign on behalf of an impersonated account - transfer DAI to an account we control
     await daiPermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
-    permitPaymaster = await PermitERC20UniswapV3Paymaster.new(
-      WETH9_CONTRACT_ADDRESS,
-      DAI_CONTRACT_ADDRESS,
-      testRelayHub.address,
-      SWAP_ROUTER_CONTRACT_ADDRESS,
-      CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS,
-      GSN_FORWARDER_CONTRACT_ADDRESS,
-      POOL_FEE,
-      GAS_USED_BY_POST,
-      PERMIT_DATA_LENGTH,
-      PERMIT_SIGNATURE_DAI
-    )
+    const config: PaymasterConfig = {
+      weth: WETH9_CONTRACT_ADDRESS,
+      tokens: [DAI_CONTRACT_ADDRESS],
+      relayHub: testRelayHub.address,
+      uniswap: SWAP_ROUTER_CONTRACT_ADDRESS,
+      priceFeeds: [CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS],
+      trustedForwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
+      uniswapPoolFee: POOL_FEE,
+      gasUsedByPost: GAS_USED_BY_POST,
+      permitMethodSignatures: [PERMIT_SIGNATURE_DAI],
+      minHubBalance: 1e17,
+      targetHubBalance: 1e18,
+      minWithdrawalAmount: 2e18,
+      paymasterFee: 5
+    }
+    permitPaymaster = await PermitERC20UniswapV3Paymaster.new(config)
     relayRequest = {
       relayData: {
         relayWorker: relay,
@@ -285,18 +304,22 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
           }
           eip2612PermittableToken = await PermitInterfaceEIP2612.at(UNI_CONTRACT_ADDRESS)
           await eip2612PermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
-          permitEIP2612Paymaster = await PermitERC20UniswapV3Paymaster.new(
-            WETH9_CONTRACT_ADDRESS,
-            UNI_CONTRACT_ADDRESS,
-            testRelayHub.address,
-            SWAP_ROUTER_CONTRACT_ADDRESS,
-            CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
-            GSN_FORWARDER_CONTRACT_ADDRESS,
-            POOL_FEE,
-            GAS_USED_BY_POST,
-            PERMIT_DATA_LENGTH,
-            PERMIT_SIGNATURE_EIP2612
-          )
+          const config: PaymasterConfig = {
+            weth: WETH9_CONTRACT_ADDRESS,
+            tokens: [UNI_CONTRACT_ADDRESS],
+            relayHub: testRelayHub.address,
+            uniswap: SWAP_ROUTER_CONTRACT_ADDRESS,
+            priceFeeds: [CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS],
+            trustedForwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
+            uniswapPoolFee: POOL_FEE,
+            gasUsedByPost: GAS_USED_BY_POST,
+            permitMethodSignatures: [PERMIT_SIGNATURE_EIP2612],
+            minHubBalance: 1e17,
+            targetHubBalance: 1e18,
+            minWithdrawalAmount: 2e18,
+            paymasterFee: 5
+          }
+          permitEIP2612Paymaster = await PermitERC20UniswapV3Paymaster.new(config)
         })
         it('should execute permit method on a target EIP2612 token', async function () {
           await skipWithoutFork(this)
@@ -438,18 +461,22 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
   context('calculate postRelayCall gas usage', function () {
     it('calculate', async function () {
       await skipWithoutFork(this)
-      const permitPaymasterZeroGUBP = await PermitERC20UniswapV3Paymaster.new(
-        WETH9_CONTRACT_ADDRESS,
-        DAI_CONTRACT_ADDRESS,
-        testRelayHub.address,
-        SWAP_ROUTER_CONTRACT_ADDRESS,
-        CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS,
-        GSN_FORWARDER_CONTRACT_ADDRESS,
-        POOL_FEE,
-        0, // do not set 'gasUsedByPost'
-        PERMIT_DATA_LENGTH,
-        PERMIT_SIGNATURE_DAI
-      )
+      const config: PaymasterConfig = {
+        weth: WETH9_CONTRACT_ADDRESS,
+        tokens: [DAI_CONTRACT_ADDRESS],
+        relayHub: testRelayHub.address,
+        uniswap: SWAP_ROUTER_CONTRACT_ADDRESS,
+        priceFeeds: [CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS],
+        trustedForwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
+        uniswapPoolFee: POOL_FEE,
+        gasUsedByPost: 0,
+        permitMethodSignatures: [PERMIT_SIGNATURE_DAI],
+        minHubBalance: 1e17,
+        targetHubBalance: 1e18,
+        minWithdrawalAmount: 2e18,
+        paymasterFee: 5
+      }
+      const permitPaymasterZeroGUBP = await PermitERC20UniswapV3Paymaster.new(config)
       const context = web3.eth.abi.encodeParameters(['address', 'uint256'], [account0, 500])
       const postGasUse = await calculatePostGas(daiPermittableToken, permitPaymasterZeroGUBP, account0, context)
       assert.closeTo(postGasUse.toNumber(), GAS_USED_BY_POST, 5000)

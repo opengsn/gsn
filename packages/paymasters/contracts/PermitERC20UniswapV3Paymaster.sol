@@ -51,39 +51,43 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     uint256 public minWithdrawalAmount;
     uint256 public paymasterFee;
 
+    struct PaymasterConfig {
+        IERC20 weth;
+        IERC20[] tokens;
+        IRelayHub relayHub;
+        IChainlinkOracle[] priceFeeds;
+        ISwapRouter uniswap;
+        address trustedForwarder;
+        uint24 uniswapPoolFee;
+        uint256 gasUsedByPost;
+        string[] permitMethodSignatures;
+        uint256 minHubBalance;
+        uint256 targetHubBalance;
+        uint256 minWithdrawalAmount;
+        uint256 paymasterFee;
+    }
+
     constructor(
-        IERC20 _weth,
-        IERC20[] memory _tokens,
-        IRelayHub _relayHub,
-        IChainlinkOracle[] memory _priceFeeds,
-        ISwapRouter _uniswap,
-        address _trustedForwarder,
-        uint24 _uniswapPoolFee,
-        uint256 _gasUsedByPost,
-        string[] memory _permitMethodSignatures,
-        uint256 _minHubBalance,
-        uint256 _targetHubBalance,
-        uint256 _minWithdrawalAmount,
-        uint256 _paymasterFee
+        PaymasterConfig memory config
     ) {
-        weth = _weth;
+        weth = config.weth;
 //        tokens = _tokens;
-        setUniswap(_uniswap, _uniswapPoolFee);
+        setUniswap(config.uniswap, config.uniswapPoolFee);
 //        uniswap = _uniswap;
         //        priceFeeds = _priceFeeds;
 //        uniswapPoolFee = _uniswapPoolFee;
 //        permitMethodSignature = bytes4(keccak256(bytes(_permitMethodSignature)));
 
-        setMinHubBalance(_minHubBalance);
-        setTargetHubBalance(_targetHubBalance);
-        setMinWithdrawalAmount(_minWithdrawalAmount);
+        setMinHubBalance(config.minHubBalance);
+        setTargetHubBalance(config.targetHubBalance);
+        setMinWithdrawalAmount(config.minWithdrawalAmount);
 //        priceDivisor = 10 ** uint256(priceFeeds.decimals());
 
-        setPaymasterFee(_paymasterFee);
-        setRelayHub(_relayHub);
-        setPostGasUsage(_gasUsedByPost);
-        setTrustedForwarder(_trustedForwarder);
-        setTokens(_tokens, _priceFeeds, _permitMethodSignatures);
+        setPaymasterFee(config.paymasterFee);
+        setRelayHub(config.relayHub);
+        setPostGasUsage(config.gasUsedByPost);
+        setTrustedForwarder(config.trustedForwarder);
+        setTokens(config.tokens, config.priceFeeds, config.permitMethodSignatures);
 //        // allow uniswap to transfer from paymaster balance
 //        for (int i = 0; i < tokens.length; i++) {
 //            IERC20 token = tokens[i];
@@ -122,6 +126,23 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         uniswap = _uniswap;
         uniswapPoolFee = _uniswapPoolFee;
     }
+
+    function setTokens(IERC20[] memory _tokens, IChainlinkOracle[] memory _priceFeeds, string[] memory _permitMethodSignatures) public onlyOwner {
+        tokens = _tokens;
+        // allow uniswap to transfer from paymaster balance
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20 token = tokens[i];
+            token.approve(address(uniswap), type(uint256).max);
+            priceDivisors[token] = 10 ** uint256(_priceFeeds[i].decimals());
+            priceFeeds[token] = _priceFeeds[i];
+            permitMethodSignatures[token] = bytes4(keccak256(bytes(_permitMethodSignatures[i])));
+        }
+    }
+
+    function refillHubDeposit(uint256 amount) public onlyOwner {
+        _refillHubDeposit(amount);
+    }
+
 
     function _calculatePreCharge(
         GsnTypes.RelayRequest calldata relayRequest,
@@ -196,15 +217,20 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         token.safeTransfer(payer, tokenPreCharge - tokenActualCharge);
 
         emit TokensCharged(gasUseWithoutPost, gasUsedByPost, tokenActualCharge, ethActualCharge);
-        _refillHubDeposit(ethActualCharge, token);
+        _refillHubDepositIfNeeded(ethActualCharge);
+        _withdrawToOwnerIfNeeded();
     }
 
-    function _refillHubDeposit(uint256 ethActualCharge, IERC20 token) private {
+    function _refillHubDepositIfNeeded(uint256 ethActualCharge) private {
         uint256 hubBalance = relayHub.balanceOf(address(this));
         if (hubBalance - ethActualCharge >= minHubBalance) {
             return;
         }
-        uint256 depositAmount = targetHubBalance - hubBalance;
+        uint256 minDepositAmount = targetHubBalance - hubBalance + ethActualCharge;
+        _refillHubDeposit(minDepositAmount);
+    }
+
+    function _refillHubDeposit(uint256 minDepositAmount) private {
         IERC20 mainToken = tokens[0];
         for (uint256 i = 1; i < tokens.length; i++) {
             IERC20 tokenIn = tokens[i];
@@ -213,7 +239,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
                 UniswapV3Helper.swapToToken(
                     address(tokenIn),
                     address(mainToken),
-                    depositAmount,
+                    tokenBalance,
                     uniswapPoolFee,
                     uniswap
                 );
@@ -222,31 +248,26 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         UniswapV3Helper.swapToEth(
             address(mainToken),
             address(weth),
-            depositAmount,
+            minDepositAmount,
             uniswapPoolFee,
             uniswap
         );
-        relayHub.depositFor{value : depositAmount}(address(this));
+        relayHub.depositFor{value : address(this).balance}(address(this));
     }
 
-    function _getTokenFromPaymasterData(bytes calldata paymasterData) internal view returns (IERC20) {
+    function _withdrawToOwnerIfNeeded() private {
+        uint256 hubBalance = relayHub.balanceOf(address(this));
+        if (hubBalance >= minWithdrawalAmount + targetHubBalance) {
+        relayHub.withdraw(payable(owner()), hubBalance - targetHubBalance);
+        }
+    }
+
+    function _getTokenFromPaymasterData(bytes calldata paymasterData) internal pure returns (IERC20) {
         return IERC20(address(uint160(GsnUtils.getParam(paymasterData, paymasterData.length - 20))));
     }
 
     function _addPaymasterFee(uint256 charge) public view returns (uint256){
         return charge * (100 + paymasterFee) / 100;
-    }
-
-    function setTokens(IERC20[] memory _tokens, IChainlinkOracle[] memory _priceFeeds, string[] memory _permitMethodSignatures) public onlyOwner {
-        tokens = _tokens;
-        // allow uniswap to transfer from paymaster balance
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20 token = tokens[i];
-            token.approve(address(uniswap), type(uint256).max);
-            priceDivisors[token] = 10 ** uint256(_priceFeeds[i].decimals());
-            priceFeeds[token] = _priceFeeds[i];
-            permitMethodSignatures[token] = bytes4(keccak256(bytes(_permitMethodSignatures[i])));
-        }
     }
 
     // as this Paymaster already has a permission from a user to operate the tokens on behalf of the gasless account,
@@ -256,9 +277,9 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         token.safeTransferFrom(_msgSender(), target, value);
     }
 
-    receive() external override payable {
-        emit Received(msg.sender, msg.value);
-    }
+//    receive() external override payable {
+//        emit Received(msg.sender, msg.value);
+//    }
 
     function versionPaymaster() external override virtual view returns (string memory){
         return "3.0.0-alpha.5+opengsn.permit-erc20-uniswap-v3.ipaymaster";
