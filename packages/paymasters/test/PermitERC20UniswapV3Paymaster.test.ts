@@ -32,6 +32,7 @@ import {
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { removeHexPrefix } from '@opengsn/common/dist'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
 const PermitInterfaceEIP2612 = artifacts.require('PermitInterfaceEIP2612')
@@ -60,6 +61,10 @@ async function skipWithoutFork (test: any): Promise<void> {
   if (!isMainnet) {
     test.skip()
   }
+}
+
+function concatHexStrings(str1: string, str2: string): string {
+  return '0x' + removeHexPrefix(str1) + removeHexPrefix(str2)
 }
 
 interface PaymasterConfig {
@@ -118,9 +123,9 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       uniswapPoolFee: POOL_FEE,
       gasUsedByPost: GAS_USED_BY_POST,
       permitMethodSignatures: [PERMIT_SIGNATURE_DAI],
-      minHubBalance: 1e17,
-      targetHubBalance: 1e18,
-      minWithdrawalAmount: 2e18,
+      minHubBalance: 1e17.toString(),
+      targetHubBalance: 1e18.toString(),
+      minWithdrawalAmount: 2e18.toString(),
       paymasterFee: 5
     }
     permitPaymaster = await PermitERC20UniswapV3Paymaster.new(config)
@@ -169,7 +174,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
               '0x123',
               MAX_POSSIBLE_GAS
             )
-          ), /approvalData: invalid length/)
+          ), /should have no approvalData/)
       })
 
       it('should revert if paymasterData is too short', async function () {
@@ -186,13 +191,25 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
               '0x',
               MAX_POSSIBLE_GAS
             )
-          ), /paymasterData: must contain "permit"/)
+          ), /paymasterData: must contain token address/)
+
+        modifiedRequest.relayData.paymasterData = concatHexStrings('ff', DAI_CONTRACT_ADDRESS)
+
+        assert.match(
+          await revertReason(
+            testRelayHub.callPreRC(
+              modifiedRequest,
+              '0x',
+              '0x',
+              MAX_POSSIBLE_GAS
+            )
+          ), /paymasterData: must contain "permit" method/)
       })
 
-      it('should revert if paymasterData is not an encoded call to permit method', async function () {
+      it('should revert if token is unsupported', async function () {
         await skipWithoutFork(this)
         const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: '0x123456789'
+          paymasterData: testRelayHub.address
         })
 
         assert.match(
@@ -203,7 +220,24 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
               '0x',
               MAX_POSSIBLE_GAS
             )
-          ), /paymasterData: wrong method sig/)
+          ), /unsupported token/)
+      })
+
+      it('should revert if paymasterData is not an encoded call to permit method', async function () {
+        await skipWithoutFork(this)
+        const modifiedRequest = mergeRelayRequest(relayRequest, {
+          paymasterData: concatHexStrings('0x123456789', DAI_CONTRACT_ADDRESS)
+        })
+
+        assert.match(
+          await revertReason(
+            testRelayHub.callPreRC(
+              modifiedRequest,
+              '0x',
+              '0x',
+              MAX_POSSIBLE_GAS
+            )
+          ), /paymasterData: wrong "permit" method sig/)
       })
 
       it('should revert if permit call reverts', async function () {
@@ -221,7 +255,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
           true
         )
         const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: encodedCallToPermit
+          paymasterData: encodedCallToPermit.concat(removeHexPrefix(DAI_CONTRACT_ADDRESS))
         })
         assert.match(
           await revertReason(
@@ -237,7 +271,9 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       it('should revert if token transferFrom reverts', async function () {
         await skipWithoutFork(this)
         await daiPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account1 })
-        const modifiedRequest = mergeRelayRequest(relayRequest, {}, { from: account1 })
+        const modifiedRequest = mergeRelayRequest(relayRequest, {
+          paymasterData: DAI_CONTRACT_ADDRESS
+        }, { from: account1 })
         const balance = await daiPermittableToken.balanceOf(account1)
         assert.equal(balance.toString(), '0')
         assert.match(
@@ -314,9 +350,9 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
             uniswapPoolFee: POOL_FEE,
             gasUsedByPost: GAS_USED_BY_POST,
             permitMethodSignatures: [PERMIT_SIGNATURE_EIP2612],
-            minHubBalance: 1e17,
-            targetHubBalance: 1e18,
-            minWithdrawalAmount: 2e18,
+            minHubBalance: 1e17.toString(),
+            targetHubBalance: 1e18.toString(),
+            minWithdrawalAmount: 2e18.toString(),
             paymasterFee: 5
           }
           permitEIP2612Paymaster = await PermitERC20UniswapV3Paymaster.new(config)
@@ -471,9 +507,9 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         uniswapPoolFee: POOL_FEE,
         gasUsedByPost: 0,
         permitMethodSignatures: [PERMIT_SIGNATURE_DAI],
-        minHubBalance: 1e17,
-        targetHubBalance: 1e18,
-        minWithdrawalAmount: 2e18,
+        minHubBalance: 1e17.toString(),
+        targetHubBalance: 1e18.toString(),
+        minWithdrawalAmount: 2e18.toString(),
         paymasterFee: 5
       }
       const permitPaymasterZeroGUBP = await PermitERC20UniswapV3Paymaster.new(config)

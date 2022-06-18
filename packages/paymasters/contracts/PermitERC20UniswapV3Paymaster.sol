@@ -180,17 +180,20 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     returns (bytes memory context, bool revertOnRecipientRevert) {
         (signature, approvalData);
 
-        // paymasterData must contain the token address, as well as a valid "permit" call on the token.
-        require(relayRequest.relayData.paymasterData.length >= 24, "paymasterData: must contain \"permit\" method and token address");
+        // paymasterData must contain the token address, and optionally a a valid "permit" call on the token.
+        require(relayRequest.relayData.paymasterData.length >= 20, "paymasterData: must contain token address");
         IERC20 token = _getTokenFromPaymasterData(relayRequest.relayData.paymasterData);
         require(isTokenSupported(token),"unsupported token");
-        require(
-            permitMethodSignatures[token] == GsnUtils.getMethodSig(relayRequest.relayData.paymasterData),
-            "paymasterData: wrong \"permit\" method sig");
-        // execute permit method for this token
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory ret) = address(token).call(relayRequest.relayData.paymasterData[:relayRequest.relayData.paymasterData.length - 20]);
-        require(success, string(abi.encodePacked("permit call reverted:", string(ret))));
+        if (relayRequest.relayData.paymasterData.length != 20) {
+            require(relayRequest.relayData.paymasterData.length >= 24, "paymasterData: must contain \"permit\" method and token address");
+            require(
+                permitMethodSignatures[token] == GsnUtils.getMethodSig(relayRequest.relayData.paymasterData),
+                "paymasterData: wrong \"permit\" method sig");
+            // execute permit method for this token
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, bytes memory ret) = address(token).call(relayRequest.relayData.paymasterData[:relayRequest.relayData.paymasterData.length - 20]);
+            require(success, string(abi.encodePacked("permit call reverted:", string(ret))));
+        }
 
         uint256 priceQuote = uint256(priceFeeds[token].latestAnswer());
 
@@ -263,7 +266,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     }
 
     function _getTokenFromPaymasterData(bytes calldata paymasterData) internal pure returns (IERC20) {
-        return IERC20(address(uint160(GsnUtils.getParam(paymasterData, paymasterData.length - 20))));
+        return IERC20(address(bytes20(paymasterData[paymasterData.length - 20:])));
     }
 
     function _addPaymasterFee(uint256 charge) public view returns (uint256){
