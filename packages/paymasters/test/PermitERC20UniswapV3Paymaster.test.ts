@@ -1,5 +1,5 @@
 import BN from 'bn.js'
-import { toWei } from 'web3-utils'
+import { toBN, toWei } from 'web3-utils'
 import {
   IChainlinkOracleInstance,
   IQuoterInstance,
@@ -47,6 +47,8 @@ const MAJOR_DAI_AND_UNI_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503'
 const GAS_USED_BY_POST = 204766
 const MAX_POSSIBLE_GAS = 1e6
 const POOL_FEE = 3000
+const MIN_HUB_BALANCE = 1e17.toString()
+const TARGET_HUB_BALANCE = 1e18.toString()
 
 const TOKEN_PRE_CHARGE = toWei('10', 'ether')
 const GAS_PRICE = '1000000000' // 1 wei
@@ -63,7 +65,7 @@ async function skipWithoutFork (test: any): Promise<void> {
   }
 }
 
-function concatHexStrings(str1: string, str2: string): string {
+function concatHexStrings (str1: string, str2: string): string {
   return '0x' + removeHexPrefix(str1) + removeHexPrefix(str2)
 }
 
@@ -125,8 +127,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       uniswapPoolFee: POOL_FEE,
       gasUsedByPost: GAS_USED_BY_POST,
       permitMethodSignatures: [PERMIT_SIGNATURE_DAI],
-      minHubBalance: 1e17.toString(),
-      targetHubBalance: 1e18.toString(),
+      minHubBalance: MIN_HUB_BALANCE,
+      targetHubBalance: TARGET_HUB_BALANCE,
       minWithdrawalAmount: 2e18.toString(),
       paymasterFee: 5
     }
@@ -325,7 +327,6 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         assert.equal(accountDifference.toString(), paymasterBalanceAfter.toString(), 'unexpected balance')
         const latestAnswer = await chainlinkOracleUSDETH.latestAnswer()
         const maxPossibleEth = await testRelayHub.calculateCharge(MAX_POSSIBLE_GAS, relayRequest.relayData)
-        await permitPaymaster.addPaymasterFee(maxPossibleEth)
         const expectedCharge = await permitPaymaster.addPaymasterFee(latestAnswer.mul(maxPossibleEth).div(new BN(1e8.toString())))
         assert.equal(accountDifference.toString(), paymasterBalanceAfter.toString(), 'unexpected balance')
         assert.equal(accountDifference.toString(), expectedCharge.toString(), 'unexpected charge')
@@ -353,8 +354,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
             uniswapPoolFee: POOL_FEE,
             gasUsedByPost: GAS_USED_BY_POST,
             permitMethodSignatures: [PERMIT_SIGNATURE_EIP2612],
-            minHubBalance: 1e17.toString(),
-            targetHubBalance: 1e18.toString(),
+            minHubBalance: MIN_HUB_BALANCE,
+            targetHubBalance: TARGET_HUB_BALANCE,
             minWithdrawalAmount: 2e18.toString(),
             paymasterFee: 5
           }
@@ -411,35 +412,56 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
     })
 
     context('success flow', function () {
+      const gasUseWithoutPost = 100000
+      const ethActualCharge = (gasUseWithoutPost + GAS_USED_BY_POST) * parseInt(GAS_PRICE)
       before(async function () {
         if (!await detectMainnet()) {
           this.skip()
         }
-        await daiPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
-        await daiPermittableToken.transfer(permitPaymaster.address, TOKEN_PRE_CHARGE, { from: account0 })
       })
+
+      // it('should not refill hub deposit when > minHubBalance', async function () {
+      //   await skipWithoutFork(this)
+      //   await web3.eth.sendTransaction({
+      //     from: account0,
+      //     to: permitPaymaster.address,
+      //     value: TARGET_HUB_BALANCE
+      //   })
+      // })
+      //
+      // it('should refill hub deposit when <= minHubBalance', async function () {
+      //   await skipWithoutFork(this)
+      // })
 
       it('should transfer excess tokens back to sender and deposit traded tokens into RelayHub as Ether', async function () {
         await skipWithoutFork(this)
-        const gasUseWithoutPost = 100000
         const priceQuote = await chainlinkOracleUSDETH.latestAnswer()
+        const priceDivisor = await permitPaymaster.priceDivisors(DAI_CONTRACT_ADDRESS)
+        const minDepositAmount = toBN(TARGET_HUB_BALANCE).sub(toBN(MIN_HUB_BALANCE)).add(toBN(ethActualCharge)).mul(priceQuote).div(priceDivisor)
+        console.log('wtf is minDepositAmount', minDepositAmount.toString(), priceDivisor.toString(), priceQuote.toString())
+        await daiPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
+        await daiPermittableToken.transfer(permitPaymaster.address, minDepositAmount.add(toBN(TOKEN_PRE_CHARGE)), { from: account0 })
+        await web3.eth.sendTransaction({
+          from: account0,
+          to: permitPaymaster.address,
+          value: MIN_HUB_BALANCE
+        })
         const context = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), TOKEN_PRE_CHARGE])
         const modifiedRequest = mergeRelayRequest(relayRequest, {
           paymasterData: DAI_CONTRACT_ADDRESS
         })
         // const context = web3.eth.abi.encodeParameters(['address', 'uint256'], [account0, TOKEN_PRE_CHARGE])
-
-        const ethActualCharge = (gasUseWithoutPost + GAS_USED_BY_POST) * parseInt(GAS_PRICE)
+        console.log('wtf is balance?', (await daiPermittableToken.balanceOf(permitPaymaster.address)).toString())
         const expectedDaiTokenCharge = await quoter.contract.methods.quoteExactOutputSingle(
           DAI_CONTRACT_ADDRESS,
           WETH9_CONTRACT_ADDRESS,
           POOL_FEE,
           ethActualCharge,
           0).call()
-
+        console.log('wtf 1')
         const res = await testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, modifiedRequest.relayData)
         const expectedRefund = new BN(TOKEN_PRE_CHARGE).sub(new BN(expectedDaiTokenCharge))
-
+        console.log('wtf 2', res.logs.length, res.logs)
         // check correct tokens are transferred
         assert.equal(res.logs[0].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase())
         assert.equal(res.logs[1].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase())
@@ -518,8 +540,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         uniswapPoolFee: POOL_FEE,
         gasUsedByPost: 0,
         permitMethodSignatures: [PERMIT_SIGNATURE_DAI],
-        minHubBalance: 1e17.toString(),
-        targetHubBalance: 1e18.toString(),
+        minHubBalance: MIN_HUB_BALANCE,
+        targetHubBalance: TARGET_HUB_BALANCE,
         minWithdrawalAmount: 2e18.toString(),
         paymasterFee: 5
       }
@@ -530,5 +552,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       const postGasUse = await calculatePostGas(daiPermittableToken, permitPaymasterZeroGUBP, account0, context)
       assert.closeTo(postGasUse.toNumber(), GAS_USED_BY_POST, 5000)
     })
+  })
+
+  context('#relayCall', function () {
   })
 })

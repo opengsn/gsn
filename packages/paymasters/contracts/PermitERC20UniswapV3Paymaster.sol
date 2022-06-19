@@ -225,7 +225,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
     function _refillHubDepositIfNeeded(uint256 ethActualCharge) private {
         uint256 hubBalance = relayHub.balanceOf(address(this));
-        if (hubBalance - ethActualCharge >= minHubBalance) {
+        if (hubBalance >= minHubBalance + ethActualCharge) {
             return;
         }
         uint256 minDepositAmount = targetHubBalance - hubBalance + ethActualCharge;
