@@ -397,17 +397,16 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
     context('revert reasons', function () {
       it('should revert if actual charge exceeds pre-charge (i.e. bug in RelayHub)', async function () {
         await skipWithoutFork(this)
-        const gasUseWithoutPost = 1000000
+        const gasUseWithoutPost = 1e19.toString()
         const priceQuote = await chainlinkOracleUSDETH.latestAnswer()
         const context = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), TOKEN_PRE_CHARGE])
         const modifiedRequest = mergeRelayRequest(relayRequest, {
           paymasterData: DAI_CONTRACT_ADDRESS
         })
-        // "STF" revert reason is thrown in 'safeTransferFrom' method in Uniswap's 'TransferHelper.sol' library
         assert.match(
           await revertReason(
             testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, modifiedRequest.relayData)
-          ), /STF/)
+          ), /actual charge higher/)
       })
     })
 
