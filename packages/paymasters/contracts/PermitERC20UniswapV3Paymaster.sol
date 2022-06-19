@@ -143,18 +143,16 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         _refillHubDeposit(amount);
     }
 
-
-    function _calculatePreCharge(
-        GsnTypes.RelayRequest calldata relayRequest,
-        uint256 maxPossibleGas,
+    function _calculateCharge(
+        GsnTypes.RelayData calldata relayData,
+        uint256 gasUsed,
         uint256 priceQuote,
-        uint256 priceDivisor)
-    internal
+        uint256 priceDivisor
+    ) internal
     view
-    returns (uint256 tokenPreCharge) {
-        uint256 ethMaxCharge =
-            relayHub.calculateCharge(maxPossibleGas, relayRequest.relayData);
-        tokenPreCharge = ethMaxCharge * priceQuote / priceDivisor * (100 + paymasterFee) / 100;
+    returns (uint256 tokenCharge, uint256 ethCharge) {
+        ethCharge = relayHub.calculateCharge(gasUsed, relayData);
+        tokenCharge = addPaymasterFee(ethCharge * priceQuote / priceDivisor);
     }
 
     function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {}
@@ -197,7 +195,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
         uint256 priceQuote = uint256(priceFeeds[token].latestAnswer());
 
-        uint256 tokenPreCharge = _addPaymasterFee(_calculatePreCharge(relayRequest, maxPossibleGas, priceQuote, priceDivisors[token]));
+        (uint256 tokenPreCharge,) = _calculateCharge(relayRequest.relayData, maxPossibleGas, priceQuote, priceDivisors[token]);
         address payer = relayRequest.request.from;
         token.safeTransferFrom(payer, address(this), tokenPreCharge);
         return (abi.encode(payer, priceQuote, tokenPreCharge), false);
@@ -214,8 +212,9 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     {
         (address payer, uint256 priceQuote, uint256 tokenPreCharge) = abi.decode(context, (address, uint256, uint256));
         IERC20 token = _getTokenFromPaymasterData(relayData.paymasterData);
-        uint256 ethActualCharge = relayHub.calculateCharge(gasUseWithoutPost + gasUsedByPost, relayData);
-        uint256 tokenActualCharge = _addPaymasterFee(ethActualCharge * priceQuote / priceDivisors[token]);
+//        uint256 ethActualCharge = relayHub.calculateCharge(gasUseWithoutPost + gasUsedByPost, relayData);
+//        uint256 tokenActualCharge = addPaymasterFee(ethActualCharge * priceQuote / priceDivisors[token]);
+        (uint256 tokenActualCharge, uint256 ethActualCharge) = _calculateCharge(relayData, gasUseWithoutPost + gasUsedByPost, priceQuote, priceDivisors[token]);
         require(tokenActualCharge <= tokenPreCharge, "actual charge higher");
         token.safeTransfer(payer, tokenPreCharge - tokenActualCharge);
 
@@ -269,7 +268,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         return IERC20(address(bytes20(paymasterData[paymasterData.length - 20:])));
     }
 
-    function _addPaymasterFee(uint256 charge) public view returns (uint256){
+    function addPaymasterFee(uint256 charge) public view returns (uint256) {
         return charge * (100 + paymasterFee) / 100;
     }
 

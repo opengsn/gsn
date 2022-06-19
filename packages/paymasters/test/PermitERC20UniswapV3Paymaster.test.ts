@@ -86,7 +86,8 @@ interface PaymasterConfig {
 contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay]) {
   let permitPaymaster: PermitERC20UniswapV3PaymasterInstance
   let daiPermittableToken: PermitInterfaceDAIInstance
-  let chainlinkOracle: IChainlinkOracleInstance
+  let chainlinkOracleUSDETH: IChainlinkOracleInstance
+  let chainlinkOracleUNIETH: IChainlinkOracleInstance
   let sampleRecipient: SampleRecipientInstance
   let testRelayHub: TestHubInstance
   let quoter: IQuoterInstance
@@ -103,7 +104,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
     await sampleRecipient.setForwarder(GSN_FORWARDER_CONTRACT_ADDRESS)
     quoter = await IQuoter.at(UNISWAP_V3_QUOTER_CONTRACT_ADDRESS)
     daiPermittableToken = await PermitInterfaceDAI.at(DAI_CONTRACT_ADDRESS)
-    chainlinkOracle = await IChainlinkOracle.at(CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS)
+    chainlinkOracleUSDETH = await IChainlinkOracle.at(CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS)
+    chainlinkOracleUNIETH = await IChainlinkOracle.at(CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS)
     testRelayHub = await deployTestHub() as TestHubInstance
     // in case the MAJOR_DAI_AND_UNI_HOLDER account does not have ETH on actual mainnet
     await web3.eth.sendTransaction({
@@ -304,7 +306,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
           web3
         )
         const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: encodedCallToPermit
+          paymasterData: encodedCallToPermit.concat(removeHexPrefix(DAI_CONTRACT_ADDRESS))
         })
         await testRelayHub.callPreRC(
           modifiedRequest,
@@ -321,9 +323,10 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         const accountDifference = accountBalanceBefore.sub(accountBalanceAfter)
         // must have charged from this account
         assert.equal(accountDifference.toString(), paymasterBalanceAfter.toString(), 'unexpected balance')
-        const latestAnswer = await chainlinkOracle.latestAnswer()
+        const latestAnswer = await chainlinkOracleUSDETH.latestAnswer()
         const maxPossibleEth = await testRelayHub.calculateCharge(MAX_POSSIBLE_GAS, relayRequest.relayData)
-        const expectedCharge = latestAnswer.mul(maxPossibleEth).div(new BN(1e8.toString()))
+        await permitPaymaster.addPaymasterFee(maxPossibleEth)
+        const expectedCharge = await permitPaymaster.addPaymasterFee(latestAnswer.mul(maxPossibleEth).div(new BN(1e8.toString())))
         assert.equal(accountDifference.toString(), paymasterBalanceAfter.toString(), 'unexpected balance')
         assert.equal(accountDifference.toString(), expectedCharge.toString(), 'unexpected charge')
 
@@ -373,7 +376,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
           )
           const modifiedRequest = mergeRelayRequest(relayRequest, {
             paymaster: permitEIP2612Paymaster.address,
-            paymasterData: encodedCallToPermit
+            paymasterData: encodedCallToPermit.concat(removeHexPrefix(UNI_CONTRACT_ADDRESS))
           })
           await testRelayHub.callPreRC(
             modifiedRequest,
@@ -395,11 +398,15 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       it('should revert if actual charge exceeds pre-charge (i.e. bug in RelayHub)', async function () {
         await skipWithoutFork(this)
         const gasUseWithoutPost = 1000000
-        const context = web3.eth.abi.encodeParameters(['address', 'uint256'], [account0, TOKEN_PRE_CHARGE])
+        const priceQuote = await chainlinkOracleUSDETH.latestAnswer()
+        const context = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), TOKEN_PRE_CHARGE])
+        const modifiedRequest = mergeRelayRequest(relayRequest, {
+          paymasterData: DAI_CONTRACT_ADDRESS
+        })
         // "STF" revert reason is thrown in 'safeTransferFrom' method in Uniswap's 'TransferHelper.sol' library
         assert.match(
           await revertReason(
-            testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, relayRequest.relayData)
+            testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, modifiedRequest.relayData)
           ), /STF/)
       })
     })
@@ -416,7 +423,12 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       it('should transfer excess tokens back to sender and deposit traded tokens into RelayHub as Ether', async function () {
         await skipWithoutFork(this)
         const gasUseWithoutPost = 100000
-        const context = web3.eth.abi.encodeParameters(['address', 'uint256'], [account0, TOKEN_PRE_CHARGE])
+        const priceQuote = await chainlinkOracleUSDETH.latestAnswer()
+        const context = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), TOKEN_PRE_CHARGE])
+        const modifiedRequest = mergeRelayRequest(relayRequest, {
+          paymasterData: DAI_CONTRACT_ADDRESS
+        })
+        // const context = web3.eth.abi.encodeParameters(['address', 'uint256'], [account0, TOKEN_PRE_CHARGE])
 
         const ethActualCharge = (gasUseWithoutPost + GAS_USED_BY_POST) * parseInt(GAS_PRICE)
         const expectedDaiTokenCharge = await quoter.contract.methods.quoteExactOutputSingle(
@@ -426,7 +438,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
           ethActualCharge,
           0).call()
 
-        const res = await testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, relayRequest.relayData)
+        const res = await testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, modifiedRequest.relayData)
         const expectedRefund = new BN(TOKEN_PRE_CHARGE).sub(new BN(expectedDaiTokenCharge))
 
         // check correct tokens are transferred
@@ -513,7 +525,9 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         paymasterFee: 5
       }
       const permitPaymasterZeroGUBP = await PermitERC20UniswapV3Paymaster.new(config)
-      const context = web3.eth.abi.encodeParameters(['address', 'uint256'], [account0, 500])
+      // const context = web3.eth.abi.encodeParameters(['address', 'uint256'], [account0, 500])
+      const priceQuote = await chainlinkOracleUSDETH.latestAnswer()
+      const context = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), 500])
       const postGasUse = await calculatePostGas(daiPermittableToken, permitPaymasterZeroGUBP, account0, context)
       assert.closeTo(postGasUse.toNumber(), GAS_USED_BY_POST, 5000)
     })
