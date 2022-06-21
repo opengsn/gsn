@@ -1,6 +1,7 @@
 import { Address, EventName, IntString } from './Aliases'
 import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-util'
+import { PingResponse } from '../PingResponse'
 
 // Empty interface used on purpose to mark various Event Infos in collections, used in StatisticsManager.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -58,10 +59,6 @@ export interface DepositedEventInfo extends GNSContractsEvent {
   paymaster: Address
   from: Address
   amount: IntString
-}
-
-export function isInfoFromEvent (info: RelayInfoUrl): boolean {
-  return 'relayManager' in info && 'baseRelayFee' in info && 'pctRelayFee' in info
 }
 
 /** IStakeManager.sol */

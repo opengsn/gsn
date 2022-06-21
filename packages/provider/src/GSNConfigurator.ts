@@ -3,7 +3,6 @@ import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 import { AccountManager } from './AccountManager'
 import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { KnownRelaysManager } from './KnownRelaysManager'
 import { RelayedTransactionValidator } from './RelayedTransactionValidator'
 import {
   AsyncDataCallback,
@@ -16,6 +15,8 @@ import { gsnRequiredVersion } from '@opengsn/common/dist/Version'
 import { defaultEnvironment } from '@opengsn/common/dist/Environments'
 import { GSNConfig } from '@opengsn/common/dist/ConfigResponse'
 import { gsnRuntimeVersion } from '@opengsn/common/dist'
+import { RelaySelectionManager } from './RelaySelectionManager'
+
 export type { GSNConfig } from '@opengsn/common/dist/ConfigResponse'
 
 const GAS_PRICE_PERCENT = 20
@@ -37,6 +38,7 @@ export const defaultGsnConfig: GSNConfig = {
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
   sliceSize: 3,
   relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
+  maxPingFailuresCount: 3,
   methodSuffix: '_v4',
   requiredVersionRange: gsnRequiredVersion,
   jsonStringifyRequest: true,
@@ -64,7 +66,7 @@ export interface GSNDependencies {
   httpClient: HttpClient
   logger: LoggerInterface
   contractInteractor: ContractInteractor
-  knownRelaysManager: KnownRelaysManager
+  relaySelectionManager: RelaySelectionManager
   accountManager: AccountManager
   transactionValidator: RelayedTransactionValidator
   pingFilter: PingFilter

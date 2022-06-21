@@ -1130,13 +1130,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return this.penalizerInstance.address
   }
 
-  /**
-   * discover registered relays
-   */
-  async getRegisteredRelays (): Promise<RelayRegisteredEventInfo[]> {
-    return await this.getRegisteredRelaysFromRegistrar()
-  }
-
   async getRelayRegistrationMaxAge (): Promise<BN> {
     return await this.relayRegistrar.getRelayRegistrationMaxAge()
   }

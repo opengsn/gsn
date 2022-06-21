@@ -39,6 +39,7 @@ export interface GSNConfig {
   jsonStringifyRequest: boolean
   requiredVersionRange?: string
   relayTimeoutGrace: number
+  maxPingFailuresCount: number
   sliceSize: number
   loggerConfiguration?: LoggerConfiguration
   gasPriceFactorPercent: number

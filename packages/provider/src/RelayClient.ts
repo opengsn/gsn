@@ -15,12 +15,11 @@ import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
 import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
 import { decodeRevertReason, removeNullValues } from '@opengsn/common/dist/Utils'
 import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
-import { constants, getRelayRequestID, ObjectMap, RelayCallABI } from '@opengsn/common'
+import { constants, getRelayRequestID, ObjectMap, PingResponse, RelayCallABI } from '@opengsn/common'
 
 import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { AccountKeypair, AccountManager } from './AccountManager'
-import { DefaultRelayFilter, DefaultRelayScore, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
 import { isTransactionValid, RelayedTransactionValidator } from './RelayedTransactionValidator'
 import { createClientLogger } from './ClientWinstonLogger'
@@ -47,13 +46,7 @@ export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHe
   return '0x'
 }
 
-export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
-  if (
-    gsnTransactionDetails.maxPriorityFeePerGas != null &&
-    parseInt(pingResponse.minMaxPriorityFeePerGas) > parseInt(gsnTransactionDetails.maxPriorityFeePerGas)
-  ) {
-    throw new Error(`Proposed priority gas fee: ${parseInt(gsnTransactionDetails.maxPriorityFeePerGas)}; relay's minMaxPriorityFeePerGas: ${pingResponse.minMaxPriorityFeePerGas}`)
-  }
+export const EmptyPingFilter: PingFilter = (pingResponse: PingResponse, gsnTransactionDetails: GsnTransactionDetails) => {
 }
 
 export interface GSNUnresolvedConstructorInput {
@@ -117,6 +110,14 @@ export class RelayClient {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
     this.dependencies = await this._resolveDependencies(this.rawConstructorInput)
+
+    // TODO: think if this is a good thing to do
+    const regRI = await this.dependencies.contractInteractor.getRegisteredRelaysFromRegistrar()
+    await this.dependencies.relaySelectionManager.init(
+      this.config.preferredRelays,
+      regRI
+    )
+
     if (!this.config.skipErc165Check) {
       await this.dependencies.contractInteractor._validateERC165InterfacesClient()
     }
@@ -201,7 +202,7 @@ export class RelayClient {
     const gsnTransactionDetails = { ..._gsnTransactionDetails }
     // TODO: should have a better strategy to decide how often to refresh known relays
     this.emit(new GsnRefreshRelaysEvent())
-    await this.dependencies.knownRelaysManager.refresh()
+    await this.dependencies.relaySelectionManager.updateTransactionDetails(_gsnTransactionDetails)
     gsnTransactionDetails.maxFeePerGas = toHex(gsnTransactionDetails.maxFeePerGas)
     gsnTransactionDetails.maxPriorityFeePerGas = toHex(gsnTransactionDetails.maxPriorityFeePerGas)
     if (gsnTransactionDetails.gas == null) {
@@ -234,8 +235,8 @@ export class RelayClient {
       }
     }
 
-    const relaySelectionManager = await new RelaySelectionManager(gsnTransactionDetails, this.dependencies.knownRelaysManager, this.dependencies.httpClient, this.dependencies.pingFilter, this.logger, this.config).init()
-    const count = relaySelectionManager.relaysLeft().length
+    // await new RelaySelectionManager(gsnTransactionDetails, this.dependencies.knownRelaysManager, this.dependencies.httpClient, this.dependencies.pingFilter, this.logger, this.config).init()
+    const count = this.dependencies.relaySelectionManager.relaysLeft().length
     this.emit(new GsnDoneRefreshRelaysEvent(count))
     if (count === 0) {
       throw new Error('no registered relayers')
@@ -573,14 +574,16 @@ export class RelayClient {
     const asyncApprovalData = overrideDependencies?.asyncApprovalData ?? EmptyDataCallback
     const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
     const scoreCalculator = overrideDependencies?.scoreCalculator ?? DefaultRelayScore
-    const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
+    // const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
+    const relaySelectionManager: RelaySelectionManager
     const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, this.logger, this.config)
 
     return {
       logger: this.logger,
       httpClient,
       contractInteractor,
-      knownRelaysManager,
+      // knownRelaysManager,
+      relaySelectionManager,
       accountManager,
       transactionValidator,
       pingFilter,

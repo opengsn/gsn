@@ -207,6 +207,7 @@ export function ether (n: string): BN {
   return new BN(toWei(n, 'ether'))
 }
 
+// note that range is [min,max)
 export function randomInRange (min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
 }
