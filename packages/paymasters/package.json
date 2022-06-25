@@ -8,6 +8,7 @@
     "tsc": "tsc",
     "lint": "yarn run lint:js && yarn run lint:sol",
     "lint:js": "eslint -f unix .",
+    "lint-fix": "eslint -f unix . --fix",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
     "test": "yarn tsc && yarn truffle-test-compile-all",
     "test-fork": "truffle test test/PermitERC20UniswapV3Paymaster.test.ts --compile-all --network npmtest",

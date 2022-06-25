@@ -9,8 +9,8 @@ import {
   SampleRecipientInstance,
   TestHubInstance
 } from '../types/truffle-contracts'
-import { RelayRequest } from '@opengsn/common'
-import { constants } from '@opengsn/common'
+import { RelayRequest, constants, EIP712DomainTypeWithoutVersion } from '@opengsn/common'
+
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
 import {
   CHAINLINK_USD_ETH_FEED_CONTRACT_ADDRESS,
@@ -31,7 +31,6 @@ import {
 } from '../src/PermitPaymasterUtils'
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
-import { EIP712DomainTypeWithoutVersion } from '@opengsn/common'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
 const PermitInterfaceEIP2612 = artifacts.require('PermitInterfaceEIP2612')

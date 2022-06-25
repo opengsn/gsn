@@ -1,14 +1,13 @@
 import 'source-map-support/register'
 import { RelayProvider, GSNConfig } from '@opengsn/provider'
-import { decodeRevertReason, getEip712Signature } from '@opengsn/common'
-import { Address } from '@opengsn/common'
+import { decodeRevertReason, getEip712Signature, Address, RelayRequest, cloneRelayRequest, defaultEnvironment } from '@opengsn/common'
+
 import {
   TypedRequestData,
   GsnDomainSeparatorType,
   GsnRequestType
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { RelayRequest, cloneRelayRequest } from '@opengsn/common'
-import { defaultEnvironment } from '@opengsn/common'
+
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 
 import { deployHub } from '@opengsn/dev/dist/test/TestUtils'
