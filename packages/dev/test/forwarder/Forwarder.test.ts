@@ -12,7 +12,7 @@ import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { ether, expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
-import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
+import { ForwardRequest } from '@opengsn/common'
 require('source-map-support').install({ errorFormatterForce: true })
 
 const TestForwarderTarget = artifacts.require('TestForwarderTarget')

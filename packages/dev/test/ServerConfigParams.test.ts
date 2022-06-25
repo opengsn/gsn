@@ -13,7 +13,7 @@ import { expectRevert } from '@openzeppelin/test-helpers'
 import {
   RelayHubInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { constants } from '@opengsn/common/dist'
+import { constants } from '@opengsn/common'
 import { deployHub } from './TestUtils'
 
 require('source-map-support').install({ errorFormatterForce: true })

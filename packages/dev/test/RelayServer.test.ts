@@ -12,18 +12,22 @@ import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { SendTransactionDetails, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { TestPaymasterConfigurableMisbehaviorInstance } from '@opengsn/contracts/types/truffle-contracts'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { sleep } from '@opengsn/common/dist/Utils'
+import {
+  GsnTransactionDetails,
+  RelayTransactionRequest,
+  TransactionType,
+  defaultEnvironment,
+  sleep,
+  toNumber
+} from '@opengsn/common'
 
 import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, increaseTime, revert, snapshot } from './TestUtils'
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import { toNumber } from '@opengsn/common'
+
 import { BlockTransactionString } from 'web3-eth'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)

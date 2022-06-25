@@ -8,17 +8,23 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { EventData } from 'web3-eth-contract'
 import { TypedMessage } from 'eth-sig-util'
 
-import { Address, gsnRuntimeVersion, isSameAddress } from '@opengsn/common'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import {
+  Address,
+  GsnTransactionDetails,
+  LoggerInterface,
+  TransactionRejectedByPaymaster,
+  TransactionRelayed,
+  Web3ProviderBaseInterface,
+  gsnRuntimeVersion,
+  isSameAddress
+} from '@opengsn/common'
+
 import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
 
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { AccountKeypair } from './AccountManager'
 import { GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from './RelayClient'
 import { GSNConfig } from './GSNConfigurator'
-import { Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
-import { TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 
 abiDecoder.addABI(relayHubAbi)
 

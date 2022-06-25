@@ -1,9 +1,7 @@
 import winston, { Logger, transport } from 'winston'
 import { ConsoleTransportOptions, HttpTransportOptions } from 'winston/lib/winston/transports'
 
-import { gsnRuntimeVersion } from '@opengsn/common/dist/Version'
-
-import { NpmLogLevel } from '@opengsn/common/dist/types/Aliases'
+import { gsnRuntimeVersion, NpmLogLevel } from '@opengsn/common'
 
 const service = 'gsn-server'
 

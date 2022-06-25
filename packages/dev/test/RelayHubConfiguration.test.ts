@@ -6,9 +6,12 @@ import { deployHub, evmMine, setNextBlockTimestamp } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
 import {
+  RelayRequest,
+  TypedRequestData,
   constants,
   defaultEnvironment,
   getEip712Signature,
+  registerForwarderForGsn,
   splitRelayUrlForRegistrar,
   toNumber
 } from '@opengsn/common/dist'
@@ -19,9 +22,7 @@ import {
   StakeManagerInstance, TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
+
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { cleanValue } from './utils/chaiHelper'
 

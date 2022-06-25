@@ -1,5 +1,5 @@
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { LoggerInterface, ContractInteractor } from '@opengsn/common'
+
 import axios from 'axios'
 
 export class GasPriceFetcher {

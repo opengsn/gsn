@@ -3,7 +3,7 @@ import { PrefixedHexString, fromRpcSig } from 'ethereumjs-util'
 import { getEip712Signature, TruffleContract } from '@opengsn/common'
 import { TypedMessage } from 'eth-sig-util'
 
-import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
+import { Address, IntString } from '@opengsn/common'
 import {
   EIP712Domain,
   EIP712DomainType,

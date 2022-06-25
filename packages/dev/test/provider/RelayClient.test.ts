@@ -23,39 +23,52 @@ import {
   TestPaymasterEverythingAcceptedInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import {
+  Address,
+  ConfigResponse,
+  ContractInteractor,
+  GsnTransactionDetails,
+  HttpClient,
+  HttpWrapper,
+  LoggerConfiguration,
+  LoggerInterface,
+  ObjectMap,
+  PingResponse,
+  RelayInfo,
+  RelayRequest,
+  RelayTransactionRequest,
+  Web3ProviderBaseInterface,
+  constants,
+  defaultEnvironment,
+  getRawTxOptions,
+  registerForwarderForGsn,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
 import {
   _dumpRelayingResult,
   GSNUnresolvedConstructorInput,
   RelayClient,
   EmptyDataCallback
 } from '@opengsn/provider/dist/RelayClient'
-import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
-import { defaultGsnConfig, GSNConfig, LoggerConfiguration } from '@opengsn/provider/dist/GSNConfigurator'
+
+import { defaultGsnConfig, GSNConfig } from '@opengsn/provider'
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 
 import { BadHttpClient } from '../dummies/BadHttpClient'
 import { BadRelayedTransactionValidator } from '../dummies/BadRelayedTransactionValidator'
 import { configureGSN, deployHub, emptyBalance, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
-import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { PingResponse } from '@opengsn/common/dist/PingResponse'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+
 import { GsnEvent } from '@opengsn/provider/dist/GsnEvents'
 import bodyParser from 'body-parser'
 import { Server } from 'http'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+
 import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { constants, getRawTxOptions, ObjectMap, splitRelayUrlForRegistrar } from '@opengsn/common'
-import { ConfigResponse } from '@opengsn/common/dist/ConfigResponse'
+
 import {
   RelayedTransactionValidator,
   TransactionValidationResult

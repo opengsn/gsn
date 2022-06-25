@@ -1,8 +1,7 @@
 import AsyncNedb from 'nedb-async'
 
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { LoggerInterface, Address } from '@opengsn/common'
 import { ReputationChange, ReputationEntry } from './ReputationEntry'
-import { Address } from '@opengsn/common/dist/types/Aliases'
 
 export const REPUTATION_STORE_FILENAME = 'reputation_store.db'
 

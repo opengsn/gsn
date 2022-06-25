@@ -9,8 +9,7 @@ import {
   TestPaymasterEverythingAcceptedInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub } from './TestUtils'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { constants, splitRelayUrlForRegistrar } from '@opengsn/common'
+import { defaultEnvironment, constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')

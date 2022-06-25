@@ -7,15 +7,16 @@ import {
   StakeManagerInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import {
+  RelayRequest,
+  TypedRequestData,
   constants,
   defaultEnvironment,
   environments,
   getEip712Signature,
+  registerForwarderForGsn,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+
 import { TransactionRelayed } from '@opengsn/contracts/types/truffle-contracts/RelayHub'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 

@@ -1,7 +1,7 @@
 import AsyncNedb from 'nedb-async'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { Address, LoggerInterface } from '@opengsn/common'
+
 import { TransactionData } from './BlockExplorerInterface'
 
 export const TX_STORE_FILENAME = 'penalizetxcache.db'

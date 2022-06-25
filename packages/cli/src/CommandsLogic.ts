@@ -8,7 +8,25 @@ import { HttpProvider } from 'web3-core'
 import { fromWei, toBN, toHex } from 'web3-utils'
 import ow from 'ow'
 
-import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
+import {
+  Address,
+  ContractInteractor,
+  GSNContractsDeployment,
+  HttpClient,
+  HttpWrapper,
+  IntString,
+  LoggerInterface,
+  PenalizerConfiguration,
+  RelayHubConfiguration,
+  constants,
+  defaultEnvironment,
+  ether,
+  formatTokenAmount,
+  isSameAddress,
+  registerForwarderForGsn,
+  sleep,
+  toNumber
+} from '@opengsn/common'
 
 // compiled folder populated by "preprocess"
 import StakeManager from './compiled/StakeManager.json'
@@ -18,21 +36,10 @@ import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import WrappedEthToken from './compiled/WrappedEthToken.json'
-import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { constants } from '@opengsn/common/dist/Constants'
-import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
+
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
-import { formatTokenAmount, toNumber } from '@opengsn/common'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -400,7 +407,10 @@ export class CommandsLogic {
     const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
     const fromBlock = await relayHub.getCreationBlock()
     const toBlock = Math.min(toNumber(fromBlock) + 5000, await this.contractInteractor.getBlockNumber())
-    const tokens = await this.contractInteractor.getPastEventsForHub([], { fromBlock, toBlock }, ['StakingTokenDataChanged'])
+    const tokens = await this.contractInteractor.getPastEventsForHub([], {
+      fromBlock,
+      toBlock
+    }, ['StakingTokenDataChanged'])
     if (tokens.length === 0) {
       throw new Error(`no registered staking tokens on relayhub ${relayHubAddress}`)
     }

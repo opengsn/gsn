@@ -1,6 +1,6 @@
 import { TransactionReceipt } from 'web3-core'
 
-import { ContractInteractor, ConstructorParams, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, ConstructorParams, RelayCallABI } from '@opengsn/common'
 
 export class BadContractInteractor extends ContractInteractor {
   static readonly message = 'This is not the contract you are looking for'

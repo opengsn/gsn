@@ -7,8 +7,8 @@ import terminalLink from 'terminal-link'
 import { PrefixedHexString } from 'ethereumjs-util'
 import * as asciichart from 'asciichart'
 
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
-import { IntString, ObjectMap, SemVerString } from '@opengsn/common/dist/types/Aliases'
+import { GSNContractsDeployment, IntString, ObjectMap, SemVerString } from '@opengsn/common'
+
 import { CommandLineStatisticsPresenterConfig } from './CommandLineStatisticsPresenterConfig'
 
 import {

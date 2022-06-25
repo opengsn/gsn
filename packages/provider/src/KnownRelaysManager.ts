@@ -1,6 +1,14 @@
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { RelayFailureInfo } from '@opengsn/common/dist/types/RelayFailureInfo'
-import { Address, AsyncScoreCalculator, RelayFilter } from '@opengsn/common/dist/types/Aliases'
+import {
+  Address,
+  AsyncScoreCalculator,
+  ContractInteractor,
+  GsnTransactionDetails,
+  LoggerInterface,
+  RelayFailureInfo,
+  RelayFilter,
+  isSameAddress
+} from '@opengsn/common'
+
 import { GSNConfig } from './GSNConfigurator'
 
 import {
@@ -8,9 +16,7 @@ import {
   RelayRegisteredEventInfo,
   isInfoFromEvent
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { isSameAddress } from '@opengsn/common'
+
 import { MAX_INTEGER } from 'ethereumjs-util'
 import { toBN } from 'web3-utils'
 import { BN } from 'bn.js'

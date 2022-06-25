@@ -5,8 +5,7 @@ import { evmMineMany, revert, snapshot } from './TestUtils'
 import BN from 'bn.js'
 
 import { StakeManagerInstance, TestTokenInstance } from '@opengsn/contracts/types/truffle-contracts'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { constants, toNumber } from '@opengsn/common'
+import { defaultEnvironment, constants, toNumber } from '@opengsn/common'
 
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 

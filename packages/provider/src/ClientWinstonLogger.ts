@@ -2,9 +2,7 @@ import log from 'loglevel'
 import winston, { transport } from 'winston'
 import { HttpTransportOptions } from 'winston/lib/winston/transports'
 
-import { gsnRuntimeVersion } from '@opengsn/common/dist/Version'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { LoggerConfiguration } from './GSNConfigurator'
+import { gsnRuntimeVersion, LoggerInterface, LoggerConfiguration } from '@opengsn/common'
 
 const format = winston.format.combine(
   winston.format.uncolorize(),

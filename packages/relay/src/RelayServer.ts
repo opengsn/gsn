@@ -6,19 +6,31 @@ import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
-import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
-import { TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-import { GasPriceFetcher } from './GasPriceFetcher'
-import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
+import {
+  Address,
+  AmountRequired,
+  ContractInteractor,
+  Environment,
+  IntString,
+  LoggerInterface,
+  ObjectMap,
+  PingResponse,
+  ReadinessInfo,
+  RelayCallABI,
+  RelayTransactionRequest,
+  StatsResponse,
+  TransactionRejectedByPaymaster,
+  TransactionRelayed,
+  TransactionType,
+  VersionsManager,
+  gsnRequiredVersion,
+  gsnRuntimeVersion,
+  isSameAddress,
+  toNumber
+} from '@opengsn/common'
 
-import { PingResponse } from '@opengsn/common/dist/PingResponse'
-import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
-import { AmountRequired } from '@opengsn/common/dist/AmountRequired'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { Environment } from '@opengsn/common/dist/Environments'
-import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
+import { GasPriceFetcher } from './GasPriceFetcher'
+
 import {
   address2topic,
   decodeRevertReason,
@@ -33,8 +45,7 @@ import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } 
 import { ServerAction, ShortBlockInfo } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import { isSameAddress, ObjectMap, toNumber } from '@opengsn/common'
+
 import { BlockTransactionString } from 'web3-eth'
 
 /**

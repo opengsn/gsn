@@ -6,13 +6,18 @@ import { RLPEncodedTransaction } from 'web3-core'
 import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
 import { personalSign, recoverTypedSignature_v4, signTypedData_v4, TypedMessage } from 'eth-sig-util'
 
-import { getEip712Signature, isSameAddress, removeHexPrefix } from '@opengsn/common/dist/Utils'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
+import {
+  Address,
+  RelayRequest,
+  TypedRequestData,
+  Web3ProviderBaseInterface,
+  getEip712Signature,
+  getRawTxOptions,
+  isSameAddress,
+  removeHexPrefix
+} from '@opengsn/common'
 
 import { GSNConfig } from './GSNConfigurator'
-import { getRawTxOptions } from '@opengsn/common'
 
 export interface AccountKeypair {
   privateKey: PrefixedHexString

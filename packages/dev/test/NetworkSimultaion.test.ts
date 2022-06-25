@@ -3,18 +3,22 @@ import { TxOptions } from '@ethereumjs/tx'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import {
+  ContractInteractor,
+  GSNContractsDeployment,
+  GsnTransactionDetails,
+  LoggerInterface,
+  defaultEnvironment,
+  signedTransactionToHash
+} from '@opengsn/common'
+
 import { NetworkSimulatingProvider } from '@opengsn/common/dist/dev/NetworkSimulatingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { evmMine, increaseTime, revert, snapshot } from './TestUtils'
-import { signedTransactionToHash } from '@opengsn/common/dist/Utils'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
-import { defaultEnvironment } from '@opengsn/common'
+
 import sinon from 'sinon'
 import chaiAsPromised from 'chai-as-promised'
 

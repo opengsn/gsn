@@ -1,7 +1,7 @@
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest } from '@opengsn/common'
 import { ecsign, keccak256, toRpcSig, PrefixedHexString } from 'ethereumjs-util'
-import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
-import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
+import { ForwardRequest } from '@opengsn/common'
+import { RelayData } from '@opengsn/common'
 import abiCoder, { AbiCoder } from 'web3-eth-abi'
 
 const abi: AbiCoder = abiCoder as any

@@ -1,6 +1,6 @@
 import { expectRevert } from '@openzeppelin/test-helpers'
 
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest } from '@opengsn/common'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
