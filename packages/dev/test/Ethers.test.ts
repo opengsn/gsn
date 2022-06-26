@@ -74,6 +74,7 @@ describe('Ethers client', () => {
     // must pass gasLimit, to force revert on chain (off-chain revert is handled before reaching GSN)
     await expectRevert(
       gsnRecipient.testRevert({ gasLimit: 1e6, gasPrice: 1e9 }).then((ret: any) => ret.wait()), 'Reported reason: : always fail')
+  })
 
   it('should wrap ethers.js Contract instance with GSN RelayProvider', async function () {
     this.timeout(30000)
