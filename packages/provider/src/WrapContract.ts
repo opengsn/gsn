@@ -1,6 +1,7 @@
 import { Contract, providers } from 'ethers'
 import { Eip1193Bridge } from '@ethersproject/experimental'
 import { ExternalProvider } from '@ethersproject/providers'
+import { Signer } from '@ethersproject/abstract-signer'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
 import { Web3ProviderBaseInterface } from '@opengsn/common'
@@ -74,7 +75,15 @@ export async function wrapContract (
   config: Partial<GSNConfig>,
   overrideDependencies?: Partial<GSNDependencies>
 ): Promise<Contract> {
-  const bridge = new WrapBridge(new Eip1193Bridge(contract.signer, contract.provider))
+  const signer = await wrapSigner(contract.signer, config, overrideDependencies)
+  return contract.connect(signer)
+}
+
+export async function wrapSigner (
+  signer: Signer,
+  config: Partial<GSNConfig>,
+  overrideDependencies?: Partial<GSNDependencies>): Promise<Signer> {
+  const bridge = new WrapBridge(new Eip1193Bridge(signer, signer.provider))
   const input = {
     provider: bridge,
     config,
@@ -84,6 +93,6 @@ export async function wrapContract (
   // types have a very small conflict about whether "jsonrpc" field is actually required so not worth wrapping again
   const gsnProvider = await RelayProvider.newProvider(input).init() as any as ExternalProvider
   const ethersProvider = new providers.Web3Provider(gsnProvider)
-  const address = await contract.signer.getAddress()
-  return contract.connect(ethersProvider.getSigner(address))
+  const address = await signer.getAddress()
+  return ethersProvider.getSigner(address)
 }
