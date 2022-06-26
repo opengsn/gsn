@@ -79,7 +79,7 @@ describe('Ethers client', () => {
   it('should wrap ethers.js Contract instance with GSN RelayProvider', async function () {
     this.timeout(30000)
     const config = { paymasterAddress: env.contractsDeployment.paymasterAddress }
-    const ethersProvider = new providers.JsonRpcProvider((web3.currentProvider as any).url)
+    const ethersProvider = new providers.JsonRpcProvider((web3.currentProvider as any).host)
     const signer = ethersProvider.getSigner()
     const recipient = await new ContractFactory(TestRecipient.abi, TestRecipient.bytecode, signer).deploy(env.contractsDeployment.forwarderAddress)
     const wrappedGsnRecipient = await wrapContract(recipient, config)
