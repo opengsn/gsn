@@ -4,13 +4,9 @@ import { TypedTransaction, Transaction, FeeMarketEIP1559Transaction, Transaction
 import { toBN } from 'web3-utils'
 
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { isSameAddress } from '@opengsn/common/dist/Utils'
+import { ContractInteractor, LoggerInterface, RelayTransactionRequest, isSameAddress, ObjectMap } from '@opengsn/common'
 
 import { GSNConfig } from './GSNConfigurator'
-import { ObjectMap } from '@opengsn/common'
 
 export interface GasPriceValidationResult {
   isTransactionTypeValid: boolean

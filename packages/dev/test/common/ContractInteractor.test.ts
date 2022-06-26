@@ -13,25 +13,33 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
-import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
+import {
+  ContractInteractor,
+  EventName,
+  GSNContractsDeployment,
+  GsnTransactionDetails,
+  RelayCallABI,
+  RelayRequest,
+  TransactionType,
+  VersionsManager,
+  constants,
+  defaultEnvironment,
+  gsnRequiredVersion,
+  gsnRuntimeVersion,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
-import { constants } from '@opengsn/common/dist/Constants'
+
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+
 import { deployHub } from '../TestUtils'
-import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
-import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { EventName } from '@opengsn/common/dist/types/Aliases'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
+
 import { toHex } from 'web3-utils'
 import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contracts'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
+
 import { ether } from '@openzeppelin/test-helpers'
-import { splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const { expect } = chai.use(chaiAsPromised)
 

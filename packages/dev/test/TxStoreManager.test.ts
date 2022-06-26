@@ -10,7 +10,7 @@ import { serverDefaultConfiguration } from '@opengsn/relay/dist/ServerConfigPara
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import sinonChai from 'sinon-chai'
-import { sleep } from '@opengsn/common/dist'
+import { sleep } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 

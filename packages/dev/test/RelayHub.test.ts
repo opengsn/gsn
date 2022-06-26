@@ -3,10 +3,19 @@ import BN from 'bn.js'
 import chai from 'chai'
 import { toBN } from 'web3-utils'
 
-import { decodeRevertReason, getEip712Signature, removeHexPrefix } from '@opengsn/common/dist/Utils'
-import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import {
+  RelayCallStatusCodes,
+  RelayRequest,
+  TypedRequestData,
+  cloneRelayRequest,
+  constants,
+  decodeRevertReason,
+  defaultEnvironment,
+  getEip712Signature,
+  registerForwarderForGsn,
+  removeHexPrefix,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
 
 import {
   RelayHubInstance,
@@ -19,11 +28,9 @@ import {
   GatewayForwarderInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason, revert, snapshot } from './TestUtils'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { RelayCallStatusCodes, constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 

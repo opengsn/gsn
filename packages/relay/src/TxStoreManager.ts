@@ -2,11 +2,9 @@ import AsyncNedb from 'nedb-async'
 import ow from 'ow'
 import { PrefixedHexString } from 'ethereumjs-util'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
-import { isSameAddress } from '@opengsn/common/dist/Utils'
+import { Address, isSameAddress, LoggerInterface } from '@opengsn/common'
 
 import { ServerAction, StoredTransaction } from './StoredTransaction'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
 
 export const TXSTORE_FILENAME = 'txstore.db'
 

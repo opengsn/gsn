@@ -1,22 +1,24 @@
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-
-import { AccountManager } from './AccountManager'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { KnownRelaysManager } from './KnownRelaysManager'
-import { RelayedTransactionValidator } from './RelayedTransactionValidator'
 import {
   AsyncDataCallback,
   AsyncScoreCalculator,
-  NpmLogLevel,
+  ContractInteractor,
+  GSNConfig,
+  HttpClient,
+  LoggerConfiguration,
+  LoggerInterface,
   PingFilter,
-  RelayFilter
-} from '@opengsn/common/dist/types/Aliases'
-import { gsnRequiredVersion } from '@opengsn/common/dist/Version'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { GSNConfig } from '@opengsn/common/dist/ConfigResponse'
-import { gsnRuntimeVersion } from '@opengsn/common/dist'
-export type { GSNConfig } from '@opengsn/common/dist/ConfigResponse'
+  RelayFilter,
+  defaultEnvironment,
+  gsnRequiredVersion,
+  gsnRuntimeVersion
+} from '@opengsn/common'
+
+import { AccountManager } from './AccountManager'
+
+import { KnownRelaysManager } from './KnownRelaysManager'
+import { RelayedTransactionValidator } from './RelayedTransactionValidator'
+
+export type { GSNConfig } from '@opengsn/common'
 
 const GAS_PRICE_PERCENT = 20
 const MAX_RELAY_NONCE_GAP = 3
@@ -51,13 +53,6 @@ export const defaultGsnConfig: GSNConfig = {
   clientDefaultConfigUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
   useClientDefaultConfigUrl: true,
   performDryRunViewRelayCall: true
-}
-
-export interface LoggerConfiguration {
-  logLevel: NpmLogLevel
-  loggerUrl?: string
-  userId?: string
-  applicationId?: string
 }
 
 export interface GSNDependencies {

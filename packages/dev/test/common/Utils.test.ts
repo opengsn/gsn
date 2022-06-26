@@ -4,8 +4,15 @@ import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 import chai, { expect } from 'chai'
 
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { getEip712Signature } from '@opengsn/common/dist/Utils'
+import {
+  RelayRequest,
+  constants,
+  getEip712Signature,
+  packRelayUrlForRegistrar,
+  removeNullValues,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
+
 import {
   TypedRequestData,
   getDomainSeparatorHash,
@@ -17,7 +24,7 @@ import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '@ope
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encodeRevertReason } from '../TestUtils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
-import { constants, packRelayUrlForRegistrar, removeNullValues, splitRelayUrlForRegistrar } from '@opengsn/common'
+
 import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })

@@ -7,9 +7,20 @@ import { ether } from '@openzeppelin/test-helpers'
 import {
   getEip712Signature
 } from '@opengsn/common/dist/Utils'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import {
+  ContractInteractor,
+  GSNContractsDeployment,
+  RelayCallStatusCodes,
+  RelayHubConfiguration,
+  RelayRequest,
+  TypedRequestData,
+  cloneRelayRequest,
+  constants,
+  defaultEnvironment,
+  registerForwarderForGsn,
+  splitRelayUrlForRegistrar,
+  toNumber
+} from '@opengsn/common'
 
 import {
   RelayHubInstance,
@@ -22,18 +33,10 @@ import {
   TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, revert, snapshot } from './TestUtils'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import {
-  constants,
-  ContractInteractor,
-  GSNContractsDeployment,
-  RelayCallStatusCodes,
-  splitRelayUrlForRegistrar,
-  toNumber
-} from '@opengsn/common'
+
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
-import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
+
 import * as process from 'process'
 
 const Forwarder = artifacts.require('Forwarder')

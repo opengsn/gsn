@@ -7,7 +7,14 @@ import { HttpServer } from './HttpServer'
 import { RelayServer } from './RelayServer'
 import { KeyManager } from './KeyManager'
 import { TXSTORE_FILENAME, TxStoreManager } from './TxStoreManager'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import {
+  ContractInteractor,
+  Environment,
+  EnvironmentsKeys,
+  VersionsManager,
+  gsnRequiredVersion,
+  gsnRuntimeVersion
+} from '@opengsn/common'
 import {
   LoggingProviderMode,
   parseServerConfig,
@@ -24,7 +31,6 @@ import { TransactionDataCache, TX_PAGES_FILENAME, TX_STORE_FILENAME } from './pe
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { REPUTATION_STORE_FILENAME, ReputationStoreManager } from './ReputationStoreManager'
-import { Environment, EnvironmentsKeys, gsnRequiredVersion, gsnRuntimeVersion, VersionsManager } from '@opengsn/common'
 
 function error (err: string): never {
   console.error(err)

@@ -4,21 +4,32 @@ import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
 
-import { asRelayCallAbi, ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
-import { AsyncDataCallback, PingFilter, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
-import { AuditResponse } from '@opengsn/common/dist/types/AuditRequest'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { decodeRevertReason, removeNullValues } from '@opengsn/common/dist/Utils'
-import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
-import { constants, getRelayRequestID, ObjectMap, RelayCallABI } from '@opengsn/common'
+import {
+  AsyncDataCallback,
+  AuditResponse,
+  ContractInteractor,
+  GsnTransactionDetails,
+  HttpClient,
+  HttpWrapper,
+  LoggerInterface,
+  ObjectMap,
+  PingFilter,
+  RelayCallABI,
+  RelayInfo,
+  RelayMetadata,
+  RelayRequest,
+  RelayTransactionRequest,
+  VersionsManager,
+  Web3ProviderBaseInterface,
+  asRelayCallAbi,
+  constants,
+  decodeRevertReason,
+  getRelayRequestID,
+  gsnRequiredVersion,
+  gsnRuntimeVersion,
+  removeNullValues
+} from '@opengsn/common'
 
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { AccountKeypair, AccountManager } from './AccountManager'
 import { DefaultRelayFilter, DefaultRelayScore, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'

@@ -18,9 +18,8 @@ import {
   StakeManagerInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
-import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest, cloneRelayRequest, defaultEnvironment, decodeRevertReason, getEip712Signature, constants } from '@opengsn/common'
 import { calculatePostGas, deployTestHub, mergeRelayRequest, registerAsRelayServer, revertReason } from './TestUtils'
-import { defaultEnvironment, decodeRevertReason, getEip712Signature, constants } from '@opengsn/common'
 
 import Web3 from 'web3'
 import { toWei } from 'web3-utils'

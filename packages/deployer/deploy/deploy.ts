@@ -1,6 +1,6 @@
 import { DeploymentsExtension } from 'hardhat-deploy/types'
 
-import { constants } from '@opengsn/common/dist/Constants'
+import { constants, GsnDomainSeparatorType, GsnRequestType } from '@opengsn/common'
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
 import { formatEther, parseEther } from 'ethers/lib/utils'
@@ -13,7 +13,6 @@ import {
   printRelayInfo,
   setField
 } from '../src/deployUtils'
-import { GsnDomainSeparatorType, GsnRequestType } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
 const { AddressZero } = ethers.constants
 

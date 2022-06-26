@@ -1,12 +1,11 @@
 import { HttpProvider } from 'web3-core'
 
 import { StatisticsManager } from '@opengsn/common/dist/statistics/StatisticsManager'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
+import { HttpClient, HttpWrapper, toNumber } from '@opengsn/common'
+
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { TestPaymasterConfigurableMisbehaviorInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { evmMine } from '../TestUtils'
-import { toNumber } from '@opengsn/common'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 

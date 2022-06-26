@@ -1,6 +1,6 @@
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { AccountKeypair } from '@opengsn/provider/dist/AccountManager'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address } from '@opengsn/common'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { HttpProvider } from 'web3-core'
 import abi from 'web3-eth-abi'

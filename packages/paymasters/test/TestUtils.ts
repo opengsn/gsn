@@ -2,13 +2,11 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { constants, ether } from '@openzeppelin/test-helpers'
 import { toWei } from 'web3-utils'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
-import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
+import { Address, ForwardRequest, RelayData, RelayRequest, defaultEnvironment, splitRelayUrlForRegistrar } from '@opengsn/common'
+
 import { StakeManagerInstance, TokenGasCalculatorInstance } from '@opengsn/paymasters/types/truffle-contracts'
-import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
+
 import { RelayHubInstance, TestTokenInstance } from '@opengsn/contracts/types/truffle-contracts'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { defaultEnvironment, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 import { GasUsed } from '../types/truffle-contracts/TokenGasCalculator'
 

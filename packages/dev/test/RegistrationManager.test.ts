@@ -3,14 +3,13 @@ import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import BN from 'bn.js'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, constants, ether, defaultEnvironment, toNumber } from '@opengsn/common'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { RegistrationManager } from '@opengsn/relay/dist/RegistrationManager'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 import { configureServer, ServerConfigParams, ServerDependencies } from '@opengsn/relay/dist/ServerConfigParams'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
-import { constants } from '@opengsn/common/dist/Constants'
 
 import { evmMine, revert, setNextBlockTimestamp, snapshot } from './TestUtils'
 
@@ -19,13 +18,11 @@ import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
-import { ether } from '@opengsn/common/dist/Utils'
+
 import sinon from 'sinon'
 import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { toNumber } from '@opengsn/common'
 
 const TestRelayHub = artifacts.require('TestRelayHub')
 const TestToken = artifacts.require('TestToken')

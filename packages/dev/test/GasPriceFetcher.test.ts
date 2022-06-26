@@ -2,13 +2,11 @@ import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { HttpProvider } from 'web3-core'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { ContractInteractor, LoggerInterface, defaultEnvironment } from '@opengsn/common'
 
 import { Server } from 'net'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 
-import { defaultEnvironment } from '@opengsn/common'
 import express = require('express')
 
 const { expect } = chai.use(chaiAsPromised)

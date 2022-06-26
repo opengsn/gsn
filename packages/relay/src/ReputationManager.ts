@@ -1,5 +1,5 @@
-import { Address } from '@opengsn/common/dist/types/Aliases'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { Address, LoggerInterface } from '@opengsn/common'
+
 import { ReputationStoreManager } from './ReputationStoreManager'
 import { ReputationChange } from './ReputationEntry'
 

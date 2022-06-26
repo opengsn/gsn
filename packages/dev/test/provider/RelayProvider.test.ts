@@ -23,21 +23,25 @@ import {
   TestTokenInstance,
   TestUtilInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { Address } from '@opengsn/common/dist/types/Aliases'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import {
+  Address,
+  RelayRequest,
+  constants,
+  defaultEnvironment,
+  getEcRecoverMeta,
+  getEip712Signature,
+  registerForwarderForGsn
+} from '@opengsn/common'
+
 import { deployHub, emptyBalance, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
 import { BadRelayClient } from '../dummies/BadRelayClient'
 
-import { getEip712Signature } from '@opengsn/common/dist/Utils'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
   EIP712DomainType,
   MessageTypeProperty,
   MessageTypes,
   TypedRequestData
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { constants, getEcRecoverMeta } from '@opengsn/common'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 

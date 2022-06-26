@@ -10,10 +10,20 @@ import { encode } from 'rlp'
 import { expect } from 'chai'
 import { privateToAddress, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
 
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { getEip712Signature, removeHexPrefix, signatureRSV2Hex } from '@opengsn/common/dist/Utils'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import {
+  RelayRequest,
+  StakeUnlocked,
+  TypedRequestData,
+  constants,
+  defaultEnvironment,
+  getDataAndSignature,
+  getEip712Signature,
+  getRawTxOptions,
+  registerForwarderForGsn,
+  removeHexPrefix,
+  signatureRSV2Hex
+} from '@opengsn/common'
+
 import {
   PenalizerInstance,
   RelayHubInstance, StakeManagerInstance,
@@ -22,10 +32,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
-import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { StakeUnlocked } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-import { getDataAndSignature, constants } from '@opengsn/common/dist'
+
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 
 const RelayHub = artifacts.require('RelayHub')

@@ -1,4 +1,4 @@
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address } from '@opengsn/common'
 
 export interface ReputationChange {
   blockNumber: number

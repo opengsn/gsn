@@ -1,17 +1,25 @@
 import * as fs from 'fs'
 import parseArgs from 'minimist'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { constants } from '@opengsn/common/dist/Constants'
-import { Address, NpmLogLevel } from '@opengsn/common/dist/types/Aliases'
+import {
+  Address,
+  ContractInteractor,
+  Environment,
+  EnvironmentsKeys,
+  LoggerInterface,
+  NpmLogLevel,
+  constants,
+  defaultEnvironment,
+  environments
+} from '@opengsn/common'
+
 import { KeyManager } from './KeyManager'
 import { TxStoreManager } from './TxStoreManager'
 import { createServerLogger } from './ServerWinstonLogger'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
+
 import { toBN } from 'web3-utils'
 
 export enum LoggingProviderMode {

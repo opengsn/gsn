@@ -1,5 +1,5 @@
 import { GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from '@opengsn/provider/dist'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
+import { GsnTransactionDetails } from '@opengsn/common'
 
 export class BadRelayClient extends RelayClient {
   static readonly message = 'This is not the transaction you are looking for'

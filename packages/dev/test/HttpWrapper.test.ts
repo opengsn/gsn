@@ -1,4 +1,4 @@
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
+import { HttpWrapper } from '@opengsn/common'
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 

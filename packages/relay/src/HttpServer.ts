@@ -6,10 +6,8 @@ import { Server } from 'http'
 import ow from 'ow'
 
 import { PenalizerService } from './penalizer/PenalizerService'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { LoggerInterface, AuditRequest, AuditRequestShape, AuditResponse, RelayTransactionRequestShape } from '@opengsn/common'
 import { RelayServer } from './RelayServer'
-import { AuditRequest, AuditRequestShape, AuditResponse } from '@opengsn/common/dist/types/AuditRequest'
-import { RelayTransactionRequestShape } from '@opengsn/common/dist/types/RelayTransactionRequest'
 
 export class HttpServer {
   app: Express

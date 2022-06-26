@@ -5,9 +5,19 @@ import { HttpProvider } from 'web3-core'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
 
-import { getEip712Signature } from '@opengsn/common/dist/Utils'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import {
+  ContractInteractor,
+  ForwardRequest,
+  GSNContractsDeployment,
+  RelayData,
+  RelayRequest,
+  TypedRequestData,
+  constants,
+  defaultEnvironment,
+  getEip712Signature,
+  registerForwarderForGsn,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
 
 import {
   RelayHubInstance,
@@ -17,12 +27,8 @@ import {
   ForwarderInstance,
   TestPaymasterConfigurableMisbehaviorInstance, RelayRegistrarInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { constants, ContractInteractor, GSNContractsDeployment, splitRelayUrlForRegistrar } from '@opengsn/common'
-import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
-import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
+
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 import { deployHub, encodeRevertReason } from './TestUtils'
 

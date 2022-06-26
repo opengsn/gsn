@@ -1,5 +1,5 @@
 import { keccak256, toBN } from 'web3-utils'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest } from '@opengsn/common'
 import abi from 'web3-eth-abi'
 import HashcashDifficulty from '@opengsn/paymasters/build/contracts/HashcashPaymaster.json'
 import IForwarder from '@opengsn/common/dist/interfaces/IForwarder.json'

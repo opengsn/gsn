@@ -1,10 +1,5 @@
 import { PrefixedHexString } from 'ethereumjs-util'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-import { PingResponse } from '@opengsn/common/dist/PingResponse'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { ObjectMap } from '@opengsn/common'
+import { HttpClient, HttpWrapper, PingResponse, RelayTransactionRequest, LoggerInterface, ObjectMap } from '@opengsn/common'
 
 export class BadHttpClient extends HttpClient {
   static readonly message = 'This is not the relay you are looking for'

@@ -1,8 +1,7 @@
 /* eslint-disable no-void */
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayClient, JsonRpcCallback, RelayProvider, GSNUnresolvedConstructorInput } from '@opengsn/provider'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address, GsnTransactionDetails } from '@opengsn/common'
 
 import { JsonRpcPayload } from 'web3-core-helpers'
 import Contract from 'web3-eth-contract'

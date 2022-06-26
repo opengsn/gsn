@@ -10,20 +10,29 @@ import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { CommitAdded } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
+import {
+  AuditRequest,
+  AuditResponse,
+  CommitAdded,
+  ContractInteractor,
+  LoggerInterface,
+  VersionsManager,
+  address2topic,
+  constants,
+  getDataAndSignature,
+  gsnRequiredVersion,
+  gsnRuntimeVersion,
+  removeHexPrefix,
+  toNumber
+} from '@opengsn/common'
+
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
 import { BlockExplorerInterface } from './BlockExplorerInterface'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { AuditRequest, AuditResponse } from '@opengsn/common/dist/types/AuditRequest'
+
 import { ServerAction } from '../StoredTransaction'
 import { TransactionManager } from '../TransactionManager'
-import { address2topic, getDataAndSignature, removeHexPrefix } from '@opengsn/common/dist/Utils'
-import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
+
 import { ServerConfigParams } from '../ServerConfigParams'
-import { constants } from '@opengsn/common/dist/Constants'
-import { toNumber } from '@opengsn/common'
 
 import Timeout = NodeJS.Timeout
 

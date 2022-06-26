@@ -1,15 +1,19 @@
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import {
+  Address,
+  GsnTransactionDetails,
+  HttpClient,
+  LoggerInterface,
+  PartialRelayInfo,
+  PingFilter,
+  RelayInfo,
+  RelayInfoUrl,
+  isInfoFromEvent,
+  isSameAddress
+} from '@opengsn/common'
 
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { PartialRelayInfo, RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { Address, PingFilter } from '@opengsn/common/dist/types/Aliases'
-import { isInfoFromEvent, RelayInfoUrl } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { GSNConfig } from './GSNConfigurator'
 import { KnownRelaysManager } from './KnownRelaysManager'
-import { isSameAddress } from '@opengsn/common'
 
 interface RaceResult {
   winner?: PartialRelayInfo

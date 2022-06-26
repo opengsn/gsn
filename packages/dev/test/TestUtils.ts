@@ -11,16 +11,26 @@ import {
   RelayHubInstance,
   TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
+import {
+  Address,
+  Environment,
+  HttpClient,
+  HttpWrapper,
+  IntString,
+  RelayHubConfiguration,
+  constants,
+  defaultEnvironment,
+  isSameAddress,
+  sleep,
+  toNumber
+} from '@opengsn/common'
+
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+
 import { PrefixedHexString } from 'ethereumjs-util'
-import { isSameAddress, sleep } from '@opengsn/common/dist/Utils'
-import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
+
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-import { constants, Environment, toNumber } from '@opengsn/common'
-import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
+
 import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })

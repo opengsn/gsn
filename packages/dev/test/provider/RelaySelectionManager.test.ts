@@ -2,21 +2,28 @@ import chaiAsPromised from 'chai-as-promised'
 import sinon, { SinonStub } from 'sinon'
 import { HttpProvider } from 'web3-core'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-import { PingResponse } from '@opengsn/common/dist/PingResponse'
+import {
+  ContractInteractor,
+  HttpClient,
+  HttpWrapper,
+  PartialRelayInfo,
+  PingFilter,
+  PingResponse,
+  RelayInfo,
+  RelayInfoUrl,
+  RelayRegisteredEventInfo,
+  constants,
+  defaultEnvironment
+} from '@opengsn/common'
+
 import { RelaySelectionManager } from '@opengsn/provider/dist/RelaySelectionManager'
 import { DefaultRelayFilter, KnownRelaysManager } from '@opengsn/provider/dist/KnownRelaysManager'
 import { GasPricePingFilter } from '@opengsn/provider/dist/RelayClient'
-import { PartialRelayInfo, RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { PingFilter } from '@opengsn/common/dist/types/Aliases'
-import { RelayInfoUrl, RelayRegisteredEventInfo } from '@opengsn/common/dist/types/GSNContractsDataTypes'
+
 import { configureGSN, deployHub } from '../TestUtils'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { register, stake } from './KnownRelaysManager.test'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { constants } from '@opengsn/common'
+
 import { ether } from '@openzeppelin/test-helpers'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)

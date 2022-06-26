@@ -4,7 +4,16 @@ import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
 
 import { KnownRelaysManager, DefaultRelayScore, DefaultRelayFilter } from '@opengsn/provider/dist/KnownRelaysManager'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import {
+  ContractInteractor,
+  LoggerInterface,
+  RelayInfoUrl,
+  RelayRegisteredEventInfo,
+  constants,
+  defaultEnvironment,
+  registerForwarderForGsn,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
   PenalizerInstance,
@@ -16,13 +25,9 @@ import {
 import { configureGSN, deployHub, evmMineMany, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { RelayInfoUrl, RelayRegisteredEventInfo } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+
 import { toBN } from 'web3-utils'
-import { constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
