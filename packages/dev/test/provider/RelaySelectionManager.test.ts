@@ -30,7 +30,7 @@ const { expect, assert } = require('chai').use(chaiAsPromised)
 
 contract('RelaySelectionManager', function (accounts) {
   const relayHubAddress = constants.BURN_ADDRESS
-  const sliceSize = 3
+  const waitForSuccessSliceSize = 3
 
   let httpClient: HttpClient
   let contractInteractor: ContractInteractor
@@ -41,7 +41,7 @@ contract('RelaySelectionManager', function (accounts) {
 
   const errors = new Map<string, Error>()
   const config = configureGSN({
-    sliceSize
+    waitForSuccessSliceSize
   })
   const eventInfo: RelayRegisteredEventInfo = {
     relayManager: '',
@@ -87,7 +87,7 @@ contract('RelaySelectionManager', function (accounts) {
       }).init()
       httpClient = new HttpClient(new HttpWrapper(), this.logger)
       knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), DefaultRelayFilter)
-      stubGetRelaysSorted = sinon.stub(knownRelaysManager, 'getRelaysSortedForTransaction')
+      stubGetRelaysSorted = sinon.stub(knownRelaysManager, 'getRelaysShuffledForTransaction')
       stubGetRelaysSorted.returns(Promise.resolve([[eventInfo]]))
       relaySelectionManager = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
       stubRaceToSuccess = sinon.stub(relaySelectionManager, '_raceToSuccess')
@@ -198,7 +198,7 @@ contract('RelaySelectionManager', function (accounts) {
       stubGetRelaysSorted.returns(Promise.resolve([[winner.relayInfo, winner.relayInfo, winner.relayInfo, winner.relayInfo, winner.relayInfo]]))
       for (let i = 1; i < 5; i++) {
         const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, configureGSN({
-          sliceSize: i
+          waitForSuccessSliceSize: i
         })).init()
         const returned = await rsm._getNextSlice()
         assert.equal(returned.length, i)
@@ -209,7 +209,7 @@ contract('RelaySelectionManager', function (accounts) {
       const relaysLeft = [[winner.relayInfo, winner.relayInfo]]
       stubGetRelaysSorted.returns(Promise.resolve(relaysLeft))
       const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, configureGSN({
-        sliceSize: 7
+        waitForSuccessSliceSize: 7
       })).init()
       const returned = await rsm._getNextSlice()
       assert.deepEqual(returned, relaysLeft[0])
@@ -227,18 +227,18 @@ contract('RelaySelectionManager', function (accounts) {
       const relaysLeft = [Array(2).fill(winner).map(relayInfoGenerator), Array(3).fill(winner).map(relayInfoGenerator)]
       stubGetRelaysSorted.returns(Promise.resolve(relaysLeft))
       const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, configureGSN({
-        sliceSize: 7
+        waitForSuccessSliceSize: 7
       })).init()
       // Initial request only returns the top preference relays
       const returned1 = await rsm._getNextSlice()
       assert.equal(returned1.length, 2)
       // Pretend all relays failed to ping
       let errors = new Map(returned1.map(info => [info.relayUrl, new Error('fake error')]))
-      rsm._handleRaceResults({ errors })
+      rsm._handleRaceResults({ errors, results: [] })
       const returned2 = await rsm._getNextSlice()
       assert.equal(returned2.length, 3)
       errors = new Map(returned2.map(info => [info.relayUrl, new Error('fake error')]))
-      rsm._handleRaceResults({ errors })
+      rsm._handleRaceResults({ errors, results: [] })
       const returned3 = await rsm._getNextSlice()
       assert.equal(returned3.length, 0)
     })
@@ -365,6 +365,7 @@ contract('RelaySelectionManager', function (accounts) {
       const errors = new Map<string, Error>()
       errors.set(failureRelayUrl, new Error(message))
       const raceResults = {
+        results: [winner],
         winner,
         errors
       }

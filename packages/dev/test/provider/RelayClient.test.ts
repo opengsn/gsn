@@ -257,7 +257,7 @@ contract('RelayClient', function (accounts) {
       assert.equal(anotherRelayClient.config.methodSuffix, suffix)
       assert.equal(anotherRelayClient.config.jsonStringifyRequest as any, 5)
       assert.equal(anotherRelayClient.config.minMaxPriorityFeePerGas, minMaxPriorityFeePerGas)
-      assert.equal(anotherRelayClient.config.sliceSize, defaultGsnConfig.sliceSize, 'default value expected for a skipped field')
+      assert.equal(anotherRelayClient.config.waitForSuccessSliceSize, defaultGsnConfig.waitForSuccessSliceSize, 'default value expected for a skipped field')
     })
   })
 
@@ -503,24 +503,6 @@ contract('RelayClient', function (accounts) {
       assert.match(relayingErrors.values().next().value.message, /paymasterData-error/)
     })
 
-    it.skip('should return errors in callback (scoreCalculator) ', async function () {
-      // can't be used: scoring is completely disabled
-      const relayClient =
-        new RelayClient({
-          provider: underlyingProvider,
-          config: gsnConfig,
-          overrideDependencies: {
-            scoreCalculator: async () => { throw new Error('score-error') }
-          }
-        })
-      await relayClient.init()
-      const ret = await relayClient.relayTransaction(options)
-      const { transaction, relayingErrors, pingErrors } = ret
-      assert.isUndefined(transaction)
-      assert.equal(pingErrors.size, 0)
-      assert.equal(relayingErrors.size, 1)
-      assert.match(relayingErrors.values().next().value.message, /score-error/)
-    })
     describe('with events listener', () => {
       function eventsHandler (e: GsnEvent): void {
         gsnEvents.push(e)

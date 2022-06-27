@@ -31,7 +31,7 @@ import {
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'
-import { DefaultRelayFilter, DefaultRelayScore, KnownRelaysManager } from './KnownRelaysManager'
+import { DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
 import { isTransactionValid, RelayedTransactionValidator } from './RelayedTransactionValidator'
 import { createClientLogger } from './ClientWinstonLogger'
@@ -571,7 +571,6 @@ export class RelayClient {
     const relayFilter = overrideDependencies?.relayFilter ?? DefaultRelayFilter
     const asyncApprovalData = overrideDependencies?.asyncApprovalData ?? EmptyDataCallback
     const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
-    const scoreCalculator = overrideDependencies?.scoreCalculator ?? DefaultRelayScore
     const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
     const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, this.logger, this.config)
 
@@ -585,8 +584,7 @@ export class RelayClient {
       pingFilter,
       relayFilter,
       asyncApprovalData,
-      asyncPaymasterData,
-      scoreCalculator
+      asyncPaymasterData
     }
   }
 

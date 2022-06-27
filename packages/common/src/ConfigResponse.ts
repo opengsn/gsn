@@ -33,7 +33,6 @@ export interface GSNConfig {
   jsonStringifyRequest: boolean
   requiredVersionRange?: string
   relayTimeoutGrace: number
-  sliceSize: number
   loggerConfiguration?: LoggerConfiguration
   gasPriceFactorPercent: number
   gasPriceOracleUrl: string
@@ -52,4 +51,6 @@ export interface GSNConfig {
   clientDefaultConfigUrl: string
   useClientDefaultConfigUrl: boolean
   performDryRunViewRelayCall: boolean
+  waitForSuccessSliceSize: number
+  waitForSuccessPingGrace: number
 }

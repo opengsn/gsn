@@ -1,36 +1,22 @@
 import {
   Address,
-  AsyncScoreCalculator,
   ContractInteractor,
-  GsnTransactionDetails,
   LoggerInterface,
   RelayFailureInfo,
   RelayFilter,
-  isSameAddress
+  isSameAddress,
+  shuffle
 } from '@opengsn/common'
 
 import { GSNConfig } from './GSNConfigurator'
 
 import {
   RelayInfoUrl,
-  RelayRegisteredEventInfo,
-  isInfoFromEvent
+  RelayRegisteredEventInfo
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-
-import { MAX_INTEGER } from 'ethereumjs-util'
-import { toBN } from 'web3-utils'
-import { BN } from 'bn.js'
 
 export const DefaultRelayFilter: RelayFilter = function (registeredEventInfo: RelayRegisteredEventInfo): boolean {
   return true
-}
-
-/**
- * Basic score is reversed transaction fee, higher is better.
- * Relays that failed to respond recently will be downgraded for some period of time.
- */
-export const DefaultRelayScore: AsyncScoreCalculator = async function (relay: RelayRegisteredEventInfo, txDetails: GsnTransactionDetails, failures: RelayFailureInfo[]): Promise<BN> {
-  return MAX_INTEGER.muln(Math.pow(0.9, failures.length))
 }
 
 export class KnownRelaysManager {
@@ -38,18 +24,16 @@ export class KnownRelaysManager {
   private readonly logger: LoggerInterface
   private readonly config: GSNConfig
   private readonly relayFilter: RelayFilter
-  private readonly scoreCalculator: AsyncScoreCalculator
 
   private relayFailures = new Map<string, RelayFailureInfo[]>()
 
   public preferredRelayers: RelayInfoUrl[] = []
   public allRelayers: RelayRegisteredEventInfo[] = []
 
-  constructor (contractInteractor: ContractInteractor, logger: LoggerInterface, config: GSNConfig, relayFilter?: RelayFilter, scoreCalculator?: AsyncScoreCalculator) {
+  constructor (contractInteractor: ContractInteractor, logger: LoggerInterface, config: GSNConfig, relayFilter?: RelayFilter) {
     this.config = config
     this.logger = logger
     this.relayFilter = relayFilter ?? DefaultRelayFilter
-    this.scoreCalculator = scoreCalculator ?? DefaultRelayScore
     this.contractInteractor = contractInteractor
   }
 
@@ -93,11 +77,18 @@ export class KnownRelaysManager {
     this.relayFailures = newMap
   }
 
-  async getRelaysSortedForTransaction (gsnTransactionDetails: GsnTransactionDetails): Promise<RelayInfoUrl[][]> {
+  async getRelaysShuffledForTransaction (): Promise<RelayInfoUrl[][]> {
     const sortedRelays: RelayInfoUrl[][] = []
     // preferred relays are copied as-is, unsorted (we don't have any info about them anyway to sort)
     sortedRelays[0] = Array.from(this.preferredRelayers)
-    sortedRelays[1] = await this._sortRelaysInternal(gsnTransactionDetails, this.allRelayers)
+    const relaysWithoutFailures = this.allRelayers.filter(it => {
+      return this.relayFailures.get(it.relayUrl) != null
+    })
+    const relaysWithFailures = this.allRelayers.filter(it => {
+      return this.relayFailures.get(it.relayUrl) == null
+    })
+    sortedRelays[1] = shuffle(relaysWithoutFailures)
+    sortedRelays[2] = shuffle(relaysWithFailures)
     return sortedRelays
   }
 
@@ -129,27 +120,6 @@ export class KnownRelaysManager {
       }
     } while (auditors.length < this.config.auditorsCount)
     return auditors
-  }
-
-  async _sortRelaysInternal (gsnTransactionDetails: GsnTransactionDetails, activeRelays: RelayInfoUrl[]): Promise<RelayInfoUrl[]> {
-    const scores = new Map<string, BN>()
-    for (const activeRelay of activeRelays) {
-      let score = toBN(0)
-      if (isInfoFromEvent(activeRelay)) {
-        const eventInfo = activeRelay as RelayRegisteredEventInfo
-        score = await this.scoreCalculator(eventInfo, gsnTransactionDetails, this.relayFailures.get(activeRelay.relayUrl) ?? [])
-        scores.set(eventInfo.relayManager, score)
-      }
-    }
-    return Array
-      .from(activeRelays.values())
-      .filter(isInfoFromEvent)
-      .map(value => (value as RelayRegisteredEventInfo))
-      .sort((a, b) => {
-        const aScore = scores.get(a.relayManager)?.toString() ?? '0'
-        const bScore = scores.get(b.relayManager)?.toString() ?? '0'
-        return toBN(bScore).cmp(toBN(aScore))
-      })
   }
 
   saveRelayFailure (lastErrorTime: number, relayManager: Address, relayUrl: string): void {
