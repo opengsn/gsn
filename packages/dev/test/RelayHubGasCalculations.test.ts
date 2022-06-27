@@ -176,6 +176,8 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           const gasUsed = 1e8
           const baseRelayFee = 1000000
           const pctRelayFee = 10
+          const config = Object.assign({}, defaultEnvironment.relayHubConfiguration, { baseRelayFee, pctRelayFee })
+          await relayHub.setConfiguration(config)
           const relayData: RelayData = {
             maxFeePerGas: maxFeePerGas.toString(),
             maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
@@ -504,7 +506,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   if (devFee !== 0) {
                     gasOverhead += defaultEnvironment.nonZeroDevFeeGasOverhead
                   }
-                  await prepareForHub({ gasOverhead, devAddress, devFee })
+                  await prepareForHub({ gasOverhead, devAddress, pctRelayFee: requestedFee, devFee })
                   // Avoid zero to non-zero storage gas costs when calculating fees.
                   await relayHub.depositFor(relayOwner, { value: (1).toString() })
 
