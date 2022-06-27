@@ -90,12 +90,6 @@ export async function startRelay (
   if (options.gasPriceFactor) {
     args.push('--gasPriceFactor', options.gasPriceFactor)
   }
-  if (options.pctRelayFee) {
-    args.push('--pctRelayFee', options.pctRelayFee)
-  }
-  if (options.baseRelayFee) {
-    args.push('--baseRelayFee', options.baseRelayFee)
-  }
   if (options.checkInterval) {
     args.push('--checkInterval', options.checkInterval)
   }

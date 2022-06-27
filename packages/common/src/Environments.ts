@@ -58,7 +58,10 @@ const defaultRelayHubConfiguration: RelayHubConfiguration = {
   maxWorkerCount: 10,
   minimumUnstakeDelay: 15000,
   devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
-  devFee: 0
+  devFee: 0,
+  // TODO STOPSHIP: DECIDE!
+  pctRelayFee: 0,
+  baseRelayFee: 0
 }
 
 // TODO add as constructor params to paymaster instead of constants

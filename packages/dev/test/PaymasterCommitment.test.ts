@@ -132,9 +132,6 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
   let paymaster: string
   let forwarder: string
 
-  const baseRelayFee = '0'
-  const pctRelayFee = '0'
-
   before(async function () {
     const stake = ether('2')
     testToken = await TestToken.new()
@@ -166,7 +163,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
 
     await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayRegistrar.registerRelayServer(relayHub, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar('url'), { from: relayManager })
+    await relayRegistrar.registerRelayServer(relayHub, splitRelayUrlForRegistrar('url'), { from: relayManager })
   })
 
   describe('paymaster commitments', function () {
@@ -200,8 +197,6 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
           validUntilTime: '0'
         },
         relayData: {
-          pctRelayFee,
-          baseRelayFee,
           transactionCalldataGasUsed: '0',
           maxFeePerGas: '1',
           maxPriorityFeePerGas: '1',

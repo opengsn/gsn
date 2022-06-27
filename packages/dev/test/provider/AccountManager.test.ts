@@ -70,8 +70,6 @@ contract('AccountManager', function (accounts) {
         validUntilTime: '0'
       },
       relayData: {
-        pctRelayFee: '1',
-        baseRelayFee: '1',
         transactionCalldataGasUsed: '0',
         maxFeePerGas: '1',
         maxPriorityFeePerGas: '1',

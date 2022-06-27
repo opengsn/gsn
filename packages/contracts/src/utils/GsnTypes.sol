@@ -8,8 +8,6 @@ interface GsnTypes {
     struct RelayData {
         uint256 maxFeePerGas;
         uint256 maxPriorityFeePerGas;
-        uint256 pctRelayFee;
-        uint256 baseRelayFee;
         uint256 transactionCalldataGasUsed;
         address relayWorker;
         address paymaster;

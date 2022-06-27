@@ -43,11 +43,9 @@ contract('RelaySelectionManager', function (accounts) {
   const config = configureGSN({
     sliceSize
   })
-  const eventInfo = {
+  const eventInfo: RelayRegisteredEventInfo = {
     relayManager: '',
-    relayUrl: '',
-    baseRelayFee: '1',
-    pctRelayFee: '1'
+    relayUrl: ''
   }
   const pingResponse: PingResponse = {
     ownerAddress: '',
@@ -179,8 +177,6 @@ contract('RelaySelectionManager', function (accounts) {
         const nextRelay: RelayInfo = (await relaySelectionManager.selectNextRelay(relayHub.address))!
         assert.equal(nextRelay.relayInfo.relayUrl, preferredRelayUrl)
         assert.equal(nextRelay.relayInfo.relayManager, relayManager)
-        assert.equal(nextRelay.relayInfo.baseRelayFee, '666')
-        assert.equal(nextRelay.relayInfo.pctRelayFee, '77')
       })
     })
 

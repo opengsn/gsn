@@ -1,6 +1,4 @@
 {
-  "baseRelayFee": 70,
-  "pctRelayFee": 0,
   "url": "http://localhost:8090",
   "port":  8090,
   "relayHubAddress": "",

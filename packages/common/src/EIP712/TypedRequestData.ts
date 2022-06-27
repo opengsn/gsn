@@ -38,8 +38,6 @@ export const EIP712DomainTypeWithoutVersion: MessageTypeProperty[] = [
 const RelayDataType = [
   { name: 'maxFeePerGas', type: 'uint256' },
   { name: 'maxPriorityFeePerGas', type: 'uint256' },
-  { name: 'pctRelayFee', type: 'uint256' },
-  { name: 'baseRelayFee', type: 'uint256' },
   { name: 'transactionCalldataGasUsed', type: 'uint256' },
   { name: 'relayWorker', type: 'address' },
   { name: 'paymaster', type: 'address' },
@@ -117,5 +115,5 @@ export class TypedRequestData implements TypedMessage<Types> {
 
 export const GsnRequestType = {
   typeName: 'RelayRequest',
-  typeSuffix: 'RelayData relayData)RelayData(uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 pctRelayFee,uint256 baseRelayFee,uint256 transactionCalldataGasUsed,address relayWorker,address paymaster,address forwarder,bytes paymasterData,uint256 clientId)'
+  typeSuffix: 'RelayData relayData)RelayData(uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 transactionCalldataGasUsed,address relayWorker,address paymaster,address forwarder,bytes paymasterData,uint256 clientId)'
 }

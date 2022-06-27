@@ -183,8 +183,6 @@ contract('ContractInteractor', function (accounts) {
         relayData: {
           maxFeePerGas: '11',
           maxPriorityFeePerGas: '1',
-          pctRelayFee: '0',
-          baseRelayFee: '0',
           transactionCalldataGasUsed: '0',
           relayWorker: workerAddress,
           forwarder: constants.ZERO_ADDRESS,
@@ -253,8 +251,6 @@ contract('ContractInteractor', function (accounts) {
         relayData: {
           maxFeePerGas: '1',
           maxPriorityFeePerGas: '1',
-          pctRelayFee: '0',
-          baseRelayFee: '0',
           transactionCalldataGasUsed: '0',
           relayWorker: workerAddress,
           forwarder: forwarder.address,
@@ -688,8 +684,8 @@ contract('ContractInteractor', function (accounts) {
 
       await testRelayHub.setRelayManagerStaked(accounts[1], true)
       await testRelayHub.setRelayManagerStaked(accounts[2], true)
-      await relayReg.registerRelayServer(testRelayHub.address, 10, 11, splitRelayUrlForRegistrar('url1'), { from: accounts[1] })
-      await relayReg.registerRelayServer(testRelayHub.address, 20, 21, splitRelayUrlForRegistrar('url2'), { from: accounts[2] })
+      await relayReg.registerRelayServer(testRelayHub.address, splitRelayUrlForRegistrar('url1'), { from: accounts[1] })
+      await relayReg.registerRelayServer(testRelayHub.address, splitRelayUrlForRegistrar('url2'), { from: accounts[2] })
     })
 
     // it('should get matching numeric return value', async () => {

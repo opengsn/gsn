@@ -29,10 +29,7 @@ contract('StatisticsManager', function (accounts) {
     // create 3 relays
     await env.newServerInstance()
     const relayToUnregister = env.relayServer.managerAddress
-    await env.newServerInstance({
-      baseRelayFee: '77777777777', // 77.7 gwei
-      pctRelayFee: 66
-    })
+    await env.newServerInstance()
     await env.newServerInstance()
     let currentBlockNumber = await web3.eth.getBlockNumber()
     const block = await web3.eth.getBlock(currentBlockNumber)

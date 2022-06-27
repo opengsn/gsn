@@ -205,8 +205,6 @@ class GsnTestEnvironmentClass {
       relayHubAddress: deploymentResult.relayHubAddress,
       ownerAddress: from,
       gasPriceFactor: 1,
-      baseRelayFee: '0',
-      pctRelayFee: 0,
       checkInterval: 50,
       refreshStateTimeoutBlocks: 1,
       runPaymasterReputations: true,

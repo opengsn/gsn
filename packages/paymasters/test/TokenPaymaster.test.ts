@@ -90,8 +90,6 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
         relayWorker: relay,
         paymaster: paymaster.address,
         forwarder: forwarder.address,
-        pctRelayFee: '1',
-        baseRelayFee: '0',
         transactionCalldataGasUsed: '0',
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,

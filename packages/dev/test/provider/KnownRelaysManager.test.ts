@@ -3,7 +3,7 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
 
-import { KnownRelaysManager, DefaultRelayScore, DefaultRelayFilter } from '@opengsn/provider/dist/KnownRelaysManager'
+import { KnownRelaysManager, DefaultRelayFilter } from '@opengsn/provider/dist/KnownRelaysManager'
 import {
   ContractInteractor,
   LoggerInterface,
@@ -27,8 +27,6 @@ import { prepareTransaction } from './RelayProvider.test'
 
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 
-import { toBN } from 'web3-utils'
-
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -51,7 +49,7 @@ export async function stake (testToken: TestTokenInstance, stakeManager: StakeMa
 export async function register (relayHub: RelayHubInstance, manager: string, worker: string, url: string, baseRelayFee?: string, pctRelayFee?: string): Promise<void> {
   await relayHub.addRelayWorkers([worker], { from: manager })
   const relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
-  await relayRegistrar.registerRelayServer(relayHub.address, baseRelayFee ?? '0', pctRelayFee ?? '0', splitRelayUrlForRegistrar(url), { from: manager })
+  await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(url), { from: manager })
 }
 
 contract('KnownRelaysManager', function (
@@ -139,13 +137,13 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerPaymasterRejected], {
         from: activePaymasterRejected
       })
-      await relayRegistrar.registerRelayServer(relayHub.address, '0', '0', splitRelayUrlForRegistrar(''), { from: activeTransactionRelayed })
-      await relayRegistrar.registerRelayServer(relayHub.address, '0', '0', splitRelayUrlForRegistrar(''), { from: activePaymasterRejected })
-      await relayRegistrar.registerRelayServer(relayHub.address, '0', '0', splitRelayUrlForRegistrar(''), { from: activeRelayWorkersAdded })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: activeTransactionRelayed })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: activePaymasterRejected })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: activeRelayWorkersAdded })
 
       await evmMineMany(relayLookupWindowBlocks)
       /** events that are supposed to be visible to the manager */
-      await relayRegistrar.registerRelayServer(relayHub.address, '0', '0', splitRelayUrlForRegistrar(''), { from: activeRelayServerRegistered })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: activeRelayServerRegistered })
       await relayHub.addRelayWorkers([workerRelayWorkersAdded2], {
         from: activeRelayWorkersAdded
       })
@@ -179,17 +177,6 @@ contract('KnownRelaysManager', function (
 contract('KnownRelaysManager 2', function (accounts) {
   let contractInteractor: ContractInteractor
   let logger: LoggerInterface
-
-  const transactionDetails = {
-    gas: '0x10000000',
-    maxFeePerGas: '0x300000',
-    maxPriorityFeePerGas: '0x300000',
-    from: '',
-    data: '',
-    to: '',
-    forwarder: '',
-    paymaster: ''
-  }
 
   before(async function () {
     logger = createClientLogger({ logLevel: 'error' })
@@ -290,33 +277,9 @@ contract('KnownRelaysManager 2', function (accounts) {
       // @ts-ignore
       assert.equal(knownRelaysManagerWithFilter.relayFilter.toString(), DefaultRelayFilter.toString())
     })
-
-    describe('DefaultRelayFilter', function () {
-      it('should filter expensive relayers', function () {
-        const eventInfo = { relayUrl: 'url', relayManager: accounts[0] }
-        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '101', baseRelayFee: 1e16.toString() }))
-        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '99', baseRelayFee: 2e17.toString() }))
-        assert.isFalse(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '101', baseRelayFee: 2e17.toString() }))
-        assert.isTrue(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '100', baseRelayFee: 1e17.toString() }))
-        assert.isTrue(DefaultRelayFilter({ ...eventInfo, pctRelayFee: '50', baseRelayFee: '0' }))
-      })
-    })
   })
 
   describe('#getRelaysSortedForTransaction()', function () {
-    const relayInfoLowFee = {
-      relayManager: accounts[0],
-      relayUrl: 'lowFee',
-      baseRelayFee: '1000000',
-      pctRelayFee: '10'
-    }
-    const relayInfoHighFee = {
-      relayManager: accounts[0],
-      relayUrl: 'highFee',
-      baseRelayFee: '100000000',
-      pctRelayFee: '50'
-    }
-
     const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}))
 
     describe('#_refreshFailures()', function () {
@@ -345,70 +308,6 @@ contract('KnownRelaysManager 2', function (accounts) {
           relayUrl: 'url3'
         }])
       })
-    })
-
-    describe('DefaultRelayScore', function () {
-      const failure = {
-        lastErrorTime: 100,
-        relayManager: 'rm3',
-        relayUrl: 'url3'
-      }
-      it('should subtract penalty from a relay for each known failure', async function () {
-        const relayScoreNoFailures = await DefaultRelayScore(relayInfoHighFee, transactionDetails, [])
-        const relayScoreOneFailure = await DefaultRelayScore(relayInfoHighFee, transactionDetails, [failure])
-        const relayScoreTenFailures = await DefaultRelayScore(relayInfoHighFee, transactionDetails, Array(10).fill(failure))
-        const relayScoreLowFees = await DefaultRelayScore(relayInfoLowFee, transactionDetails, [])
-        assert.isTrue(relayScoreNoFailures.gt(relayScoreOneFailure))
-        assert.isTrue(relayScoreOneFailure.gt(relayScoreTenFailures))
-        assert.isTrue(relayScoreLowFees.gt(relayScoreNoFailures))
-      })
-      it('should use DefaultRelayScore to remove unsuitable relays when none was provided', async function () {
-        const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, logger, configureGSN({}))
-        // @ts-ignore
-        assert.equal(knownRelaysManagerWithFilter.scoreCalculator.toString(), DefaultRelayScore.toString())
-      })
-    })
-  })
-
-  describe('getRelaysSortedForTransaction', function () {
-    const biasedRelayScore = async function (relay: RelayRegisteredEventInfo): Promise<BN> {
-      if (relay.relayUrl === 'alex') {
-        return await Promise.resolve(toBN(1000))
-      } else {
-        return await Promise.resolve(toBN(100))
-      }
-    }
-    const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), undefined, biasedRelayScore)
-    before(function () {
-      const activeRelays: RelayRegisteredEventInfo[] = [{
-        relayManager: accounts[0],
-        relayUrl: 'alex',
-        baseRelayFee: '100000000',
-        pctRelayFee: '50'
-      }, {
-        relayManager: accounts[0],
-        relayUrl: 'joe',
-        baseRelayFee: '100',
-        pctRelayFee: '5'
-      }, {
-        relayManager: accounts[1],
-        relayUrl: 'joe',
-        baseRelayFee: '10',
-        pctRelayFee: '4'
-      }]
-      sinon.stub(knownRelaysManager, 'allRelayers').value(activeRelays)
-    })
-
-    it('should use provided score calculation method to sort the known relays', async function () {
-      const sortedRelays = (await knownRelaysManager.getRelaysSortedForTransaction(transactionDetails)) as RelayRegisteredEventInfo[][]
-      assert.equal(sortedRelays[1][0].relayUrl, 'alex')
-      // checking the relayers are sorted AND they cannot overshadow each other's url
-      assert.equal(sortedRelays[1][1].relayUrl, 'joe')
-      assert.equal(sortedRelays[1][1].baseRelayFee, '100')
-      assert.equal(sortedRelays[1][1].pctRelayFee, '5')
-      assert.equal(sortedRelays[1][2].relayUrl, 'joe')
-      assert.equal(sortedRelays[1][2].baseRelayFee, '10')
-      assert.equal(sortedRelays[1][2].pctRelayFee, '4')
     })
   })
 

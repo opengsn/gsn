@@ -227,22 +227,6 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  validateRelayFees (req: RelayTransactionRequest): void {
-    // if trusted paymaster, we trust it to handle fees
-    if (this._isTrustedPaymaster(req.relayRequest.relayData.paymaster)) {
-      return
-    }
-    // Check that the fee is acceptable
-    if (parseInt(req.relayRequest.relayData.pctRelayFee) < this.config.pctRelayFee) {
-      throw new Error(
-        `Unacceptable pctRelayFee: ${req.relayRequest.relayData.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
-    }
-    if (toBN(req.relayRequest.relayData.baseRelayFee).lt(toBN(this.config.baseRelayFee))) {
-      throw new Error(
-        `Unacceptable baseRelayFee: ${req.relayRequest.relayData.baseRelayFee} relayServer's baseRelayFee: ${this.config.baseRelayFee}`)
-    }
-  }
-
   async validateMaxNonce (relayMaxNonce: number): Promise<void> {
     // Check that max nonce is valid
     const nonce = await this.transactionManager.pollNonce(this.workerAddress)
@@ -405,7 +389,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
     const currentBlock = await this.contractInteractor.getBlock('latest')
     const currentBlockTimestamp = toNumber(currentBlock.timestamp)
     this.validateInput(req)
-    this.validateRelayFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
     if (this.config.runPaymasterReputations) {
       await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)

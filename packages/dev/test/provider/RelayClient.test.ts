@@ -147,7 +147,7 @@ contract('RelayClient', function (accounts) {
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
 
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayRegistrar.registerRelayServer(relayHub.address, 1, 1, splitRelayUrlForRegistrar(cheapRelayerUrl), { from: relayManager })
+    await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(cheapRelayerUrl), { from: relayManager })
   }
 
   before(async function () {
@@ -584,7 +584,7 @@ contract('RelayClient', function (accounts) {
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorkerAddress], { from: relayManager })
-      await relayRegistrar.registerRelayServer(relayHub.address, 2e16.toString(), '10', splitRelayUrlForRegistrar('url'), { from: relayManager })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('url'), { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
         ownerAddress: relayOwner,
@@ -599,9 +599,7 @@ contract('RelayClient', function (accounts) {
       relayInfo = {
         relayInfo: {
           relayManager,
-          relayUrl,
-          baseRelayFee: '0',
-          pctRelayFee: '0'
+          relayUrl
         },
         pingResponse
       }
@@ -725,7 +723,7 @@ contract('RelayClient', function (accounts) {
       }).init()
       const transactionValidator = new RelayedTransactionValidator(contractInteractor, logger, defaultGsnConfig)
 
-      const data = '0xd17da3e80000deadbeef' // relayCall method
+      const data = '0xb1a62e720000deadbeef' // relayCall method
       const wrongData = '0xdeadbeef' // relayCall method
       const txOptions = getRawTxOptions(1337, 0)
       // prepare transactions
@@ -918,26 +916,6 @@ contract('RelayClient', function (accounts) {
       const relayingResult = await relayClient.relayTransaction(options)
       assert.equal(relayingResult.pingErrors.size, 0)
       assert.exists(relayingResult.transaction)
-    })
-
-    it('should use preferred relay with specified fees if set', async () => {
-      relayClient = new RelayClient({
-        provider: underlyingProvider,
-        config: {
-          ...gsnConfig,
-          preferredRelays: ['http://localhost:8090'],
-          preferredRelaysRelayingFees: {
-            baseRelayFee: '777',
-            pctRelayFee: '888'
-          }
-        }
-      })
-      await relayClient.init()
-      const spy = sinon.spy(relayClient, '_prepareRelayHttpRequest')
-      await relayClient.relayTransaction(options)
-      const relayRequest = spy.getCall(0).args[0]
-      assert.equal(relayRequest.relayData.baseRelayFee, '777')
-      assert.equal(relayRequest.relayData.pctRelayFee, '888')
     })
 
     it('should not use blacklisted relays', async () => {

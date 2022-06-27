@@ -23,10 +23,10 @@ library RelayHubValidator {
         // dynamic member is 1 word offset to actual value, which is 1-word length and ceil(length/32) words for data
         // relayCall has 5 method params,
         // relayRequest: 2 members
-        // relayData 9 members
+        // relayData 8 members
         // ForwardRequest: 7 members
-        // total 22 32-byte words if all dynamic params are zero-length.
-        uint256 expectedMsgDataLen = 4 + 23 * 32 +
+        // total 21 32-byte words if all dynamic params are zero-length.
+        uint256 expectedMsgDataLen = 4 + 21 * 32 +
             dynamicParamSize(signature) +
             dynamicParamSize(approvalData) +
             dynamicParamSize(relayRequest.request.data) +

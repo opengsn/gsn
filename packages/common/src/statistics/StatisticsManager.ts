@@ -245,8 +245,6 @@ export class StatisticsManager {
     const managerBalance = await this.contractInteractor.getBalance(managerAddress)
     if (isRegistered) {
       const lastRegisteredUrl = relayRegisteredEvents[relayRegisteredEvents.length - 1].returnValues.relayUrl
-      const lastRegisteredBaseFee = relayRegisteredEvents[relayRegisteredEvents.length - 1].returnValues.baseRelayFee
-      const lastRegisteredPctFee = relayRegisteredEvents[relayRegisteredEvents.length - 1].returnValues.pctRelayFee
       const pingResult = await this.attemptPing(lastRegisteredUrl)
       const registeredWorkers: Address[] = await this.contractInteractor.getRegisteredWorkers(managerAddress)
       const workerBalances: ObjectMap<IntString> = {}
@@ -257,8 +255,6 @@ export class StatisticsManager {
         pingResult,
         workerBalances,
         lastRegisteredUrl,
-        lastRegisteredBaseFee,
-        lastRegisteredPctFee,
         registeredWorkers
       }
     }
