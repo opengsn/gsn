@@ -90,7 +90,7 @@ contract('RelaySelectionManager', function (accounts) {
       stubGetRelaysSorted = sinon.stub(knownRelaysManager, 'getRelaysShuffledForTransaction')
       stubGetRelaysSorted.returns(Promise.resolve([[eventInfo]]))
       relaySelectionManager = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
-      stubRaceToSuccess = sinon.stub(relaySelectionManager, '_raceToSuccess')
+      stubRaceToSuccess = sinon.stub(relaySelectionManager, '_waitForSuccess')
       stubGetNextSlice = sinon.stub(relaySelectionManager, '_getNextSlice')
       // unless this is stubbed, promises will not be handled and exception will be thrown somewhere
       // @ts-ignore
@@ -145,7 +145,7 @@ contract('RelaySelectionManager', function (accounts) {
         relaySelectionManager =
           await new RelaySelectionManager(
             transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
-        stubRaceToSuccess = sinon.stub(relaySelectionManager, '_raceToSuccess')
+        stubRaceToSuccess = sinon.stub(relaySelectionManager, '_waitForSuccess')
         stubGetNextSlice = sinon.stub(relaySelectionManager, '_getNextSlice')
 
         await knownRelaysManager.refresh()
@@ -234,11 +234,11 @@ contract('RelaySelectionManager', function (accounts) {
       assert.equal(returned1.length, 2)
       // Pretend all relays failed to ping
       let errors = new Map(returned1.map(info => [info.relayUrl, new Error('fake error')]))
-      rsm._handleRaceResults({ errors, results: [] })
+      rsm._handleWaitForSuccessResults({ errors, results: [] })
       const returned2 = await rsm._getNextSlice()
       assert.equal(returned2.length, 3)
       errors = new Map(returned2.map(info => [info.relayUrl, new Error('fake error')]))
-      rsm._handleRaceResults({ errors, results: [] })
+      rsm._handleWaitForSuccessResults({ errors, results: [] })
       const returned3 = await rsm._getNextSlice()
       assert.equal(returned3.length, 0)
     })
@@ -338,7 +338,7 @@ contract('RelaySelectionManager', function (accounts) {
         throw new Error('Non test relay pinged')
       })
       const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config)
-      const raceResults = await rsm._raceToSuccess(relays, relayHubAddress)
+      const raceResults = await rsm._waitForSuccess(relays, relayHubAddress)
       assert.equal(raceResults.winner?.relayInfo.relayUrl, 'fastRelay')
       assert.equal(raceResults.errors.size, 1)
       assert.equal(raceResults.errors.get('fastFailRelay')?.message, fastFailedMessage)
@@ -376,7 +376,7 @@ contract('RelaySelectionManager', function (accounts) {
       assert.equal(remainingRelays[0][0].relayUrl, winnerRelayUrl)
       assert.equal(remainingRelays[0][1].relayUrl, failureRelayUrl)
       assert.equal(remainingRelays[0][2].relayUrl, otherRelayUrl)
-      rsm._handleRaceResults(raceResults)
+      rsm._handleWaitForSuccessResults(raceResults)
       // @ts-ignore
       remainingRelays = rsm.remainingRelays
       assert.equal(remainingRelays?.length, 1)
