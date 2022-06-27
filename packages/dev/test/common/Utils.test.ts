@@ -259,7 +259,7 @@ contract('Utils', function (accounts) {
       const now = Date.now()
       await waitForSuccess(
         [Promise.reject(Error('err1')), after(50), after(20)],
-        [''],
+        ['', '', ''],
         2000)
 
       assert.closeTo(Date.now() - now, 50, 200, 'should not wait entire 2000 grace time if all are completed')

@@ -35,6 +35,7 @@ import {
   ObjectMap,
   PingResponse,
   RelayInfo,
+  RelayRegisteredEventInfo,
   RelayRequest,
   RelayTransactionRequest,
   Web3ProviderBaseInterface,
@@ -390,9 +391,9 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore
       const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
-      const mockRelays = [
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
-        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
+      const mockRelays: RelayRegisteredEventInfo[] = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1') },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2') }
       ]
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
@@ -400,9 +401,11 @@ contract('RelayClient', function (accounts) {
 
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
+      // we don't actually know which one will fail first
+      const error = (relayingErrors.get(localhost127One) ?? relayingErrors.get(localhostOne))!.message
+      assert.equal(error, 'client sig failure')
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
-      assert.equal(relayingErrors.get(localhost127One)!.message, 'client sig failure')
     })
 
     it('should continue scanning if returned relayer TX is malformed', async () => {
