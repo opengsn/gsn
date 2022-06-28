@@ -73,7 +73,7 @@
     "lerna-run-test-only-with-hardhat": "run-with-hardhat-node --port 8544 'yarn lerna-run-test-only'",
     "lerna-run-test-paymasters-only-with-hardhat": "run-with-hardhat-node --port 8544 'yarn lerna-run-test-paymasters-only'",
     "verdaccio-start": "yarn verdaccio-clean && yarn verdaccio-run",
-    "verdaccio-publish": "lerna publish --no-git-tag-version --no-push --registry http://localhost:4873",
+    "verdaccio-publish": "lerna publish --no-git-tag-version --no-push --no-git-reset --registry http://localhost:4873",
     "verdaccio-run": "verdaccio --config verdaccio/verdaccio.yaml",
     "verdaccio-clean": "rm -rf verdaccio/db",
     "create-all-deps": "jq '.dependencies,.devDependencies' packages/*/package.json |sort  -u > all.deps"

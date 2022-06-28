@@ -66,7 +66,10 @@ export function printSampleEnvironment (defaultDevAddress: string, chainId: numb
   }
   const sampleEnv = {
     relayHubConfiguration: {
-      devAddress: defaultDevAddress
+      devAddress: defaultDevAddress,
+      devFee: 10,
+      pctRelayFee: 50,
+      baseRelayFee: 0.001e18
     },
     deploymentConfiguration
   }
