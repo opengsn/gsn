@@ -461,14 +461,14 @@ export async function waitForSuccess<T> (
       promises[i]
         .then(result => {
           ret.results.push(result)
-          if (ret.results.length + ret.errors.size === promises.length) {
-            complete()
-          } else if (ret.results.length === 1) {
+          if (ret.results.length === 1) {
             setTimeout(complete, graceTime)
           }
         })
         .catch(err => {
           ret.errors.set(errorKeys[i], err)
+        })
+        .finally(() => {
           if (ret.results.length + ret.errors.size === promises.length) {
             complete()
           }

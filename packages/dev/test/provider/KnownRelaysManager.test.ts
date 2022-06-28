@@ -137,13 +137,13 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerPaymasterRejected], {
         from: activePaymasterRejected
       })
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: activeTransactionRelayed })
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: activePaymasterRejected })
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: activeRelayWorkersAdded })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('aaa'), { from: activeTransactionRelayed })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('bbb'), { from: activePaymasterRejected })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('ccc'), { from: activeRelayWorkersAdded })
 
       await evmMineMany(relayLookupWindowBlocks)
       /** events that are supposed to be visible to the manager */
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: activeRelayServerRegistered })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('ddd'), { from: activeRelayServerRegistered })
       await relayHub.addRelayWorkers([workerRelayWorkersAdded2], {
         from: activeRelayWorkersAdded
       })
@@ -171,6 +171,56 @@ contract('KnownRelaysManager', function (
         assert.equal(actual[2], activeRelayWorkersAdded)
         assert.equal(actual[3], activeRelayServerRegistered)
       })
+
+    describe('#getRelaysShuffledForTransaction()', function () {
+      it('should separate relays that have recent failures into a third class', async function () {
+        const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, Object.assign({}, config, { preferredRelays: ['http://localhost:8090'] }))
+        await knownRelaysManager.refresh()
+        assert.equal(knownRelaysManager.allRelayers.length, 4)
+        knownRelaysManager.saveRelayFailure(100, activeTransactionRelayed, 'aaa')
+        knownRelaysManager.saveRelayFailure(100, activePaymasterRejected, 'bbb')
+        knownRelaysManager.saveRelayFailure(100, activeRelayWorkersAdded, 'ccc')
+        const shuffled = await knownRelaysManager.getRelaysShuffledForTransaction()
+        assert.equal(shuffled[0].length, 1)
+        assert.equal(shuffled[0][0].relayUrl, 'http://localhost:8090', 'wrong preffered relay URL')
+        assert.equal(shuffled[1].length, 1)
+        assert.equal(shuffled[1][0].relayUrl, 'ddd', 'wrong good relay url')
+        assert.equal(shuffled[2].length, 3)
+        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'aaa'), 'wrong bad relay url')
+        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'bbb'), 'wrong bad relay url')
+        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'ccc'), 'wrong bad relay url')
+      })
+
+      describe('#_refreshFailures()', function () {
+        let knownRelaysManager: KnownRelaysManager
+        let lastErrorTime: number
+        before(function () {
+          knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}))
+          knownRelaysManager.saveRelayFailure(100, 'rm1', 'url1')
+          knownRelaysManager.saveRelayFailure(500, 'rm2', 'url2')
+          lastErrorTime = Date.now()
+          knownRelaysManager.saveRelayFailure(lastErrorTime, 'rm3', 'url3')
+        })
+
+        it('should remove the failures that occurred more than \'relayTimeoutGrace\' seconds ago', function () {
+          // @ts-ignore
+          knownRelaysManager.relayFailures.forEach(failures => {
+            assert.equal(failures.length, 1)
+          })
+          knownRelaysManager._refreshFailures()
+          // @ts-ignore
+          assert.equal(knownRelaysManager.relayFailures.get('url1').length, 0)
+          // @ts-ignore
+          assert.equal(knownRelaysManager.relayFailures.get('url2').length, 0)
+          // @ts-ignore
+          assert.deepEqual(knownRelaysManager.relayFailures.get('url3'), [{
+            lastErrorTime,
+            relayManager: 'rm3',
+            relayUrl: 'url3'
+          }])
+        })
+      })
+    })
   })
 })
 
@@ -276,38 +326,6 @@ contract('KnownRelaysManager 2', function (accounts) {
       const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, logger, config)
       // @ts-ignore
       assert.equal(knownRelaysManagerWithFilter.relayFilter.toString(), DefaultRelayFilter.toString())
-    })
-  })
-
-  describe('#getRelaysSortedForTransaction()', function () {
-    const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}))
-
-    describe('#_refreshFailures()', function () {
-      let lastErrorTime: number
-      before(function () {
-        knownRelaysManager.saveRelayFailure(100, 'rm1', 'url1')
-        knownRelaysManager.saveRelayFailure(500, 'rm2', 'url2')
-        lastErrorTime = Date.now()
-        knownRelaysManager.saveRelayFailure(lastErrorTime, 'rm3', 'url3')
-      })
-
-      it('should remove the failures that occurred more than \'relayTimeoutGrace\' seconds ago', function () {
-        // @ts-ignore
-        knownRelaysManager.relayFailures.forEach(failures => {
-          assert.equal(failures.length, 1)
-        })
-        knownRelaysManager._refreshFailures()
-        // @ts-ignore
-        assert.equal(knownRelaysManager.relayFailures.get('url1').length, 0)
-        // @ts-ignore
-        assert.equal(knownRelaysManager.relayFailures.get('url2').length, 0)
-        // @ts-ignore
-        assert.deepEqual(knownRelaysManager.relayFailures.get('url3'), [{
-          lastErrorTime,
-          relayManager: 'rm3',
-          relayUrl: 'url3'
-        }])
-      })
     })
   })
 

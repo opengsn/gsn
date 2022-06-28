@@ -81,11 +81,10 @@ export class KnownRelaysManager {
     const sortedRelays: RelayInfoUrl[][] = []
     // preferred relays are copied as-is, unsorted (we don't have any info about them anyway to sort)
     sortedRelays[0] = Array.from(this.preferredRelayers)
+    const hasFailure = (it: RelayRegisteredEventInfo): boolean => { return this.relayFailures.get(it.relayUrl) != null }
+    const relaysWithFailures = this.allRelayers.filter(hasFailure)
     const relaysWithoutFailures = this.allRelayers.filter(it => {
-      return this.relayFailures.get(it.relayUrl) != null
-    })
-    const relaysWithFailures = this.allRelayers.filter(it => {
-      return this.relayFailures.get(it.relayUrl) == null
+      return !hasFailure(it)
     })
     sortedRelays[1] = shuffle(relaysWithoutFailures)
     sortedRelays[2] = shuffle(relaysWithFailures)

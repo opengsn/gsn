@@ -1,7 +1,6 @@
 import chalk from 'chalk'
 import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
-import { Mutex } from 'async-mutex'
 import { toBN, toHex } from 'web3-utils'
 import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
 
@@ -98,8 +97,6 @@ export class RelayServer extends EventEmitter {
 
   environment: Environment
 
-  pingMutex = new Mutex()
-
   constructor (
     config: Partial<ServerConfigParams>,
     transactionManager: TransactionManager,
@@ -145,25 +142,20 @@ export class RelayServer extends EventEmitter {
   }
 
   async pingHandler (paymaster?: string): Promise<PingResponse> {
-    const releaseMutex = await this.pingMutex.acquire()
-    try {
-      if (this.config.runPaymasterReputations && paymaster != null) {
-        await this.validatePaymasterReputation(paymaster, this.lastScannedBlock)
-      }
-      return {
-        relayWorkerAddress: this.workerAddress,
-        relayManagerAddress: this.managerAddress,
-        relayHubAddress: this.relayHubContract?.address ?? '',
-        ownerAddress: this.config.ownerAddress,
-        minMaxPriorityFeePerGas: this.getMinMaxPriorityFeePerGas().toString(),
-        maxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
-        chainId: this.chainId.toString(),
-        networkId: this.networkId.toString(),
-        ready: this.isReady() ?? false,
-        version: gsnRuntimeVersion
-      }
-    } finally {
-      releaseMutex()
+    if (this.config.runPaymasterReputations && paymaster != null) {
+      await this.validatePaymasterReputation(paymaster, this.lastScannedBlock)
+    }
+    return {
+      relayWorkerAddress: this.workerAddress,
+      relayManagerAddress: this.managerAddress,
+      relayHubAddress: this.relayHubContract?.address ?? '',
+      ownerAddress: this.config.ownerAddress,
+      minMaxPriorityFeePerGas: this.getMinMaxPriorityFeePerGas().toString(),
+      maxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
+      chainId: this.chainId.toString(),
+      networkId: this.networkId.toString(),
+      ready: this.isReady() ?? false,
+      version: gsnRuntimeVersion
     }
   }
 
