@@ -342,7 +342,9 @@ contract('RelaySelectionManager', function (accounts) {
       })
       const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config)
       const raceResults = await rsm._waitForSuccess(relays, relayHubAddress)
-      assert.equal(raceResults.winner?.relayInfo.relayUrl, 'fastRelay')
+      // waitForSuccess will pick either the fast or a slow relay as a winner as long as they are close
+      const winnerUrl = raceResults.winner?.relayInfo.relayUrl
+      assert.true(winnerUrl === 'fastRelay' || winnerUrl === 'slowUrl')
       assert.equal(raceResults.errors.size, 1)
       assert.equal(raceResults.errors.get('fastFailRelay')?.message, fastFailedMessage)
     })
