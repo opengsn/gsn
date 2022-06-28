@@ -12,7 +12,7 @@
     "applyConfig": "hardhat run ./src/applyConfig.ts",
     "lint": "eslint -f unix .",
     "lint-fix": "yarn lint --fix",
-    "test": "hardhat test --network npmtest"
+    "test-only": "hardhat test --network npmtest"
   },
   "dependencies": {
     "@opengsn/common": "^3.0.0-alpha.4",
