@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/provider",
-  "version": "3.0.0-beta.0",
+  "version": "3.0.0-beta.1",
   "license": "Apache-2.0",
   "main": "dist/index.js",
   "scripts": {
@@ -22,7 +22,7 @@
     "@ethersproject/abstract-signer": "^5.6.2",
     "@ethersproject/experimental": "^5.6.3",
     "@ethersproject/providers": "^5.6.5",
-    "@opengsn/common": "^3.0.0-beta.0",
+    "@opengsn/common": "^3.0.0-beta.1",
     "@types/body-parser": "^1.19.0",
     "@types/chai": "^4.3.0",
     "@types/express-serve-static-core": "^4.17.18",
