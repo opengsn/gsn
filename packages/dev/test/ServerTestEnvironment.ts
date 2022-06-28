@@ -75,8 +75,6 @@ export interface PrepareRelayRequestOption {
   to: string
   from: string
   paymaster: string
-  pctRelayFee: number
-  baseRelayFee: string
 }
 
 export class ServerTestEnvironment {
@@ -263,8 +261,6 @@ export class ServerTestEnvironment {
       relayWorkerAddress: this.relayServer.workerAddress
     }
     const eventInfo: RelayRegisteredEventInfo = {
-      baseRelayFee: this.relayServer.config.baseRelayFee,
-      pctRelayFee: this.relayServer.config.pctRelayFee.toString(),
       relayManager: '',
       relayUrl: ''
     }

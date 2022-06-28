@@ -1,6 +1,5 @@
 import {
   AsyncDataCallback,
-  AsyncScoreCalculator,
   ContractInteractor,
   GSNConfig,
   HttpClient,
@@ -37,7 +36,6 @@ export const defaultGsnConfig: GSNConfig = {
   gasPriceOraclePath: '',
   minMaxPriorityFeePerGas: 1e9,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
-  sliceSize: 3,
   relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
   methodSuffix: '_v4',
   requiredVersionRange: gsnRequiredVersion,
@@ -52,7 +50,9 @@ export const defaultGsnConfig: GSNConfig = {
   maxPaymasterDataLength: 0,
   clientDefaultConfigUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
   useClientDefaultConfigUrl: true,
-  performDryRunViewRelayCall: true
+  performDryRunViewRelayCall: true,
+  waitForSuccessSliceSize: 3,
+  waitForSuccessPingGrace: 3000
 }
 
 export interface GSNDependencies {
@@ -66,5 +66,4 @@ export interface GSNDependencies {
   relayFilter: RelayFilter
   asyncApprovalData: AsyncDataCallback
   asyncPaymasterData: AsyncDataCallback
-  scoreCalculator: AsyncScoreCalculator
 }

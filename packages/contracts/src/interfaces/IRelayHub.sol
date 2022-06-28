@@ -39,6 +39,10 @@ interface IRelayHub is IERC165 {
         address devAddress;
         // 0 < fee < 100, as percentage of total charge from paymaster to relayer
         uint8 devFee;
+        // baseRelayFee The base fee the Relay Server charges for a single transaction in Ether, in wei.
+        uint80 baseRelayFee;
+        // pctRelayFee The percent of the total charge to add as a Relay Server fee to the total charge.
+        uint16 pctRelayFee;
     }
 
     /// @notice Emitted when a configuration of the `RelayHub` is changed

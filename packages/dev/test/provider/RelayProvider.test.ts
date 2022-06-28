@@ -77,8 +77,6 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
       validUntilTime: '0'
     },
     relayData: {
-      pctRelayFee: '1',
-      baseRelayFee: '1',
       transactionCalldataGasUsed: '0',
       maxFeePerGas: '4494095',
       maxPriorityFeePerGas: '4494095',

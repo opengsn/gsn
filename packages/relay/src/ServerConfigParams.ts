@@ -32,8 +32,6 @@ export enum LoggingProviderMode {
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
   ownerAddress: string
-  baseRelayFee: string
-  pctRelayFee: number
   url: string
   port: number
   relayHubAddress: string
@@ -131,8 +129,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   etherscanApiUrl: '',
   etherscanApiKey: '',
   loggerUserId: '',
-  baseRelayFee: '0',
-  pctRelayFee: 0,
   url: 'http://localhost:8090',
   ethereumNodeUrl: '',
   port: 8090,
@@ -157,8 +153,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
 const ConfigParamsTypes = {
   ownerAddress: 'string',
   config: 'string',
-  baseRelayFee: 'number',
-  pctRelayFee: 'number',
   url: 'string',
   port: 'number',
   relayHubAddress: 'string',

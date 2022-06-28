@@ -396,3 +396,83 @@ export function getERC165InterfaceID (abi: AbiItem[]): string {
   interfaceId = interfaceId > 0 ? interfaceId : 0xFFFFFFFF + interfaceId + 1
   return '0x' + interfaceId.toString(16).padStart(8, '0')
 }
+
+export function shuffle<T> (array: T[]): T[] {
+  let currentIndex = array.length
+  let randomIndex: number
+
+  // While there remain elements to shuffle.
+  while (currentIndex !== 0) {
+    // Pick a remaining element.
+    randomIndex = Math.floor(Math.random() * currentIndex)
+    currentIndex--;
+
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]]
+  }
+
+  return array
+}
+
+/**
+ * @param winner - the selected result if at least one promise had resolved successfully
+ * @param results - all successfully resolved results in the order that they resolved.
+ * @param errors - all rejection results
+ */
+export interface WaitForSuccessResults<T> {
+  winner?: T
+  results: T[]
+  errors: Map<string, Error>
+}
+
+/**
+ * Wait for an array of promises.
+ * After the first successful result, wait for "graceTime" period when the rest of the promises can still resolve.
+ * Select a "winner" at random one of those successfully resolved promises.
+ * @param promises - all promises we try to resolve
+ * @param errorKeys - keys used to map errors to promises
+ * @param graceTime - how long to wait after first successful result, in milliseconds
+ * @param random  - Math.random-equivalent function (use for testing)
+ * @returns - filled {@link WaitForSuccessResults} information
+ */
+export async function waitForSuccess<T> (
+  promises: Array<Promise<T>>,
+  errorKeys: string[],
+  graceTime: number,
+  random = Math.random): Promise<WaitForSuccessResults<T>> {
+  return await new Promise((resolve) => {
+    if (promises.length !== errorKeys.length) {
+      throw new Error('Invalid errorKeys length')
+    }
+    const ret: WaitForSuccessResults<T> = {
+      errors: new Map<string, Error>(),
+      results: []
+    }
+
+    function complete (): void {
+      if (ret.results.length !== 0) {
+        ret.winner = ret.results[Math.floor(random() * ret.results.length)]
+      }
+      resolve(ret)
+    }
+
+    for (let i = 0; i < promises.length; i++) {
+      promises[i]
+        .then(result => {
+          ret.results.push(result)
+          if (ret.results.length === 1) {
+            setTimeout(complete, graceTime)
+          }
+        })
+        .catch(err => {
+          ret.errors.set(errorKeys[i], err)
+        })
+        .finally(() => {
+          if (ret.results.length + ret.errors.size === promises.length) {
+            complete()
+          }
+        })
+    }
+  })
+}

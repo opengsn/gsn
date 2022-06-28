@@ -1,6 +1,13 @@
 import 'source-map-support/register'
 import { RelayProvider, GSNConfig } from '@opengsn/provider'
-import { decodeRevertReason, getEip712Signature, Address, RelayRequest, cloneRelayRequest, defaultEnvironment } from '@opengsn/common'
+import {
+  Address,
+  RelayRequest,
+  cloneRelayRequest,
+  decodeRevertReason,
+  defaultEnvironment,
+  getEip712Signature
+} from '@opengsn/common'
 
 import {
   TypedRequestData,
@@ -100,8 +107,6 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
   }
 
   const gasData = {
-    pctRelayFee: '0',
-    baseRelayFee: '0',
     maxFeePerGas: '1',
     maxPriorityFeePerGas: '1',
     gasLimit: 1e6.toString()
@@ -319,8 +324,9 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
       await paymaster.setRelayHub(testHub.address)
       const tx = await testHub.callPostRC(paymaster.address, context, gasUseWithoutPost, relayRequest.relayData)
       const gasUsedWithPost = gasUseWithoutPost + gasUsedByPost
+      const hubConfig = await testHub.getConfiguration()
       // Repeat on-chain calculation here for sanity
-      const actualEtherCharge = (100 + parseInt(relayRequest.relayData.pctRelayFee)) / 100 * gasUsedWithPost
+      const actualEtherCharge = (100 + parseInt(hubConfig.pctRelayFee.toString())) / 100 * gasUsedWithPost
       const actualTokenCharge = actualEtherCharge * tokensPerEther
       const refund = parseInt(preCharge) - actualTokenCharge
       await expectEvent.inTransaction(tx.tx, TestToken, 'Transfer', {

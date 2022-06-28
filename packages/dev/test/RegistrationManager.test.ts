@@ -117,8 +117,6 @@ contract('RegistrationManager', function (accounts) {
         relayHubAddress: env.relayHub.address,
         ownerAddress: env.relayOwner,
         url: LocalhostOne,
-        baseRelayFee: '0',
-        pctRelayFee: 0,
         gasPriceFactor: 1,
         runPaymasterReputations: false,
         checkInterval: 100
@@ -227,14 +225,14 @@ contract('RegistrationManager', function (accounts) {
 
       block.number = 1000000
 
-      relayServer.config.baseRelayFee = (parseInt(relayServer.config.baseRelayFee) + 1).toString()
+      relayServer.config.url = relayServer.config.url + '1'
       transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
       latestBlock = await env.web3.eth.getBlock('latest')
       await relayServer._worker(latestBlock)
 
-      relayServer.config.pctRelayFee++
+      relayServer.config.url = relayServer.config.url + '1'
       transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 

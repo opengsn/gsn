@@ -1033,9 +1033,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
-  async getRegisterRelayMethod (relayHub: Address, baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
+  async getRegisterRelayMethod (relayHub: Address, url: string): Promise<any> {
     const registrar = this.relayRegistrar
-    return registrar?.contract.methods.registerRelayServer(relayHub, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar(url))
+    return registrar?.contract.methods.registerRelayServer(relayHub, splitRelayUrlForRegistrar(url))
   }
 
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
@@ -1146,8 +1146,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     lastSeenTimestamp: BN
     firstSeenBlockNumber: BN
     firstSeenTimestamp: BN
-    baseRelayFee: BN
-    pctRelayFee: BN
     urlParts: string[]
     relayManager: string
   }> {
@@ -1171,8 +1169,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return relayInfos.map(info => {
       return {
         relayManager: info.relayManager,
-        pctRelayFee: info.pctRelayFee.toString(),
-        baseRelayFee: info.baseRelayFee.toString(),
         relayUrl: packRelayUrlForRegistrar(info.urlParts)
       }
     })

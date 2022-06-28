@@ -17,26 +17,18 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
   const splitUrl4 = splitRelayUrlForRegistrar('http://relay4')
   const relay1Info = {
     relayManager: relay1,
-    baseRelayFee: '111',
-    pctRelayFee: '1111',
     urlParts: splitUrl1
   }
   const relay2Info = {
     relayManager: relay2,
-    baseRelayFee: '222',
-    pctRelayFee: '2222',
     urlParts: splitUrl2
   }
   const relay3Info = {
     relayManager: relay3,
-    baseRelayFee: '333',
-    pctRelayFee: '3333',
     urlParts: splitUrl1
   }
   const relay4Info = {
     relayManager: relay4,
-    baseRelayFee: '444',
-    pctRelayFee: '4444',
     urlParts: splitUrl4
   }
 
@@ -76,15 +68,13 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
   context('#registerRelayServer()', function () {
     it('should fail to register if the Relay Manager does not get approved by the RelayHub', async function () {
       await relayHubOne.setRelayManagerStaked(relay1, false)
-      await expectRevert(relayRegistrar.registerRelayServer(relayHubOne.address, 1, 2, splitUrl1, { from: relay1 }), 'onRelayServerRegistered no stake')
+      await expectRevert(relayRegistrar.registerRelayServer(relayHubOne.address, splitUrl1, { from: relay1 }), 'onRelayServerRegistered no stake')
     })
 
     it('should store the relay details on-chain and emit an event', async function () {
-      const { tx } = await relayRegistrar.registerRelayServer(relayHubOne.address, 111, 1111, splitUrl1, { from: relay1 })
+      const { tx } = await relayRegistrar.registerRelayServer(relayHubOne.address, splitUrl1, { from: relay1 })
       await expectEvent.inTransaction(tx, RelayRegistrar, 'RelayServerRegistered', {
         relayManager: relay1,
-        baseRelayFee: '111',
-        pctRelayFee: '1111',
         relayUrl: splitUrl1
       })
       let info = await relayRegistrar.getRelayInfo(relayHubOne.address, relay1)
@@ -96,16 +86,16 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
     context('with multiple re-registrations by a single relay', function () {
       before(async function () {
         await expectRevert(relayRegistrar.getRelayInfo(relayHubOne.address, relay1), 'relayManager not found')
-        const { receipt } = await relayRegistrar.registerRelayServer(relayHubOne.address, 210, 220, splitUrl1, { from: relay1 })
+        const { receipt } = await relayRegistrar.registerRelayServer(relayHubOne.address, splitUrl1, { from: relay1 })
         const block = await web3.eth.getBlock(receipt.blockNumber)
         firstSeenTimestamp = block.timestamp
         firstSeenBlockNumber = await web3.eth.getBlockNumber()
         await evmMineMany(2)
-        await relayRegistrar.registerRelayServer(relayHubOne.address, 21, 22, splitUrl2, { from: relay1 })
+        await relayRegistrar.registerRelayServer(relayHubOne.address, splitUrl2, { from: relay1 })
         await evmMineMany(2)
         lastSeenTimestamp = toNumber(firstSeenTimestamp) + 7000
         await setNextBlockTimestamp(lastSeenTimestamp)
-        await relayRegistrar.registerRelayServer(relayHubOne.address, 121, 122, splitUrl2, { from: relay1 })
+        await relayRegistrar.registerRelayServer(relayHubOne.address, splitUrl2, { from: relay1 })
         lastSeenBlockNumber = await web3.eth.getBlockNumber()
       })
 
@@ -127,16 +117,16 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
         await relayHubOne.setRelayManagerStaked(relay2, true)
         await relayHubTwo.setRelayManagerStaked(relay3, true)
         await relayHubOne.setRelayManagerStaked(relay4, true)
-        await relayRegistrar.registerRelayServer(relayHubOne.address, 111, 1111, splitUrl1, { from: relay1 })
-        await relayRegistrar.registerRelayServer(relayHubTwo.address, 111, 1111, splitUrl1, { from: relay1 })
-        await relayRegistrar.registerRelayServer(relayHubOne.address, 222, 2222, splitUrl2, { from: relay2 })
+        await relayRegistrar.registerRelayServer(relayHubOne.address, splitUrl1, { from: relay1 })
+        await relayRegistrar.registerRelayServer(relayHubTwo.address, splitUrl1, { from: relay1 })
+        await relayRegistrar.registerRelayServer(relayHubOne.address, splitUrl2, { from: relay2 })
         await evmMine()
         oldestBlockNumber = await web3.eth.getBlockNumber()
         const block = await web3.eth.getBlock(oldestBlockNumber)
         oldestBlockTimestamp = toNumber(block.timestamp) + 7000
         await setNextBlockTimestamp(oldestBlockTimestamp)
-        await relayRegistrar.registerRelayServer(relayHubTwo.address, 333, 3333, splitUrl1, { from: relay3 })
-        await relayRegistrar.registerRelayServer(relayHubOne.address, 444, 4444, splitUrl4, { from: relay4 })
+        await relayRegistrar.registerRelayServer(relayHubTwo.address, splitUrl1, { from: relay3 })
+        await relayRegistrar.registerRelayServer(relayHubOne.address, splitUrl4, { from: relay4 })
         id = (await snapshot()).result
       })
 
@@ -180,7 +170,7 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
 
   context('#getRelayInfo()', function () {
     before(async function () {
-      await relayRegistrar.registerRelayServer(relayHubOne.address, 111, 222, splitUrl1, { from: relay1 })
+      await relayRegistrar.registerRelayServer(relayHubOne.address, splitUrl1, { from: relay1 })
       id = (await snapshot()).result
     })
 
@@ -190,8 +180,6 @@ contract('RelayRegistrar', function ([_, relay1, relay2, relay3, relay4]) {
 
     it('should return all the registration details', async () => {
       const info = await relayRegistrar.getRelayInfo(relayHubOne.address, relay1)
-      expect(info.baseRelayFee).to.eql(111)
-      expect(info.pctRelayFee).to.eql(222)
       expect(info.urlParts).to.eql(splitUrl1)
       expect(info.relayManager).to.eql(relay1)
     })

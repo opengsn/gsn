@@ -62,7 +62,7 @@ contract VerifyingPaymaster is Ownable, BasePaymaster {
     }
 
     function packRelayData(GsnTypes.RelayData calldata d) public pure returns (bytes memory) {
-        return abi.encode(d.maxFeePerGas, d.maxPriorityFeePerGas, d.pctRelayFee, d.baseRelayFee, d.relayWorker, d.paymaster, d.paymasterData, d.clientId);
+        return abi.encode(d.maxFeePerGas, d.maxPriorityFeePerGas, d.relayWorker, d.paymaster, d.paymasterData, d.clientId);
     }
 
     function _postRelayedCall(

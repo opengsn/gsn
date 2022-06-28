@@ -114,10 +114,10 @@ context('#ServerConfigParams', () => {
     })
 
     it('should read param from file if no commandline or env', function () {
-      fs.writeFileSync(tmpConfigfile, '{"pctRelayFee":123, "baseRelayFee":234, "port":345}')
+      fs.writeFileSync(tmpConfigfile, '{"checkInterval":123, "alertedDelaySeconds":234, "port":345}')
       assert.deepEqual(
-        parseServerConfig(['--config', tmpConfigfile, '--port', '111'], { baseRelayFee: 222 }),
-        { baseRelayFee: 222, config: tmpConfigfile, pctRelayFee: 123, port: 111 })
+        parseServerConfig(['--config', tmpConfigfile, '--port', '111'], { alertedDelaySeconds: 222 }),
+        { alertedDelaySeconds: 222, config: tmpConfigfile, checkInterval: 123, port: 111 })
     })
 
     it('should parse numeric params', async function () {

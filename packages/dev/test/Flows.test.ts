@@ -82,7 +82,6 @@ options.forEach(params => {
           stake,
           stakeTokenAddress: testToken.address,
           delay: 3600 * 24 * 7,
-          pctRelayFee: 12,
           url: 'asd',
           relayOwner: accounts[0],
           // @ts-ignore

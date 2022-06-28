@@ -90,8 +90,6 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
         relayWorker: relay,
         paymaster: paymaster.address,
         forwarder: forwarder.address,
-        pctRelayFee: '1',
-        baseRelayFee: '0',
         transactionCalldataGasUsed: '0',
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
@@ -226,8 +224,6 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       _relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       _relayRequest.relayData.maxFeePerGas = 1e9.toString()
       _relayRequest.relayData.maxPriorityFeePerGas = 1e9.toString()
-      _relayRequest.relayData.pctRelayFee = '0'
-      _relayRequest.relayData.baseRelayFee = '0'
       _relayRequest.relayData.paymasterData = web3.eth.abi.encodeParameter('address', uniswap.address)
 
       // note that by default, ganache is buggy: getChainId returns 1337 but on-chain "chainid" returns 1.

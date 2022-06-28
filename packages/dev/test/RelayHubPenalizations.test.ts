@@ -149,8 +149,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               validUntilTime: '0'
             },
             relayData: {
-              baseRelayFee: encodedCallArgs.baseFee.toString(),
-              pctRelayFee: encodedCallArgs.fee.toString(),
               maxFeePerGas: encodedCallArgs.maxFeePerGas.toString(),
               maxPriorityFeePerGas: encodedCallArgs.maxPriorityFeePerGas.toString(),
               transactionCalldataGasUsed: '0',
@@ -599,8 +597,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
 
         it('does not penalize legal relay transactions', async function () {
           // relayCall is a legal transaction
-          const baseFee = new BN('300')
-          const fee = new BN('10')
           const gasPrice = new BN(1e9)
           const maxFeePerGas = new BN(1e9)
           const maxPriorityFeePerGas = new BN(1e9)
@@ -620,8 +616,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             relayData: {
               maxFeePerGas: maxFeePerGas.toString(),
               maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
-              baseRelayFee: baseFee.toString(),
-              pctRelayFee: fee.toString(),
               transactionCalldataGasUsed: '0',
               relayWorker,
               forwarder,
@@ -734,8 +728,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             validUntilTime: '0'
           },
           relayData: {
-            baseRelayFee: encodedCallArgs.baseFee.toString(),
-            pctRelayFee: encodedCallArgs.fee.toString(),
             maxFeePerGas: encodedCallArgs.maxFeePerGas.toString(),
             maxPriorityFeePerGas: encodedCallArgs.maxPriorityFeePerGas.toString(),
             transactionCalldataGasUsed: '0',

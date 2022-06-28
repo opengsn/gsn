@@ -90,7 +90,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
       })
       await stakeManager.authorizeHubByOwner(relayManager, arbRelayHub.address, { from: relayOwner })
       await arbRelayHub.addRelayWorkers([relayWorker], { from: relayManager })
-      await relayRegistrar.registerRelayServer(arbRelayHub.address, '0', '0', splitRelayUrlForRegistrar(''), { from: relayManager })
+      await relayRegistrar.registerRelayServer(arbRelayHub.address, splitRelayUrlForRegistrar(''), { from: relayManager })
 
       relayRequest = {
         request: {
@@ -103,8 +103,6 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
           validUntilTime: '0'
         },
         relayData: {
-          pctRelayFee: '0',
-          baseRelayFee: '0',
           transactionCalldataGasUsed,
           maxFeePerGas: 1e8.toString(),
           maxPriorityFeePerGas: 1e8.toString(),
@@ -138,7 +136,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
       })
 
       // just an observed value
-      const expectedGasUsed = 24000000
+      const expectedGasUsed = 25000000
 
       const transactionRelayedEvent = res.logs[0].args as TransactionRelayed['args']
       const charge = transactionRelayedEvent.charge.div(new BN('100000000'))

@@ -28,8 +28,6 @@ export interface RelayInfoUrl {
 
 export interface RelayRegisteredEventInfo extends RelayInfoUrl, GNSContractsEvent {
   relayManager: Address
-  baseRelayFee: IntString
-  pctRelayFee: IntString
 }
 
 export interface TransactionRelayedEventInfo extends GNSContractsEvent {
@@ -61,7 +59,7 @@ export interface DepositedEventInfo extends GNSContractsEvent {
 }
 
 export function isInfoFromEvent (info: RelayInfoUrl): boolean {
-  return 'relayManager' in info && 'baseRelayFee' in info && 'pctRelayFee' in info
+  return 'relayManager' in info
 }
 
 /** IStakeManager.sol */

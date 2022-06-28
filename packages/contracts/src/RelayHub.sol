@@ -297,8 +297,6 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
         console.log("relayCall relayRequest.relayData.maxFeePerGas", relayRequest.relayData.maxFeePerGas);
         console.log("relayCall relayRequest.relayData.maxPriorityFeePerGas", relayRequest.relayData.maxPriorityFeePerGas);
-        console.log("relayCall relayRequest.relayData.pctRelayFee", relayRequest.relayData.pctRelayFee);
-        console.log("relayCall relayRequest.relayData.baseRelayFee", relayRequest.relayData.baseRelayFee);
         console.log("relayCall relayRequest.relayData.transactionCalldataGasUsed", relayRequest.relayData.transactionCalldataGasUsed);
         console.log("relayCall relayRequest.relayData.relayWorker", relayRequest.relayData.relayWorker);
         console.log("relayCall relayRequest.relayData.paymaster", relayRequest.relayData.paymaster);
@@ -561,7 +559,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
             basefee = block.basefee;
         }
         uint256 chargeableGasPrice = Math.min(relayData.maxFeePerGas, Math.min(tx.gasprice, basefee + relayData.maxPriorityFeePerGas));
-        return relayData.baseRelayFee + (gasUsed * chargeableGasPrice * (relayData.pctRelayFee + 100)) / 100;
+        return config.baseRelayFee + (gasUsed * chargeableGasPrice * (config.pctRelayFee + 100)) / 100;
     }
 
     /// @inheritdoc IRelayHub

@@ -32,8 +32,6 @@ export const RelayTransactionRequestShape = {
     relayData: {
       maxPriorityFeePerGas: ow.string,
       maxFeePerGas: ow.string,
-      pctRelayFee: ow.string,
-      baseRelayFee: ow.string,
       transactionCalldataGasUsed: ow.string,
       relayWorker: ow.string,
       paymaster: ow.string,

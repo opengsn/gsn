@@ -5,7 +5,5 @@ import { Address, isSameAddress, packRelayUrlForRegistrar } from '@opengsn/commo
 export function isRegistrationValid (registerEvent: EventData | undefined, config: ServerConfigParams, managerAddress: Address): boolean {
   return registerEvent != null &&
     isSameAddress(registerEvent.returnValues.relayManager, managerAddress) &&
-    registerEvent.returnValues.baseRelayFee.toString() === config.baseRelayFee.toString() &&
-    registerEvent.returnValues.pctRelayFee.toString() === config.pctRelayFee.toString() &&
     packRelayUrlForRegistrar(registerEvent.returnValues.relayUrl) === config.url
 }

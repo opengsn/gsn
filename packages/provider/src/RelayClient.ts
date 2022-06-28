@@ -31,7 +31,7 @@ import {
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'
-import { DefaultRelayFilter, DefaultRelayScore, KnownRelaysManager } from './KnownRelaysManager'
+import { DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
 import { isTransactionValid, RelayedTransactionValidator } from './RelayedTransactionValidator'
 import { createClientLogger } from './ClientWinstonLogger'
@@ -415,8 +415,6 @@ export class RelayClient {
       relayData: {
         // temp values. filled in by 'fillRelayInfo'
         relayWorker: '',
-        pctRelayFee: '',
-        baseRelayFee: '',
         transactionCalldataGasUsed: '', // temp value. filled in by estimateCalldataCostAbi, below.
         paymasterData: '', // temp value. filled in by asyncPaymasterData, below.
         maxFeePerGas,
@@ -434,16 +432,6 @@ export class RelayClient {
 
   fillRelayInfo (relayRequest: RelayRequest, relayInfo: RelayInfo): void {
     relayRequest.relayData.relayWorker = relayInfo.pingResponse.relayWorkerAddress
-    relayRequest.relayData.pctRelayFee = relayInfo.relayInfo.pctRelayFee
-    relayRequest.relayData.baseRelayFee = relayInfo.relayInfo.baseRelayFee
-    if (
-      this.dependencies.knownRelaysManager.isPreferred(relayInfo.relayInfo.relayUrl) &&
-      this.config.preferredRelaysRelayingFees != null
-    ) {
-      relayRequest.relayData.pctRelayFee = this.config.preferredRelaysRelayingFees.pctRelayFee
-      relayRequest.relayData.baseRelayFee = this.config.preferredRelaysRelayingFees.baseRelayFee
-    }
-
     // cannot estimate before relay info is filled in
     relayRequest.relayData.transactionCalldataGasUsed =
       this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
@@ -583,7 +571,6 @@ export class RelayClient {
     const relayFilter = overrideDependencies?.relayFilter ?? DefaultRelayFilter
     const asyncApprovalData = overrideDependencies?.asyncApprovalData ?? EmptyDataCallback
     const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
-    const scoreCalculator = overrideDependencies?.scoreCalculator ?? DefaultRelayScore
     const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
     const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, this.logger, this.config)
 
@@ -597,8 +584,7 @@ export class RelayClient {
       pingFilter,
       relayFilter,
       asyncApprovalData,
-      asyncPaymasterData,
-      scoreCalculator
+      asyncPaymasterData
     }
   }
 
@@ -607,9 +593,7 @@ export class RelayClient {
     const dryRunRelayInfo: RelayInfo = {
       relayInfo: {
         relayManager: '',
-        relayUrl: '',
-        pctRelayFee: '0',
-        baseRelayFee: '0'
+        relayUrl: ''
       },
       pingResponse: {
         relayWorkerAddress: constants.DRY_RUN_ADDRESS,
