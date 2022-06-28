@@ -344,7 +344,7 @@ contract('RelaySelectionManager', function (accounts) {
       const raceResults = await rsm._waitForSuccess(relays, relayHubAddress)
       // waitForSuccess will pick either the fast or a slow relay as a winner as long as they are close
       const winnerUrl = raceResults.winner?.relayInfo.relayUrl
-      assert.true(winnerUrl === 'fastRelay' || winnerUrl === 'slowUrl')
+      assert.isTrue(winnerUrl === 'fastRelay' || winnerUrl === 'slowUrl')
       assert.equal(raceResults.errors.size, 1)
       assert.equal(raceResults.errors.get('fastFailRelay')?.message, fastFailedMessage)
     })
