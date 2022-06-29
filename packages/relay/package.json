@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/relay",
-  "version": "3.0.0-alpha.6",
+  "version": "3.0.0-beta.1",
   "license": "GPL-3.0-only",
   "main": "dist/runServer.js",
   "files": [
@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@ethereumjs/tx": "^3.2.0",
-    "@opengsn/common": "^3.0.0-alpha.6",
+    "@opengsn/common": "^3.0.0-beta.1",
     "@types/cors": "^2.8.7",
     "@types/express": "^4.17.8",
     "@types/minimist": "^1.2.0",

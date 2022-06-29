@@ -20,7 +20,7 @@ import "./interfaces/IStakeManager.sol";
 contract StakeManager is IStakeManager, Ownable, ERC165 {
     using SafeERC20 for IERC20;
 
-    string public override versionSM = "3.0.0-alpha.5+opengsn.stakemanager.istakemanager";
+    string public override versionSM = "3.0.0-beta.0+opengsn.stakemanager.istakemanager";
     uint256 internal immutable maxUnstakeDelay;
 
     AbandonedRelayServerConfig internal abandonedRelayServerConfig;

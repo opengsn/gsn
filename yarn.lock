@@ -1531,6 +1531,7 @@
     fastq "^1.6.0"
 
 "@nomiclabs/hardhat-ethers@npm:hardhat-deploy-ethers", hardhat-deploy-ethers@0.3.0-beta.13:
+  name "@nomiclabs/hardhat-ethers"
   version "0.3.0-beta.13"
   resolved "https://registry.yarnpkg.com/hardhat-deploy-ethers/-/hardhat-deploy-ethers-0.3.0-beta.13.tgz#b96086ff768ddf69928984d5eb0a8d78cfca9366"
   integrity sha512-PdWVcKB9coqWV1L7JTpfXRCI91Cgwsm7KLmBcwZ8f0COSm1xtABHZTyz3fvF6p42cTnz1VM0QnfDvMFlIRkSNw==
@@ -15323,9 +15324,9 @@ web3-provider-engine@14.1.0:
     xhr "^2.2.0"
     xtend "^4.0.1"
 
-"web3-provider-engine@git+https://github.com/trufflesuite/provider-engine.git#web3-one":
+"web3-provider-engine@https://github.com/trufflesuite/provider-engine#web3-one":
   version "14.0.6"
-  resolved "git+https://github.com/trufflesuite/provider-engine.git#9694f5b4e5500651bd2ff689df8529bb5cf6b96f"
+  resolved "https://github.com/trufflesuite/provider-engine#9694f5b4e5500651bd2ff689df8529bb5cf6b96f"
   dependencies:
     async "^2.5.0"
     backoff "^2.5.0"

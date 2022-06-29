@@ -15,7 +15,7 @@ contract ArbRelayHub is RelayHub {
 
     /// @inheritdoc IRelayHub
     function versionHub() override public pure returns (string memory){
-        return "3.0.0-alpha.5+opengsn.arbhub.irelayhub";
+        return "3.0.0-beta.0+opengsn.arbhub.irelayhub";
     }
 
     ArbSys public immutable arbsys;

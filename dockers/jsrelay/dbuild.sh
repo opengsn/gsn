@@ -1,7 +1,7 @@
 #!/bin/bash -e
 cd `cd \`dirname $0\`;pwd`
 
-test -z "$VERSION" && VERSION=`perl -ne "print \\$1 if /gsnRuntimeVersion.*=.*'(.*?)'/" ../../packages//common/src/Version.ts`
+test -z "$VERSION" && VERSION=`node -e "console.log(require('../../packages/common/dist/Version.js').gsnRuntimeVersion)"`
 echo version=$VERSION
 
 IMAGE=opengsn/jsrelay
@@ -9,7 +9,7 @@ IMAGE=opengsn/jsrelay
 #build docker image of relay
 #rebuild if there is a newer src file:
 find ./dbuild.sh ../../packages/*/src/ -type f -newer dist/relayserver.js 2>&1 | grep . && {
-	yarn preprocess
+#	yarn preprocess
 	npx webpack
 }
 
