@@ -517,7 +517,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.managerAddress,
       this.workerAddress
     )
-    await this.registrationManager.init(this.lastScannedBlock)
+    await this.registrationManager.init()
 
     this.chainId = this.contractInteractor.chainId
     this.networkId = this.contractInteractor.getNetworkId()
@@ -676,7 +676,6 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   async _handleChanges (currentBlock: BlockTransactionString, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
     let transactionHashes: PrefixedHexString[] = []
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
-    await this.registrationManager.updateLatestRegistrationTxs(hubEventsSinceLastScan)
     const shouldRegisterAgain =
       await this._shouldRegisterAgain(currentBlock.number, currentBlockTimestamp)
     transactionHashes = transactionHashes.concat(
