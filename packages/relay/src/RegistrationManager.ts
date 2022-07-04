@@ -559,7 +559,8 @@ Hub authorized | ${boolString(this.isHubAuthorized)}
 Stake locked   | ${boolString(this.isStakeLocked)}
 Manager        | ${this.managerAddress}
 Worker         | ${this.workerAddress}
-Owner          | ${this.ownerAddress ?? chalk.red('unknown')}
+Stake Owner    | ${this.ownerAddress ?? chalk.red('not set')}
+Config Owner   | ${this.config.ownerAddress}
 `
     this.logger.info(message)
   }
