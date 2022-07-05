@@ -8,7 +8,7 @@ import {
   ContractInteractor,
   LoggerInterface,
   RelayInfoUrl,
-  RelayRegisteredEventInfo,
+  RegistrarRelayInfo,
   constants,
   defaultEnvironment,
   registerForwarderForGsn,
@@ -310,8 +310,8 @@ contract('KnownRelaysManager 2', function (accounts) {
     })
 
     it('should use \'relayFilter\' to remove unsuitable relays', async function () {
-      const relayFilter = (registeredEventInfo: RelayRegisteredEventInfo): boolean => {
-        return registeredEventInfo.relayUrl.includes('2')
+      const relayFilter = (registrarRelayInfo: RegistrarRelayInfo): boolean => {
+        return registrarRelayInfo.relayUrl.includes('2')
       }
       const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, logger, config, relayFilter)
       await knownRelaysManagerWithFilter.refresh()

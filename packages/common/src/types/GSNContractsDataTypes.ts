@@ -27,6 +27,7 @@ export interface RelayInfoUrl {
 }
 
 export interface RelayRegisteredEventInfo extends RelayInfoUrl, GNSContractsEvent {
+  relayHub: Address
   relayManager: Address
 }
 

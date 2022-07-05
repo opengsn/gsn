@@ -7,12 +7,12 @@ import { toBN, toHex } from 'web3-utils'
 import {
   Address,
   AmountRequired,
-  defaultEnvironment,
-  LoggerInterface,
   ContractInteractor,
+  LoggerInterface,
+  RegistrarRelayInfo,
   constants,
-  toNumber,
-  packRelayUrlForRegistrar
+  defaultEnvironment,
+  toNumber
 } from '@opengsn/common'
 
 import {
@@ -62,6 +62,7 @@ export class RegistrationManager {
   txStoreManager: TxStoreManager
   logger: LoggerInterface
 
+  currentRelayInfo?: RegistrarRelayInfo
   private delayedEvents: Array<{ time: number, eventData: EventData }> = []
 
   get isHubAuthorized (): boolean {
@@ -201,7 +202,8 @@ export class RegistrationManager {
           break
       }
     }
-    const isRegistrationCorrect = await this._isRegistrationCorrect()
+    await this.refreshRegistrarRelayInfo()
+    const isRegistrationCorrect = this._isRegistrationCorrect()
     const isRegistrationPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlock.number, this.config.recentActionAvoidRepeatDistanceBlocks)
     if (!(isRegistrationPending || isRegistrationCorrect) || forceRegistration) {
       this.logger.debug(`will attempt registration: isRegistrationPending=${isRegistrationPending} isRegistrationCorrect=${isRegistrationCorrect} forceRegistration=${forceRegistration}`)
@@ -217,14 +219,17 @@ export class RegistrationManager {
     return ret
   }
 
-  async _isRegistrationCorrect (): Promise<boolean> {
+  async refreshRegistrarRelayInfo (): Promise<void> {
     try {
-      const relayInfo = await this.contractInteractor.getRelayInfo(this.managerAddress)
-      return packRelayUrlForRegistrar(relayInfo.urlParts) === this.config.url
+      this.currentRelayInfo = await this.contractInteractor.getRelayInfo(this.managerAddress)
     } catch (error: any) {
       this.logger.info(error)
-      return false
+      this.currentRelayInfo = undefined
     }
+  }
+
+  _isRegistrationCorrect (): boolean {
+    return this.currentRelayInfo != null && this.currentRelayInfo.relayUrl === this.config.url
   }
 
   _parseEvent (event: { events: any[], name: string, address: string } | null): any {
@@ -512,9 +517,9 @@ export class RegistrationManager {
     if (this.balanceRequired == null || this.stakeRequired == null) {
       throw new Error('not initialized')
     }
-    // if (this._isRegistrationCorrect()) {
-    //   return
-    // }
+    if (this._isRegistrationCorrect()) {
+      return
+    }
     const message = `\nNot registered yet. Prerequisites:
 ${this.balanceRequired.description}
 ${this.stakeRequired.description}
