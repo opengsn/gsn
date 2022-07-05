@@ -218,8 +218,13 @@ export class RegistrationManager {
   }
 
   async _isRegistrationCorrect (): Promise<boolean> {
-    const relayInfo = await this.contractInteractor.getRelayInfo(this.managerAddress)
-    return packRelayUrlForRegistrar(relayInfo.urlParts) === this.config.url
+    try {
+      const relayInfo = await this.contractInteractor.getRelayInfo(this.managerAddress)
+      return packRelayUrlForRegistrar(relayInfo.urlParts) === this.config.url
+    } catch (error: any) {
+      this.logger.info(error)
+      return false
+    }
   }
 
   _parseEvent (event: { events: any[], name: string, address: string } | null): any {
