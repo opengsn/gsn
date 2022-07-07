@@ -5,7 +5,7 @@ import { ContractInteractor, HttpClient, HttpWrapper, GSNContractsDeployment, de
 
 import { getNetworkUrl, getRelayHubAddress, gsnCommander, networksBlockExplorers } from '../utils'
 import { StatisticsManager } from '@opengsn/common/dist/statistics/StatisticsManager'
-import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '@opengsn/logger/src/CommandsWinstonLogger'
 import { CommandLineStatisticsPresenter } from '../CommandLineStatisticsPresenter'
 import {
   CommandLineStatisticsPresenterConfig,

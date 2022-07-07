@@ -2,7 +2,7 @@ import fs from 'fs'
 
 import { ServerAction, StoredTransaction } from '@opengsn/relay/dist/StoredTransaction'
 import { TXSTORE_FILENAME, TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/src/ServerWinstonLogger'
 import { toHex } from 'web3-utils'
 import { Logger } from 'winston'
 import sinon from 'sinon'

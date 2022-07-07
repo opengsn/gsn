@@ -23,7 +23,7 @@ import { DefaultRelayFilter, KnownRelaysManager } from '@opengsn/provider/dist/K
 import { GasPricePingFilter } from '@opengsn/provider/dist/RelayClient'
 
 import { configureGSN, deployHub } from '../TestUtils'
-import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/logger/src/ClientWinstonLogger'
 import { register, stake } from './KnownRelaysManager.test'
 
 import { ether } from '@openzeppelin/test-helpers'

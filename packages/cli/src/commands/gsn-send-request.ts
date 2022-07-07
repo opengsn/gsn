@@ -14,7 +14,7 @@ import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput, RelayProvide
 
 import { getMnemonic, getNetworkUrl, gsnCommander } from '../utils'
 import { CommandsLogic } from '../CommandsLogic'
-import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '@opengsn/logger/src/CommandsWinstonLogger'
 import { PrefixedHexString } from 'ethereumjs-util'
 
 function commaSeparatedList (value: string, _dummyPrevious: string[]): string[] {

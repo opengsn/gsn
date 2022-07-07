@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.packages.json",
+  "include": [
+    "src/**/*.ts",
+    "../contracts/types/truffle-contracts/index.d.ts",
+    "../contracts/types/truffle-contracts/types.d.ts"
+  ],
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  }
+}

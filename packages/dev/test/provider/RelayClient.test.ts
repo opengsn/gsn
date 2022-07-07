@@ -63,7 +63,7 @@ import { GsnEvent } from '@opengsn/provider/dist/GsnEvents'
 import bodyParser from 'body-parser'
 import { Server } from 'http'
 
-import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/logger/src/ClientWinstonLogger'
 
 import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'

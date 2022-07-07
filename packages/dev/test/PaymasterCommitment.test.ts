@@ -28,7 +28,7 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance, RelayRegistrarInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/src/ServerWinstonLogger'
 
 import { deployHub, encodeRevertReason } from './TestUtils'
 

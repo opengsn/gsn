@@ -11,6 +11,7 @@ import {
   GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
+  LoggerEmpty,
   LoggerInterface,
   ObjectMap,
   PingFilter,
@@ -34,8 +35,7 @@ import { AccountKeypair, AccountManager } from './AccountManager'
 import { DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
 import { isTransactionValid, RelayedTransactionValidator } from './RelayedTransactionValidator'
-import { createClientLogger } from './ClientWinstonLogger'
-import { defaultGsnConfig, defaultLoggerConfiguration, GSNConfig, GSNDependencies } from './GSNConfigurator'
+import { defaultGsnConfig, GSNConfig, GSNDependencies } from './GSNConfigurator'
 
 import {
   GsnDoneRefreshRelaysEvent,
@@ -110,8 +110,7 @@ export class RelayClient {
       throw new Error('Sorry, but the constructor parameters of the RelayClient class have changed. See "GSNUnresolvedConstructorInput" interface for details.')
     }
     this.rawConstructorInput = rawConstructorInput
-    this.logger = rawConstructorInput.overrideDependencies?.logger ??
-      createClientLogger(rawConstructorInput.config?.loggerConfiguration ?? defaultLoggerConfiguration)
+    this.logger = rawConstructorInput.overrideDependencies?.logger ?? new LoggerEmpty()
   }
 
   async init (): Promise<this> {

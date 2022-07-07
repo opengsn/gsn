@@ -1,6 +1,6 @@
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { constants, ContractInteractor, defaultEnvironment } from '@opengsn/common'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/src/ServerWinstonLogger'
 import {
   PaymasterStatus,
   ReputationManager,

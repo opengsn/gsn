@@ -13,7 +13,7 @@ import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import Web3 from 'web3'
 
 import { configureServer, ServerConfigParams, ServerDependencies } from '@opengsn/relay/dist/ServerConfigParams'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/src/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 
