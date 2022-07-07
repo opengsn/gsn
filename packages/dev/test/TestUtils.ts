@@ -29,7 +29,7 @@ import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigura
 
 import { PrefixedHexString } from 'ethereumjs-util'
 
-import { createServerLogger } from '@opengsn/logger/src/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { toBN } from 'web3-utils'
 

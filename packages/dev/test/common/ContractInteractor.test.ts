@@ -31,7 +31,7 @@ import {
 import { PrefixedHexString } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
 
-import { createClientLogger } from '@opengsn/logger/src/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 
 import { deployHub } from '../TestUtils'
 

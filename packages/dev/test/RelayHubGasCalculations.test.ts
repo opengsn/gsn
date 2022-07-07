@@ -35,7 +35,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, revert, snapshot } from './TestUtils'
 
-import { createClientLogger } from '@opengsn/logger/src/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
 
 import * as process from 'process'
