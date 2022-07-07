@@ -1,17 +1,25 @@
 import * as fs from 'fs'
 import parseArgs from 'minimist'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { constants } from '@opengsn/common/dist/Constants'
-import { Address, NpmLogLevel } from '@opengsn/common/dist/types/Aliases'
+import {
+  Address,
+  ContractInteractor,
+  Environment,
+  EnvironmentsKeys,
+  LoggerInterface,
+  NpmLogLevel,
+  constants,
+  defaultEnvironment,
+  environments
+} from '@opengsn/common'
+
 import { KeyManager } from './KeyManager'
 import { TxStoreManager } from './TxStoreManager'
 import { createServerLogger } from './ServerWinstonLogger'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
+
 import { toBN } from 'web3-utils'
 
 export enum LoggingProviderMode {
@@ -24,8 +32,6 @@ export enum LoggingProviderMode {
 // TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
 export interface ServerConfigParams {
   ownerAddress: string
-  baseRelayFee: string
-  pctRelayFee: number
   url: string
   port: number
   relayHubAddress: string
@@ -123,8 +129,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   etherscanApiUrl: '',
   etherscanApiKey: '',
   loggerUserId: '',
-  baseRelayFee: '0',
-  pctRelayFee: 0,
   url: 'http://localhost:8090',
   ethereumNodeUrl: '',
   port: 8090,
@@ -149,8 +153,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
 const ConfigParamsTypes = {
   ownerAddress: 'string',
   config: 'string',
-  baseRelayFee: 'number',
-  pctRelayFee: 'number',
   url: 'string',
   port: 'number',
   relayHubAddress: 'string',

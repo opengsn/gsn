@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/dev",
-  "version": "3.0.0-alpha.6",
+  "version": "3.0.0-beta.1",
   "license": "GPL-3.0-only",
   "main": "dist/src/index.js",
   "files": [
@@ -24,10 +24,10 @@
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },
   "dependencies": {
-    "@opengsn/cli": "^3.0.0-alpha.6",
-    "@opengsn/contracts": "^3.0.0-alpha.6",
-    "@opengsn/provider": "^3.0.0-alpha.6",
-    "@opengsn/relay": "^3.0.0-alpha.6"
+    "@opengsn/cli": "^3.0.0-beta.1",
+    "@opengsn/contracts": "^3.0.0-beta.1",
+    "@opengsn/provider": "^3.0.0-beta.1",
+    "@opengsn/relay": "^3.0.0-beta.1"
   },
   "devDependencies": {
     "@ethereumjs/tx": "^3.2.0",
@@ -39,7 +39,7 @@
     "chai-as-promised": "^7.1.1",
     "eth-sig-util": "^3.0.1",
     "ethereumjs-util": "^7.1.0",
-    "ethers": "^5.5.1",
+    "ethers": "^5.6.5",
     "hardhat": "^2.6.8",
     "sinon": "^9.2.3",
     "sinon-chai": "^3.5.0",

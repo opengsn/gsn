@@ -3,7 +3,7 @@ import {
 } from '../src/HashCashApproval'
 import { HashcashPaymasterInstance, SampleRecipientInstance } from '@opengsn/paymasters/types/truffle-contracts'
 import { GSNConfig, RelayProvider } from '@opengsn/provider'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest } from '@opengsn/common'
 
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { expectRevert } from '@openzeppelin/test-helpers'

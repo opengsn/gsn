@@ -1,6 +1,6 @@
 import { expectRevert } from '@openzeppelin/test-helpers'
 
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest } from '@opengsn/common'
 
 require('source-map-support').install({ errorFormatterForce: true })
 
@@ -50,8 +50,6 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
         relayData: {
           maxFeePerGas: '0',
           maxPriorityFeePerGas: '0',
-          pctRelayFee: '1',
-          baseRelayFee: '2',
           relayWorker,
           paymaster: paymaster,
           paymasterData: appended.paymasterData ?? '0x',
@@ -91,8 +89,6 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
       relayData: {
         maxFeePerGas: '0',
         maxPriorityFeePerGas: '0',
-        pctRelayFee: '1',
-        baseRelayFee: '2',
         relayWorker,
         paymaster: paymaster,
         paymasterData: '0x',

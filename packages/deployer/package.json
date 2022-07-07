@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/deployer",
-  "version": "3.0.0-alpha.5",
+  "version": "3.0.0-beta.1",
   "private": true,
   "author": "Dror Tirosh",
   "license": "MIT",
@@ -12,15 +12,15 @@
     "applyConfig": "hardhat run ./src/applyConfig.ts",
     "lint": "eslint -f unix .",
     "lint-fix": "yarn lint --fix",
-    "test": "hardhat test --network npmtest"
+    "test-only": "hardhat test --network npmtest"
   },
   "dependencies": {
-    "@opengsn/common": "^3.0.0-alpha.4",
-    "@opengsn/contracts": "^3.0.0-alpha.4",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@nomiclabs/hardhat-web3": "^2.0.0",
+    "@opengsn/common": "^3.0.0-beta.1",
+    "@opengsn/contracts": "^3.0.0-beta.1",
     "ethers": "^5.5.1",
     "hardhat": "^2.6.8",
     "hardhat-deploy": "^0.11.5",

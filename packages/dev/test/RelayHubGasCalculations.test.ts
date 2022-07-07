@@ -7,9 +7,21 @@ import { ether } from '@openzeppelin/test-helpers'
 import {
   getEip712Signature
 } from '@opengsn/common/dist/Utils'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import {
+  ContractInteractor,
+  GSNContractsDeployment,
+  RelayCallStatusCodes,
+  RelayData,
+  RelayHubConfiguration,
+  RelayRequest,
+  TypedRequestData,
+  cloneRelayRequest,
+  constants,
+  defaultEnvironment,
+  registerForwarderForGsn,
+  splitRelayUrlForRegistrar,
+  toNumber
+} from '@opengsn/common'
 
 import {
   RelayHubInstance,
@@ -22,18 +34,10 @@ import {
   TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, revert, snapshot } from './TestUtils'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import {
-  constants,
-  ContractInteractor,
-  GSNContractsDeployment,
-  RelayCallStatusCodes,
-  splitRelayUrlForRegistrar,
-  toNumber
-} from '@opengsn/common'
+
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
-import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
+
 import * as process from 'process'
 
 const Forwarder = artifacts.require('Forwarder')
@@ -56,8 +60,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
   const message = 'Gas Calculations'
   const unstakeDelay = 15000
   const chainId = defaultEnvironment.chainId
-  const baseFee = new BN('300')
-  const fee = new BN('10')
   const gasPrice = new BN(1e9)
   const maxFeePerGas = 1e9.toString()
   const maxPriorityFeePerGas = 1e9.toString()
@@ -117,7 +119,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     })
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayRegistrar.registerRelayServer(relayHub.address, 0, fee, splitRelayUrlForRegistrar(''), { from: relayManager })
+    await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: relayManager })
 
     encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
     relayRequest = {
@@ -131,8 +133,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         validUntilTime: '0'
       },
       relayData: {
-        baseRelayFee: baseFee.toString(),
-        pctRelayFee: fee.toString(),
         maxFeePerGas: maxFeePerGas.toString(),
         maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
         transactionCalldataGasUsed: '',
@@ -176,13 +176,12 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           const gasUsed = 1e8
           const baseRelayFee = 1000000
           const pctRelayFee = 10
-          const relayData = {
-            pctRelayFee,
-            baseRelayFee,
-            maxFeePerGas,
-            maxPriorityFeePerGas,
+          const config = Object.assign({}, defaultEnvironment.relayHubConfiguration, { baseRelayFee, pctRelayFee })
+          await relayHub.setConfiguration(config)
+          const relayData: RelayData = {
+            maxFeePerGas: maxFeePerGas.toString(),
+            maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
             transactionCalldataGasUsed: '',
-            gasLimit: 0,
             relayWorker,
             forwarder,
             paymaster: paymaster.address,
@@ -206,8 +205,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x', {
         maxFeePerGas,
         maxPriorityFeePerGas,
-        pctRelayFee: 0,
-        baseRelayFee: 0,
         transactionCalldataGasUsed: '',
         relayWorker,
         forwarder,
@@ -350,8 +347,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               validUntilTime: '0'
             },
             relayData: {
-              baseRelayFee: '0',
-              pctRelayFee: '0',
               maxFeePerGas: '1',
               maxPriorityFeePerGas: '1',
               transactionCalldataGasUsed: '',
@@ -445,8 +440,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               validUntilTime: '0'
             },
             relayData: {
-              baseRelayFee: '0',
-              pctRelayFee: '0',
               transactionCalldataGasUsed: '',
               maxFeePerGas: '1',
               maxPriorityFeePerGas: '1',
@@ -513,12 +506,11 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   if (devFee !== 0) {
                     gasOverhead += defaultEnvironment.nonZeroDevFeeGasOverhead
                   }
-                  await prepareForHub({ gasOverhead, devAddress, devFee })
+                  await prepareForHub({ gasOverhead, devAddress, pctRelayFee: requestedFee, devFee })
                   // Avoid zero to non-zero storage gas costs when calculating fees.
                   await relayHub.depositFor(relayOwner, { value: (1).toString() })
 
                   const beforeBalances = await getBalances()
-                  const pctRelayFee = requestedFee.toString()
                   const senderNonce = (await forwarderInstance.getNonce(senderAddress)).toString()
                   const encodedFunction = recipient.contract.methods.emitMessage('a'.repeat(messageLength)).encodeABI()
                   const baseRelayFee = '0'
@@ -533,8 +525,6 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                       validUntilTime: '0'
                     },
                     relayData: {
-                      baseRelayFee,
-                      pctRelayFee,
                       transactionCalldataGasUsed: '',
                       maxFeePerGas: maxFeePerGas.toString(),
                       maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),

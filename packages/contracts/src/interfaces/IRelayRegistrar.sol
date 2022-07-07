@@ -24,8 +24,6 @@ interface IRelayRegistrar is IERC165 {
         uint32 firstSeenBlockNumber;
         //stake (first registration) block timestamp
         uint40 firstSeenTimestamp;
-        uint80 baseRelayFee;
-        uint16 pctRelayFee;
         bytes32[3] urlParts;
         address relayManager;
     }
@@ -37,22 +35,16 @@ interface IRelayRegistrar is IERC165 {
     event RelayServerRegistered(
         address indexed relayManager,
         address indexed relayHub,
-        uint256 baseRelayFee,
-        uint256 pctRelayFee,
         bytes32[3] relayUrl
     );
 
     /**
      * @notice This function is called by Relay Servers in order to register or to update their registration.
      * @param relayHub The address of the `RelayHub` contract for which this action is performed.
-     * @param baseRelayFee The base fee the Relay Server charges for a single transaction in Ether, in wei.
-     * @param pctRelayFee The percent of the total charge to add as a Relay Server fee to the total charge.
      * @param url The URL of the Relay Server that is listening to the clients' requests.
      */
     function registerRelayServer(
         address relayHub,
-        uint80 baseRelayFee,
-        uint16 pctRelayFee,
         bytes32[3] calldata url
     ) external;
 

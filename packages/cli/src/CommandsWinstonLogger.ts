@@ -1,7 +1,6 @@
 import winston, { transport } from 'winston'
 
-import { NpmLogLevel } from '@opengsn/common/dist/types/Aliases'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { NpmLogLevel, LoggerInterface } from '@opengsn/common'
 
 const format = winston.format.combine(
   winston.format.cli()

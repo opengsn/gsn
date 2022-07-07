@@ -4,8 +4,16 @@ import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 import chai, { expect } from 'chai'
 
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { getEip712Signature } from '@opengsn/common/dist/Utils'
+import {
+  RelayRequest,
+  constants,
+  getEip712Signature,
+  packRelayUrlForRegistrar,
+  removeNullValues,
+  splitRelayUrlForRegistrar,
+  waitForSuccess
+} from '@opengsn/common'
+
 import {
   TypedRequestData,
   getDomainSeparatorHash,
@@ -17,7 +25,7 @@ import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '@ope
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encodeRevertReason } from '../TestUtils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
-import { constants, packRelayUrlForRegistrar, removeNullValues, splitRelayUrlForRegistrar } from '@opengsn/common'
+
 import { toBN } from 'web3-utils'
 
 require('source-map-support').install({ errorFormatterForce: true })
@@ -50,8 +58,6 @@ contract('Utils', function (accounts) {
       const senderNonce = '0'
       const target = recipient.address
       const encodedFunction = '0xdeadbeef'
-      const pctRelayFee = '15'
-      const baseRelayFee = '1000'
       const maxFeePerGas = '10000000'
       const maxPriorityFeePerGas = '10000000'
       const gasLimit = '500000'
@@ -88,8 +94,6 @@ contract('Utils', function (accounts) {
         relayData: {
           maxFeePerGas,
           maxPriorityFeePerGas,
-          pctRelayFee,
-          baseRelayFee,
           transactionCalldataGasUsed: '0',
           relayWorker,
           forwarder,
@@ -227,6 +231,62 @@ contract('Utils', function (accounts) {
 
     it('should throw for strings that are too long', function () {
       expect(() => splitRelayUrlForRegistrar('1'.repeat(97))).to.throw('The URL does not fit to the RelayRegistrar. Please shorten it to less than 96 characters')
+    })
+  })
+
+  describe('#waitForSuccess', function () {
+    async function after (t: number): Promise<number> {
+      await new Promise(resolve => setTimeout(resolve, t))
+      return t
+    }
+
+    it('should return a single response', async () => {
+      assert.equal(await waitForSuccess([Promise.resolve(1)], [''], 100).then(r => r.winner), 1)
+    })
+
+    it('should select at random if multiple responses resolve', async () => {
+      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['', ''], 100, () => 0).then(r => r.winner), 1)
+      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['', ''], 100, () => 0.6).then(r => r.winner), 2)
+    })
+
+    it('should reject with first error if all fail', async () => {
+      const ret = await waitForSuccess([Promise.reject(Error('err1')), Promise.reject(Error('err2'))], ['one', 'two'], 100)
+      assert.equal(ret.winner, null)
+      assert.equal(ret.errors.get('one')!.message, 'err1')
+    })
+
+    it('should resolve immediately (without grace) if all promises are done', async () => {
+      const now = Date.now()
+      await waitForSuccess(
+        [Promise.reject(Error('err1')), after(50), after(20)],
+        ['', '', ''],
+        2000)
+
+      assert.closeTo(Date.now() - now, 50, 200, 'should not wait entire 2000 grace time if all are completed')
+    })
+
+    it('should ignore rejection if at least one response is successful', async () => {
+      const res = await waitForSuccess(
+        [Promise.reject(Error('err1')), after(50), after(1000)],
+        ['', '', ''],
+        200)
+      assert.equal(res.winner, 50)
+    })
+
+    it('should wait after first response', async () => {
+      const res1 = await waitForSuccess(
+        [after(1), after(50), after(1000)],
+        ['', '', ''],
+        200, () => 0
+      )
+      assert.equal(res1.winner, 1)
+
+      const res2 = await waitForSuccess(
+        [after(1), after(50), after(1000)],
+        ['', '', ''],
+        200, () => 0.9
+      )
+      assert.equal(res2.winner, 50)
     })
   })
 })

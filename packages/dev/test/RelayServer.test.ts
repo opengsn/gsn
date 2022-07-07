@@ -12,18 +12,22 @@ import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { SendTransactionDetails, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { TestPaymasterConfigurableMisbehaviorInstance } from '@opengsn/contracts/types/truffle-contracts'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { sleep } from '@opengsn/common/dist/Utils'
+import {
+  GsnTransactionDetails,
+  RelayTransactionRequest,
+  TransactionType,
+  defaultEnvironment,
+  sleep,
+  toNumber
+} from '@opengsn/common'
 
 import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, increaseTime, revert, snapshot } from './TestUtils'
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts } from './ServerTestUtils'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import { toNumber } from '@opengsn/common'
+
 import { BlockTransactionString } from 'web3-eth'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
@@ -34,7 +38,6 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 contract('RelayServer', function (accounts: Truffle.Accounts) {
   const registrationRateSeconds = 500
   const alertedDelaySeconds = 0
-  const baseRelayFee = '12'
 
   let id: string
   let globalId: string
@@ -50,8 +53,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
     await env.init(relayClientConfig, undefined, undefined, TestRelayHub, registrationRateSeconds)
     const overrideParams: Partial<ServerConfigParams> = {
-      alertedDelaySeconds,
-      baseRelayFee
+      alertedDelaySeconds
     }
     await env.newServerInstance(overrideParams)
     await env.clearServerStorage()
@@ -344,37 +346,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           assert.isFalse(env.relayServer._isTrustedPaymaster(accounts[1]), 'identify untrusted paymaster')
           assert.isTrue(env.relayServer._isTrustedPaymaster(env.paymaster.address), 'identify trusted paymaster')
         })
-
-        it('should bypass fee checks and not throw if given trusted paymasters', async function () {
-          const req = await env.createRelayHttpRequest()
-          req.relayRequest.relayData.baseRelayFee = (parseInt(env.relayServer.config.baseRelayFee) - 1).toString()
-          env.relayServer.validateRelayFees(req)
-        })
-      })
-
-      describe('without trusted forwarder', function () {
-        it('should fail to relay with wrong baseRelayFee', async function () {
-          const req = await env.createRelayHttpRequest()
-          req.relayRequest.relayData.baseRelayFee = (parseInt(env.relayServer.config.baseRelayFee) - 1).toString()
-          try {
-            env.relayServer.validateRelayFees(req)
-            assert.fail()
-          } catch (e: any) {
-            assert.include(e.message, 'Unacceptable baseRelayFee:')
-          }
-        })
-
-        it('should fail to relay with wrong pctRelayFee', async function () {
-          const wrongPctRelayFee = (env.relayServer.config.pctRelayFee - 1).toString()
-          const req = await env.createRelayHttpRequest()
-          req.relayRequest.relayData.pctRelayFee = wrongPctRelayFee
-          try {
-            env.relayServer.validateRelayFees(req)
-            assert.fail()
-          } catch (e: any) {
-            assert.include(e.message, 'Unacceptable pctRelayFee:')
-          }
-        })
       })
 
       describe('#validateMaxNonce()', function () {
@@ -601,7 +572,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           serverSpy.validateRequestTxType,
           serverSpy.validateInput,
           serverSpy.validateGasFees,
-          serverSpy.validateRelayFees,
           serverSpy.validateMaxNonce,
           serverSpy.validatePaymasterGasAndDataLimits,
           serverSpy.validateViewCallSucceeds,
@@ -631,7 +601,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           serverSpy.validateRequestTxType,
           serverSpy.validateInput,
           serverSpy.validateGasFees,
-          serverSpy.validateRelayFees,
           serverSpy.validateMaxNonce,
           serverSpy.validatePaymasterReputation,
           serverSpy.validatePaymasterGasAndDataLimits,

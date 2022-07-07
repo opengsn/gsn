@@ -21,14 +21,8 @@ export interface ConfigEntry {
   gsnConfig: Partial<GSNConfig>
 }
 
-export interface RelayingFees {
-  baseRelayFee: IntString
-  pctRelayFee: IntString
-}
-
 export interface GSNConfig {
   preferredRelays: string[]
-  preferredRelaysRelayingFees?: RelayingFees
   // either a url host or a manager address
   blacklistedRelays: string[]
   // in case querying large block ranges is restricted, set limit and use pagination
@@ -39,7 +33,6 @@ export interface GSNConfig {
   jsonStringifyRequest: boolean
   requiredVersionRange?: string
   relayTimeoutGrace: number
-  sliceSize: number
   loggerConfiguration?: LoggerConfiguration
   gasPriceFactorPercent: number
   gasPriceOracleUrl: string
@@ -58,4 +51,6 @@ export interface GSNConfig {
   clientDefaultConfigUrl: string
   useClientDefaultConfigUrl: boolean
   performDryRunViewRelayCall: boolean
+  waitForSuccessSliceSize: number
+  waitForSuccessPingGrace: number
 }

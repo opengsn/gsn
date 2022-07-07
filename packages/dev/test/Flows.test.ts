@@ -6,7 +6,14 @@
 import { HttpProvider } from 'web3-core'
 
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
-import { Address, AsyncDataCallback } from '@opengsn/common/dist/types/Aliases'
+import {
+  Address,
+  AsyncDataCallback,
+  constants,
+  defaultEnvironment,
+  ether,
+  registerForwarderForGsn
+} from '@opengsn/common'
 import {
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance, TestPaymasterPreconfiguredApprovalInstance,
@@ -15,9 +22,7 @@ import {
 import { deployHub, emptyBalance, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { constants, ether } from '@opengsn/common'
+
 import Web3 from 'web3'
 
 const TestRecipient = artifacts.require('TestRecipient')
@@ -77,7 +82,6 @@ options.forEach(params => {
           stake,
           stakeTokenAddress: testToken.address,
           delay: 3600 * 24 * 7,
-          pctRelayFee: 12,
           url: 'asd',
           relayOwner: accounts[0],
           // @ts-ignore

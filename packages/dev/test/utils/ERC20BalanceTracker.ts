@@ -1,6 +1,6 @@
 import BN from 'bn.js'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address } from '@opengsn/common'
 
 const TestToken = artifacts.require('TestToken')
 

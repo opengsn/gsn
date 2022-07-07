@@ -19,7 +19,7 @@ contract Penalizer is IPenalizer, ERC165 {
     using ECDSA for bytes32;
 
     /// @inheritdoc IPenalizer
-    string public override versionPenalizer = "3.0.0-alpha.5+opengsn.penalizer.ipenalizer";
+    string public override versionPenalizer = "3.0.0-beta.0+opengsn.penalizer.ipenalizer";
 
     uint256 internal immutable penalizeBlockDelay;
     uint256 internal immutable penalizeBlockExpiration;

@@ -1,7 +1,7 @@
 #!/bin/bash -xe
 cd `cd \`dirname $0\`;pwd`
 
-test -z "$VERSION" && VERSION=`perl -ne "print \\$1 if /gsnRuntimeVersion.*=.*'(.*?)'/" ../../packages//common/src/Version.ts`
+test -z "$VERSION" && VERSION=`node -e "console.log(require('../../packages/common/dist/Version.js').gsnRuntimeVersion)"`
 echo version=$VERSION
 
 IMAGE=opengsn/cli

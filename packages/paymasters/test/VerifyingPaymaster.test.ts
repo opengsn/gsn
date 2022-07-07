@@ -4,8 +4,8 @@ import { GSNUnresolvedConstructorInput, RelayProvider, GSNConfig } from '@opengs
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { expectRevert } from '@openzeppelin/test-helpers'
 
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { AsyncDataCallback } from '@opengsn/common/dist/types/Aliases'
+import { RelayRequest, AsyncDataCallback } from '@opengsn/common'
+
 import { bufferToHex, privateToAddress, PrefixedHexString } from 'ethereumjs-util'
 import { randomBytes } from 'crypto'
 import { getRequestHash, packForwardRequest, packRelayData, signRelayRequest } from '../src/VerifyingPaymasterUtils'
@@ -32,8 +32,6 @@ contract('VerifyingPaymaster', ([from]) => {
           gas: '3'
         },
         relayData: {
-          pctRelayFee: '3',
-          baseRelayFee: '4',
           maxFeePerGas: '5',
           maxPriorityFeePerGas: '5',
           transactionCalldataGasUsed: '0',

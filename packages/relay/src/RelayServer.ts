@@ -6,19 +6,31 @@ import { toBuffer, PrefixedHexString, BN } from 'ethereumjs-util'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
-import { ContractInteractor, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
-import { TransactionRejectedByPaymaster, TransactionRelayed } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-import { GasPriceFetcher } from './GasPriceFetcher'
-import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { ReadinessInfo, StatsResponse } from '@opengsn/common/dist/StatsResponse'
+import {
+  Address,
+  AmountRequired,
+  ContractInteractor,
+  Environment,
+  IntString,
+  LoggerInterface,
+  ObjectMap,
+  PingResponse,
+  ReadinessInfo,
+  RelayCallABI,
+  RelayTransactionRequest,
+  StatsResponse,
+  TransactionRejectedByPaymaster,
+  TransactionRelayed,
+  TransactionType,
+  VersionsManager,
+  gsnRequiredVersion,
+  gsnRuntimeVersion,
+  isSameAddress,
+  toNumber
+} from '@opengsn/common'
 
-import { PingResponse } from '@opengsn/common/dist/PingResponse'
-import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
-import { AmountRequired } from '@opengsn/common/dist/AmountRequired'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { Environment } from '@opengsn/common/dist/Environments'
-import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
+import { GasPriceFetcher } from './GasPriceFetcher'
+
 import {
   address2topic,
   decodeRevertReason,
@@ -33,8 +45,7 @@ import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } 
 import { ServerAction, ShortBlockInfo } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import { isSameAddress, ObjectMap, toNumber } from '@opengsn/common'
+
 import { BlockTransactionString } from 'web3-eth'
 
 /**
@@ -216,22 +227,6 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  validateRelayFees (req: RelayTransactionRequest): void {
-    // if trusted paymaster, we trust it to handle fees
-    if (this._isTrustedPaymaster(req.relayRequest.relayData.paymaster)) {
-      return
-    }
-    // Check that the fee is acceptable
-    if (parseInt(req.relayRequest.relayData.pctRelayFee) < this.config.pctRelayFee) {
-      throw new Error(
-        `Unacceptable pctRelayFee: ${req.relayRequest.relayData.pctRelayFee} relayServer's pctRelayFee: ${this.config.pctRelayFee}`)
-    }
-    if (toBN(req.relayRequest.relayData.baseRelayFee).lt(toBN(this.config.baseRelayFee))) {
-      throw new Error(
-        `Unacceptable baseRelayFee: ${req.relayRequest.relayData.baseRelayFee} relayServer's baseRelayFee: ${this.config.baseRelayFee}`)
-    }
-  }
-
   async validateMaxNonce (relayMaxNonce: number): Promise<void> {
     // Check that max nonce is valid
     const nonce = await this.transactionManager.pollNonce(this.workerAddress)
@@ -394,7 +389,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
     const currentBlock = await this.contractInteractor.getBlock('latest')
     const currentBlockTimestamp = toNumber(currentBlock.timestamp)
     this.validateInput(req)
-    this.validateRelayFees(req)
     await this.validateMaxNonce(req.metadata.relayMaxNonce)
     if (this.config.runPaymasterReputations) {
       await this.validatePaymasterReputation(req.relayRequest.relayData.paymaster, this.lastScannedBlock)
@@ -493,8 +487,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       throw new Error('_init was already called')
     }
     const latestBlock = await this.contractInteractor.getBlock('latest')
-    const registrationAge = await this.contractInteractor.getRelayRegistrationMaxAge()
-    this.lastScannedBlock = latestBlock.number - registrationAge.toNumber()
+    this.lastScannedBlock = latestBlock.number - 10
     if (this.lastScannedBlock < 0) {
       this.lastScannedBlock = 0
     }

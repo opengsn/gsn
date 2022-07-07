@@ -4,23 +4,34 @@ import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
 
-import { asRelayCallAbi, ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
-import { AsyncDataCallback, PingFilter, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
-import { AuditResponse } from '@opengsn/common/dist/types/AuditRequest'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { RelayMetadata, RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
-import { decodeRevertReason, removeNullValues } from '@opengsn/common/dist/Utils'
-import { gsnRequiredVersion, gsnRuntimeVersion } from '@opengsn/common/dist/Version'
-import { constants, getRelayRequestID, ObjectMap, RelayCallABI } from '@opengsn/common'
+import {
+  AsyncDataCallback,
+  AuditResponse,
+  ContractInteractor,
+  GsnTransactionDetails,
+  HttpClient,
+  HttpWrapper,
+  LoggerInterface,
+  ObjectMap,
+  PingFilter,
+  RelayCallABI,
+  RelayInfo,
+  RelayMetadata,
+  RelayRequest,
+  RelayTransactionRequest,
+  VersionsManager,
+  Web3ProviderBaseInterface,
+  asRelayCallAbi,
+  constants,
+  decodeRevertReason,
+  getRelayRequestID,
+  gsnRequiredVersion,
+  gsnRuntimeVersion,
+  removeNullValues
+} from '@opengsn/common'
 
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
 import { AccountKeypair, AccountManager } from './AccountManager'
-import { DefaultRelayFilter, DefaultRelayScore, KnownRelaysManager } from './KnownRelaysManager'
+import { DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
 import { isTransactionValid, RelayedTransactionValidator } from './RelayedTransactionValidator'
 import { createClientLogger } from './ClientWinstonLogger'
@@ -404,8 +415,6 @@ export class RelayClient {
       relayData: {
         // temp values. filled in by 'fillRelayInfo'
         relayWorker: '',
-        pctRelayFee: '',
-        baseRelayFee: '',
         transactionCalldataGasUsed: '', // temp value. filled in by estimateCalldataCostAbi, below.
         paymasterData: '', // temp value. filled in by asyncPaymasterData, below.
         maxFeePerGas,
@@ -423,16 +432,6 @@ export class RelayClient {
 
   fillRelayInfo (relayRequest: RelayRequest, relayInfo: RelayInfo): void {
     relayRequest.relayData.relayWorker = relayInfo.pingResponse.relayWorkerAddress
-    relayRequest.relayData.pctRelayFee = relayInfo.relayInfo.pctRelayFee
-    relayRequest.relayData.baseRelayFee = relayInfo.relayInfo.baseRelayFee
-    if (
-      this.dependencies.knownRelaysManager.isPreferred(relayInfo.relayInfo.relayUrl) &&
-      this.config.preferredRelaysRelayingFees != null
-    ) {
-      relayRequest.relayData.pctRelayFee = this.config.preferredRelaysRelayingFees.pctRelayFee
-      relayRequest.relayData.baseRelayFee = this.config.preferredRelaysRelayingFees.baseRelayFee
-    }
-
     // cannot estimate before relay info is filled in
     relayRequest.relayData.transactionCalldataGasUsed =
       this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
@@ -572,7 +571,6 @@ export class RelayClient {
     const relayFilter = overrideDependencies?.relayFilter ?? DefaultRelayFilter
     const asyncApprovalData = overrideDependencies?.asyncApprovalData ?? EmptyDataCallback
     const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
-    const scoreCalculator = overrideDependencies?.scoreCalculator ?? DefaultRelayScore
     const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
     const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, this.logger, this.config)
 
@@ -586,8 +584,7 @@ export class RelayClient {
       pingFilter,
       relayFilter,
       asyncApprovalData,
-      asyncPaymasterData,
-      scoreCalculator
+      asyncPaymasterData
     }
   }
 
@@ -596,9 +593,7 @@ export class RelayClient {
     const dryRunRelayInfo: RelayInfo = {
       relayInfo: {
         relayManager: '',
-        relayUrl: '',
-        pctRelayFee: '0',
-        baseRelayFee: '0'
+        relayUrl: ''
       },
       pingResponse: {
         relayWorkerAddress: constants.DRY_RUN_ADDRESS,

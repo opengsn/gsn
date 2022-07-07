@@ -3,9 +3,8 @@ import commander, { CommanderStatic } from 'commander'
 import fs from 'fs'
 import path from 'path'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
-import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { Address, RelayHubConfiguration, GSNContractsDeployment } from '@opengsn/common'
+
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 
 const cliInfuraId = '$INFURA_ID'

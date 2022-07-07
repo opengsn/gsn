@@ -1,5 +1,5 @@
 import net from 'net'
-import { ether } from '@opengsn/common/dist/Utils'
+import { ether, Address, ContractInteractor, defaultEnvironment, constants, GSNContractsDeployment } from '@opengsn/common'
 
 import { CommandsLogic, RegisterOptions } from './CommandsLogic'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
@@ -8,21 +8,20 @@ import { getNetworkUrl, loadDeployment, supportedNetworks } from './utils'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { HttpServer } from '@opengsn/relay/dist/HttpServer'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import Web3 from 'web3'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+
 import { configureServer, ServerConfigParams, ServerDependencies } from '@opengsn/relay/dist/ServerConfigParams'
 import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClient'
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
-import { constants } from '@opengsn/common'
+
 import { ChildProcess } from 'child_process'
 
 const { waitForCmdToStart } = require('run-with-hardhat-node')
@@ -206,8 +205,6 @@ class GsnTestEnvironmentClass {
       relayHubAddress: deploymentResult.relayHubAddress,
       ownerAddress: from,
       gasPriceFactor: 1,
-      baseRelayFee: '0',
-      pctRelayFee: 0,
       checkInterval: 50,
       refreshStateTimeoutBlocks: 1,
       runPaymasterReputations: true,

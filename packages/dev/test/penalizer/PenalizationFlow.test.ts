@@ -5,18 +5,15 @@ import { Transaction } from '@ethereumjs/tx'
 import { ether } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
 
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { GsnTransactionDetails, HttpClient, HttpWrapper, Address, gsnRuntimeVersion, sleep, constants } from '@opengsn/common'
+
 import { LocalhostOne, ServerTestEnvironment } from '../ServerTestEnvironment'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { GSNConfig, GSNDependencies } from '@opengsn/provider/dist/GSNConfigurator'
-import { constants } from '@opengsn/common/dist/Constants'
+
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
-import { gsnRuntimeVersion } from '@opengsn/common/dist/Version'
+
 import { evmMineMany, startRelay, stopRelay } from '../TestUtils'
-import { sleep } from '@opengsn/common/dist/Utils'
 
 contract('PenalizationFlow', function (accounts) {
   const preferredRelays = ['http://www.my-preffered-relay.com']
@@ -45,7 +42,6 @@ contract('PenalizationFlow', function (accounts) {
       // TODO: adding 'intervalHandler' to the PenalizationService made tests crash/hang with 10ms interval...
       checkInterval: 100,
       delay: 3600 * 24 * 7,
-      pctRelayFee: 12,
       url: LocalhostOne,
       relayOwner: accounts[0],
       ethereumNodeUrl: currentProvider.host,

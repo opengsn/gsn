@@ -23,39 +23,53 @@ import {
   TestPaymasterEverythingAcceptedInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import {
+  Address,
+  ConfigResponse,
+  ContractInteractor,
+  GsnTransactionDetails,
+  HttpClient,
+  HttpWrapper,
+  LoggerConfiguration,
+  LoggerInterface,
+  ObjectMap,
+  PingResponse,
+  RelayInfo,
+  RelayRegisteredEventInfo,
+  RelayRequest,
+  RelayTransactionRequest,
+  Web3ProviderBaseInterface,
+  constants,
+  defaultEnvironment,
+  getRawTxOptions,
+  registerForwarderForGsn,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
 import {
   _dumpRelayingResult,
   GSNUnresolvedConstructorInput,
   RelayClient,
   EmptyDataCallback
 } from '@opengsn/provider/dist/RelayClient'
-import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
-import { defaultGsnConfig, GSNConfig, LoggerConfiguration } from '@opengsn/provider/dist/GSNConfigurator'
+
+import { defaultGsnConfig, GSNConfig } from '@opengsn/provider'
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 
 import { BadHttpClient } from '../dummies/BadHttpClient'
 import { BadRelayedTransactionValidator } from '../dummies/BadRelayedTransactionValidator'
 import { configureGSN, deployHub, emptyBalance, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
-import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { PingResponse } from '@opengsn/common/dist/PingResponse'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+
 import { GsnEvent } from '@opengsn/provider/dist/GsnEvents'
 import bodyParser from 'body-parser'
 import { Server } from 'http'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+
 import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+
 import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { constants, getRawTxOptions, ObjectMap, splitRelayUrlForRegistrar } from '@opengsn/common'
-import { ConfigResponse } from '@opengsn/common/dist/ConfigResponse'
+
 import {
   RelayedTransactionValidator,
   TransactionValidationResult
@@ -134,7 +148,7 @@ contract('RelayClient', function (accounts) {
     await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
 
     await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayRegistrar.registerRelayServer(relayHub.address, 1, 1, splitRelayUrlForRegistrar(cheapRelayerUrl), { from: relayManager })
+    await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(cheapRelayerUrl), { from: relayManager })
   }
 
   before(async function () {
@@ -244,7 +258,7 @@ contract('RelayClient', function (accounts) {
       assert.equal(anotherRelayClient.config.methodSuffix, suffix)
       assert.equal(anotherRelayClient.config.jsonStringifyRequest as any, 5)
       assert.equal(anotherRelayClient.config.minMaxPriorityFeePerGas, minMaxPriorityFeePerGas)
-      assert.equal(anotherRelayClient.config.sliceSize, defaultGsnConfig.sliceSize, 'default value expected for a skipped field')
+      assert.equal(anotherRelayClient.config.waitForSuccessSliceSize, defaultGsnConfig.waitForSuccessSliceSize, 'default value expected for a skipped field')
     })
   })
 
@@ -377,9 +391,9 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore
       const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
-      const mockRelays = [
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
-        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
+      const mockRelays: RelayRegisteredEventInfo[] = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1') },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2') }
       ]
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
@@ -387,9 +401,11 @@ contract('RelayClient', function (accounts) {
 
       const { transaction, relayingErrors, pingErrors } = await relayClient.relayTransaction(options)
       assert.isUndefined(transaction)
+      // we don't actually know which one will fail first
+      const error = (relayingErrors.get(localhost127One) ?? relayingErrors.get(localhostOne))!.message
+      assert.equal(error, 'client sig failure')
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
-      assert.equal(relayingErrors.get(localhost127One)!.message, 'client sig failure')
     })
 
     it('should continue scanning if returned relayer TX is malformed', async () => {
@@ -490,24 +506,6 @@ contract('RelayClient', function (accounts) {
       assert.match(relayingErrors.values().next().value.message, /paymasterData-error/)
     })
 
-    it.skip('should return errors in callback (scoreCalculator) ', async function () {
-      // can't be used: scoring is completely disabled
-      const relayClient =
-        new RelayClient({
-          provider: underlyingProvider,
-          config: gsnConfig,
-          overrideDependencies: {
-            scoreCalculator: async () => { throw new Error('score-error') }
-          }
-        })
-      await relayClient.init()
-      const ret = await relayClient.relayTransaction(options)
-      const { transaction, relayingErrors, pingErrors } = ret
-      assert.isUndefined(transaction)
-      assert.equal(pingErrors.size, 0)
-      assert.equal(relayingErrors.size, 1)
-      assert.match(relayingErrors.values().next().value.message, /score-error/)
-    })
     describe('with events listener', () => {
       function eventsHandler (e: GsnEvent): void {
         gsnEvents.push(e)
@@ -571,7 +569,7 @@ contract('RelayClient', function (accounts) {
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorkerAddress], { from: relayManager })
-      await relayRegistrar.registerRelayServer(relayHub.address, 2e16.toString(), '10', splitRelayUrlForRegistrar('url'), { from: relayManager })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('url'), { from: relayManager })
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
         ownerAddress: relayOwner,
@@ -586,9 +584,7 @@ contract('RelayClient', function (accounts) {
       relayInfo = {
         relayInfo: {
           relayManager,
-          relayUrl,
-          baseRelayFee: '0',
-          pctRelayFee: '0'
+          relayUrl
         },
         pingResponse
       }
@@ -712,7 +708,7 @@ contract('RelayClient', function (accounts) {
       }).init()
       const transactionValidator = new RelayedTransactionValidator(contractInteractor, logger, defaultGsnConfig)
 
-      const data = '0xd17da3e80000deadbeef' // relayCall method
+      const data = '0xb1a62e720000deadbeef' // relayCall method
       const wrongData = '0xdeadbeef' // relayCall method
       const txOptions = getRawTxOptions(1337, 0)
       // prepare transactions
@@ -905,26 +901,6 @@ contract('RelayClient', function (accounts) {
       const relayingResult = await relayClient.relayTransaction(options)
       assert.equal(relayingResult.pingErrors.size, 0)
       assert.exists(relayingResult.transaction)
-    })
-
-    it('should use preferred relay with specified fees if set', async () => {
-      relayClient = new RelayClient({
-        provider: underlyingProvider,
-        config: {
-          ...gsnConfig,
-          preferredRelays: ['http://localhost:8090'],
-          preferredRelaysRelayingFees: {
-            baseRelayFee: '777',
-            pctRelayFee: '888'
-          }
-        }
-      })
-      await relayClient.init()
-      const spy = sinon.spy(relayClient, '_prepareRelayHttpRequest')
-      await relayClient.relayTransaction(options)
-      const relayRequest = spy.getCall(0).args[0]
-      assert.equal(relayRequest.relayData.baseRelayFee, '777')
-      assert.equal(relayRequest.relayData.pctRelayFee, '888')
     })
 
     it('should not use blacklisted relays', async () => {

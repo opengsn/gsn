@@ -1,9 +1,8 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 
 import { BlockExplorerInterface, EtherscanResponse, TransactionData } from './BlockExplorerInterface'
-import { Address } from '@opengsn/common/dist/types/Aliases'
-import { isSameAddress } from '@opengsn/common/dist/Utils'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { Address, isSameAddress, LoggerInterface } from '@opengsn/common'
+
 import { TransactionDataCache } from './TransactionDataCache'
 
 export class EtherscanCachedService implements BlockExplorerInterface {

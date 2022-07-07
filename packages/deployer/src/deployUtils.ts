@@ -66,7 +66,10 @@ export function printSampleEnvironment (defaultDevAddress: string, chainId: numb
   }
   const sampleEnv = {
     relayHubConfiguration: {
-      devAddress: defaultDevAddress
+      devAddress: defaultDevAddress,
+      devFee: 10,
+      pctRelayFee: 50,
+      baseRelayFee: 0.001e18
     },
     deploymentConfiguration
   }
@@ -153,8 +156,6 @@ export async function printRelayInfo (hre: HardhatRuntimeEnvironment): Promise<v
   const network = hre.network.config as HttpNetworkConfig
   console.log(chalk.white('Example for Relayer config JSON file:'))
   console.log(chalk.grey(JSON.stringify({
-    baseRelayFee: 0,
-    pctRelayFee: 70,
     relayHubAddress: hub.address,
     ownerAddress: deployer,
     managerStakeTokenAddress: stakingTokenAddress,

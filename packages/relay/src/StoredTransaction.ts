@@ -1,7 +1,7 @@
 import { Capability, FeeMarketEIP1559Transaction, Transaction, TypedTransaction } from '@ethereumjs/tx'
 import * as ethUtils from 'ethereumjs-util'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address } from '@opengsn/common'
 
 export enum ServerAction {
   REGISTER_SERVER,

@@ -10,10 +10,20 @@ import { encode } from 'rlp'
 import { expect } from 'chai'
 import { privateToAddress, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
 
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { getEip712Signature, removeHexPrefix, signatureRSV2Hex } from '@opengsn/common/dist/Utils'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import {
+  RelayRequest,
+  StakeUnlocked,
+  TypedRequestData,
+  constants,
+  defaultEnvironment,
+  getDataAndSignature,
+  getEip712Signature,
+  getRawTxOptions,
+  registerForwarderForGsn,
+  removeHexPrefix,
+  signatureRSV2Hex
+} from '@opengsn/common'
+
 import {
   PenalizerInstance,
   RelayHubInstance, StakeManagerInstance,
@@ -22,10 +32,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
-import { getRawTxOptions } from '@opengsn/common/dist/ContractInteractor'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { StakeUnlocked } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-import { getDataAndSignature, constants } from '@opengsn/common/dist'
+
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 
 const RelayHub = artifacts.require('RelayHub')
@@ -142,8 +149,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               validUntilTime: '0'
             },
             relayData: {
-              baseRelayFee: encodedCallArgs.baseFee.toString(),
-              pctRelayFee: encodedCallArgs.fee.toString(),
               maxFeePerGas: encodedCallArgs.maxFeePerGas.toString(),
               maxPriorityFeePerGas: encodedCallArgs.maxPriorityFeePerGas.toString(),
               transactionCalldataGasUsed: '0',
@@ -592,8 +597,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
 
         it('does not penalize legal relay transactions', async function () {
           // relayCall is a legal transaction
-          const baseFee = new BN('300')
-          const fee = new BN('10')
           const gasPrice = new BN(1e9)
           const maxFeePerGas = new BN(1e9)
           const maxPriorityFeePerGas = new BN(1e9)
@@ -613,8 +616,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             relayData: {
               maxFeePerGas: maxFeePerGas.toString(),
               maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
-              baseRelayFee: baseFee.toString(),
-              pctRelayFee: fee.toString(),
               transactionCalldataGasUsed: '0',
               relayWorker,
               forwarder,
@@ -727,8 +728,6 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             validUntilTime: '0'
           },
           relayData: {
-            baseRelayFee: encodedCallArgs.baseFee.toString(),
-            pctRelayFee: encodedCallArgs.fee.toString(),
             maxFeePerGas: encodedCallArgs.maxFeePerGas.toString(),
             maxPriorityFeePerGas: encodedCallArgs.maxPriorityFeePerGas.toString(),
             transactionCalldataGasUsed: '0',

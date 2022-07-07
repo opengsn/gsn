@@ -7,8 +7,9 @@ import { toHex, toWei } from 'web3-utils'
 
 import {
   LoggerInterface
+  , Address, Web3ProviderBaseInterface
 } from '@opengsn/common'
-import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
+
 import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput, RelayProvider } from '@opengsn/provider'
 
 import { getMnemonic, getNetworkUrl, gsnCommander } from '../utils'

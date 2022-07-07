@@ -14,7 +14,7 @@ import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import {
   TestRecipientInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address } from '@opengsn/common'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 

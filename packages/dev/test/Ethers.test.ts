@@ -1,8 +1,9 @@
-import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
+import { GsnTestEnvironment, TestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { RelayProvider } from '@opengsn/provider'
 import { Contract, providers, ContractFactory } from 'ethers'
 import 'source-map-support/register'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
+import { wrapContract } from '@opengsn/provider/dist/WrapContract'
 
 const Web3HttpProvider = require('web3-providers-http')
 
@@ -31,12 +32,13 @@ describe('Ethers client', () => {
   let ethersProvider: providers.Web3Provider
   let gsnRecipient: Contract
   let sender: string
+  let env: TestEnvironment
 
   before(async function () {
     this.timeout(30000)
     const rawProvider = web3.currentProvider as any
     console.log('host=', rawProvider.host, rawProvider.url)
-    const env = await GsnTestEnvironment.startGsn(rawProvider.host)
+    env = await GsnTestEnvironment.startGsn(rawProvider.host)
     const web3provider = new Web3HttpProvider(rawProvider.host)
 
     const { paymasterAddress, forwarderAddress } = env.contractsDeployment
@@ -72,5 +74,21 @@ describe('Ethers client', () => {
     // must pass gasLimit, to force revert on chain (off-chain revert is handled before reaching GSN)
     await expectRevert(
       gsnRecipient.testRevert({ gasLimit: 1e6, gasPrice: 1e9 }).then((ret: any) => ret.wait()), 'Reported reason: : always fail')
+  })
+
+  it('should wrap ethers.js Contract instance with GSN RelayProvider', async function () {
+    this.timeout(30000)
+    const config = { paymasterAddress: env.contractsDeployment.paymasterAddress }
+    const ethersProvider = new providers.JsonRpcProvider((web3.currentProvider as any).host)
+    const signer = ethersProvider.getSigner()
+    const recipient = await new ContractFactory(TestRecipient.abi, TestRecipient.bytecode, signer).deploy(env.contractsDeployment.forwarderAddress)
+    const wrappedGsnRecipient = await wrapContract(recipient, config)
+    const signerAddress = await signer.getAddress()
+    const balanceBefore = await web3.eth.getBalance(signerAddress)
+    const ret = await wrappedGsnRecipient.emitMessage('hello', { gasPrice: 1e9 })
+    const rcpt = await ret.wait()
+    const balanceAfter = await web3.eth.getBalance(signerAddress)
+    assert.equal(balanceBefore.toString(), balanceAfter.toString())
+    expectEvent.inLogs(rcpt.events, 'SampleRecipientEmitted', { realSender: signerAddress })
   })
 })

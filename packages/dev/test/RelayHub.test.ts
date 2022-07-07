@@ -3,10 +3,19 @@ import BN from 'bn.js'
 import chai from 'chai'
 import { toBN } from 'web3-utils'
 
-import { decodeRevertReason, getEip712Signature, removeHexPrefix } from '@opengsn/common/dist/Utils'
-import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import {
+  RelayCallStatusCodes,
+  RelayRequest,
+  TypedRequestData,
+  cloneRelayRequest,
+  constants,
+  decodeRevertReason,
+  defaultEnvironment,
+  getEip712Signature,
+  registerForwarderForGsn,
+  removeHexPrefix,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
 
 import {
   RelayHubInstance,
@@ -19,11 +28,9 @@ import {
   GatewayForwarderInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason, revert, snapshot } from './TestUtils'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { RelayCallStatusCodes, constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -41,8 +48,6 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
-  const baseRelayFee = '10000'
-  const pctRelayFee = '10'
   const gasPrice = 1e9.toString()
   const maxFeePerGas = 1e9.toString()
   const maxPriorityFeePerGas = 1e9.toString()
@@ -234,8 +239,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           validUntilTime: '0'
         },
         relayData: {
-          pctRelayFee,
-          baseRelayFee,
           transactionCalldataGasUsed: 7e6.toString(),
           maxFeePerGas,
           maxPriorityFeePerGas,
@@ -404,7 +407,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         encodedFunction = recipientContract.contract.methods.emitMessage(message).encodeABI()
 
         await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
-        await relayRegistrar.registerRelayServer(relayHub, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar(url), { from: relayManager })
+        await relayRegistrar.registerRelayServer(relayHub, splitRelayUrlForRegistrar(url), { from: relayManager })
         relayRequest = cloneRelayRequest(sharedRelayRequestData)
         relayRequest.request.data = encodedFunction
         const dataToSign = new TypedRequestData(
@@ -464,8 +467,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           function clearRelayRequest (relayRequest: RelayRequest): RelayRequest {
             const clone = cloneRelayRequest(relayRequest)
             clone.relayData.relayWorker = constants.ZERO_ADDRESS
-            clone.relayData.pctRelayFee = ''
-            clone.relayData.baseRelayFee = ''
             clone.relayData.transactionCalldataGasUsed = ''
             return clone
           }
@@ -804,8 +805,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             const maxPossibleCharge = (await relayHubInstance.calculateCharge(gasLimit, {
               maxFeePerGas,
               maxPriorityFeePerGas,
-              pctRelayFee,
-              baseRelayFee,
               transactionCalldataGasUsed: 7e6.toString(),
               relayWorker,
               forwarder,

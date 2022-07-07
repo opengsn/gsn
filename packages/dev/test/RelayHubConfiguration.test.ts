@@ -6,9 +6,12 @@ import { deployHub, evmMine, setNextBlockTimestamp } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
 import {
+  RelayRequest,
+  TypedRequestData,
   constants,
   defaultEnvironment,
   getEip712Signature,
+  registerForwarderForGsn,
   splitRelayUrlForRegistrar,
   toNumber
 } from '@opengsn/common/dist'
@@ -19,9 +22,7 @@ import {
   StakeManagerInstance, TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
+
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { cleanValue } from './utils/chaiHelper'
 
@@ -40,8 +41,6 @@ contract('RelayHub Configuration',
     const message = 'Configuration'
     const unstakeDelay = 15000
     const chainId = defaultEnvironment.chainId
-    const baseRelayFee = new BN('300')
-    const pctRelayFee = new BN('10')
     const gasPrice = new BN(1e9)
     const maxFeePerGas = new BN(1e9)
     const maxPriorityFeePerGas = new BN(1e9)
@@ -99,7 +98,7 @@ contract('RelayHub Configuration',
       })
       await stakeManager.authorizeHubByOwner(relayManager, relayHub.address, { from: relayOwner })
       await relayHub.addRelayWorkers([relayWorker], { from: relayManager })
-      await relayRegistrar.registerRelayServer(relayHub.address, 0, pctRelayFee, splitRelayUrlForRegistrar(''), { from: relayManager })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: relayManager })
       encodedFunction = recipient.contract.methods.emitMessage(message).encodeABI()
       relayRequest = {
         request: {
@@ -112,8 +111,6 @@ contract('RelayHub Configuration',
           validUntilTime: '0'
         },
         relayData: {
-          baseRelayFee: baseRelayFee.toString(),
-          pctRelayFee: pctRelayFee.toString(),
           transactionCalldataGasUsed: '0',
           maxFeePerGas: maxFeePerGas.toString(),
           maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
@@ -265,7 +262,9 @@ contract('RelayHub Configuration',
             maxWorkerCount: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
             devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
-            devFee: 0x11.toString()
+            devFee: 0x11.toString(),
+            baseRelayFee: 0x11.toString(),
+            pctRelayFee: 0x11.toString()
           }
           let configFromHub = await relayHub.getConfiguration()
           // relayHub.getConfiguration() returns an array, so we need to construct an object with its fields to compare to config.
@@ -284,7 +283,9 @@ contract('RelayHub Configuration',
             minimumStake: 0xef.toString(),
             minimumUnstakeDelay: 0xef.toString(),
             devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
-            devFee: '101'
+            devFee: '101',
+            baseRelayFee: '101',
+            pctRelayFee: '101'
           }
           await expectRevert(
             relayHub.setConfiguration(config, { from: relayHubOwner }),

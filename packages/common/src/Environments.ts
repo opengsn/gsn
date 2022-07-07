@@ -52,13 +52,16 @@ const defaultPenalizerConfiguration: PenalizerConfiguration = {
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 57322,
-  postOverhead: 17104,
+  gasOverhead: 55596,
+  postOverhead: 16425,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumUnstakeDelay: 15000,
   devAddress: '0xeFEfeFEfeFeFEFEFEfefeFeFefEfEfEfeFEFEFEf',
-  devFee: 0
+  devFee: 0,
+  // TODO STOPSHIP: DECIDE!
+  pctRelayFee: 0,
+  baseRelayFee: 0
 }
 
 // TODO add as constructor params to paymaster instead of constants

@@ -5,8 +5,16 @@ import { Mutex } from 'async-mutex'
 import { FeeMarketEIP1559Transaction, Transaction, TxOptions, TypedTransaction } from '@ethereumjs/tx'
 import { PrefixedHexString } from 'ethereumjs-util'
 
-import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import {
+  Address,
+  ContractInteractor,
+  IntString,
+  LoggerInterface,
+  ObjectMap,
+  TransactionType,
+  constants,
+  isSameAddress
+} from '@opengsn/common'
 
 import { TxStoreManager } from './TxStoreManager'
 import { KeyManager, SignedTransaction } from './KeyManager'
@@ -18,13 +26,9 @@ import {
   StoredTransaction,
   StoredTransactionMetadata
 } from './StoredTransaction'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { isSameAddress } from '@opengsn/common/dist/Utils'
-import { constants } from '@opengsn/common/dist/Constants'
+
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { toBN } from 'web3-utils'
-import { TransactionType } from '@opengsn/common/dist/types/TransactionType'
-import { ObjectMap } from '@opengsn/common'
 
 export interface SignedTransactionDetails {
   transactionHash: PrefixedHexString
