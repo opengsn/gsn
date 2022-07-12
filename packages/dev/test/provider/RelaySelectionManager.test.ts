@@ -1,6 +1,7 @@
 import chaiAsPromised from 'chai-as-promised'
 import sinon, { SinonStub } from 'sinon'
 import { HttpProvider } from 'web3-core'
+import { toBN } from 'web3-utils'
 
 import {
   Address,
@@ -10,9 +11,9 @@ import {
   PartialRelayInfo,
   PingFilter,
   PingResponse,
+  RegistrarRelayInfo,
   RelayInfo,
   RelayInfoUrl,
-  RelayRegisteredEventInfo,
   WaitForSuccessResults,
   constants,
   defaultEnvironment
@@ -23,7 +24,7 @@ import { DefaultRelayFilter, KnownRelaysManager } from '@opengsn/provider/dist/K
 import { GasPricePingFilter } from '@opengsn/provider/dist/RelayClient'
 
 import { configureGSN, deployHub } from '../TestUtils'
-import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { register, stake } from './KnownRelaysManager.test'
 
 import { ether } from '@openzeppelin/test-helpers'
@@ -45,7 +46,11 @@ contract('RelaySelectionManager', function (accounts) {
   const config = configureGSN({
     waitForSuccessSliceSize
   })
-  const eventInfo: RelayRegisteredEventInfo = {
+  const eventInfo: RegistrarRelayInfo = {
+    firstSeenBlockNumber: toBN(0),
+    lastSeenBlockNumber: toBN(0),
+    firstSeenTimestamp: toBN(0),
+    lastSeenTimestamp: toBN(0),
     relayManager: '',
     relayUrl: ''
   }
@@ -220,7 +225,7 @@ contract('RelaySelectionManager', function (accounts) {
 
     it('should start returning relays from lower priority level if higher level is empty', async function () {
       // Create stub array of distinct relay URLs (URL is used as mapping key)
-      const relayInfoGenerator = (e: RelayRegisteredEventInfo, i: number, a: RelayRegisteredEventInfo[]): RelayRegisteredEventInfo => {
+      const relayInfoGenerator = (e: RegistrarRelayInfo, i: number, a: RegistrarRelayInfo[]): RegistrarRelayInfo => {
         return {
           ...e,
           relayUrl: `relay ${i} of ${a.length}`

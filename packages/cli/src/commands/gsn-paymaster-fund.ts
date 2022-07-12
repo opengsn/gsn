@@ -1,7 +1,7 @@
 import { ether } from '@opengsn/common'
 import { CommandsLogic } from '../CommandsLogic'
 import { getMnemonic, getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
-import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 
 const commander = gsnCommander(['n', 'f', 'h', 'm'])
   .option('--paymaster <address>',

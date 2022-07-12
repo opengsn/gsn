@@ -9,7 +9,7 @@ import {
   showDeployment
 } from '../utils'
 import { toHex, toWei } from 'web3-utils'
-import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 import { constants, Environment, environments, EnvironmentsKeys } from '@opengsn/common'
 
 gsnCommander(['n', 'f', 'm', 'g', 'l'])

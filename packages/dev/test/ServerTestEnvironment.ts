@@ -4,7 +4,7 @@ import Web3 from 'web3'
 import crypto from 'crypto'
 import sinon from 'sinon'
 import { HttpProvider } from 'web3-core'
-import { toHex } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
 import {
   Address,
@@ -12,9 +12,9 @@ import {
   GSNContractsDeployment,
   GsnTransactionDetails,
   PingResponse,
+  RegistrarRelayInfo,
   RelayHubConfiguration,
   RelayInfo,
-  RelayRegisteredEventInfo,
   RelayTransactionRequest,
   constants,
   defaultEnvironment,
@@ -48,7 +48,7 @@ import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
 import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
 
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 
@@ -260,7 +260,11 @@ export class ServerTestEnvironment {
       relayHubAddress: this.relayHub.address,
       relayWorkerAddress: this.relayServer.workerAddress
     }
-    const eventInfo: RelayRegisteredEventInfo = {
+    const eventInfo: RegistrarRelayInfo = {
+      firstSeenBlockNumber: toBN(0),
+      lastSeenBlockNumber: toBN(0),
+      firstSeenTimestamp: toBN(0),
+      lastSeenTimestamp: toBN(0),
       relayManager: '',
       relayUrl: ''
     }

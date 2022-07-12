@@ -34,8 +34,7 @@ import { AccountKeypair, AccountManager } from './AccountManager'
 import { DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
 import { isTransactionValid, RelayedTransactionValidator } from './RelayedTransactionValidator'
-import { createClientLogger } from './ClientWinstonLogger'
-import { defaultGsnConfig, defaultLoggerConfiguration, GSNConfig, GSNDependencies } from './GSNConfigurator'
+import { defaultGsnConfig, GSNConfig, GSNDependencies } from './GSNConfigurator'
 
 import {
   GsnDoneRefreshRelaysEvent,
@@ -110,8 +109,7 @@ export class RelayClient {
       throw new Error('Sorry, but the constructor parameters of the RelayClient class have changed. See "GSNUnresolvedConstructorInput" interface for details.')
     }
     this.rawConstructorInput = rawConstructorInput
-    this.logger = rawConstructorInput.overrideDependencies?.logger ??
-      createClientLogger(rawConstructorInput.config?.loggerConfiguration ?? defaultLoggerConfiguration)
+    this.logger = rawConstructorInput.overrideDependencies?.logger ?? console
   }
 
   async init (): Promise<this> {
@@ -592,6 +590,10 @@ export class RelayClient {
     // TODO: only 3 fields are needed, extract fields instead of building stub object
     const dryRunRelayInfo: RelayInfo = {
       relayInfo: {
+        lastSeenTimestamp: toBN(0),
+        lastSeenBlockNumber: toBN(0),
+        firstSeenTimestamp: toBN(0),
+        firstSeenBlockNumber: toBN(0),
         relayManager: '',
         relayUrl: ''
       },

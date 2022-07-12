@@ -15,7 +15,7 @@ import {
 
 import { KeyManager } from './KeyManager'
 import { TxStoreManager } from './TxStoreManager'
-import { createServerLogger } from './ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'

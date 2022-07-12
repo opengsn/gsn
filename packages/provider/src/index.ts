@@ -1,7 +1,6 @@
 export * from '@opengsn/common'
 
 export * from './AccountManager'
-export * from './ClientWinstonLogger'
 export * from './GSNConfigurator'
 export * from './GsnEvents'
 export * from './KnownRelaysManager'

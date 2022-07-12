@@ -1,0 +1,26 @@
+{
+  "name": "@opengsn/logger",
+  "version": "3.0.0-beta.1",
+  "license": "GPL-3.0-only",
+  "main": "dist/src/index.js",
+  "files": [
+    "dist/src/*",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "tsc": "tsc",
+    "watch-tsc": "tsc -w --preserveWatchOutput",
+    "lint": "eslint -f unix .",
+    "lint-fix": "yarn lint --fix",
+    "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
+  },
+  "dependencies": {
+    "@opengsn/common": "3.0.0-beta.1",
+    "winston": "^3.3.3"
+  },
+  "devDependencies": {
+  }
+}

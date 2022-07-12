@@ -1,7 +1,7 @@
 import Web3 from 'web3'
 import { CommandsLogic } from '../CommandsLogic'
 import { getMnemonic, getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
-import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 
 const commander = gsnCommander(['h', 'n', 'm'])
   .option('--paymaster <address>', 'address of the paymaster contract')

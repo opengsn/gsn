@@ -23,7 +23,7 @@ import { deployHub, evmMine, evmMineMany, revert, setNextBlockTimestamp, snapsho
 
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 

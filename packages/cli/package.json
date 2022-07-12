@@ -28,6 +28,7 @@
     "@opengsn/common": "^3.0.0-beta.1",
     "@opengsn/provider": "^3.0.0-beta.1",
     "@opengsn/relay": "^3.0.0-beta.1",
+    "@opengsn/logger": "^3.0.0-beta.1",
     "@truffle/hdwallet-provider": "1.0.34",
     "@types/asciichart": "^1.5.4",
     "@types/clear": "^0.1.1",
@@ -48,8 +49,7 @@
     "run-with-hardhat-node": "^0.4.3",
     "terminal-link": "^2.1.1",
     "web3": "^1.7.3",
-    "web3-provider-engine": "14.1.0",
-    "winston": "^3.3.3"
+    "web3-provider-engine": "14.1.0"
   },
   "devDependencies": {
     "web3-core": "^1.7.3",

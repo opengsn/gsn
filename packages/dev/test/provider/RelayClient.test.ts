@@ -11,7 +11,7 @@ import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { PrefixedHexString, toBuffer, bufferToHex } from 'ethereumjs-util'
-import { toHex } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 
 import {
   RelayHubInstance,
@@ -35,7 +35,6 @@ import {
   ObjectMap,
   PingResponse,
   RelayInfo,
-  RelayRegisteredEventInfo,
   RelayRequest,
   RelayTransactionRequest,
   Web3ProviderBaseInterface,
@@ -43,7 +42,7 @@ import {
   defaultEnvironment,
   getRawTxOptions,
   registerForwarderForGsn,
-  splitRelayUrlForRegistrar
+  splitRelayUrlForRegistrar, RegistrarRelayInfo
 } from '@opengsn/common'
 import {
   _dumpRelayingResult,
@@ -63,7 +62,7 @@ import { GsnEvent } from '@opengsn/provider/dist/GsnEvents'
 import bodyParser from 'body-parser'
 import { Server } from 'http'
 
-import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 
 import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'
@@ -86,6 +85,11 @@ const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const { expect, assert } = chai.use(chaiAsPromised)
 chai.use(sinonChai)
+
+const firstSeenBlockNumber = toBN(0)
+const lastSeenBlockNumber = toBN(0)
+const firstSeenTimestamp = toBN(0)
+const lastSeenTimestamp = toBN(0)
 
 const localhostOne = 'http://localhost:8090'
 const localhost127One = 'http://127.0.0.1:8090'
@@ -391,9 +395,9 @@ contract('RelayClient', function (accounts) {
       await relayClient.init()
       // @ts-ignore
       const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
-      const mockRelays: RelayRegisteredEventInfo[] = [
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1') },
-        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2') }
+      const mockRelays: RegistrarRelayInfo[] = [
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp }
       ]
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
@@ -418,8 +422,8 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore
       const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
       const mockRelays = [
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '70', pctRelayFee: '70' },
-        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '70', pctRelayFee: '70' }
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp }
       ]
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
@@ -458,8 +462,8 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore
       const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
       const mockRelays = [
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), baseRelayFee: '0', pctRelayFee: '70' },
-        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), baseRelayFee: '0', pctRelayFee: '70' }
+        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp },
+        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp }
       ]
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
@@ -584,7 +588,11 @@ contract('RelayClient', function (accounts) {
       relayInfo = {
         relayInfo: {
           relayManager,
-          relayUrl
+          relayUrl,
+          firstSeenBlockNumber,
+          lastSeenBlockNumber,
+          firstSeenTimestamp,
+          lastSeenTimestamp
         },
         pingResponse
       }
