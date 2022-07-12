@@ -2,6 +2,7 @@ import {
   Address,
   ContractInteractor,
   LoggerInterface,
+  RegistrarRelayInfo,
   RelayFailureInfo,
   RelayFilter,
   isSameAddress,
@@ -10,12 +11,9 @@ import {
 
 import { GSNConfig } from './GSNConfigurator'
 
-import {
-  RelayInfoUrl,
-  RelayRegisteredEventInfo
-} from '@opengsn/common/dist/types/GSNContractsDataTypes'
+import { RelayInfoUrl } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 
-export const DefaultRelayFilter: RelayFilter = function (registeredEventInfo: RelayRegisteredEventInfo): boolean {
+export const DefaultRelayFilter: RelayFilter = function (registrarRelayInfo: RegistrarRelayInfo): boolean {
   return true
 }
 
@@ -28,7 +26,7 @@ export class KnownRelaysManager {
   private relayFailures = new Map<string, RelayFailureInfo[]>()
 
   public preferredRelayers: RelayInfoUrl[] = []
-  public allRelayers: RelayRegisteredEventInfo[] = []
+  public allRelayers: RegistrarRelayInfo[] = []
 
   constructor (contractInteractor: ContractInteractor, logger: LoggerInterface, config: GSNConfig, relayFilter?: RelayFilter) {
     this.config = config
@@ -45,16 +43,16 @@ export class KnownRelaysManager {
     this.allRelayers = await this.getRelayInfoForManagers()
   }
 
-  getRelayInfoForManager (address: string): RelayRegisteredEventInfo | undefined {
+  getRelayInfoForManager (address: string): RegistrarRelayInfo | undefined {
     return this.allRelayers.find(info => isSameAddress(info.relayManager, address))
   }
 
-  async getRelayInfoForManagers (): Promise<RelayRegisteredEventInfo[]> {
+  async getRelayInfoForManagers (): Promise<RegistrarRelayInfo[]> {
     const relayInfos = await this.contractInteractor.getRegisteredRelays()
 
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
 
-    const blacklistFilteredRelayInfos = relayInfos.filter((info: RelayRegisteredEventInfo) => {
+    const blacklistFilteredRelayInfos = relayInfos.filter((info: RegistrarRelayInfo) => {
       const isHostBlacklisted = this.config.blacklistedRelays.find(relay => info.relayUrl.toLowerCase().includes(relay.toLowerCase())) != null
       const isManagerBlacklisted = this.config.blacklistedRelays.find(relay => isSameAddress(info.relayManager, relay)) != null
       return !(isHostBlacklisted || isManagerBlacklisted)
@@ -81,7 +79,7 @@ export class KnownRelaysManager {
     const sortedRelays: RelayInfoUrl[][] = []
     // preferred relays are copied as-is, unsorted (we don't have any info about them anyway to sort)
     sortedRelays[0] = Array.from(this.preferredRelayers)
-    const hasFailure = (it: RelayRegisteredEventInfo): boolean => { return this.relayFailures.get(it.relayUrl) != null }
+    const hasFailure = (it: RegistrarRelayInfo): boolean => { return this.relayFailures.get(it.relayUrl) != null }
     const relaysWithFailures = this.allRelayers.filter(hasFailure)
     const relaysWithoutFailures = this.allRelayers.filter(it => {
       return !hasFailure(it)

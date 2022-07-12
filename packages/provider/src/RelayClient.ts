@@ -590,6 +590,10 @@ export class RelayClient {
     // TODO: only 3 fields are needed, extract fields instead of building stub object
     const dryRunRelayInfo: RelayInfo = {
       relayInfo: {
+        lastSeenTimestamp: toBN(0),
+        lastSeenBlockNumber: toBN(0),
+        firstSeenTimestamp: toBN(0),
+        firstSeenBlockNumber: toBN(0),
         relayManager: '',
         relayUrl: ''
       },
