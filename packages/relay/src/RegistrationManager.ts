@@ -382,7 +382,7 @@ export class RegistrationManager {
       stakeOnHubStatus.isStaked
     if (!allPrerequisitesOk) {
       this.logger.debug('will not actually attempt registration - prerequisites not satisfied')
-      await this.refreshStake()
+      await this.refreshStake(currentBlockNumber, currentBlockHash, currentBlockTimestamp)
       await this.refreshBalance()
       return []
     }
