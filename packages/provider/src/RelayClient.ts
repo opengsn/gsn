@@ -11,7 +11,6 @@ import {
   GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
-  LoggerEmpty,
   LoggerInterface,
   ObjectMap,
   PingFilter,
@@ -110,7 +109,7 @@ export class RelayClient {
       throw new Error('Sorry, but the constructor parameters of the RelayClient class have changed. See "GSNUnresolvedConstructorInput" interface for details.')
     }
     this.rawConstructorInput = rawConstructorInput
-    this.logger = rawConstructorInput.overrideDependencies?.logger ?? new LoggerEmpty()
+    this.logger = rawConstructorInput.overrideDependencies?.logger ?? console
   }
 
   async init (): Promise<this> {
