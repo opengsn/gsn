@@ -4,7 +4,15 @@ import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
 
-import { Address, AmountRequired, defaultEnvironment, LoggerInterface, ContractInteractor, constants, toNumber } from '@opengsn/common'
+import {
+  Address,
+  AmountRequired,
+  ContractInteractor,
+  LoggerInterface,
+  constants,
+  defaultEnvironment,
+  toNumber
+} from '@opengsn/common'
 
 import {
   address2topic,
@@ -116,7 +124,8 @@ export class RegistrationManager {
     this.config = config
   }
 
-  async init (lastScannedBlock: number): Promise<void> {
+  async init (lastScannedBlock: number, latestBlock: BlockTransactionString): Promise<PrefixedHexString[]> {
+    let transactionHashes: PrefixedHexString[] = []
     if (this.lastMinedRegisterTransaction == null) {
       this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent(lastScannedBlock)
     }
@@ -129,8 +138,10 @@ export class RegistrationManager {
     this.balanceRequired = new AmountRequired('Balance', toBN(this.config.managerMinBalance), this.logger, listener)
     this.stakeRequired = new AmountRequired('Stake', minimumStakePerToken, this.logger, listener, tokenMetadata)
     await this.refreshBalance()
-    await this.refreshStake()
+    const latestBlockTimestamp = toNumber(latestBlock.timestamp)
+    transactionHashes = transactionHashes.concat(await this.refreshStake(latestBlock.number, latestBlock.hash, latestBlockTimestamp))
     this.isInitialized = true
+    return transactionHashes
   }
 
   async updateLatestRegistrationTxs (hubEventsSinceLastScan: EventData[]): Promise<void> {
@@ -191,11 +202,11 @@ export class RegistrationManager {
           await this._handleHubAuthorizedEvent(eventData)
           break
         case OwnerSet:
-          await this.refreshStake()
+          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
           this.logger.warn(`Handling OwnerSet event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           break
         case StakeAdded:
-          await this.refreshStake()
+          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
           this.logger.warn(`Handling StakeAdded event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           break
         case HubUnauthorized:
@@ -207,11 +218,11 @@ export class RegistrationManager {
           break
         case StakeUnlocked:
           this.logger.warn(`Handling StakeUnlocked event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
-          await this.refreshStake()
+          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
           break
         case StakeWithdrawn:
           this.logger.warn(`Handling StakeWithdrawn event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
-          await this.refreshStake()
+          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
           transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock.number, currentBlock.hash, currentBlockTimestamp))
           break
       }
@@ -321,7 +332,8 @@ export class RegistrationManager {
     this.balanceRequired.currentValue = toBN(currentBalance)
   }
 
-  async refreshStake (): Promise<void> {
+  async refreshStake (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
+    const transactionHashes: string[] = []
     if (this.stakeRequired == null) {
       throw new Error('not initialized')
     }
@@ -329,6 +341,24 @@ export class RegistrationManager {
     const stakedOnHubStatus = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
     if (stakedOnHubStatus.isStaked) {
       this.isHubAuthorized = true
+    } else if (stakedOnHubStatus.errorMessage === 'this hub is not authorized by SM') {
+      const isAuthorizePending =
+        await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.AUTHORIZE_HUB, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
+      if (!isAuthorizePending) {
+        const authorizeHubByManagerMethod = await this.contractInteractor.getAuthorizeHubByManagerMethod()
+        const details: SendTransactionDetails = {
+          signer: this.managerAddress,
+          serverAction: ServerAction.AUTHORIZE_HUB,
+          method: authorizeHubByManagerMethod,
+          destination: this.contractInteractor.stakeManagerAddress(),
+          creationBlockNumber: currentBlockNumber,
+          creationBlockHash: currentBlockHash,
+          creationBlockTimestamp: currentBlockTimestamp
+        }
+        this.logger.warn(`Currently configured RelayHub is not authorized! Authorizing new RelayHub: ${this.hubAddress}`)
+        const { transactionHash } = await this.transactionManager.sendTransaction(details)
+        transactionHashes.push(transactionHash)
+      }
     }
     const stake = stakeInfo.stake
     this._isOwnerSetOnStakeManager = stakeInfo.owner !== constants.ZERO_ADDRESS
@@ -336,7 +366,7 @@ export class RegistrationManager {
       throw new Error(`This Relay Manager has set owner to already! On-chain: ${stakeInfo.owner}, in config: ${this.config.ownerAddress}`)
     }
     if (stake.eq(toBN(0))) {
-      return
+      return transactionHashes
     }
 
     // a locked stake does not have the 'withdrawTime' field set
@@ -349,6 +379,8 @@ export class RegistrationManager {
       this.logger.info('Got staked for the first time')
       this.printNotRegisteredMessage()
     }
+
+    return transactionHashes
   }
 
   async addRelayWorker (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString> {
@@ -408,19 +440,20 @@ export class RegistrationManager {
     if (skipGasEstimationForRegisterRelay) {
       gasLimit = this.config.defaultGasLimit
     }
+    const registrarAddress = this.contractInteractor.relayRegistrar.address
     const details: SendTransactionDetails = {
       serverAction: ServerAction.REGISTER_SERVER,
       gasLimit,
       signer: this.managerAddress,
       method: registerMethod,
-      destination: this.contractInteractor.relayRegistrar.address,
+      destination: registrarAddress,
       creationBlockNumber: currentBlockNumber,
       creationBlockHash: currentBlockHash,
       creationBlockTimestamp: currentBlockTimestamp
     }
     const { transactionHash } = await this.transactionManager.sendTransaction(details)
     transactions = transactions.concat(transactionHash)
-    this.logger.debug(`Relay ${this.managerAddress} registered on hub ${this.hubAddress}. `)
+    this.logger.debug(`Relay ${this.managerAddress} registered on hub ${this.hubAddress} via registrar ${registrarAddress}. `)
     return transactions
   }
 

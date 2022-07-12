@@ -10,7 +10,8 @@ export enum ServerAction {
   VALUE_TRANSFER,
   DEPOSIT_WITHDRAWAL,
   PENALIZATION,
-  SET_OWNER
+  SET_OWNER,
+  AUTHORIZE_HUB
 }
 
 export interface StoredTransactionMetadata {
