@@ -31,6 +31,7 @@ export const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
   blacklistedRelays: [],
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
+  pastEventsQueryMaxPageCount: 20,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',

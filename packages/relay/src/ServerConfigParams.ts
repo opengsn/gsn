@@ -80,6 +80,8 @@ export interface ServerConfigParams {
 
   // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
   pastEventsQueryMaxPageSize: number
+  // when querying a large range with a small 'pastEventsQueryMaxPageSize' the number of pages may become insane
+  pastEventsQueryMaxPageCount: number
 
   environmentName?: string
   // number of blocks the server will not repeat a ServerAction for regardless of blockchain state to avoid duplicates
@@ -146,6 +148,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
   runPaymasterReputations: true,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
+  pastEventsQueryMaxPageCount: 20,
   recentActionAvoidRepeatDistanceBlocks: 10,
   skipErc165Check: false
 }
@@ -208,6 +211,7 @@ const ConfigParamsTypes = {
   maxFeePerGas: 'string',
   defaultPriorityFee: 'string',
   pastEventsQueryMaxPageSize: 'number',
+  pastEventsQueryMaxPageCount: 'number',
   dbPruneTxAfterBlocks: 'number',
   dbPruneTxAfterSeconds: 'number',
   environmentName: 'string',

@@ -27,6 +27,8 @@ export interface GSNConfig {
   blacklistedRelays: string[]
   // in case querying large block ranges is restricted, set limit and use pagination
   pastEventsQueryMaxPageSize: number
+  // when querying a large range with a small 'pastEventsQueryMaxPageSize' the number of pages may become insane
+  pastEventsQueryMaxPageCount: number
   // allows use of versioned methods, i.e. 'eth_signTypedData_v4'. Should be '_v4' for Metamask
   methodSuffix: string
   // should be 'true' for Metamask, false for ganache
