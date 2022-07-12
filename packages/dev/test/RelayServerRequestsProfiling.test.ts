@@ -4,7 +4,7 @@ import { ContractInteractor, LoggerInterface, GSNContractsDeployment, defaultEnv
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
