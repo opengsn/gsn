@@ -30,6 +30,7 @@ export const defaultGsnConfig: GSNConfig = {
   relayLookupWindowBlocks: DEFAULT_LOOKUP_WINDOW_BLOCKS,
   relayRegistrationLookupBlocks: Number.MAX_SAFE_INTEGER,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
+  pastEventsQueryMaxPageCount: 20,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
@@ -65,6 +66,8 @@ export interface GSNConfig {
   relayRegistrationLookupBlocks: number
   // in case querying large block ranges is restricted, set limit and use pagination
   pastEventsQueryMaxPageSize: number
+  // when querying a large range with a small 'pastEventsQueryMaxPageSize' the number of pages may become insane
+  pastEventsQueryMaxPageCount: number
 
   methodSuffix: string
   jsonStringifyRequest: boolean

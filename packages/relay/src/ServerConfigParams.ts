@@ -73,6 +73,8 @@ export interface ServerConfigParams {
   coldRestartLogsFromBlock: number
   // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
   pastEventsQueryMaxPageSize: number
+  // when querying a large range with a small 'pastEventsQueryMaxPageSize' the number of pages may become insane
+  pastEventsQueryMaxPageCount: number
 }
 
 export interface ServerDependencies {
@@ -135,6 +137,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true,
   coldRestartLogsFromBlock: 1,
+  pastEventsQueryMaxPageCount: 20,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER
 }
 
@@ -201,6 +204,7 @@ const ConfigParamsTypes = {
   maxAlertedDelayMS: 'number',
   maxGasPrice: 'string',
   coldRestartLogsFromBlock: 'number',
+  pastEventsQueryMaxPageCount: 'number',
   pastEventsQueryMaxPageSize: 'number',
   confirmationsNeeded: 'number'
 } as any

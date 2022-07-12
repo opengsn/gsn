@@ -49,6 +49,7 @@ export interface ConstructorParams {
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
   maxPageSize: number
+  maxPageCount?: number
 }
 
 export class ContractInteractor {
@@ -75,6 +76,7 @@ export class ContractInteractor {
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
   private readonly maxPageSize: number
+  private readonly maxPageCount: number
   private lastBlockNumber: number
 
   private rawTxOptions?: TxOptions
@@ -86,12 +88,14 @@ export class ContractInteractor {
   constructor (
     {
       maxPageSize,
+      maxPageCount,
       provider,
       versionManager,
       logger,
       deployment = {}
     }: ConstructorParams) {
     this.maxPageSize = maxPageSize
+    this.maxPageCount = maxPageCount ?? Number.MAX_SAFE_INTEGER
     this.logger = logger
     this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.web3 = new Web3(provider as any)
@@ -438,10 +442,16 @@ export class ContractInteractor {
     return await this._getPastEventsPaginated(this.versionRegistry.contract, names, extraTopics, options)
   }
 
-  getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): number {
+  getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): {
+    rangeSize: number
+    pagesForRange: number
+  } {
     // save 'getBlockNumber' roundtrip for a known max value
     if (this.maxPageSize === Number.MAX_SAFE_INTEGER) {
-      return 1
+      return {
+        rangeSize: 1,
+        pagesForRange: 1
+      }
     }
     // noinspection SuspiciousTypeOfGuard - known false positive
     if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
@@ -452,7 +462,10 @@ export class ContractInteractor {
     if (pagesForRange > 1) {
       this.logger.info(`Splitting request for ${rangeSize} blocks into ${pagesForRange} smaller paginated requests!`)
     }
-    return pagesForRange
+    return {
+      rangeSize,
+      pagesForRange
+    }
   }
 
   splitRange (fromBlock: BlockNumber, toBlock: BlockNumber, parts: number): Array<{ fromBlock: BlockNumber, toBlock: BlockNumber }> {
@@ -500,7 +513,12 @@ export class ContractInteractor {
       this.logger.error(message)
       throw new Error(message)
     }
-    let pagesCurrent: number = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
+    let { pagesForRange: pagesCurrent, rangeSize } = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
+    if (pagesCurrent > this.maxPageCount) {
+      throw new Error(
+`Failed to make a paginated request to 'getPastEvents' in block range [${options.fromBlock.toString()}..${options.toBlock.toString()}] with page size ${rangeSize}.
+This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxPageCount' is ${this.maxPageCount}`)
+    }
     const relayEventParts: EventData[][] = []
     while (true) {
       const rangeParts = await this.splitRange(options.fromBlock, options.toBlock, pagesCurrent)
