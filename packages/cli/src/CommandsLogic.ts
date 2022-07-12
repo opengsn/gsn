@@ -252,8 +252,9 @@ export class CommandsLogic {
       }
       const relayAddress = response.relayManagerAddress
       const relayHubAddress = response.relayHubAddress
+      await this.contractInteractor._resolveDeploymentFromRelayHub(relayHubAddress)
 
-      const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+      const relayHub = await this.contractInteractor.relayHubInstance
       const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { stake, unstakeDelay, owner, token } = (await stakeManager.getStakeInfo(relayAddress))[0]
@@ -412,7 +413,7 @@ export class CommandsLogic {
       toBlock
     }, ['StakingTokenDataChanged'])
     if (tokens.length === 0) {
-      throw new Error(`no registered staking tokens on relayhub ${relayHubAddress}`)
+      throw new Error(`no registered staking tokens on RelayHub ${relayHubAddress}`)
     }
     return tokens[0].returnValues.token
   }
@@ -567,7 +568,7 @@ export class CommandsLogic {
     }
     await registerForwarderForGsn(fInstance, options)
 
-    let stakingTokenAddress = deployOptions.stakeManagerAddress ?? ''
+    let stakingTokenAddress = deployOptions.stakingTokenAddress
 
     let ttInstance: Contract | undefined
     if (deployOptions.deployTestToken ?? false) {
@@ -577,9 +578,9 @@ export class CommandsLogic {
       stakingTokenAddress = ttInstance.options.address
     }
 
-    const stakingContact = await this.contractInteractor._createERC20(stakingTokenAddress)
-    const tokenDecimals = await stakingContact.decimals()
-    const tokenSymbol = await stakingContact.symbol()
+    const stakingTokenContract = await this.contractInteractor._createERC20(stakingTokenAddress ?? '')
+    const tokenDecimals = await stakingTokenContract.decimals()
+    const tokenSymbol = await stakingTokenContract.symbol()
 
     const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, tokenSymbol)
 
