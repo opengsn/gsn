@@ -116,10 +116,6 @@ export class RegistrationManager {
 
   async init (lastScannedBlock: number, latestBlock: BlockTransactionString): Promise<PrefixedHexString[]> {
     let transactionHashes: PrefixedHexString[] = []
-    if (this.lastMinedRegisterTransaction == null) {
-      this.lastMinedRegisterTransaction = await this._queryLatestRegistrationEvent(lastScannedBlock)
-    }
-
     const tokenMetadata = await this.contractInteractor.getErc20TokenMetadata()
     const listener = (): void => {
       this.printNotRegisteredMessage()
