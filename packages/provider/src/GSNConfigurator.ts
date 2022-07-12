@@ -57,7 +57,7 @@ export const defaultGsnConfig: GSNConfig = {
 
 export interface GSNDependencies {
   httpClient: HttpClient
-  logger: LoggerInterface
+  logger?: LoggerInterface
   contractInteractor: ContractInteractor
   knownRelaysManager: KnownRelaysManager
   accountManager: AccountManager

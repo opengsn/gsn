@@ -1,8 +1,7 @@
 
 {
-  "baseRelayFee": 0,
-  "pctRelayFee": 70,
   "relayHubAddress": "<deployed relay hub>",
+  "managerStakeTokenAddress": "<erc20 token address for staking>",
   "ownerAddress": "<address of owner account>",
   "gasPriceFactor": 1,
   "ethereumNodeUrl": "https://<network>.infura.io/v3/<INFURA-ID>"
