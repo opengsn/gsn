@@ -137,7 +137,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   requestMinValidBlocks: 3000, // roughly 12 hours (half client's default of 6000 blocks
   runPaymasterReputations: true,
   coldRestartLogsFromBlock: 1,
-  pastEventsQueryMaxPageCount: 20,
+  pastEventsQueryMaxPageCount: 100,
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER
 }
 
