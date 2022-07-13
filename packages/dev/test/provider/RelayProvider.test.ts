@@ -196,9 +196,10 @@ contract('RelayProvider', function (accounts) {
     it('should initiate lookup for forgotten transaction based on its identifier having a prefix', async function () {
       // @ts-ignore
       const stubGet = sinon.stub(relayProvider.submittedRelayRequests, 'get').returns(undefined)
+      const pingResponse = await relayProvider.relayClient.dependencies.httpClient.getPingResponse('http://127.0.0.1:8090')
       const res = await testRecipient.emitMessage('hello world', {
         from: gasLess,
-        gasPrice: '0x51f4d5c00',
+        gasPrice: pingResponse.minMaxPriorityFeePerGas,
         gas: '100000',
         // @ts-ignore
         paymaster
