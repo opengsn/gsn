@@ -559,6 +559,7 @@ export class RelayClient {
         versionManager,
         logger: this.logger,
         maxPageSize: this.config.pastEventsQueryMaxPageSize,
+        maxPageCount: this.config.pastEventsQueryMaxPageCount,
         environment: this.config.environment,
         deployment: { paymasterAddress: config?.paymasterAddress }
       }).init()
