@@ -480,7 +480,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
   }
 
-  async init (): Promise<void> {
+  async init (): Promise<PrefixedHexString[]> {
     const initStartTimestamp = Date.now()
     this.logger.debug('server init start')
     if (this.initialized) {
@@ -517,7 +517,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.managerAddress,
       this.workerAddress
     )
-    await this.registrationManager.init()
+    const transactionHashes = await this.registrationManager.init(this.lastScannedBlock, latestBlock)
 
     this.chainId = this.contractInteractor.chainId
     this.networkId = this.contractInteractor.getNetworkId()
@@ -538,6 +538,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     // Assume started server is not registered until _worker figures stuff out
     this.registrationManager.printNotRegisteredMessage()
     this.logger.debug(`server init finished in ${Date.now() - initStartTimestamp} ms`)
+    return transactionHashes
   }
 
   async replenishServer (
