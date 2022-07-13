@@ -154,7 +154,7 @@ contract('ContractInteractor', function (accounts) {
         })
       const stub = sinon.stub(contractInteractor, 'getFeeHistory').rejects(new Error('No fee history for you'))
       // @ts-ignore
-      const spy = sinon.spy(contractInteractor.logger, 'debug')
+      const spy = sinon.spy(contractInteractor.logger, 'warn')
       try {
         await contractInteractor.init()
         const transactionType = contractInteractor.transactionType
