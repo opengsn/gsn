@@ -15444,3 +15444,4 @@ zksync-web3@^0.7.8:
   version "0.7.9"
   resolved "https://registry.yarnpkg.com/zksync-web3/-/zksync-web3-0.7.9.tgz#fbb9a17f4b297c0fb9361de2a0d85ff2aac5becc"
   integrity sha512-B0pitKvEQGJuWkY2UWjXrL1YgHghXEoDaq6acVZnB62TRF099GV58Fzi7Fnqt+Nw14A7Wc9iJ2AHD4GBTLFgkg==
+
