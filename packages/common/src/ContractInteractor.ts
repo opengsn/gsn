@@ -1056,6 +1056,11 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return registrar?.contract.methods.registerRelayServer(relayHub, splitRelayUrlForRegistrar(url))
   }
 
+  async getAuthorizeHubByManagerMethod (): Promise<any> {
+    const hub = this.relayHubInstance.address
+    return this.stakeManagerInstance.contract.methods.authorizeHubByManager(hub)
+  }
+
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
     const hub = this.relayHubInstance
     return hub.contract.methods.addRelayWorkers(workers)
