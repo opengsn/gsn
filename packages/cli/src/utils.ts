@@ -170,6 +170,9 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         break
       case 'm':
         commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\'')
+        commander.option('--derivationPath <string>', 'derivation path for the mnemonic to use, defaults to m/44\'/60\'/0\'/0/')
+        commander.option('--derivationIndex <string>', 'derivation index to use with a given mnemonic, defaults to 0', '0')
+        commander.option('--privateKeyHex <string>', 'private key to use directly without mnemonic')
         break
       case 'g':
         commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.')

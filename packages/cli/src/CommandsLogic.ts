@@ -4,7 +4,6 @@ import BN from 'bn.js'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
-import { HttpProvider } from 'web3-core'
 import { fromWei, toBN, toHex } from 'web3-utils'
 import ow from 'ow'
 
@@ -121,15 +120,35 @@ export class CommandsLogic {
     host: string,
     logger: LoggerInterface,
     deployment: GSNContractsDeployment,
-    mnemonic?: string
+    mnemonic?: string,
+    derivationPath?: string,
+    derivationIndex: string = '0',
+    privateKey?: string
   ) {
-    let provider: HttpProvider | HDWalletProvider = new Web3.providers.HttpProvider(host, {
+    let provider: any = new Web3.providers.HttpProvider(host, {
       keepAlive: true,
       timeout: 120000
     })
-    if (mnemonic != null) {
-      // web3 defines provider type quite narrowly
-      provider = new HDWalletProvider(mnemonic, provider) as unknown as HttpProvider
+    provider.sendAsync = provider.send.bind(provider)
+    if (mnemonic != null || privateKey != null) {
+      let hdWalletConstructorArguments: any
+      if (mnemonic != null) {
+        const addressIndex = parseInt(derivationIndex)
+        hdWalletConstructorArguments = {
+          mnemonic,
+          derivationPath,
+          addressIndex,
+          provider
+        }
+      } else {
+        hdWalletConstructorArguments = {
+          privateKeys: [privateKey],
+          provider
+        }
+      }
+      provider = new HDWalletProvider(hdWalletConstructorArguments)
+      const hdWalletAddress: string = provider.getAddress()
+      console.log(`Using HDWalletProvider for address ${hdWalletAddress}`)
     }
     this.httpClient = new HttpClient(new HttpWrapper(), logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
