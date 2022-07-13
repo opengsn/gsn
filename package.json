@@ -49,6 +49,7 @@
     "preprocess-paymasters": "yarn lerna-rm-dist --scope @opengsn/paymasters && yarn lerna-typechain-generate-paymasters && yarn lerna-tsc-paymasters && yarn lerna-lint-paymasters",
     "extract_abi": "./scripts/extract_abi.js",
     "solpp": "./scripts/solpp.js",
+    "tsc": "yarn lerna-tsc",
     "lerna-typechain-generate": "lerna run typechain-generate --stream --ignore @opengsn/paymasters",
     "lerna-typechain-generate-paymasters": "lerna run typechain-generate --stream --scope @opengsn/paymasters",
     "lerna-publish": "lerna publish --pre-dist-tag next",
