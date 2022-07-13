@@ -11,7 +11,7 @@ import { LocalhostOne, ServerTestEnvironment } from '../ServerTestEnvironment'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { GSNConfig, GSNDependencies } from '@opengsn/provider/dist/GSNConfigurator'
 
-import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 
 import { evmMineMany, startRelay, stopRelay } from '../TestUtils'
 

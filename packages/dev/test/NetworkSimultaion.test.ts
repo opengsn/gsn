@@ -16,7 +16,7 @@ import { NetworkSimulatingProvider } from '@opengsn/common/dist/dev/NetworkSimul
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { evmMine, increaseTime, revert, snapshot } from './TestUtils'
 
 import sinon from 'sinon'

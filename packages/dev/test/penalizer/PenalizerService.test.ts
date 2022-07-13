@@ -4,7 +4,7 @@ import { toBN } from 'web3-utils'
 
 import { PenalizerDependencies, PenalizerService } from '@opengsn/relay/dist/penalizer/PenalizerService'
 import { AuditRequest, constants, Address } from '@opengsn/common'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { MockTxByNonceService } from './MockTxByNonceService'

@@ -23,7 +23,7 @@ import {
   ServerConfigParams,
   ServerDependencies
 } from './ServerConfigParams'
-import { createServerLogger } from './ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { PenalizerDependencies, PenalizerService } from './penalizer/PenalizerService'
 import { TransactionManager } from './TransactionManager'
 import { EtherscanCachedService } from './penalizer/EtherscanCachedService'

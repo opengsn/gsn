@@ -8,7 +8,7 @@ import {
   ContractInteractor,
   LoggerInterface,
   RelayInfoUrl,
-  RelayRegisteredEventInfo,
+  RegistrarRelayInfo,
   constants,
   defaultEnvironment,
   registerForwarderForGsn,
@@ -22,10 +22,10 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { configureGSN, deployHub, evmMineMany, startRelay, stopRelay } from '../TestUtils'
+import { configureGSN, deployHub, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 
-import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -68,7 +68,6 @@ contract('KnownRelaysManager', function (
     workerRelayServerRegistered,
     workerNotActive
   ]) {
-  const relayLookupWindowBlocks = 100
   const pastEventsQueryMaxPageSize = 10
 
   describe('#_fetchRecentlyActiveRelayManagers()', function () {
@@ -141,7 +140,6 @@ contract('KnownRelaysManager', function (
       await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('bbb'), { from: activePaymasterRejected })
       await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('ccc'), { from: activeRelayWorkersAdded })
 
-      await evmMineMany(relayLookupWindowBlocks)
       /** events that are supposed to be visible to the manager */
       await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('ddd'), { from: activeRelayServerRegistered })
       await relayHub.addRelayWorkers([workerRelayWorkersAdded2], {
@@ -160,7 +158,7 @@ contract('KnownRelaysManager', function (
       })
     })
 
-    it('should contain all relay managers only if their workers were active in the last \'relayLookupWindowBlocks\' blocks',
+    it('should contain all relay managers from chain',
       async function () {
         const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
         const infos = await knownRelaysManager.getRelayInfoForManagers()
@@ -312,8 +310,8 @@ contract('KnownRelaysManager 2', function (accounts) {
     })
 
     it('should use \'relayFilter\' to remove unsuitable relays', async function () {
-      const relayFilter = (registeredEventInfo: RelayRegisteredEventInfo): boolean => {
-        return registeredEventInfo.relayUrl.includes('2')
+      const relayFilter = (registrarRelayInfo: RegistrarRelayInfo): boolean => {
+        return registrarRelayInfo.relayUrl.includes('2')
       }
       const knownRelaysManagerWithFilter = new KnownRelaysManager(contractInteractor, logger, config, relayFilter)
       await knownRelaysManagerWithFilter.refresh()

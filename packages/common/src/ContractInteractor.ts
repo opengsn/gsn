@@ -54,7 +54,6 @@ import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import {
   ActiveManagerEvents,
-  RelayRegisteredEventInfo,
   RelayServerRegistered,
   RelayWorkersAdded,
   StakeInfo
@@ -65,6 +64,7 @@ import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from 'bignumber.js'
 import { TransactionType } from './types/TransactionType'
+import { RegistrarRelayInfo } from './types/RelayInfo'
 import { constants, erc165Interfaces, RelayCallStatusCodes } from './Constants'
 import TransactionDetails = Truffle.TransactionDetails
 
@@ -74,6 +74,7 @@ export interface ConstructorParams {
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
   maxPageSize: number
+  maxPageCount?: number
   environment: Environment
 }
 
@@ -138,6 +139,7 @@ export class ContractInteractor {
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
   private readonly maxPageSize: number
+  private readonly maxPageCount: number
   private lastBlockNumber: number
 
   private rawTxOptions?: TxOptions
@@ -151,6 +153,7 @@ export class ContractInteractor {
   constructor (
     {
       maxPageSize,
+      maxPageCount,
       provider,
       versionManager,
       logger,
@@ -158,6 +161,7 @@ export class ContractInteractor {
       deployment = {}
     }: ConstructorParams) {
     this.maxPageSize = maxPageSize
+    this.maxPageCount = maxPageCount ?? Number.MAX_SAFE_INTEGER
     this.logger = logger
     this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.web3 = new Web3(provider as any)
@@ -621,10 +625,16 @@ export class ContractInteractor {
     return await this._getPastEventsPaginated(this.penalizerInstance.contract, names, extraTopics, options)
   }
 
-  getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): number {
+  getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): {
+    rangeSize: number
+    pagesForRange: number
+  } {
     // save 'getBlockNumber' roundtrip for a known max value
     if (this.maxPageSize === Number.MAX_SAFE_INTEGER) {
-      return 1
+      return {
+        rangeSize: 1,
+        pagesForRange: 1
+      }
     }
     // noinspection SuspiciousTypeOfGuard - known false positive
     if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
@@ -636,7 +646,10 @@ export class ContractInteractor {
     if (pagesForRange > 1) {
       this.logger.info(`Splitting request for ${rangeSize} blocks into ${pagesForRange} smaller paginated requests!`)
     }
-    return pagesForRange
+    return {
+      rangeSize,
+      pagesForRange
+    }
   }
 
   splitRange (fromBlock: BlockNumber, toBlock: BlockNumber, parts: number): Array<{ fromBlock: BlockNumber, toBlock: BlockNumber }> {
@@ -684,7 +697,12 @@ export class ContractInteractor {
       this.logger.error(message)
       throw new Error(message)
     }
-    let pagesCurrent: number = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
+    let { pagesForRange: pagesCurrent, rangeSize } = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
+    if (pagesCurrent > this.maxPageCount) {
+      throw new Error(
+`Failed to make a paginated request to 'getPastEvents' in block range [${options.fromBlock.toString()}..${options.toBlock.toString()}] with page size ${rangeSize}.
+This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxPageCount' is ${this.maxPageCount}`)
+    }
     const relayEventParts: EventData[][] = []
     while (true) {
       const rangeParts = await this.splitRange(options.fromBlock, options.toBlock, pagesCurrent)
@@ -1038,6 +1056,11 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return registrar?.contract.methods.registerRelayServer(relayHub, splitRelayUrlForRegistrar(url))
   }
 
+  async getAuthorizeHubByManagerMethod (): Promise<any> {
+    const hub = this.relayHubInstance.address
+    return this.stakeManagerInstance.contract.methods.authorizeHubByManager(hub)
+  }
+
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
     const hub = this.relayHubInstance
     return hub.contract.methods.addRelayWorkers(workers)
@@ -1130,33 +1153,20 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return this.penalizerInstance.address
   }
 
-  /**
-   * discover registered relays
-   */
-  async getRegisteredRelays (): Promise<RelayRegisteredEventInfo[]> {
-    return await this.getRegisteredRelaysFromRegistrar()
-  }
-
   async getRelayRegistrationMaxAge (): Promise<BN> {
     return await this.relayRegistrar.getRelayRegistrationMaxAge()
   }
 
-  async getRelayInfo (relayManagerAddress: string): Promise<{
-    lastSeenBlockNumber: BN
-    lastSeenTimestamp: BN
-    firstSeenBlockNumber: BN
-    firstSeenTimestamp: BN
-    urlParts: string[]
-    relayManager: string
-  }> {
-    return await this.relayRegistrar.getRelayInfo(this.relayHubInstance.address, relayManagerAddress)
+  async getRelayInfo (relayManagerAddress: string): Promise<RegistrarRelayInfo> {
+    const relayInfo = await this.relayRegistrar.getRelayInfo(this.relayHubInstance.address, relayManagerAddress)
+    return Object.assign({}, relayInfo, { relayUrl: packRelayUrlForRegistrar(relayInfo.urlParts) })
   }
 
   /**
    * get registered relayers from registrar
    * (output format matches event info)
    */
-  async getRegisteredRelaysFromRegistrar (): Promise<RelayRegisteredEventInfo[]> {
+  async getRegisteredRelays (): Promise<RegistrarRelayInfo[]> {
     if (this.relayRegistrar == null) {
       throw new Error('Relay Registrar is not initialized')
     }
@@ -1167,10 +1177,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub)
 
     return relayInfos.map(info => {
-      return {
-        relayManager: info.relayManager,
+      return Object.assign({}, info, {
         relayUrl: packRelayUrlForRegistrar(info.urlParts)
-      }
+      })
     })
   }
 

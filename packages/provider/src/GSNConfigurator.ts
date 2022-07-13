@@ -31,6 +31,7 @@ export const defaultGsnConfig: GSNConfig = {
   preferredRelays: [],
   blacklistedRelays: [],
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
+  pastEventsQueryMaxPageCount: 20,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
@@ -57,7 +58,7 @@ export const defaultGsnConfig: GSNConfig = {
 
 export interface GSNDependencies {
   httpClient: HttpClient
-  logger: LoggerInterface
+  logger?: LoggerInterface
   contractInteractor: ContractInteractor
   knownRelaysManager: KnownRelaysManager
   accountManager: AccountManager

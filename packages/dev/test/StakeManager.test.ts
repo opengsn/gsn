@@ -35,7 +35,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
         from: owner
       })
 
-      expectEvent.inTransaction(tx, StakeManager, 'StakeAdded', {
+      await expectEvent.inTransaction(tx, StakeManager, 'StakeAdded', {
         relayManager,
         owner,
         stake: initialStake,
