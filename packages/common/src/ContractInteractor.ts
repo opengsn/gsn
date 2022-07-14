@@ -221,14 +221,14 @@ export class ContractInteractor {
     }
     const block = await this.web3.eth.getBlock('latest').catch((e: Error) => { throw new Error(`getBlock('latest') failed: ${e.message}\nCheck your internet/ethereum node connection`) })
     if (block.baseFeePerGas != null) {
-      this.logger.debug('Network supports type two (eip 1559) transactions. Checking rpc node eth_feeHistory method')
+      this.logger.info('Network supports Type 2 Transactions (EIP-1559). Checking RPC node \'eth_feeHistory\' method')
       try {
         await this.getFeeHistory('0x1', 'latest', [0.5])
         this.transactionType = TransactionType.TYPE_TWO
-        this.logger.debug('Rpc node supports eth_feeHistory. Initializing to type two transactions')
+        this.logger.debug('RPC node supports \'eth_feeHistory\'. Initializing to Type 2 Transactions.')
       } catch (e: any) {
-        this.logger.debug('eth_feeHistory failed. Aborting.')
-        throw e
+        this.logger.warn('Call to \'eth_feeHistory\' failed. Falling back to Legacy Transaction Type.')
+        this.transactionType = TransactionType.LEGACY
       }
     }
     await this._resolveDeployment()
