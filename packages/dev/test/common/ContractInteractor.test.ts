@@ -143,7 +143,7 @@ contract('ContractInteractor', function (accounts) {
       await contractInteractor.init()
       await expect(contractInteractor.init()).to.be.rejectedWith('init was already called')
     })
-    it('should throw if network returns block.baseFeePerGas but rpc node doesn\'t support eth_feeHistory', async function () {
+    it('should fall back to Legacy Type if network returns block.baseFeePerGas but rpc node doesn\'t support eth_feeHistory', async function () {
       const contractInteractor = new ContractInteractor(
         {
           environment,
@@ -154,11 +154,12 @@ contract('ContractInteractor', function (accounts) {
         })
       const stub = sinon.stub(contractInteractor, 'getFeeHistory').rejects(new Error('No fee history for you'))
       // @ts-ignore
-      const spy = sinon.spy(contractInteractor.logger, 'debug')
+      const spy = sinon.spy(contractInteractor.logger, 'warn')
       try {
-        await expect(contractInteractor.init())
-          .to.eventually.rejectedWith('No fee history for you')
-        sinon.assert.calledWith(spy, 'eth_feeHistory failed. Aborting.')
+        await contractInteractor.init()
+        const transactionType = contractInteractor.transactionType
+        assert.equal(transactionType, TransactionType.LEGACY)
+        sinon.assert.calledWith(spy, 'Call to \'eth_feeHistory\' failed. Falling back to Legacy Transaction Type.')
       } finally {
         stub.restore()
       }
