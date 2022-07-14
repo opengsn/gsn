@@ -93,7 +93,7 @@ async function getProvider (
   const nodeURL = getNetworkUrl(network)
   const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
-  const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic)
+  const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic, commander.derivationPath, commander.derivationIndex, commander.privateKeyHex)
   const { provider, from } = await getProvider(
     commander.to,
     commander.paymaster,
