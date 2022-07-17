@@ -76,7 +76,7 @@
     "verdaccio-publish": "lerna publish --no-git-tag-version --no-push --no-git-reset --registry http://localhost:4873",
     "verdaccio-run": "verdaccio --config verdaccio/verdaccio.yaml",
     "verdaccio-clean": "rm -rf verdaccio/db",
-    "depcheck": "lerna exec --no-bail --stream -- depcheck",
+    "depcheck": "lerna exec --no-bail --stream -- npx depcheck",
     "create-all-deps": "jq '.dependencies,.devDependencies' packages/*/package.json |sort  -u > all.deps"
   },
   "devDependencies": {
@@ -90,6 +90,7 @@
     "@typescript-eslint/eslint-plugin": "^4.8.1",
     "@typescript-eslint/parser": "^4.8.1",
     "bn.js": "^5.2.0",
+    "depcheck": "^1.4.3",
     "eslint": "^7.13.0",
     "eslint-config-standard": "14.1.1",
     "eslint-config-standard-with-typescript": "18.0.2",

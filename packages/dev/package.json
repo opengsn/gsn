@@ -41,6 +41,7 @@
     "@types/sinon": "^9.0.10",
     "@types/sinon-chai": "^3.2.5",
     "abi-decoder": "^2.3.0",
+    "async-mutex": "^0.3.2",
     "axios": "^0.27.2",
     "bn.js": "^5.2.1",
     "body-parser": "^1.20.0",
@@ -58,8 +59,10 @@
     "web3": "^1.7.4",
     "web3-core": "^1.7.4",
     "web3-core-helpers": "^1.7.4",
+    "web3-eth": "^1.7.4",
     "web3-eth-contract": "^1.7.4",
     "web3-providers-http": "^1.7.4",
-    "web3-utils": "^1.7.4"
+    "web3-utils": "^1.7.4",
+    "winston": "^3.8.1"
   }
 }
