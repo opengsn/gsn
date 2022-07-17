@@ -1,4 +1,3 @@
-import * as core from 'express-serve-static-core'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import express, { Express, Request, Response } from 'express'
@@ -6,8 +5,18 @@ import { Server } from 'http'
 import ow from 'ow'
 
 import { PenalizerService } from './penalizer/PenalizerService'
-import { LoggerInterface, AuditRequest, AuditRequestShape, AuditResponse, RelayTransactionRequestShape } from '@opengsn/common'
+import {
+  AuditRequest,
+  AuditRequestShape,
+  AuditResponse,
+  LoggerInterface,
+  RelayTransactionRequestShape
+} from '@opengsn/common'
 import { RelayServer } from './RelayServer'
+
+export interface ParamsDictionary {
+  [key: string]: string
+}
 
 export class HttpServer {
   app: Express
@@ -117,7 +126,7 @@ export class HttpServer {
     }
   }
 
-  async auditHandler (req: Request<core.ParamsDictionary, AuditResponse, AuditRequest>, res: Response<AuditResponse>): Promise<void> {
+  async auditHandler (req: Request<ParamsDictionary, AuditResponse, AuditRequest>, res: Response<AuditResponse>): Promise<void> {
     if (this.penalizerService == null) {
       throw new Error('PenalizerService not initialized')
     }

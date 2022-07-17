@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@opengsn/common": "3.0.0-beta.1",
+    "loglevel": "^1.8.0",
     "winston": "^3.3.3"
   },
   "devDependencies": {

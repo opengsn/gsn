@@ -10,7 +10,7 @@ import {
   ProxyFactoryInstance,
   TestCounterInstance,
   TestTokenInstance
-} from '@opengsn/paymasters/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import ProxyRelayProvider from '../src/ProxyRelayProvider'
 import { GSNConfig } from '@opengsn/provider'
 

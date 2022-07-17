@@ -1,4 +1,3 @@
-import 'source-map-support/register'
 import { RelayProvider, GSNConfig } from '@opengsn/provider'
 import {
   Address,
@@ -32,7 +31,7 @@ import {
   TestHubInstance,
   TestCounterInstance,
   ProxyFactoryInstance
-} from '@opengsn/paymasters/types/truffle-contracts'
+} from '../types/truffle-contracts'
 
 import {
   StakeManagerInstance,

@@ -1,5 +1,5 @@
 import AsyncNedb from 'nedb-async'
-import ow from 'ow'
+import ow from 'ow/dist'
 import { PrefixedHexString } from 'ethereumjs-util'
 
 import { Address, isSameAddress, LoggerInterface } from '@opengsn/common'

@@ -33,8 +33,6 @@ import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { toBN } from 'web3-utils'
 
-require('source-map-support').install({ errorFormatterForce: true })
-
 const RelayHub = artifacts.require('RelayHub')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 

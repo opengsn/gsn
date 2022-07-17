@@ -6,7 +6,7 @@ import BN from 'bn.js'
 import { Transaction, AccessListEIP2930Transaction, FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
 import Common from '@ethereumjs/common'
 import { TxOptions } from '@ethereumjs/tx/dist/types'
-import { encode } from 'rlp'
+import { encode, utils } from 'rlp'
 import { expect } from 'chai'
 import { privateToAddress, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
 
@@ -190,21 +190,21 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       describe('#decodeTransaction', function () {
         it('should decode TransactionType1 tx', async function () {
           const input = [bnToRlp(eip2930Transaction.chainId), bnToRlp(eip2930Transaction.nonce), bnToRlp(eip2930Transaction.gasPrice), bnToRlp(eip2930Transaction.gasLimit), eip2930Transaction.to!.toBuffer(), bnToRlp(eip2930Transaction.value), eip2930Transaction.data, eip2930Transaction.accessList]
-          const penalizableTxData = `0x01${encode(input).toString('hex')}`
+          const penalizableTxData = `0x01${utils.bytesToHex(encode(input))}`
           const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
           // @ts-ignore
           validateDecodedTx(decodedTx, eip2930Transaction)
         })
         it('should decode new TransactionType2 tx', async function () {
           const input = [bnToRlp(eip1559Transaction.chainId), bnToRlp(eip1559Transaction.nonce), bnToRlp(eip1559Transaction.maxPriorityFeePerGas), bnToRlp(eip1559Transaction.maxFeePerGas), bnToRlp(eip1559Transaction.gasLimit), eip1559Transaction.to!.toBuffer(), bnToRlp(eip1559Transaction.value), eip1559Transaction.data, eip1559Transaction.accessList]
-          const penalizableTxData = `0x02${encode(input).toString('hex')}`
+          const penalizableTxData = `0x02${utils.bytesToHex(encode(input))}`
           const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
           // @ts-ignore
           validateDecodedTx(decodedTx, eip1559Transaction)
         })
         it('should decode legacy tx', async function () {
           const input = [bnToRlp(legacyTx.nonce), bnToRlp(legacyTx.gasPrice), bnToRlp(legacyTx.gasLimit), legacyTx.to!.toBuffer(), bnToRlp(legacyTx.value), legacyTx.data]
-          const penalizableTxData = `0x${encode(input).toString('hex')}`
+          const penalizableTxData = `0x${utils.bytesToHex(encode(input))}`
           const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
           // @ts-ignore
           validateDecodedTx(decodedTx, legacyTx)
@@ -214,7 +214,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       it('should not penalize TransactionType1 tx', async function () {
         const signedTx = eip2930Transaction.sign(relayCallArgs.privateKey)
         const input = [bnToRlp(eip2930Transaction.chainId), bnToRlp(eip2930Transaction.nonce), bnToRlp(eip2930Transaction.gasPrice), bnToRlp(eip2930Transaction.gasLimit), eip2930Transaction.to!.toBuffer(), bnToRlp(eip2930Transaction.value), eip2930Transaction.data, eip2930Transaction.accessList]
-        const penalizableTxData = `0x01${encode(input).toString('hex')}`
+        const penalizableTxData = `0x01${utils.bytesToHex(encode(input))}`
 
         const newV = (signedTx.v!.toNumber() + 27)
         const penalizableTxSignature = signatureRSV2Hex(signedTx.r!, signedTx.s!, newV)
@@ -234,7 +234,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       it('should not penalize TransactionType2 tx', async function () {
         const signedTx = eip1559Transaction.sign(relayCallArgs.privateKey)
         const input = [bnToRlp(eip1559Transaction.chainId), bnToRlp(eip1559Transaction.nonce), bnToRlp(eip1559Transaction.maxPriorityFeePerGas), bnToRlp(eip1559Transaction.maxFeePerGas), bnToRlp(eip1559Transaction.gasLimit), eip1559Transaction.to!.toBuffer(), bnToRlp(eip1559Transaction.value), eip1559Transaction.data, eip1559Transaction.accessList]
-        const penalizableTxData = `0x02${encode(input).toString('hex')}`
+        const penalizableTxData = `0x02${utils.bytesToHex(encode(input))}`
 
         const newV = (signedTx.v!.toNumber() + 27)
         const penalizableTxSignature = signatureRSV2Hex(signedTx.r!, signedTx.s!, newV)

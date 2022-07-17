@@ -1,7 +1,6 @@
 import { GsnTestEnvironment, TestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { RelayProvider } from '@opengsn/provider'
 import { Contract, providers, ContractFactory } from 'ethers'
-import 'source-map-support/register'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { wrapContract } from '@opengsn/provider/dist/WrapContract'
 

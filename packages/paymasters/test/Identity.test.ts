@@ -3,7 +3,7 @@ import { expectRevert } from '@openzeppelin/test-helpers'
 import {
   TestCounterInstance,
   ProxyIdentityInstance
-} from '@opengsn/paymasters/types/truffle-contracts'
+} from '../types/truffle-contracts'
 
 const ProxyIdentity = artifacts.require('ProxyIdentity')
 const Counter = artifacts.require('TestCounter')
