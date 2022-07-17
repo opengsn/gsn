@@ -6,7 +6,7 @@ import { HttpProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { EventData } from 'web3-eth-contract'
-import { TypedMessage } from 'eth-sig-util'
+import { TypedMessage } from '@metamask/eth-sig-util'
 
 import {
   Address,

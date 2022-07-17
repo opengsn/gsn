@@ -4,7 +4,13 @@ import Web3 from 'web3'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { RLPEncodedTransaction } from 'web3-core'
 import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
-import { personalSign, recoverTypedSignature_v4, signTypedData_v4, TypedMessage } from 'eth-sig-util'
+import {
+  SignTypedDataVersion,
+  TypedMessage,
+  personalSign,
+  recoverTypedSignature,
+  signTypedData
+} from '@metamask/eth-sig-util'
 
 import {
   Address,
@@ -77,8 +83,8 @@ export class AccountManager {
     if (keypair == null) {
       throw new Error(`Account ${from} not found`)
     }
-    const bufferKey = Buffer.from(removeHexPrefix(keypair.privateKey), 'hex')
-    return personalSign(bufferKey, { data: message })
+    const privateKey = Buffer.from(removeHexPrefix(keypair.privateKey), 'hex')
+    return personalSign({ privateKey, data: message })
   }
 
   signTransaction (transactionConfig: TransactionConfig, from: Address): RLPEncodedTransaction {
@@ -135,9 +141,10 @@ export class AccountManager {
         signature = await this._signWithProvider(signedData)
       }
       // Sanity check only
-      rec = recoverTypedSignature_v4({
+      rec = recoverTypedSignature({
         data: signedData,
-        sig: signature
+        signature,
+        version: SignTypedDataVersion.V4
       })
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -163,7 +170,11 @@ export class AccountManager {
   }
 
   _signWithControlledKey (privateKey: PrefixedHexString, signedData: TypedMessage<any>): string {
-    return signTypedData_v4(Buffer.from(removeHexPrefix(privateKey), 'hex'), { data: signedData })
+    return signTypedData({
+      privateKey: Buffer.from(removeHexPrefix(privateKey), 'hex'),
+      data: signedData,
+      version: SignTypedDataVersion.V4
+    })
   }
 
   getAccounts (): string[] {

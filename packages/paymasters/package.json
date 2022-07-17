@@ -44,7 +44,6 @@
     "@types/ethereumjs-util": "^6.1.0",
     "@types/mocha": "^8.2.0",
     "@types/web3": "1.2.2",
-    "ganache-cli": "^6.12.2",
     "solhint": "^3.3.2"
   }
 }

@@ -1,6 +1,6 @@
 /* global describe it web3 */
 // @ts-ignore
-import { recoverTypedSignature_v4, TypedDataUtils } from 'eth-sig-util'
+import { SignTypedDataVersion, recoverTypedSignature, TypedDataUtils } from '@metamask/eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 import chai, { expect } from 'chai'
 
@@ -119,7 +119,7 @@ contract('Utils', function (accounts) {
         forwarder,
         relayRequest
       )
-      const localEncoded = bufferToHex(TypedDataUtils.encodeData(dataToSign.primaryType, dataToSign.message, dataToSign.types))
+      const localEncoded = bufferToHex(TypedDataUtils.encodeData(dataToSign.primaryType, dataToSign.message, dataToSign.types, SignTypedDataVersion.V4))
       assert.equal(getEncoded, localEncoded)
     })
 
@@ -158,9 +158,10 @@ contract('Utils', function (accounts) {
         dataToSign
       )
 
-      const recoveredAccount = recoverTypedSignature_v4({
+      const recoveredAccount = recoverTypedSignature({
         data: dataToSign,
-        sig
+        signature: sig,
+        version: SignTypedDataVersion.V4
       })
       assert.strictEqual(senderAddress.toLowerCase(), recoveredAccount.toLowerCase())
 
@@ -205,11 +206,25 @@ contract('Utils', function (accounts) {
 
   describe('#removeNullValues', function () {
     it('should remove nulls shallowly', async () => {
-      expect(removeNullValues({ a: 1, b: 'string', c: null, d: { e: null, f: 3 }, arr: [10, null, 30], bn: toBN(123) })).to.deep
+      expect(removeNullValues({
+        a: 1,
+        b: 'string',
+        c: null,
+        d: { e: null, f: 3 },
+        arr: [10, null, 30],
+        bn: toBN(123)
+      })).to.deep
         .equal({ a: 1, b: 'string', d: { e: null, f: 3 }, arr: [10, null, 30], bn: toBN(123) })
     })
     it('should remove nulls recursively', async () => {
-      expect(removeNullValues({ a: 1, b: 'string', c: null, d: { e: null, f: 3 }, arr: [10, null, 30], bn: toBN(123) }, true)).to.deep
+      expect(removeNullValues({
+        a: 1,
+        b: 'string',
+        c: null,
+        d: { e: null, f: 3 },
+        arr: [10, null, 30],
+        bn: toBN(123)
+      }, true)).to.deep
         .equal({ a: 1, b: 'string', d: { f: 3 }, arr: [10, null, 30], bn: toBN(123) })
     })
   })

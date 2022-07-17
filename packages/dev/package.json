@@ -37,7 +37,6 @@
     "abi-decoder": "^2.3.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "eth-sig-util": "^3.0.1",
     "ethereumjs-util": "^7.1.0",
     "ethers": "^5.6.5",
     "hardhat": "^2.6.8",

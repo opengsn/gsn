@@ -1,7 +1,7 @@
 import Web3 from 'web3'
 import { PrefixedHexString, fromRpcSig } from 'ethereumjs-util'
 import { getEip712Signature, TruffleContract, Address, IntString } from '@opengsn/common'
-import { TypedMessage } from 'eth-sig-util'
+import { TypedMessage } from '@metamask/eth-sig-util'
 
 import {
   EIP712Domain,

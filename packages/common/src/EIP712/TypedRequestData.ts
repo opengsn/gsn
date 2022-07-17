@@ -2,7 +2,7 @@ import { Address } from '../types/Aliases'
 import { RelayRequest } from './RelayRequest'
 
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
-import { TypedDataUtils, TypedMessage } from 'eth-sig-util'
+import { TypedDataUtils, TypedMessage, SignTypedDataVersion } from '@metamask/eth-sig-util'
 
 export interface MessageTypeProperty {
   name: string
@@ -84,7 +84,13 @@ export function getDomainSeparator (verifier: Address, chainId: number): Record<
 }
 
 export function getDomainSeparatorHash (verifier: Address, chainId: number): PrefixedHexString {
-  return bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', getDomainSeparator(verifier, chainId), { EIP712Domain: EIP712DomainType }))
+  return bufferToHex(
+    TypedDataUtils.hashStruct(
+      'EIP712Domain',
+      getDomainSeparator(verifier, chainId),
+      { EIP712Domain: EIP712DomainType },
+      SignTypedDataVersion.V4)
+  )
 }
 
 export class TypedRequestData implements TypedMessage<Types> {
