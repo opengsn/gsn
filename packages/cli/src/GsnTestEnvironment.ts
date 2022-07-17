@@ -1,5 +1,13 @@
 import net from 'net'
-import { ether, Address, ContractInteractor, defaultEnvironment, constants, GSNContractsDeployment } from '@opengsn/common'
+import {
+  Address,
+  ContractInteractor,
+  GSNContractsDeployment,
+  constants,
+  defaultEnvironment,
+  ether,
+  isSameAddress
+} from '@opengsn/common'
 
 import { CommandsLogic, RegisterOptions } from './CommandsLogic'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
@@ -226,9 +234,32 @@ class GsnTestEnvironmentClass {
   /**
    * return deployment saved by "gsn start"
    * @param workdir
+   * @param url - an Ethereum RPC API Node URL
    */
-  loadDeployment (workdir = './build/gsn'): GSNContractsDeployment {
-    return loadDeployment(workdir)
+  async loadDeployment (
+    url: string,
+    workdir = './build/gsn'
+  ): Promise<GSNContractsDeployment> {
+    const deployment = loadDeployment(workdir)
+    const contractInteractor = new ContractInteractor(
+      {
+        provider: new Web3.providers.HttpProvider(url),
+        logger: console,
+        maxPageSize: Number.MAX_SAFE_INTEGER,
+        environment: defaultEnvironment,
+        deployment
+      })
+    await contractInteractor.initDeployment(deployment)
+    await contractInteractor._validateERC165InterfacesClient(true)
+    await contractInteractor._validateERC165InterfacesRelay()
+    const tokenAddress = deployment.managerStakeTokenAddress
+    if (tokenAddress != null && !isSameAddress(tokenAddress, constants.ZERO_ADDRESS)) {
+      const code = await contractInteractor.getCode(tokenAddress)
+      if (code.length <= 2) {
+        throw new Error(`No contract deployed for ERC-20 ManagerStakeTokenAddress at ${tokenAddress}`)
+      }
+    }
+    return deployment
   }
 }
 
