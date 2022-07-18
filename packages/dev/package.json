@@ -20,7 +20,7 @@
     "test-local": "ENABLE_CONSOLE_LOG=1 yarn solpp && npx truffle test --compile-all",
     "gas-calculations": "ENABLE_CONSOLE_LOG=0 yarn solpp && GAS_CALCULATIONS=1 truffle test test/RelayHubGasCalculations.test.ts test/PaymasterCommitment.test.ts --compile-all --network npmtest",
     "test-webpack": "TEST_WEBPACK=1 truffle test test/RelayServer.webpack.test.ts --network npmtest",
-    "test-only": "truffle --network npmtest test",
+    "test-only": "truffle test --network npmtest",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },
   "dependencies": {
