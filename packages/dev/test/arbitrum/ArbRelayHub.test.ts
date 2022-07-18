@@ -4,7 +4,9 @@ import { ether, expectEvent } from '@openzeppelin/test-helpers'
 import {
   ArbRelayHubInstance,
   ForwarderInstance,
-  StakeManagerInstance, TestTokenInstance
+  StakeManagerInstance,
+  TestRecipientInstance,
+  TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import {
   RelayRequest,
@@ -66,13 +68,14 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
   context('#relayCall()', function () {
     const transactionCalldataGasUsed = 7e6.toString()
 
+    let testRecipient: TestRecipientInstance
     let relayRequest: RelayRequest
     let signature: string
 
     // TODO: extract repetitive test code to test utils
     before('prepare the relay request and relay worker', async function () {
       await registerForwarderForGsn(forwarder)
-      const testRecipient = await TestRecipient.new(forwarder.address)
+      testRecipient = await TestRecipient.new(forwarder.address)
       const paymaster = await TestPaymasterEverythingAccepted.new()
       await paymaster.setTrustedForwarder(forwarder.address)
       await paymaster.setRelayHub(arbRelayHub.address)
@@ -110,7 +113,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
           forwarder: forwarder.address,
           paymaster: paymaster.address,
           paymasterData: '0x',
-          clientId: ''
+          clientId: '0'
         }
       }
       const dataToSign = new TypedRequestData(
@@ -131,7 +134,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
         gasPrice: 1e8.toString()
       })
 
-      await expectEvent.inTransaction(res.tx, TestRecipient, 'SampleRecipientEmitted', {
+      await expectEvent.inTransaction(res.tx, testRecipient, 'SampleRecipientEmitted', {
         message: 'Method with no parameters'
       })
 

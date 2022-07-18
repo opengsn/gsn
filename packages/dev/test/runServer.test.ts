@@ -64,6 +64,7 @@ contract('runServer', function (accounts) {
     await rhub.depositFor(paymaster.address, { value: (5e18).toString() })
 
     relayClientConfig = {
+      gasPriceFactorPercent: 1000,
       loggerConfiguration: { logLevel: 'error' },
       paymasterAddress: paymaster.address,
       maxApprovalDataLength: 4,

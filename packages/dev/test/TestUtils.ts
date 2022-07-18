@@ -333,6 +333,9 @@ export async function deployHub (
 
   await hub.setMinimumStakes([testToken], [testTokenMinimumStake])
 
+  // TODO: it will be tedious to change return type of this method
+  // @ts-ignore
+  hub._secretRegistrarInstance = relayRegistrar
   return hub
 }
 

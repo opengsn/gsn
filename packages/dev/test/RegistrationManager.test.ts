@@ -33,10 +33,6 @@ import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 import { expectEvent } from '@openzeppelin/test-helpers'
 
-const RelayHub = artifacts.require('RelayHub')
-const RelayRegistrar = artifacts.require('RelayRegistrar')
-const StakeManager = artifacts.require('StakeManager')
-
 const TestRelayHub = artifacts.require('TestRelayHub')
 const TestToken = artifacts.require('TestToken')
 
@@ -202,7 +198,7 @@ contract('RegistrationManager', function (accounts) {
       const newRelayServer = new RelayServer(newParams, transactionManager, newServerDependencies)
       const sentTransactions = await newRelayServer.init()
       assert.equal(sentTransactions.length, 1)
-      await expectEvent.inTransaction(sentTransactions[0], StakeManager, 'HubAuthorized', {
+      await expectEvent.inTransaction(sentTransactions[0], env.stakeManager, 'HubAuthorized', {
         relayManager: toChecksumAddress(newRelayServer.managerAddress),
         relayHub: toChecksumAddress(relayHubInstance.address)
       })
@@ -211,12 +207,13 @@ contract('RegistrationManager', function (accounts) {
       let latestBlock = await env.web3.eth.getBlock('latest')
       const registrationSentTransactions = await newRelayServer._worker(latestBlock)
       assert.equal(registrationSentTransactions.length, 2)
-      await expectEvent.inTransaction(registrationSentTransactions[0], RelayHub, 'RelayWorkersAdded', {
+      await expectEvent.inTransaction(registrationSentTransactions[0], relayHubInstance, 'RelayWorkersAdded', {
         relayManager: toChecksumAddress(newRelayServer.managerAddress),
         newRelayWorkers: [toChecksumAddress(newWorkersKeyManager.getAddress(0))],
         workersCount: 1
       })
-      await expectEvent.inTransaction(registrationSentTransactions[1], RelayRegistrar, 'RelayServerRegistered', {
+      // @ts-ignore
+      await expectEvent.inTransaction(registrationSentTransactions[1], relayHubInstance._secretRegistrarInstance, 'RelayServerRegistered', {
         relayManager: toChecksumAddress(newRelayServer.managerAddress),
         relayHub: toChecksumAddress(relayHubInstance.address)
       })

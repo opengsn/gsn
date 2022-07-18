@@ -18,14 +18,16 @@ import {
 } from '@opengsn/common'
 
 import {
-  RelayHubInstance,
-  PenalizerInstance,
-  StakeManagerInstance,
-  TestRecipientInstance,
   ForwarderInstance,
-  TestPaymasterEverythingAcceptedInstance,
+  GatewayForwarderInstance,
+  PenalizerInstance,
+  RelayHubInstance,
+  StakeManagerInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
-  GatewayForwarderInstance, TestTokenInstance
+  TestPaymasterEverythingAcceptedInstance,
+  TestPaymasterStoreContextInstance,
+  TestRecipientInstance,
+  TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason, revert, snapshot } from './TestUtils'
 
@@ -160,7 +162,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
       await testDeposit(other, paymaster, amount)
 
       const { tx } = await paymasterContract.withdrawRelayHubDepositTo(amount.divn(2), dest, { from: paymasterOwner })
-      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+      await expectEvent.inTransaction(tx, relayHubInstance, 'Withdrawn', {
         account: paymaster,
         dest,
         amount: amount.divn(2)
@@ -172,7 +174,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
       await testDeposit(other, paymaster, amount)
 
       const { tx } = await paymasterContract.withdrawRelayHubDepositTo(amount, dest, { from: paymasterOwner })
-      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+      await expectEvent.inTransaction(tx, relayHubInstance, 'Withdrawn', {
         account: paymaster,
         dest,
         amount
@@ -198,12 +200,12 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         { from: paymasterOwner })
       const balanceAfter = await testRelayHubInstance.balanceOf(paymasterOwner)
       assert.equal(balanceAfter.toString(), balanceBefore.sub(toBN(withdrawAmount1)).sub(toBN(withdrawAmount2)).toString())
-      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+      await expectEvent.inTransaction(tx, relayHubInstance, 'Withdrawn', {
         account: paymasterOwner,
         dest: other,
         amount: withdrawAmount1
       })
-      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+      await expectEvent.inTransaction(tx, relayHubInstance, 'Withdrawn', {
         account: paymasterOwner,
         dest: dest,
         amount: withdrawAmount2
@@ -531,7 +533,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
       context('with funded paymaster', function () {
         let signature
 
-        let paymasterWithContext
+        let paymasterWithContext: TestPaymasterStoreContextInstance
         let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
 
         let relayRequestPaymasterWithContext: RelayRequest
@@ -618,7 +620,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           const nonceAfter = await forwarderInstance.getNonce(senderAddress)
           assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
 
-          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+          await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted', {
             message,
             realSender: senderAddress,
             msgSender: forwarder,
@@ -661,7 +663,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           const nonceAfter = await forwarderInstance.getNonce(senderAddress)
           assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
 
-          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+          await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted', {
             message,
             realSender: senderAddress,
             msgSender: forwarder,
@@ -684,7 +686,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             gas,
             gasPrice
           })
-          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted')
+          await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted')
 
           const ret = await relayHubInstance.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', {
             from: relayWorker,
@@ -713,7 +715,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             gas,
             gasPrice
           })
-          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+          await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted', {
             message: messageWithNoParams,
             realSender: senderAddress,
             msgSender: forwarder,
@@ -758,7 +760,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               gasPrice
             })
 
-          await expectEvent.inTransaction(tx, TestPaymasterStoreContext, 'SampleRecipientPostCallWithValues', {
+          await expectEvent.inTransaction(tx, paymasterWithContext, 'SampleRecipientPostCallWithValues', {
             context: 'context passed from preRelayedCall to postRelayedCall'
           })
         })
@@ -994,7 +996,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               from: batchGateway,
               gas
             })
-            await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+            await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted', {
               message: 'Method with no parameters'
             })
           })
@@ -1037,7 +1039,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               from: batchGateway,
               gas
             })
-            await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+            await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted', {
               message: 'Method with no parameters',
               realSender: senderAddress,
               msgSender: gatewayForwarder.address,
