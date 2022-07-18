@@ -7,7 +7,7 @@ import { ContractInteractor, LoggerInterface, defaultEnvironment } from '@opengs
 import { Server } from 'net'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 
-import express = require('express')
+import express from 'express'
 
 const { expect } = chai.use(chaiAsPromised)
 
