@@ -176,7 +176,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
         assert.equal(storedTxs[0].nonce, latestNonce)
         const signer = env.relayServer.transactionManager.workersKeyManager.getAddress(0).toLowerCase()
         // @ts-ignore
-        await env.relayServer.txStoreManager.txstore.asyncRemove({
+        await env.relayServer.txStoreManager.txstore.removeAsync({
           $and: [
             { 'nonceSigner.nonce': { $lte: latestNonce } },
             { 'nonceSigner.signer': signer }

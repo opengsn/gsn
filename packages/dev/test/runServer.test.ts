@@ -91,6 +91,7 @@ contract('runServer', function (accounts) {
       await deployGsnContracts()
       differentHubs.add(rhub.address)
       relayProcess = await startRelay(rhub.address, testToken, sm, {
+        maxFeePerGas: 1e14.toString(),
         stake,
         stakeTokenAddress: testToken.address,
         delay: 3600 * 24 * 7,

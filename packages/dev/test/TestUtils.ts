@@ -103,6 +103,9 @@ export async function startRelay (
   if (options.refreshStateTimeoutBlocks) {
     args.push('--refreshStateTimeoutBlocks', options.refreshStateTimeoutBlocks)
   }
+  if (options.maxFeePerGas) {
+    args.push('--maxFeePerGas', options.maxFeePerGas)
+  }
   const runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
     [runServerPath, ...args])

@@ -1,6 +1,6 @@
 import { PrefixedHexString } from 'ethereumjs-util'
 import { constants, ether } from '@openzeppelin/test-helpers'
-import { toWei, toBN } from 'web3-utils'
+import { toWei } from 'web3-utils'
 
 import { Address, ForwardRequest, RelayData, RelayRequest, defaultEnvironment, splitRelayUrlForRegistrar } from '@opengsn/common'
 
@@ -67,11 +67,7 @@ export async function calculatePostGas (
   await token.transfer(paymaster.address, toWei('1', 'ether'), { from: account })
   // TODO: I cannot explain what causes the transaction to revert in a view mode, but this happens consistently;
   //   switching to use the emitted event instead
-  const gasPrice = toBN(await web3.eth.getGasPrice()).muln(2)
-  const res = await calc.calculatePostGas(paymaster.address, context, {
-    maxFeePerGas: gasPrice,
-    maxPriorityFeePerGas: gasPrice
-  })
+  const res = await calc.calculatePostGas(paymaster.address, context)
   const event: GasUsed = res.logs.find(it => it.event === 'GasUsed') as unknown as GasUsed
   return event.args.gasUsedByPost
 }
