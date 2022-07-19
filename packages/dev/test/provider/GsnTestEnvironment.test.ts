@@ -4,10 +4,13 @@ import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { TestRecipientInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { toChecksumAddress } from 'ethereumjs-util'
+import { saveDeployment } from '@opengsn/cli/dist/utils'
+import { constants, defaultEnvironment } from '@opengsn/common'
+import { CommandsLogic } from '@opengsn/cli/dist/CommandsLogic'
 
 const TestRecipient = artifacts.require('TestRecipient')
 
-contract('GsnTestEnvironment', function () {
+contract('GsnTestEnvironment', function (accounts: string[]) {
   let host: string
 
   before(function () {
@@ -23,6 +26,29 @@ contract('GsnTestEnvironment', function () {
 
     after(async function () {
       await GsnTestEnvironment.stopGsn()
+    })
+  })
+
+  describe('#loacContracts', function () {
+    it('should verify the deployment is valid', async function () {
+      const host = (web3.currentProvider as HttpProvider).host
+      const logic = new CommandsLogic(host, console, {})
+      const deploymentResult = await logic.deployGsnContracts({
+        from: accounts[0],
+        gasPrice: 1e10.toString(),
+        minimumTokenStake: '1',
+        gasLimit: 10000000,
+        relayHubConfiguration: defaultEnvironment.relayHubConfiguration,
+        penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
+        skipConfirmation: true,
+        deployTestToken: true,
+        burnAddress: constants.BURN_ADDRESS,
+        devAddress: constants.BURN_ADDRESS
+      })
+      const workdir = './tmptest/deploy'
+      saveDeployment(deploymentResult, workdir)
+      const deployment = await GsnTestEnvironment.loadDeployment(host, workdir)
+      assert.equal(deployment.relayHubAddress, deploymentResult.relayHubAddress)
     })
   })
 

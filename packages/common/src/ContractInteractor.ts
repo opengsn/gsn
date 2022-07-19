@@ -27,7 +27,7 @@ import {
   decodeRevertReason,
   errorAsBoolean,
   event2topic,
-  formatTokenAmount,
+  formatTokenAmount, isSameAddress,
   packRelayUrlForRegistrar,
   PaymasterGasAndDataLimits,
   splitRelayUrlForRegistrar,
@@ -332,10 +332,16 @@ export class ContractInteractor {
     }
   }
 
-  async _validateERC165InterfacesClient (): Promise<void> {
+  async _validateERC165InterfacesClient (allowNoPaymaster: boolean = false): Promise<void> {
     this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
     const fwPromise = this._trySupportsInterface('Forwarder', this.forwarderInstance, erc165Interfaces.forwarder)
-    const pmPromise = this._trySupportsInterface('Paymaster', this.paymasterInstance, erc165Interfaces.paymaster)
+    let pmPromise: Promise<boolean>
+    if (allowNoPaymaster && isSameAddress(this.paymasterInstance.address, constants.ZERO_ADDRESS)) {
+      this.logger.debug('skipping ERC-165 check for paymaster: address is not set')
+      pmPromise = Promise.resolve(true)
+    } else {
+      pmPromise = this._trySupportsInterface('Paymaster', this.paymasterInstance, erc165Interfaces.paymaster)
+    }
     const [fw, pm] = await Promise.all([fwPromise, pmPromise])
     const all = fw && pm
     if (!all) {
@@ -700,7 +706,7 @@ export class ContractInteractor {
     let { pagesForRange: pagesCurrent, rangeSize } = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
     if (pagesCurrent > this.maxPageCount) {
       throw new Error(
-`Failed to make a paginated request to 'getPastEvents' in block range [${options.fromBlock.toString()}..${options.toBlock.toString()}] with page size ${rangeSize}.
+        `Failed to make a paginated request to 'getPastEvents' in block range [${options.fromBlock.toString()}..${options.toBlock.toString()}] with page size ${rangeSize}.
 This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxPageCount' is ${this.maxPageCount}`)
     }
     const relayEventParts: EventData[][] = []

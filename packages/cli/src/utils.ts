@@ -123,6 +123,8 @@ export function saveDeployment (deploymentResult: GSNContractsDeployment, workdi
   saveContractToFile(deploymentResult.relayHubAddress, workdir, 'RelayHub.json')
   saveContractToFile(deploymentResult.paymasterAddress, workdir, 'Paymaster.json')
   saveContractToFile(deploymentResult.forwarderAddress, workdir, 'Forwarder.json')
+  saveContractToFile(deploymentResult.relayRegistrarAddress, workdir, 'RelayRegistrar.json')
+  saveContractToFile(deploymentResult.managerStakeTokenAddress, workdir, 'ManagerStakeTokenAddress.json')
 }
 
 export function showDeployment (deploymentResult: GSNContractsDeployment, title: string | undefined, paymasterTitle: string | undefined = undefined): void {
@@ -148,6 +150,7 @@ export function loadDeployment (workdir: string): GSNContractsDeployment {
     relayHubAddress: getAddress('RelayHub'),
     relayRegistrarAddress: getAddress('RelayRegistrar'),
     stakeManagerAddress: getAddress('StakeManager'),
+    managerStakeTokenAddress: getAddress('ManagerStakeTokenAddress'),
     penalizerAddress: getAddress('Penalizer'),
     forwarderAddress: getAddress('Forwarder'),
     paymasterAddress: getAddress('Paymaster')
