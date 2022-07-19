@@ -812,9 +812,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               paymaster: paymaster2.address,
               paymasterData: '0x',
               clientId: '1'
-            }, {
-              maxFeePerGas,
-              maxPriorityFeePerGas
             })).toNumber()
             const value = (maxPossibleCharge - 1).toString()
             await paymaster2.deposit({ value }) // TODO: replace with correct margin calculation
