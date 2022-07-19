@@ -1,12 +1,8 @@
 import { Address, IntString } from '../types/Aliases'
 import { PrefixedHexString } from 'ethereumjs-util'
 
-export interface ForwardRequest {
-  from: Address
-  to: Address
-  data: PrefixedHexString
-  value: IntString
-  nonce: IntString
-  gas: IntString
-  validUntilTime: IntString
-}
+type addresses = 'from' | 'to'
+type data = 'data'
+type intStrings = 'value' | 'nonce' | 'gas' | 'validUntilTime'
+
+export type ForwardRequest = Record<addresses, Address> & Record<data, PrefixedHexString> & Record<intStrings, IntString>

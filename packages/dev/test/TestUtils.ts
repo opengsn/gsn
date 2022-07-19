@@ -33,8 +33,6 @@ import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { toBN } from 'web3-utils'
 
-require('source-map-support').install({ errorFormatterForce: true })
-
 const RelayHub = artifacts.require('RelayHub')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
@@ -104,6 +102,9 @@ export async function startRelay (
   }
   if (options.refreshStateTimeoutBlocks) {
     args.push('--refreshStateTimeoutBlocks', options.refreshStateTimeoutBlocks)
+  }
+  if (options.maxFeePerGas) {
+    args.push('--maxFeePerGas', options.maxFeePerGas)
   }
   const runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
@@ -335,6 +336,9 @@ export async function deployHub (
 
   await hub.setMinimumStakes([testToken], [testTokenMinimumStake])
 
+  // TODO: it will be tedious to change return type of this method
+  // @ts-ignore
+  hub._secretRegistrarInstance = relayRegistrar
   return hub
 }
 

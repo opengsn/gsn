@@ -22,18 +22,16 @@
     "@ethersproject/abstract-signer": "^5.6.2",
     "@ethersproject/experimental": "^5.6.3",
     "@ethersproject/providers": "^5.6.5",
+    "@metamask/eth-sig-util": "^4.0.1",
     "@opengsn/common": "^3.0.0-beta.1",
-    "@types/body-parser": "^1.19.0",
-    "@types/chai": "^4.3.0",
-    "@types/express-serve-static-core": "^4.17.18",
-    "@types/mocha": "^8.2.3",
     "abi-decoder": "^2.4.0",
-    "body-parser": "^1.19.0",
-    "eth-sig-util": "^3.0.1",
     "ethereumjs-util": "^7.1.0",
     "ethereumjs-wallet": "^0.6.5",
     "ethers": "^5.6.5",
-    "loglevel": "^1.7.1",
-    "web3": "^1.7.3"
+    "web3": "^1.7.4",
+    "web3-core": "^1.7.4",
+    "web3-core-helpers": "^1.7.4",
+    "web3-eth-contract": "^1.7.4",
+    "web3-utils": "^1.7.4"
   }
 }

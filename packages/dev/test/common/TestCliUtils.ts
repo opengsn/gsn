@@ -1,5 +1,4 @@
 import { getNetworkUrl } from '@opengsn/cli/dist/utils'
-require('source-map-support').install({ errorFormatterForce: true })
 
 describe('cli-utils', () => {
   describe('#getNetworkUrl', () => {

@@ -4,7 +4,7 @@ import { toWei } from 'web3-utils'
 
 import { Address, ForwardRequest, RelayData, RelayRequest, defaultEnvironment, splitRelayUrlForRegistrar } from '@opengsn/common'
 
-import { StakeManagerInstance, TokenGasCalculatorInstance } from '@opengsn/paymasters/types/truffle-contracts'
+import { StakeManagerInstance, TokenGasCalculatorInstance } from '../types/truffle-contracts'
 
 import { RelayHubInstance, TestTokenInstance } from '@opengsn/contracts/types/truffle-contracts'
 

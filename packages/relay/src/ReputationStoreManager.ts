@@ -1,4 +1,4 @@
-import AsyncNedb from 'nedb-async'
+import Nedb from '@seald-io/nedb'
 
 import { LoggerInterface, Address } from '@opengsn/common'
 import { ReputationChange, ReputationEntry } from './ReputationEntry'
@@ -6,13 +6,13 @@ import { ReputationChange, ReputationEntry } from './ReputationEntry'
 export const REPUTATION_STORE_FILENAME = 'reputation_store.db'
 
 export class ReputationStoreManager {
-  private readonly txstore: AsyncNedb<any>
+  private readonly txstore: Nedb<any>
   private readonly logger: LoggerInterface
 
   constructor ({ workdir = '/tmp/test/', inMemory = false }, logger: LoggerInterface) {
     this.logger = logger
     const filename = inMemory ? undefined : `${workdir}/${REPUTATION_STORE_FILENAME}`
-    this.txstore = new AsyncNedb({
+    this.txstore = new Nedb({
       filename,
       autoload: true,
       timestampData: true
@@ -31,7 +31,7 @@ export class ReputationStoreManager {
       abuseStartedBlock: 0,
       changes: []
     }
-    return await this.txstore.asyncInsert(entry)
+    return await this.txstore.insertAsync(entry)
   }
 
   async clearAbuseFlag (paymaster: Address, reputation: number): Promise<void> {
@@ -63,7 +63,7 @@ export class ReputationStoreManager {
     if (eventBlockNumber <= oldChangesExpirationBlock) {
       throw new Error(`Invalid change expiration parameter! Passed ${oldChangesExpirationBlock}, but event was emitted at block height ${eventBlockNumber}`)
     }
-    const existing: ReputationEntry = await this.txstore.asyncFindOne({ paymaster: paymaster.toLowerCase() })
+    const existing: ReputationEntry = await this.txstore.findOneAsync({ paymaster: paymaster.toLowerCase() })
     const reputationChange: ReputationChange = {
       blockNumber: eventBlockNumber,
       change
@@ -81,16 +81,16 @@ export class ReputationStoreManager {
   }
 
   private async updateEntry (paymaster: Address, update: Partial<ReputationEntry>): Promise<void> {
-    const existing: ReputationEntry = await this.txstore.asyncFindOne({ paymaster: paymaster.toLowerCase() })
+    const existing: ReputationEntry = await this.txstore.findOneAsync({ paymaster: paymaster.toLowerCase() })
     const entry = Object.assign({}, existing, update)
-    await this.txstore.asyncUpdate({ paymaster: existing.paymaster }, { $set: entry })
+    await this.txstore.updateAsync({ paymaster: existing.paymaster }, { $set: entry })
   }
 
   async getEntry (paymaster: Address): Promise<ReputationEntry | undefined> {
-    return await this.txstore.asyncFindOne({ paymaster: paymaster.toLowerCase() })
+    return await this.txstore.findOneAsync({ paymaster: paymaster.toLowerCase() })
   }
 
   async clearAll (): Promise<void> {
-    await this.txstore.asyncRemove({}, { multi: true })
+    await this.txstore.removeAsync({}, { multi: true })
   }
 }

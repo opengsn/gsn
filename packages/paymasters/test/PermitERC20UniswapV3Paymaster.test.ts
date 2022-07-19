@@ -170,7 +170,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       it('should revert if paymasterData is not an encoded call to permit method', async function () {
         await skipWithoutFork(this)
         const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: '0x123456789'
+          paymasterData: '0x0123456789'
         })
 
         assert.match(

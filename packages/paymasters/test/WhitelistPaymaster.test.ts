@@ -1,4 +1,4 @@
-import { SampleRecipientInstance, WhitelistPaymasterInstance } from '@opengsn/paymasters/types/truffle-contracts'
+import { SampleRecipientInstance, WhitelistPaymasterInstance } from '../types/truffle-contracts'
 
 import { GSNUnresolvedConstructorInput, RelayProvider, GSNConfig } from '@opengsn/provider'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'

@@ -10,7 +10,7 @@ import {
   TestTokenInstance,
   TestUniswapInstance,
   TokenPaymasterInstance
-} from '@opengsn/paymasters/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import {
   ForwarderInstance,
   PenalizerInstance,

@@ -16,8 +16,6 @@ import {
 import { constants } from '@opengsn/common'
 import { deployHub } from './TestUtils'
 
-require('source-map-support').install({ errorFormatterForce: true })
-
 function expectThrow (func: () => void, match: string): void {
   try {
     func()
