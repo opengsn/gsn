@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "solc-0.8": "npm:solc@0.8.11",
-    "ts-node": "^10.9.1",
+    "ts-node": "8.6.2",
     "bn.js": "^5.2.1",
     "solhint": "^3.3.2",
     "solidity-docgen": "^0.5.16"

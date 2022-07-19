@@ -196,7 +196,7 @@ contract('TxStoreManager', function (accounts) {
         autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval
       }, logger)
       // @ts-ignore
-      sinon.spy(txmanager.txstore.persistence, 'compactDatafile')
+      sinon.spy(txmanager.txstore, 'compactDatafile')
       await clock.tickAsync(serverDefaultConfiguration.dbAutoCompactionInterval)
       // @ts-ignore
       expect(txmanager.txstore.compactDatafile).to.have.been.calledOnce
