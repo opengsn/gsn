@@ -36,7 +36,6 @@ import { RelayRegistrarInstance } from '@opengsn/contracts'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
-const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -200,12 +199,12 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         { from: paymasterOwner })
       const balanceAfter = await testRelayHubInstance.balanceOf(paymasterOwner)
       assert.equal(balanceAfter.toString(), balanceBefore.sub(toBN(withdrawAmount1)).sub(toBN(withdrawAmount2)).toString())
-      await expectEvent.inTransaction(tx, relayHubInstance, 'Withdrawn', {
+      await expectEvent.inTransaction(tx, testRelayHubInstance, 'Withdrawn', {
         account: paymasterOwner,
         dest: other,
         amount: withdrawAmount1
       })
-      await expectEvent.inTransaction(tx, relayHubInstance, 'Withdrawn', {
+      await expectEvent.inTransaction(tx, testRelayHubInstance, 'Withdrawn', {
         account: paymasterOwner,
         dest: dest,
         amount: withdrawAmount2
@@ -469,7 +468,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           function clearRelayRequest (relayRequest: RelayRequest): RelayRequest {
             const clone = cloneRelayRequest(relayRequest)
             clone.relayData.relayWorker = constants.ZERO_ADDRESS
-            clone.relayData.transactionCalldataGasUsed = ''
+            clone.relayData.transactionCalldataGasUsed = '0'
             return clone
           }
 
@@ -490,7 +489,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
 
           it('should return failure if forwarder rejects for incorrect nonce', async function () {
             const relayRequestWrongNonce = clearRelayRequest(relayRequest)
-            relayRequestWrongNonce.request.nonce = (parseInt(relayRequestWrongNonce.request.nonce) - 1).toString()
+            relayRequestWrongNonce.request.nonce = (parseInt(relayRequestWrongNonce.request.nonce) + 77).toString()
             const relayCallView =
               await relayHubInstance.contract.methods
                 .relayCall(10e6, relayRequestWrongNonce, '0x', '0x')
@@ -813,8 +812,12 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               paymaster: paymaster2.address,
               paymasterData: '0x',
               clientId: '1'
+            }, {
+              maxFeePerGas,
+              maxPriorityFeePerGas
             })).toNumber()
-            await paymaster2.deposit({ value: (maxPossibleCharge - 1).toString() }) // TODO: replace with correct margin calculation
+            const value = (maxPossibleCharge - 1).toString()
+            await paymaster2.deposit({ value }) // TODO: replace with correct margin calculation
 
             const relayRequestPaymaster2 = cloneRelayRequest(relayRequest)
             relayRequestPaymaster2.relayData.paymaster = paymaster2.address

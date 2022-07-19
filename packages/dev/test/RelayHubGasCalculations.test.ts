@@ -135,7 +135,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       relayData: {
         maxFeePerGas: maxFeePerGas.toString(),
         maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
-        transactionCalldataGasUsed: '',
+        transactionCalldataGasUsed: '0',
         relayWorker,
         forwarder,
         paymaster: paymaster.address,
@@ -181,7 +181,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           const relayData: RelayData = {
             maxFeePerGas: maxFeePerGas.toString(),
             maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
-            transactionCalldataGasUsed: '',
+            transactionCalldataGasUsed: '0',
             relayWorker,
             forwarder,
             paymaster: paymaster.address,
@@ -202,10 +202,10 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     // note: since adding the revert reason to the emit, post overhead is dynamic
     it('should set correct gas limits and pass correct \'gasUsedWithoutPost\' to the \'postRelayCall\'', async () => {
       const gasPrice = 1e9
-      const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x', {
+      const estimatePostGas = (await paymaster.postRelayedCall.estimateGas('0x', true, '0x0', {
         maxFeePerGas,
         maxPriorityFeePerGas,
-        transactionCalldataGasUsed: '',
+        transactionCalldataGasUsed: '0',
         relayWorker,
         forwarder,
         paymaster: paymaster.address,
@@ -349,7 +349,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             relayData: {
               maxFeePerGas: '1',
               maxPriorityFeePerGas: '1',
-              transactionCalldataGasUsed: '',
+              transactionCalldataGasUsed: '0',
               relayWorker,
               forwarder,
               paymaster: paymaster.address,
@@ -440,7 +440,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               validUntilTime: '0'
             },
             relayData: {
-              transactionCalldataGasUsed: '',
+              transactionCalldataGasUsed: '0',
               maxFeePerGas: '1',
               maxPriorityFeePerGas: '1',
               relayWorker,
@@ -476,7 +476,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             // console.log('diff is', diff)
             const costPerByte = diff / dataLength
             costsPerByte.push(costPerByte)
-            assert.isAtMost(costPerByte, defaultEnvironment.dataOnChainHandlingGasCostPerByte - slack, `calculated data cost per byte (${costPerByte}) higher than environment's (${defaultEnvironment.dataOnChainHandlingGasCostPerByte}) minus slack of ${slack}`)
+            assert.isAtMost(costPerByte, defaultEnvironment.dataOnChainHandlingGasCostPerByte + slack, `calculated data cost per byte (${costPerByte}) higher than environment's (${defaultEnvironment.dataOnChainHandlingGasCostPerByte}) plus slack of ${slack}`)
           }
           await revert(id)
         })
@@ -525,7 +525,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                       validUntilTime: '0'
                     },
                     relayData: {
-                      transactionCalldataGasUsed: '',
+                      transactionCalldataGasUsed: '0',
                       maxFeePerGas: maxFeePerGas.toString(),
                       maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
                       relayWorker,

@@ -1,5 +1,5 @@
 import BN from 'bn.js'
-import { toWei } from 'web3-utils'
+import { toWei, toBN } from 'web3-utils'
 import {
   IChainlinkOracleInstance,
   IQuoterInstance,
@@ -29,7 +29,7 @@ import {
   signAndEncodeDaiPermit,
   signAndEncodeEIP2612Permit
 } from '../src/PermitPaymasterUtils'
-import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
+import { evmMineMany, revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
@@ -42,13 +42,12 @@ const IQuoter = artifacts.require('IQuoter')
 // as we are using forked mainnet, we will need to impersonate an account with a lot of DAI & UNI
 const MAJOR_DAI_AND_UNI_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503'
 
-const GAS_USED_BY_POST = 204766
+const GAS_USED_BY_POST = 198252
 const MAX_POSSIBLE_GAS = 1e6
 const PERMIT_DATA_LENGTH = 0
 const POOL_FEE = 3000
 
 const TOKEN_PRE_CHARGE = toWei('10', 'ether')
-const GAS_PRICE = '1000000000' // 1 wei
 
 async function detectMainnet (): Promise<boolean> {
   const code = await web3.eth.getCode(DAI_CONTRACT_ADDRESS)
@@ -69,6 +68,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
   let sampleRecipient: SampleRecipientInstance
   let testRelayHub: TestHubInstance
   let quoter: IQuoterInstance
+  let gasPrice: BN
 
   let relayRequest: RelayRequest
 
@@ -90,6 +90,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       to: MAJOR_DAI_AND_UNI_HOLDER,
       value: 1e18
     })
+    gasPrice = toBN(await web3.eth.getGasPrice()).muln(2)
     // we cannot sign on behalf of an impersonated account - transfer DAI to an account we control
     await daiPermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
     permitPaymaster = await PermitERC20UniswapV3Paymaster.new(
@@ -110,8 +111,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         paymaster: permitPaymaster.address,
         forwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
         transactionCalldataGasUsed: '0',
-        maxFeePerGas: GAS_PRICE,
-        maxPriorityFeePerGas: GAS_PRICE,
+        maxFeePerGas: gasPrice.toString(),
+        maxPriorityFeePerGas: gasPrice.toString(),
         paymasterData: '0x',
         clientId: '1'
       },
@@ -170,7 +171,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
       it('should revert if paymasterData is not an encoded call to permit method', async function () {
         await skipWithoutFork(this)
         const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: '0x123456789'
+          paymasterData: '0x0123456789'
         })
 
         assert.match(
@@ -264,7 +265,10 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         // must have charged from this account
         assert.equal(accountDifference.toString(), paymasterBalanceAfter.toString(), 'unexpected balance')
         const latestAnswer = await chainlinkOracle.latestAnswer()
-        const maxPossibleEth = await testRelayHub.calculateCharge(MAX_POSSIBLE_GAS, relayRequest.relayData)
+        const maxPossibleEth = await testRelayHub.calculateCharge(MAX_POSSIBLE_GAS, relayRequest.relayData, {
+          maxFeePerGas: relayRequest.relayData.maxFeePerGas,
+          maxPriorityFeePerGas: relayRequest.relayData.maxPriorityFeePerGas
+        })
         const expectedCharge = latestAnswer.mul(maxPossibleEth).div(new BN(1e8.toString()))
         assert.equal(accountDifference.toString(), paymasterBalanceAfter.toString(), 'unexpected balance')
         assert.equal(accountDifference.toString(), expectedCharge.toString(), 'unexpected charge')
@@ -337,7 +341,10 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
         // "STF" revert reason is thrown in 'safeTransferFrom' method in Uniswap's 'TransferHelper.sol' library
         assert.match(
           await revertReason(
-            testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, relayRequest.relayData)
+            testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, relayRequest.relayData, {
+              maxFeePerGas: relayRequest.relayData.maxFeePerGas,
+              maxPriorityFeePerGas: relayRequest.relayData.maxPriorityFeePerGas
+            })
           ), /STF/)
       })
     })
@@ -353,10 +360,12 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
 
       it('should transfer excess tokens back to sender and deposit traded tokens into RelayHub as Ether', async function () {
         await skipWithoutFork(this)
+        // just dropping the block base fee
+        await evmMineMany(20)
         const gasUseWithoutPost = 100000
         const context = web3.eth.abi.encodeParameters(['address', 'uint256'], [account0, TOKEN_PRE_CHARGE])
 
-        const ethActualCharge = (gasUseWithoutPost + GAS_USED_BY_POST) * parseInt(GAS_PRICE)
+        const ethActualCharge = (gasUseWithoutPost + GAS_USED_BY_POST) * parseInt(gasPrice.toString())
         const expectedDaiTokenCharge = await quoter.contract.methods.quoteExactOutputSingle(
           DAI_CONTRACT_ADDRESS,
           WETH9_CONTRACT_ADDRESS,
@@ -364,7 +373,10 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
           ethActualCharge,
           0).call()
 
-        const res = await testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, relayRequest.relayData)
+        const res = await testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, relayRequest.relayData, {
+          maxFeePerGas: relayRequest.relayData.maxFeePerGas,
+          maxPriorityFeePerGas: relayRequest.relayData.maxPriorityFeePerGas
+        })
         const expectedRefund = new BN(TOKEN_PRE_CHARGE).sub(new BN(expectedDaiTokenCharge))
 
         // check correct tokens are transferred
@@ -435,6 +447,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay])
   context('calculate postRelayCall gas usage', function () {
     it('calculate', async function () {
       await skipWithoutFork(this)
+      // just dropping the block base fee
+      await evmMineMany(20)
       const permitPaymasterZeroGUBP = await PermitERC20UniswapV3Paymaster.new(
         WETH9_CONTRACT_ADDRESS,
         DAI_CONTRACT_ADDRESS,
