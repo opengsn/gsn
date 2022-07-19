@@ -199,7 +199,7 @@ contract('TxStoreManager', function (accounts) {
       sinon.spy(txmanager.txstore.persistence, 'compactDatafile')
       await clock.tickAsync(serverDefaultConfiguration.dbAutoCompactionInterval)
       // @ts-ignore
-      expect(txmanager.txstore.persistence.compactDatafile).to.have.been.calledOnce
+      expect(txmanager.txstore.compactDatafile).to.have.been.calledOnce
       clock.restore()
       await sleep(500)
       linesCount = (fs.readFileSync(txStoreFilePath, 'utf8')).split('\n').length

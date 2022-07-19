@@ -80,7 +80,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal(relayServerToInit.chainId, chainId)
       assert.equal(relayServerToInit.networkId, networkId)
       // @ts-ignore
-      expect(relayServerToInit.txStoreManager.txstore.persistence.autocompactionIntervalId).to.exist
+      expect(relayServerToInit.txStoreManager.txstore._autocompactionIntervalId).to.exist
     })
   })
 
