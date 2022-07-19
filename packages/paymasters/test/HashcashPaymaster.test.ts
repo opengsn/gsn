@@ -1,7 +1,7 @@
 import {
   createHashcashAsyncApproval, calculateHashcashApproval, calculateHashcash
 } from '../src/HashCashApproval'
-import { HashcashPaymasterInstance, SampleRecipientInstance } from '@opengsn/paymasters/types/truffle-contracts'
+import { HashcashPaymasterInstance, SampleRecipientInstance } from '../types/truffle-contracts'
 import { GSNConfig, RelayProvider } from '@opengsn/provider'
 import { RelayRequest } from '@opengsn/common'
 

@@ -2,8 +2,6 @@ import { expectRevert } from '@openzeppelin/test-helpers'
 
 import { RelayRequest } from '@opengsn/common'
 
-require('source-map-support').install({ errorFormatterForce: true })
-
 const TestRelayHubValidator = artifacts.require('TestRelayHubValidator')
 
 contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWorker, forwarder]) => {

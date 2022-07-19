@@ -1,5 +1,5 @@
-import AsyncNedb from 'nedb-async'
-import ow from 'ow'
+import Nedb from '@seald-io/nedb'
+import ow from 'ow/dist'
 import { PrefixedHexString } from 'ethereumjs-util'
 
 import { Address, isSameAddress, LoggerInterface } from '@opengsn/common'
@@ -9,12 +9,12 @@ import { ServerAction, StoredTransaction } from './StoredTransaction'
 export const TXSTORE_FILENAME = 'txstore.db'
 
 export class TxStoreManager {
-  private readonly txstore: AsyncNedb<any>
+  private readonly txstore: Nedb<any>
   private readonly logger: LoggerInterface
 
   constructor ({ workdir = '/tmp/test/', inMemory = false, autoCompactionInterval = 0, recentActionAvoidRepeatDistanceBlocks = 0 }, logger: LoggerInterface) {
     this.logger = logger
-    this.txstore = new AsyncNedb({
+    this.txstore = new Nedb({
       filename: inMemory ? undefined : `${workdir}/${TXSTORE_FILENAME}`,
       autoload: true,
       timestampData: true
@@ -43,12 +43,12 @@ export class TxStoreManager {
       txId: tx.txId.toLowerCase(),
       nonceSigner
     }
-    const existing = await this.txstore.asyncFindOne({ nonceSigner: tx1.nonceSigner })
+    const existing = await this.txstore.findOneAsync({ nonceSigner: tx1.nonceSigner })
     // eslint-disable-next-line
     if (existing && updateExisting) {
-      await this.txstore.asyncUpdate({ txId: existing.txId }, { $set: tx1 })
+      await this.txstore.updateAsync({ txId: existing.txId }, { $set: tx1 })
     } else {
-      await this.txstore.asyncInsert(tx1)
+      await this.txstore.insertAsync(tx1)
     }
   }
 
@@ -59,7 +59,7 @@ export class TxStoreManager {
     ow(nonce, ow.any(ow.number, ow.string))
     ow(signer, ow.string)
 
-    return await this.txstore.asyncFindOne({
+    return await this.txstore.findOneAsync({
       nonceSigner: {
         signer: signer.toLowerCase(),
         nonce
@@ -73,11 +73,11 @@ export class TxStoreManager {
   async getTxById (txId: string): Promise<StoredTransaction> {
     ow(txId, ow.string)
 
-    return await this.txstore.asyncFindOne({ txId: txId.toLowerCase() })
+    return await this.txstore.findOneAsync({ txId: txId.toLowerCase() })
   }
 
   async getTxsInNonceRange (signer: PrefixedHexString, fromNonce: number, toNonce: number = Number.MAX_SAFE_INTEGER): Promise<StoredTransaction[]> {
-    return (await this.txstore.asyncFind({
+    return (await this.txstore.findAsync({
       $and: [
         { 'nonceSigner.nonce': { $gte: fromNonce, $lte: toNonce } },
         { 'nonceSigner.signer': signer.toLowerCase() }]
@@ -90,7 +90,7 @@ export class TxStoreManager {
    * NOTE: the transaction must satisfy *both* criteria to be removed
    */
   async removeArchivedTransactions (upToMinedBlockNumber: number, upToMinedTimestamp: number): Promise<unknown> {
-    return await this.txstore.asyncRemove({
+    return await this.txstore.removeAsync({
       $and: [
         { 'minedBlock.number': { $lte: upToMinedBlockNumber } },
         { 'minedBlock.timestamp': { $lte: upToMinedTimestamp } }]
@@ -98,11 +98,11 @@ export class TxStoreManager {
   }
 
   async clearAll (): Promise<void> {
-    await this.txstore.asyncRemove({}, { multi: true })
+    await this.txstore.removeAsync({}, { multi: true })
   }
 
   async getAll (): Promise<StoredTransaction[]> {
-    return (await this.txstore.asyncFind({})).sort(function (tx1, tx2) {
+    return (await this.txstore.findAsync({})).sort(function (tx1, tx2) {
       return tx1.nonce - tx2.nonce
     })
   }

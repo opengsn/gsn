@@ -30,7 +30,7 @@ import chalk from 'chalk'
 import { encode, List } from 'rlp'
 import { RelayRequest } from './EIP712/RelayRequest'
 import { MessageTypes } from './EIP712/TypedRequestData'
-import { TypedMessage } from 'eth-sig-util'
+import { TypedMessage } from '@metamask/eth-sig-util'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {

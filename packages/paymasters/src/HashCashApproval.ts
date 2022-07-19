@@ -1,8 +1,10 @@
 import { keccak256, toBN } from 'web3-utils'
 import { RelayRequest } from '@opengsn/common'
 import abi from 'web3-eth-abi'
-import HashcashDifficulty from '@opengsn/paymasters/build/contracts/HashcashPaymaster.json'
+
 import IForwarder from '@opengsn/common/dist/interfaces/IForwarder.json'
+
+import HashcashDifficulty from '../build/contracts/HashcashPaymaster.json'
 
 /**
  * low-level hashcash calculation for the given address and nonce

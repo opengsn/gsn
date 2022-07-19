@@ -53,7 +53,7 @@ async function getProvider (
     console.log('using', from)
   } else if (mnemonic != null) {
     const hdwallet = EthereumHDKey.fromMasterSeed(
-      bip39.mnemonicToSeedSync(mnemonic)
+      Buffer.from(bip39.mnemonicToSeedSync(mnemonic))
     )
     // add mnemonic private key to the account manager as an 'ephemeral key'
     const wallet = hdwallet.deriveChild(0).getWallet()

@@ -1,6 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { recoverTypedSignature_v4 } from 'eth-sig-util'
+import { SignTypedDataVersion, recoverTypedSignature } from '@metamask/eth-sig-util'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { HttpProvider } from 'web3-core'
@@ -97,9 +97,10 @@ contract('AccountManager', function (accounts) {
         relayRequestWithoutExtraData(relayRequest)
       )
       const signature = await accountManager.sign(relayRequest)
-      const rec = recoverTypedSignature_v4({
+      const rec = recoverTypedSignature({
         data: signedData,
-        sig: signature
+        signature,
+        version: SignTypedDataVersion.V4
       })
       assert.ok(isSameAddress(relayRequest.request.from.toLowerCase(), rec))
       expect(accountManager._signWithControlledKey).to.have.been.calledWith(privateKey, signedData)
@@ -113,9 +114,10 @@ contract('AccountManager', function (accounts) {
         relayRequestWithoutExtraData(relayRequest)
       )
       const signature = await accountManager.sign(relayRequest)
-      const rec = recoverTypedSignature_v4({
+      const rec = recoverTypedSignature({
         data: signedData,
-        sig: signature
+        signature,
+        version: SignTypedDataVersion.V4
       })
       assert.ok(isSameAddress(relayRequest.request.from.toLowerCase(), rec))
       expect(accountManager._signWithProvider).to.have.been.calledWith(signedData)

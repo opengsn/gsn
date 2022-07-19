@@ -4,8 +4,8 @@ const { IgnorePlugin } = require('webpack')
 module.exports = {
   plugins: [
     //      new BundleAnalyzerPlugin()
-    new IgnorePlugin(/electron/),
-    new IgnorePlugin(/^scrypt$/)
+    new IgnorePlugin({ resourceRegExp: /electron/ }),
+    new IgnorePlugin({ resourceRegExp: /^scrypt$/ })
   ],
   target: 'node',
   entry: '../../packages/relay/dist/runServer.js',

@@ -6,7 +6,7 @@ import BN from 'bn.js'
 import { Transaction, AccessListEIP2930Transaction, FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
 import Common from '@ethereumjs/common'
 import { TxOptions } from '@ethereumjs/tx/dist/types'
-import { encode } from 'rlp'
+import { encode, utils } from 'rlp'
 import { expect } from 'chai'
 import { privateToAddress, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
 
@@ -43,6 +43,7 @@ const TestToken = artifacts.require('TestToken')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const Forwarder = artifacts.require('Forwarder')
 
+const randomValue = '0x0'
 const paymasterData = '0x'
 const clientId = '0'
 
@@ -190,21 +191,21 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       describe('#decodeTransaction', function () {
         it('should decode TransactionType1 tx', async function () {
           const input = [bnToRlp(eip2930Transaction.chainId), bnToRlp(eip2930Transaction.nonce), bnToRlp(eip2930Transaction.gasPrice), bnToRlp(eip2930Transaction.gasLimit), eip2930Transaction.to!.toBuffer(), bnToRlp(eip2930Transaction.value), eip2930Transaction.data, eip2930Transaction.accessList]
-          const penalizableTxData = `0x01${encode(input).toString('hex')}`
+          const penalizableTxData = `0x01${utils.bytesToHex(encode(input))}`
           const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
           // @ts-ignore
           validateDecodedTx(decodedTx, eip2930Transaction)
         })
         it('should decode new TransactionType2 tx', async function () {
           const input = [bnToRlp(eip1559Transaction.chainId), bnToRlp(eip1559Transaction.nonce), bnToRlp(eip1559Transaction.maxPriorityFeePerGas), bnToRlp(eip1559Transaction.maxFeePerGas), bnToRlp(eip1559Transaction.gasLimit), eip1559Transaction.to!.toBuffer(), bnToRlp(eip1559Transaction.value), eip1559Transaction.data, eip1559Transaction.accessList]
-          const penalizableTxData = `0x02${encode(input).toString('hex')}`
+          const penalizableTxData = `0x02${utils.bytesToHex(encode(input))}`
           const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
           // @ts-ignore
           validateDecodedTx(decodedTx, eip1559Transaction)
         })
         it('should decode legacy tx', async function () {
           const input = [bnToRlp(legacyTx.nonce), bnToRlp(legacyTx.gasPrice), bnToRlp(legacyTx.gasLimit), legacyTx.to!.toBuffer(), bnToRlp(legacyTx.value), legacyTx.data]
-          const penalizableTxData = `0x${encode(input).toString('hex')}`
+          const penalizableTxData = `0x${utils.bytesToHex(encode(input))}`
           const decodedTx = await penalizer.decodeTransaction(penalizableTxData)
           // @ts-ignore
           validateDecodedTx(decodedTx, legacyTx)
@@ -214,19 +215,19 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       it('should not penalize TransactionType1 tx', async function () {
         const signedTx = eip2930Transaction.sign(relayCallArgs.privateKey)
         const input = [bnToRlp(eip2930Transaction.chainId), bnToRlp(eip2930Transaction.nonce), bnToRlp(eip2930Transaction.gasPrice), bnToRlp(eip2930Transaction.gasLimit), eip2930Transaction.to!.toBuffer(), bnToRlp(eip2930Transaction.value), eip2930Transaction.data, eip2930Transaction.accessList]
-        const penalizableTxData = `0x01${encode(input).toString('hex')}`
+        const penalizableTxData = `0x01${utils.bytesToHex(encode(input))}`
 
         const newV = (signedTx.v!.toNumber() + 27)
         const penalizableTxSignature = signatureRSV2Hex(signedTx.r!, signedTx.s!, newV)
 
-        const request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x').encodeABI()
+        const request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, randomValue).encodeABI()
 
         // eslint-disable-next-line
         const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
         await penalizer.commit(commitHash, { from: committer })
         await evmMineMany(10)
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, randomValue, { from: committer }),
           'Legal relay transaction'
         )
       })
@@ -234,19 +235,19 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
       it('should not penalize TransactionType2 tx', async function () {
         const signedTx = eip1559Transaction.sign(relayCallArgs.privateKey)
         const input = [bnToRlp(eip1559Transaction.chainId), bnToRlp(eip1559Transaction.nonce), bnToRlp(eip1559Transaction.maxPriorityFeePerGas), bnToRlp(eip1559Transaction.maxFeePerGas), bnToRlp(eip1559Transaction.gasLimit), eip1559Transaction.to!.toBuffer(), bnToRlp(eip1559Transaction.value), eip1559Transaction.data, eip1559Transaction.accessList]
-        const penalizableTxData = `0x02${encode(input).toString('hex')}`
+        const penalizableTxData = `0x02${utils.bytesToHex(encode(input))}`
 
         const newV = (signedTx.v!.toNumber() + 27)
         const penalizableTxSignature = signatureRSV2Hex(signedTx.r!, signedTx.s!, newV)
 
-        const request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x').encodeABI()
+        const request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, randomValue).encodeABI()
 
         // eslint-disable-next-line
         const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
         await penalizer.commit(commitHash, { from: committer })
         await evmMineMany(10)
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, randomValue, { from: committer }),
           'Legal relay transaction'
         )
       });
@@ -258,12 +259,12 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           const msgHash = keccak256(bufferToSign)
           const sig = ecsign(msgHash, relayWorkerPrivateKey)
           const penalizableTxSignature = signatureRSV2Hex(sig.r, sig.s, sig.v)
-          const request = penalizer.contract.methods.penalizeIllegalTransaction(bufferToSign, penalizableTxSignature, relayHub.address, '0x').encodeABI()
+          const request = penalizer.contract.methods.penalizeIllegalTransaction(bufferToSign, penalizableTxSignature, relayHub.address, randomValue).encodeABI()
           // eslint-disable-next-line
           const commitHash = web3.utils.keccak256(web3.utils.keccak256(request) + committer.slice(2))
           await penalizer.commit(commitHash, { from: committer })
           await evmMineMany(10)
-          const res = await penalizer.penalizeIllegalTransaction(bufferToHex(bufferToSign), penalizableTxSignature, relayHub.address, '0x', { from: committer })
+          const res = await penalizer.penalizeIllegalTransaction(bufferToHex(bufferToSign), penalizableTxSignature, relayHub.address, randomValue, { from: committer })
           expectEvent(res, 'StakePenalized', {
             relayManager: relayManager,
             beneficiary: committer,
@@ -359,14 +360,14 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           data: penalizableTxData,
           signature: penalizableTxSignature
         } = await getDataAndSignatureFromHash(receipt.transactionHash, chainId))
-        request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x').encodeABI()
+        request = penalizer.contract.methods.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, randomValue).encodeABI()
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         const commitHash = web3.utils.keccak256(`${web3.utils.keccak256(request)}${committer.slice(2)}`)
         await penalizer.commit(commitHash, { from: committer })
       })
       it('should fail to penalize too soon after commit', async () => {
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, randomValue, { from: committer }),
           'reveal penalize too soon'
         )
       })
@@ -375,7 +376,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         const id = (await snapshot()).result
         await evmMineMany(50)
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, randomValue, { from: committer }),
           'reveal penalize too late'
         )
         await revert(id)
@@ -403,14 +404,14 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
 
       it('should reject penalize if method call differs', async () => {
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature + '00', relayHub.address, '0x', { from: committer }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature + '00', relayHub.address, randomValue, { from: committer }),
           'no commit'
         )
       })
 
       it('should reject penalize if commit called from another account', async () => {
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: nonCommitter }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, randomValue, { from: nonCommitter }),
           'no commit'
         )
       })
@@ -420,7 +421,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
         // this is not a failure: it passes the Penalizer modifier test (commit test),
         // it then reverts inside the RelayHub (since we didn't fully initialize this relay/worker)
         await expectRevert(
-          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, '0x', { from: committer }),
+          penalizer.penalizeIllegalTransaction(penalizableTxData, penalizableTxSignature, relayHub.address, randomValue, { from: committer }),
           'Unknown relay worker'
         )
       })
@@ -556,7 +557,8 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           await testToken.approve(stakeManager.address, stake, { from: relayWorker })
           // Relay staking for a second relay
           const { tx } = await stakeManager.stakeForRelayManager(testToken.address, other, 15000, stake, {
-            from: relayWorker
+            from: relayWorker,
+            gasPrice: 1e9
           })
           const { data, signature } = await getDataAndSignatureFromHash(tx, chainId)
 

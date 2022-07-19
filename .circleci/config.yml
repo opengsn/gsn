@@ -113,6 +113,16 @@ jobs: # a collection of steps
       - run: # run tests
           name: lint
           command: yarn lerna-lint
+  depcheck:
+    working_directory: ~/gls # directory where steps will run
+    docker: # run the steps with Docker
+      - image: cimg/node:16.6.2
+    steps: # a collection of executable commands
+      - attach_workspace:
+          at: .
+      - run: # run tests
+          name: depcheck
+          command: yarn depcheck
 
   test_webpack:
     working_directory: ~/gls # directory where steps will run
@@ -176,6 +186,10 @@ workflows:
       - lint:
           requires:
             - build
+      - depcheck:
+          requires:
+            - build
+            - build_paymasters
       - test_fork:
           requires:
             - build
