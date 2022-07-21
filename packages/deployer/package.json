@@ -19,6 +19,7 @@
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@opengsn/common": "^3.0.0-beta.1",
+    "axios": "^0.27.2",
     "chai": "^4.3.6",
     "chalk": "^4.1.2",
     "ethers": "^5.5.1",
