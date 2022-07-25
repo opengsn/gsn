@@ -416,25 +416,37 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
     context('success flow', function () {
       const gasUseWithoutPost = 100000
       const ethActualCharge = (gasUseWithoutPost + GAS_USED_BY_POST) * parseInt(GAS_PRICE)
+      let priceQuote: BN
+      let priceDivisor: BN
+      let minDepositAmount: BN
+      let pmContext: any
+      let modifiedRequest: RelayRequest
+      let expectedRefund: BN
       before(async function () {
         if (!await detectMainnet()) {
           this.skip()
         }
       })
-
       beforeEach(async function () {
-
-      })
-
-      it('should refund sender excess tokens without refilling hub deposit when greater than minHubBalance', async function () {
         await skipWithoutFork(this)
-        const priceQuote = await chainlinkOracleDAIETH.latestAnswer()
-        const priceDivisor = await permitPaymaster.priceDivisors(DAI_CONTRACT_ADDRESS)
-        const minDepositAmount = toBN(TARGET_HUB_BALANCE).sub(toBN(MIN_HUB_BALANCE)).add(toBN(ethActualCharge))
+        priceQuote = await chainlinkOracleDAIETH.latestAnswer()
+        priceDivisor = await permitPaymaster.priceDivisors(DAI_CONTRACT_ADDRESS)
+        minDepositAmount = toBN(TARGET_HUB_BALANCE).sub(toBN(MIN_HUB_BALANCE)).add(toBN(ethActualCharge))
         const tokenDepositAmount = minDepositAmount.mul(priceDivisor).div(priceQuote)
 
         await daiPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
         await daiPermittableToken.transfer(permitPaymaster.address, tokenDepositAmount.add(toBN(TOKEN_PRE_CHARGE)).muln(1.1), { from: account0 })
+
+        pmContext = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), TOKEN_PRE_CHARGE])
+        modifiedRequest = mergeRelayRequest(relayRequest, {
+          paymasterData: DAI_CONTRACT_ADDRESS
+        })
+        const tokenActualCharge = await permitPaymaster.addPaymasterFee(toBN(ethActualCharge).mul(priceDivisor).div(priceQuote))
+        expectedRefund = toBN(TOKEN_PRE_CHARGE).sub(tokenActualCharge)
+      })
+
+      it('should refund sender excess tokens without refilling hub deposit when greater than minHubBalance', async function () {
+        await skipWithoutFork(this)
         await web3.eth.sendTransaction({
           from: account0,
           to: permitPaymaster.address,
@@ -442,14 +454,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
         })
         const hubBalance = await testRelayHub.balanceOf(permitPaymaster.address)
         assert.equal(hubBalance.toString(), TARGET_HUB_BALANCE)
-        const context = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), TOKEN_PRE_CHARGE])
-        const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: DAI_CONTRACT_ADDRESS
-        })
-        const res = await testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, modifiedRequest.relayData, { gasPrice: GAS_PRICE })
-        const tokenActualCharge = await permitPaymaster.addPaymasterFee(toBN(ethActualCharge).mul(priceDivisor).div(priceQuote))
-        const expectedRefund = toBN(TOKEN_PRE_CHARGE).sub(tokenActualCharge)
-        // Paymaster refunds remaining DAI tokens to sender
+        const res = await testRelayHub.callPostRC(permitPaymaster.address, pmContext, gasUseWithoutPost, modifiedRequest.relayData, { gasPrice: GAS_PRICE })
         expectEvent(res, 'Transfer', {
           from: permitPaymaster.address,
           to: relayRequest.request.from,
@@ -460,14 +465,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
       })
 
       it('should withdraw hub balance to owner when it\'s larger than minWithdrawalAmount', async function () {
-        const priceQuote = await chainlinkOracleDAIETH.latestAnswer()
-        const priceDivisor = await permitPaymaster.priceDivisors(DAI_CONTRACT_ADDRESS)
-        const minDepositAmount = toBN(TARGET_HUB_BALANCE).sub(toBN(MIN_HUB_BALANCE)).add(toBN(ethActualCharge))
-        const tokenDepositAmount = minDepositAmount.mul(priceDivisor).div(priceQuote)
-
-        await daiPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
-        await daiPermittableToken.transfer(permitPaymaster.address, tokenDepositAmount.add(toBN(TOKEN_PRE_CHARGE)).muln(1.1), { from: account0 })
-
+        await skipWithoutFork(this)
         const expectedBalance = toBN(TARGET_HUB_BALANCE).add(toBN(MIN_WITHDRAWAL_AMOUNT))
         await web3.eth.sendTransaction({
           from: account0,
@@ -477,13 +475,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
         const paymasterHubBalance = await testRelayHub.balanceOf(permitPaymaster.address)
         assert.equal(paymasterHubBalance.toString(), expectedBalance)
         const ownerBalanceBefore = toBN(await web3.eth.getBalance(owner))
-        const context = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), TOKEN_PRE_CHARGE])
-        const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: DAI_CONTRACT_ADDRESS
-        })
-        const res = await testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, modifiedRequest.relayData, { gasPrice: GAS_PRICE })
-        const tokenActualCharge = await permitPaymaster.addPaymasterFee(toBN(ethActualCharge).mul(priceDivisor).div(priceQuote))
-        const expectedRefund = toBN(TOKEN_PRE_CHARGE).sub(tokenActualCharge)
+        const res = await testRelayHub.callPostRC(permitPaymaster.address, pmContext, gasUseWithoutPost, modifiedRequest.relayData, { gasPrice: GAS_PRICE })
         // Paymaster refunds remaining DAI tokens to sender
         expectEvent(res, 'Transfer', {
           from: permitPaymaster.address,
@@ -510,13 +502,6 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
       })
       it('should refund sender excess tokens and refill hub deposit when greater than minHubBalance', async function () {
         await skipWithoutFork(this)
-        const priceQuote = await chainlinkOracleDAIETH.latestAnswer()
-        const priceDivisor = await permitPaymaster.priceDivisors(DAI_CONTRACT_ADDRESS)
-        const minDepositAmount = toBN(TARGET_HUB_BALANCE).sub(toBN(MIN_HUB_BALANCE)).add(toBN(ethActualCharge))
-        const tokenDepositAmount = minDepositAmount.mul(priceDivisor).div(priceQuote)
-
-        await daiPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
-        await daiPermittableToken.transfer(permitPaymaster.address, tokenDepositAmount.add(toBN(TOKEN_PRE_CHARGE)).muln(1.1), { from: account0 })
         await web3.eth.sendTransaction({
           from: account0,
           to: permitPaymaster.address,
@@ -524,10 +509,6 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
         })
         const paymasterHubBalance = await testRelayHub.balanceOf(permitPaymaster.address)
         assert.equal(paymasterHubBalance.toString(), MIN_HUB_BALANCE)
-        const context = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), TOKEN_PRE_CHARGE])
-        const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: DAI_CONTRACT_ADDRESS
-        })
         const expectedDaiDeposit = await quoter.contract.methods.quoteExactOutputSingle(
           DAI_CONTRACT_ADDRESS,
           WETH9_CONTRACT_ADDRESS,
@@ -535,7 +516,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           minDepositAmount.toString(),
           0).call()
 
-        const res = await testRelayHub.callPostRC(permitPaymaster.address, context, gasUseWithoutPost, modifiedRequest.relayData, { gasPrice: GAS_PRICE })
+        const res = await testRelayHub.callPostRC(permitPaymaster.address, pmContext, gasUseWithoutPost, modifiedRequest.relayData, { gasPrice: GAS_PRICE })
         // res.logs.forEach(log => {
         //   // @ts-ignore
         //   log.args.value ? log.args.value = log.args.value.toString() : null
@@ -546,8 +527,6 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
         assert.equal(res.logs[2].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase(), 'wrong weth')
         assert.equal(res.logs[3].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase(), 'wrong dai again')
 
-        const tokenActualCharge = await permitPaymaster.addPaymasterFee(toBN(ethActualCharge).mul(priceDivisor).div(priceQuote))
-        const expectedRefund = toBN(TOKEN_PRE_CHARGE).sub(tokenActualCharge)
         // Paymaster refunds remaining DAI tokens to sender
         expectEvent(res, 'Transfer', {
           from: permitPaymaster.address,
