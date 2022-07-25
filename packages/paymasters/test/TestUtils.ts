@@ -64,12 +64,17 @@ export async function calculatePostGas (
   account: Address,
   context: PrefixedHexString
 ): Promise<BN> {
+  console.log('wtf 11')
   const calc = await deployTestHub(true) as TokenGasCalculatorInstance
+  console.log('wtf 12')
   await paymaster.setRelayHub(calc.address)
+  console.log('wtf 13')
   await token.transfer(paymaster.address, toWei('1', 'ether'), { from: account })
+  console.log('wtf 14')
   // TODO: I cannot explain what causes the transaction to revert in a view mode, but this happens consistently;
   //   switching to use the emitted event instead
   const res = await calc.calculatePostGas(paymaster.address, context)
+  console.log('wtf 15')
   const event: GasUsed = res.logs.find(it => it.event === 'GasUsed') as unknown as GasUsed
   return event.args.gasUsedByPost
 }
