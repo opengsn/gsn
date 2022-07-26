@@ -3,7 +3,7 @@ pragma solidity ^0.8.7;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -28,14 +28,14 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
     event Received(address indexed sender, uint256 eth);
     event TokensCharged(uint256 gasUseWithoutPost, uint256 gasJustPost, uint256 tokenActualCharge, uint256 ethActualCharge);
-    mapping(IERC20 => IChainlinkOracle) public priceFeeds;
+    mapping(IERC20Metadata => IChainlinkOracle) public priceFeeds;
 
-    mapping(IERC20 => uint256) public priceDivisors;
+    mapping(IERC20Metadata => uint256) public priceDivisors;
 
     ISwapRouter public uniswap;
-    IERC20[] public tokens;
+    IERC20Metadata[] public tokens;
     IERC20 public immutable weth;
-    mapping(IERC20 => bytes4) public permitMethodSignatures;
+    mapping(IERC20Metadata => bytes4) public permitMethodSignatures;
 
     uint24 public uniswapPoolFee;
     uint256 public gasUsedByPost;
@@ -50,7 +50,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
     struct PaymasterConfig {
         IERC20 weth;
-        IERC20[] tokens;
+        IERC20Metadata[] tokens;
         IRelayHub relayHub;
         IChainlinkOracle[] priceFeeds;
         ISwapRouter uniswap;
@@ -110,13 +110,13 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         uniswapPoolFee = _uniswapPoolFee;
     }
 
-    function setTokens(IERC20[] memory _tokens, IChainlinkOracle[] memory _priceFeeds, string[] memory _permitMethodSignatures) public onlyOwner {
+    function setTokens(IERC20Metadata[] memory _tokens, IChainlinkOracle[] memory _priceFeeds, string[] memory _permitMethodSignatures) public onlyOwner {
         tokens = _tokens;
         // allow uniswap to transfer from paymaster balance
         for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20 token = tokens[i];
+            IERC20Metadata token = tokens[i];
             token.approve(address(uniswap), type(uint256).max);
-            priceDivisors[token] = 10 ** uint256(_priceFeeds[i].decimals());
+            priceDivisors[token] = 10 ** uint256(_priceFeeds[i].decimals() + token.decimals());
             priceFeeds[token] = _priceFeeds[i];
             permitMethodSignatures[token] = bytes4(keccak256(bytes(_permitMethodSignatures[i])));
         }
@@ -135,12 +135,12 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     view
     returns (uint256 tokenCharge, uint256 ethCharge) {
         ethCharge = relayHub.calculateCharge(gasUsed, relayData);
-        tokenCharge = addPaymasterFee(ethCharge * priceDivisor / priceQuote);
+        tokenCharge = addPaymasterFee(ethCharge * priceDivisor / priceQuote / 1e18);
     }
 
     function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {}
 
-    function isTokenSupported(IERC20 token) public view returns (bool) {
+    function isTokenSupported(IERC20Metadata token) public view returns (bool) {
         return priceDivisors[token] != 0;
     }
 
@@ -157,7 +157,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
         // paymasterData must contain the token address, and optionally a a valid "permit" call on the token.
         require(relayRequest.relayData.paymasterData.length >= 20, "paymasterData: must contain token address");
-        IERC20 token = _getTokenFromPaymasterData(relayRequest.relayData.paymasterData);
+        IERC20Metadata token = _getTokenFromPaymasterData(relayRequest.relayData.paymasterData);
         require(isTokenSupported(token),"unsupported token");
         if (relayRequest.relayData.paymasterData.length != 20) {
             require(relayRequest.relayData.paymasterData.length >= 24, "paymasterData: must contain \"permit\" method and token address");
@@ -174,7 +174,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
         (uint256 tokenPreCharge,) = _calculateCharge(relayRequest.relayData, maxPossibleGas, priceQuote, priceDivisors[token]);
         address payer = relayRequest.request.from;
-        token.safeTransferFrom(payer, address(this), tokenPreCharge);
+        IERC20(token).safeTransferFrom(payer, address(this), tokenPreCharge);
         return (abi.encode(payer, priceQuote, tokenPreCharge), false);
     }
 
@@ -188,10 +188,10 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     override
     {
         (address payer, uint256 priceQuote, uint256 tokenPreCharge) = abi.decode(context, (address, uint256, uint256));
-        IERC20 token = _getTokenFromPaymasterData(relayData.paymasterData);
+        IERC20Metadata token = _getTokenFromPaymasterData(relayData.paymasterData);
         (uint256 tokenActualCharge, uint256 ethActualCharge) = _calculateCharge(relayData, gasUseWithoutPost + gasUsedByPost, priceQuote, priceDivisors[token]);
         require(tokenActualCharge <= tokenPreCharge, "actual charge higher");
-        token.safeTransfer(payer, tokenPreCharge - tokenActualCharge);
+        IERC20(token).safeTransfer(payer, tokenPreCharge - tokenActualCharge);
 
         emit TokensCharged(gasUseWithoutPost, gasUsedByPost, tokenActualCharge, ethActualCharge);
         _refillHubDepositIfNeeded(ethActualCharge);
@@ -208,9 +208,9 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     }
 
     function _refillHubDeposit(uint256 minDepositAmount) private {
-        IERC20 mainToken = tokens[0];
+        IERC20Metadata mainToken = tokens[0];
         for (uint256 i = 1; i < tokens.length; i++) {
-            IERC20 tokenIn = tokens[i];
+            IERC20Metadata tokenIn = tokens[i];
             uint256 tokenBalance = tokenIn.balanceOf(address(this));
             if (tokenBalance > 0) {
                 UniswapV3Helper.swapToToken(
@@ -239,8 +239,8 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         }
     }
 
-    function _getTokenFromPaymasterData(bytes calldata paymasterData) internal pure returns (IERC20) {
-        return IERC20(address(bytes20(paymasterData[paymasterData.length - 20:])));
+    function _getTokenFromPaymasterData(bytes calldata paymasterData) internal pure returns (IERC20Metadata) {
+        return IERC20Metadata(address(bytes20(paymasterData[paymasterData.length - 20:])));
     }
 
     function addPaymasterFee(uint256 charge) public view returns (uint256) {
@@ -249,9 +249,9 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
     // as this Paymaster already has a permission from a user to operate the tokens on behalf of the gasless account,
     // it makes this same Paymaster a great recipient of a transaction if its only action is a pure token transfer
-    function transferToken(IERC20 token, address target, uint256 value) external {
+    function transferToken(IERC20Metadata token, address target, uint256 value) external {
         require(msg.sender == getTrustedForwarder(), "must be a meta-tx");
-        token.safeTransferFrom(_msgSender(), target, value);
+        IERC20(token).safeTransferFrom(_msgSender(), target, value);
     }
 
 //    receive() external override payable {
