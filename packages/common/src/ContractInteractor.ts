@@ -144,6 +144,7 @@ export class ContractInteractor {
 
   private rawTxOptions?: TxOptions
   chainId!: number
+  private isLocal!: boolean
   private networkId?: number
   private networkType?: string
   private paymasterVersion?: SemVerString
@@ -244,6 +245,7 @@ export class ContractInteractor {
 
   async _initializeNetworkParams (): Promise<void> {
     this.chainId = await this.web3.eth.getChainId()
+    this.isLocal = this.chainId === 1337 || this.chainId === 31337
     this.networkId = await this.web3.eth.net.getId()
     this.networkType = await this.web3.eth.net.getNetworkType()
     // networkType === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
@@ -662,11 +664,9 @@ export class ContractInteractor {
     if (parts === 1) {
       return [{ fromBlock, toBlock }]
     }
-    // noinspection SuspiciousTypeOfGuard - known false positive
-    if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`ContractInteractor:splitRange: only number supported for block range when using pagination, ${fromBlock} ${toBlock} ${parts}`)
-    }
+    fromBlock = parseInt(fromBlock.toString())
+    toBlock = parseInt(toBlock.toString())
+
     const rangeSize = toBlock - fromBlock + 1
     const splitSize = Math.ceil(rangeSize / parts)
 
@@ -682,7 +682,7 @@ export class ContractInteractor {
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
   async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: Array<string[] | string | undefined>, options: PastEventOptions): Promise<EventData[]> {
-    const delay = this.getNetworkType() === 'private' ? 0 : 300
+    const delay = this.isLocal ? 0 : 1000
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
@@ -712,6 +712,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     const relayEventParts: EventData[][] = []
     while (true) {
       const rangeParts = await this.splitRange(options.fromBlock, options.toBlock, pagesCurrent)
+      const needPaginationErrorMatcher = /(query returned more than)|(too many blocks)|(block range is too wide)|(Range of blocks allowed)|(exceed maximum block range)/
       try {
         // eslint-disable-next-line
         for (const { fromBlock, toBlock } of rangeParts) {
@@ -726,6 +727,10 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
               relayEventParts.push(pastEvents)
               break
             } catch (e: any) {
+              if (e.toString().match(needPaginationErrorMatcher) != null) {
+                throw e // handled by outer loop
+              }
+
               /* eslint-disable */
               this.logger.error(`error in getPastEvents. 
               fromBlock: ${fromBlock.toString()} 
@@ -737,7 +742,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
               \n${e.toString()}`)
               /* eslint-enable */
               attempts++
-              if (attempts >= 100) {
+              if (attempts >= 5) {
                 this.logger.error('Too many attempts. throwing ')
                 throw e
               }
@@ -748,7 +753,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
         break
       } catch (e: any) {
         // dynamically adjust query size fo some RPC providers
-        if (e.toString().match(/query returned more than/) != null) {
+        if (e.toString().match(needPaginationErrorMatcher) != null) {
           this.logger.warn(
             'Received "query returned more than X events" error from server, will try to split the request into smaller chunks')
           if (pagesCurrent > 16) {
@@ -786,7 +791,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
   async getBlockNumber (): Promise<number> {
     let blockNumber = -1
     let attempts = 0
-    const delay = this.getNetworkType() === 'private' ? 0 : 1000
+    const delay = this.isLocal ? 100 : 2000
     while (blockNumber < this.lastBlockNumber && attempts <= 10) {
       try {
         blockNumber = await this.web3.eth.getBlockNumber()
@@ -956,13 +961,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
       throw new Error('_init not called')
     }
     return this.networkId
-  }
-
-  getNetworkType (): string {
-    if (this.networkType == null) {
-      throw new Error('_init not called')
-    }
-    return this.networkType
   }
 
   async isContractDeployed (address: Address): Promise<boolean> {

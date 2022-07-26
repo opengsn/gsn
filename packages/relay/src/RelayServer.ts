@@ -173,7 +173,7 @@ export class RelayServer extends EventEmitter {
 
   validateRequestTxType (req: RelayTransactionRequest): void {
     if (this.transactionType === TransactionType.LEGACY && req.relayRequest.relayData.maxFeePerGas !== req.relayRequest.relayData.maxPriorityFeePerGas) {
-      throw new Error(`Network ${this.contractInteractor.getNetworkType()} doesn't support eip1559`)
+      throw new Error(`Network ${this.contractInteractor.getNetworkId()} doesn't support eip1559`)
     }
   }
 
