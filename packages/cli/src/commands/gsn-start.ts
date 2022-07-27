@@ -5,7 +5,6 @@ import { execSync } from 'child_process'
 
 gsnCommander(['n'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
-  .option('--withNode', 'start with "hardhat node" in the background', false)
   .option('--run <command>', 'run with command after GSN is started. stop GSN when the commands finish')
   .parse(process.argv);
 
@@ -15,7 +14,7 @@ gsnCommander(['n'])
     if (network !== 'localhost' && commander.withNode != null) {
       throw new Error('can\'t have both --network and --withNode')
     }
-    const env = await GsnTestEnvironment.startGsn(network, commander.withNode)
+    const env = await GsnTestEnvironment.startGsn(network)
     saveDeployment(env.contractsDeployment, commander.workdir)
 
     if (commander.run != null) {
