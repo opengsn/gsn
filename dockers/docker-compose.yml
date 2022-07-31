@@ -29,6 +29,8 @@ services:
     restart: unless-stopped
     depends_on:
       - nginx-proxy
+    volumes_from:
+      - nginx-proxy
     volumes:
       - certs:/etc/nginx/certs:rw
       - acme:/etc/acme.sh
