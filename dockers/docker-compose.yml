@@ -1,7 +1,5 @@
 #should be launched with:
-# ROOT=$PWD docker-compose up
-
-#ROOT - folder that contains 'config', 'gsndata', .env, etc. The command above sets it to the current folder.
+# docker-compose up -d
 
 version: '3'
 
@@ -22,14 +20,13 @@ services:
     image: opengsn/jsrelay:3.0.0-beta.2
     restart: on-failure
 
-    # $ROOT - mapped by calling script to data folder
     # /app/data - relay specific folder
     # /app/config - read-only config folder
     # /app/data/manager - shared manager folder of all relays
     volumes:
-      - $ROOT/gsndata/gsn:/app/data
-      - $ROOT/gsndata/manager:/app/data/manager
-      - $ROOT/config:/app/config:ro
+      - ./gsndata/gsn:/app/data
+      - ./gsndata/manager:/app/data/manager
+      - ./config:/app/config:ro
 
     environment:
       url: https://${HOST}/
