@@ -1,6 +1,3 @@
-#should be launched with:
-# docker-compose up -d
-
 # You must have the following environment variable set in .env file:
 #  HOST   | my.example.com   | Your Relay Server URL exactly as it is accessed by GSN Clients
 
