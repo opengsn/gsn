@@ -1,7 +1,7 @@
 #should be launched with:
-# HOST=example.com ROOT=$PWD docker-compose up
+# ROOT=$PWD docker-compose up
 
-#ROOT - folder that contains 'config', 'gsndata', etc. The command above sets it to the current folder.
+#ROOT - folder that contains 'config', 'gsndata', .env, etc. The command above sets it to the current folder.
 
 version: '3'
 
@@ -36,4 +36,3 @@ services:
       port: 80
       workdir: /app/data
       config: /app/config/gsn-relay-config.json
-      relayHubId: hub
