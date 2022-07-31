@@ -1,35 +1,73 @@
 #should be launched with:
 # docker-compose up -d
 
-version: '3'
+# You must have the following environment variable set in .env file:
+#  HOST   | my.example.com   | Your Relay Server URL exactly as it is accessed by GSN Clients
+
+version: '2'
 
 services:
-
-  https-portal:
-    image: steveltn/https-portal:1
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy
+    container_name: nginx-proxy
+    restart: unless-stopped
     ports:
       - '443:443'
       - '80:80'
-    restart: always
-    environment:
-      DOMAINS: '${HOST} -> http://gsn'
-      STAGE: ${HTTPS_STAGE}
+    volumes:
+      - conf:/etc/nginx/conf.d
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - certs:/etc/nginx/certs:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 10m
+        max-file: "10"
+
+  acme-companion:
+    image: nginxproxy/acme-companion
+    container_name: nginx-proxy-acme
+    restart: unless-stopped
+    depends_on:
+      - nginx-proxy
+    volumes:
+      - certs:/etc/nginx/certs:rw
+      - acme:/etc/acme.sh
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   gsn:
+    container_name: gsn
     ports: [ '8080:80' ] #bypass https-portal
     image: opengsn/jsrelay:3.0.0-beta.2
     restart: on-failure
 
     # /app/data - relay specific folder
     # /app/config - read-only config folder
-    # /app/data/manager - shared manager folder of all relays
     volumes:
-      - ./gsndata/gsn:/app/data
-      - ./gsndata/manager:/app/data/manager
       - ./config:/app/config:ro
+      - ./gsndata:/app/data:rw
 
     environment:
       url: https://${HOST}/
       port: 80
       workdir: /app/data
       config: /app/config/gsn-relay-config.json
+      LETSENCRYPT_HOST: $HOST
+      VIRTUAL_HOST: $HOST
+      VIRTUAL_PATH: /
+      VIRTUAL_DEST: /
+    mem_limit: 100M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: 10m
+        max-file: "10"
+
+volumes:
+  conf:
+  vhost:
+  html:
+  certs:
+  acme:
