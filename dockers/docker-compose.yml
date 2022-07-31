@@ -1,0 +1,39 @@
+#should be launched with:
+# HOST=example.com ROOT=$PWD docker-compose up
+
+#ROOT - folder that contains 'config', 'gsndata', etc. The command above sets it to the current folder.
+
+version: '3'
+
+services:
+
+  https-portal:
+    image: steveltn/https-portal:1
+    ports:
+      - '443:443'
+      - '80:80'
+    restart: always
+    environment:
+      DOMAINS: '${HOST} -> http://router'
+      STAGE: ${HTTPS_STAGE}
+
+  gsn:
+    ports: [ '8080:80' ] #bypass https-portal
+    image: opengsn/jsrelay:3.0.0-beta.2
+    restart: on-failure
+
+    # $ROOT - mapped by calling script to data folder
+    # /app/data - relay specific folder
+    # /app/config - read-only config folder
+    # /app/data/manager - shared manager folder of all relays
+    volumes:
+      - $ROOT/gsndata/gsn:/app/data
+      - $ROOT/gsndata/manager:/app/data/manager
+      - $ROOT/config:/app/config:ro
+
+    environment:
+      url: https://${HOST}/
+      port: 80
+      workdir: /app/data
+      config: /app/config/gsn-relay-config.json
+      relayHubId: hub

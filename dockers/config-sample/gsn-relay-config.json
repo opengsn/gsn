@@ -1,4 +1,3 @@
-
 {
   "relayHubAddress": "<deployed relay hub>",
   "managerStakeTokenAddress": "<erc20 token address for staking>",
