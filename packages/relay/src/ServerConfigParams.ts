@@ -29,7 +29,11 @@ export enum LoggingProviderMode {
   CHATTY
 }
 
-// TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
+/**
+ * The interface describing all possible configuration parameters for a GSN Provider.
+ * Note that you probably do not need to modify most of these parameters.
+ * They exist to support all possible combinations of use-cases and networks.
+ */
 export interface ServerConfigParams {
   /**
    * An address of the owner of this relay. Must be set to the address that will be putting the stake for the Relay.

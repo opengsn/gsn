@@ -21,6 +21,11 @@ export interface ConfigEntry {
   gsnConfig: Partial<GSNConfig>
 }
 
+/**
+ * The interface describing all possible configuration parameters for a GSN Provider.
+ * Note that you probably do not need to modify most of these parameters.
+ * They exist to support all possible combinations of use-cases and networks.
+ */
 export interface GSNConfig {
   /**
    * The list of Relay Server to be tried first.
