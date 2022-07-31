@@ -12,7 +12,7 @@ gsnCommander(['n'])
 (async () => {
   try {
     const network: string = commander.network
-    if (network !== 'localhost' && commander.withNode != null) {
+    if (network.length && commander.withNode != false) {
       throw new Error('can\'t have both --network and --withNode')
     }
     const env = await GsnTestEnvironment.startGsn(network, commander.withNode)
