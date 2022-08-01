@@ -2,7 +2,6 @@
   "extends": "../../tsconfig.packages.json",
   "include": [
     "truffle.js",
-    "coverage-prov.js",
     "migrations/*.js",
     "test/**/*.ts"
   ]
