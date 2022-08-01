@@ -29,63 +29,263 @@ export enum LoggingProviderMode {
   CHATTY
 }
 
-// TODO: is there a way to merge the typescript definition ServerConfigParams with the runtime checking ConfigParamTypes ?
+/**
+ * The interface describing all possible configuration parameters for a GSN Provider.
+ * Note that you probably do not need to modify most of these parameters.
+ * They exist to support all possible combinations of use-cases and networks.
+ */
 export interface ServerConfigParams {
+  /**
+   * An address of the owner of this relay. Must be set to the address that will be putting the stake for the Relay.
+   */
   ownerAddress: string
+
+  /**
+   * The URL with which the Relay will register on the RelayRegistrar.
+   * This must be a publicly accessible URL for the clients to be able to reach your Relay.
+   */
   url: string
+
+  /**
+   * The port on which the Relay process will listen for connections.
+   * Affects the docker configuration. Defaults to 8090.
+   */
   port: number
+
+  /**
+   * The address of the RelayHub contract.
+   */
   relayHubAddress: string
+
+  /**
+   * The URL of the Ethereum RPC Node that is used to interact with the blockchain.
+   */
   ethereumNodeUrl: string
+
+  /**
+   * The name of the directory used to store the database and private keys.
+   */
   workdir: string
+
+  /**
+   * The interval, in milliseconds, with which the Relay will poll the RPC node for new confirmed blocks.
+   */
   checkInterval: number
+
+  /**
+   * With this flag set to true the Relay will always clean up its own storage. Only use for testing.
+   */
   devMode: boolean
+
+  /**
+   * Set what information to output to console from the RPC node calls. Possible values:
+   *  0 NONE
+   *  1 DURATION
+   *  2 ALL
+   *  3 CHATTY
+   */
   loggingProvider: LoggingProviderMode
+
+  /**
+   * The maximum value the Relay is ready to risk in one call when relaying a transaction, denominated in gas.
+   * If the incoming Relay Request requires more gas to verify itself on-chain it will be rejected.
+   */
   maxAcceptanceBudget: number
+
+  /**
+   * The duration of time the Relay will throttle incoming RelayRequests after suffering a loss.
+   * This indicates a transaction reverted on-chain, which may be an attempted attack to drain the relay.
+   */
   alertedDelaySeconds: number
+
+  /**
+   * Alerted mode will delay incoming RelayRequests by at least this amount of time.
+   */
   minAlertedDelayMS: number
+
+  /**
+   * Alerted mode will delay incoming RelayRequests by no more than this amount of time.
+   */
   maxAlertedDelayMS: number
+
+  /**
+   * The Paymasters in this array will have unlimited {@link maxAcceptanceBudget} and reputation.
+   */
   trustedPaymasters: Address[]
+
+  /**
+   * The Paymasters in this array will not be served.
+   */
   blacklistedPaymasters: Address[]
+
+  /**
+   * The 'gasPrice'/'maxPriorityFeePerGas' reported by the network will be multiplied by this value.
+   */
   gasPriceFactor: number
+
+  /**
+   * The URL to access to get the gas price from.
+   * This is done instead of reading the 'gasPrice'/'maxPriorityFeePerGas' from the RPC node.
+   */
   gasPriceOracleUrl: string
+
+  /**
+   * For JSON response format, the field to get from the object.
+   */
   gasPriceOraclePath: string
+
+  /**
+   * The logging level for the Relay process.
+   *  'error' , 'warn' , 'info' , 'debug'
+   */
   logLevel: NpmLogLevel
+
+  /**
+   * The URL of the remote logger service. Setting it enables remote log collection.
+   */
   loggerUrl: string
+
+  /**
+   * The user ID for the remote logger service.
+   */
   loggerUserId: string
+
+  /**
+   * If running the Relay in a Penalizer mode it will require an Etherscan API URL to query transactions.
+   */
   etherscanApiUrl: string
+
+  /**
+   * If running the Relay in a Penalizer mode it will require an Etherscan API key.
+   */
   etherscanApiKey: string
 
+  /**
+   * The minimum balance of the worker. If the balance gets lower than that Relay Manager will top it up.
+   */
   workerMinBalance: number
+
+  /**
+   * The balance of the worker that the Relay will try to maintain by sending funds to it from the Manager.
+   */
   workerTargetBalance: number
+
+  /**
+   * The minimum balance of the Relay Manager.
+   * If the balance gets lower than that Relay Manager will pull its revenue from the RelayHub.
+   */
   managerMinBalance: number
-  managerStakeTokenAddress: string
+
+  /**
+   * The balance of the Relay Manager that the Relay will try to maintain by pulling its revenue from the RelayHub.
+   */
   managerTargetBalance: number
+
+  /**
+   * The address of the ERC-20 tokens that are used as stake kept on the StakeManager contract.
+   */
+  managerStakeTokenAddress: string
+
+  /**
+   * If the balance of the Relay Manager on the RelayHub is below this value it will not be pulled to fund transactions.
+   */
   minHubWithdrawalBalance: number
+
+  /**
+   * If the balance of the Relay Manager on the RelayHub is above this value it will be sent to the owner.
+   */
   withdrawToOwnerOnBalance?: number
+
+  /**
+   * The Relay will re-read relevant blockchain state after so many blocks.
+   */
   refreshStateTimeoutBlocks: number
+
+  /**
+   * Once a transaction is broadcast, the Relay will boost it after this number of seconds.
+   */
   pendingTransactionTimeoutSeconds: number
+
+  /**
+   * Remove transactions that were send this many blocks ago from database.
+   */
   dbPruneTxAfterBlocks: number
+
+  /**
+   * Remove transactions that were send this many seconds ago from database.
+   */
   dbPruneTxAfterSeconds: number
+
+  /**
+   * Automatically compact the database with this interval.
+   */
   dbAutoCompactionInterval: number
+
+  /**
+   * If the transaction is stuck pending for some time the Relay will multiply its 'maxFeePerGas'
+   * and 'maxPriorityFeePerGas' by this value.
+   */
   retryGasPriceFactor: number
+
+  /**
+   * The absolute maximum gas fee the Relay is willing to pay.
+   */
   maxFeePerGas: string
+
+  /**
+   * In case the RPC node reports 'maxPriorityFeePerGas' to be 0, override it with this value.
+   */
   defaultPriorityFee: string
+
+  /**
+   * Only used to set 'addRelayWorker' gas limit as it fails estimation.
+   * @deprecated
+   */
   defaultGasLimit: number
+
+  /**
+   * If the RelayRequest becomes invalid this soon after it is received it should be rejected.
+   */
   requestMinValidSeconds: number
 
+  /**
+   * If set to 'true' this Relay will run in Penalizer mode by listening to '/audit' HTTP requests.
+   */
   runPenalizer: boolean
+
+  /**
+   * If set to 'true' this Relay will keep track of Paymasters' reputations.
+   */
   runPaymasterReputations: boolean
 
+  /**
+   * The SemVer string defining which contracts versions are supported.
+   */
   requiredVersionRange?: string
 
-  // if the number of blocks per 'getLogs' query is limited, use pagination with this page size
+  /**
+   * If the number of blocks per 'getLogs' query is limited, use pagination with this page size.
+   */
   pastEventsQueryMaxPageSize: number
-  // when querying a large range with a small 'pastEventsQueryMaxPageSize' the number of pages may become insane
+
+  /**
+   * When querying a large range with a small {@link pastEventsQueryMaxPageSize} the number of pages may become insane.
+   */
   pastEventsQueryMaxPageCount: number
 
+  /**
+   * The name of preconfigured network. Supported values: "ganacheLocal", "ethereumMainnet", "arbitrum".
+   */
   environmentName?: string
-  // number of blocks the server will not repeat a ServerAction for regardless of blockchain state to avoid duplicates
+
+  /**
+   * Number of blocks the server will not repeat a ServerAction for regardless of blockchain state to avoid duplicates.
+   */
   recentActionAvoidRepeatDistanceBlocks: number
+
+  /**
+   * If set to 'true' the Relay will not perform an ERC-165 interfaces check on the GSN contracts.
+   */
   skipErc165Check: boolean
 }
 
