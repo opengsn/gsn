@@ -50,8 +50,6 @@
     "ethval" : "^2.1.1",
     "moment": "^2.29.1",
     "ow" : "^0.28.1",
-    "run-with-hardhat-node": "^0.4.3",
-    "signal-exit" : "^3.0.7",
     "terminal-link": "^2.1.1",
     "web3": "^1.7.3",
     "web3-provider-engine": "^16.0.4"
