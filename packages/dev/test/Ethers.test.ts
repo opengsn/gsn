@@ -93,17 +93,18 @@ describe('Ethers client', () => {
   })
 
   it('should automatically wrap ethers.js provider', async function () {
-    const rawEthersProvider = new providers.JsonRpcProvider((web3.currentProvider as any).url)
+    const ethersProvider = new providers.JsonRpcProvider((web3.currentProvider as any).host)
     const { paymasterAddress, forwarderAddress } = env.contractsDeployment
     const gsnConfig: Partial<GSNConfig> = {
       paymasterAddress: paymasterAddress!,
       loggerConfiguration: { logLevel: 'error' }
     }
     // @ts-ignore
-    const gsnProvider = RelayProvider.newProvider({ provider: rawEthersProvider, config: gsnConfig })
+    const gsnProvider = RelayProvider.newProvider({ provider: ethersProvider, config: gsnConfig })
     await gsnProvider.init()
     const gsnEthersProvider = new providers.Web3Provider(logProvider(gsnProvider))
-    const recipient = await new ContractFactory(TestRecipient.abi, TestRecipient.bytecode, rawEthersProvider.getSigner()).deploy(forwarderAddress)
+    const signer = ethersProvider.getSigner()
+    const recipient = await new ContractFactory(TestRecipient.abi, TestRecipient.bytecode, signer).deploy(forwarderAddress)
     const gsnSigner = gsnEthersProvider.getSigner()
     gsnRecipient = recipient.connect(gsnSigner)
     const signerAddress = await gsnSigner.getAddress()
