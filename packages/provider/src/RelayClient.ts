@@ -25,7 +25,6 @@ import {
   asRelayCallAbi,
   constants,
   decodeRevertReason,
-  getProviderImplementation,
   getRelayRequestID,
   gsnRequiredVersion,
   gsnRuntimeVersion,
@@ -122,13 +121,8 @@ export class RelayClient {
       this.rawConstructorInput.provider = bridgeProvider(provider)
     } else if (provider instanceof Provider) {
       throw new Error('Your "provider" instance appears to be an Ethers.js provider but it does not have a "getSigner" method. We recommend constructing JsonRpcProvider or Web3Provider yourself.')
-    } else if (!(
-      provider instanceof Web3.providers.HttpProvider ||
-      provider instanceof Web3.providers.WebsocketProvider ||
-      provider instanceof Web3.providers.IpcProvider) &&
-      getProviderImplementation(provider) === 'unknown'
-    ) {
-      this.logger.error('Provider type is unknown. This may result in non-informative errors. We recommend constructing a Web3.js provider yourself.')
+    } else if (typeof provider.send !== 'function' && typeof provider.sendAsync !== 'function') {
+      throw new Error('Your "provider" instance does not have neither "send" nor "sendAsync" method. This is not supported.')
     }
   }
 
