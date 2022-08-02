@@ -93,7 +93,7 @@ describe('Ethers client', () => {
   })
 
   it('should automatically wrap ethers.js provider', async function () {
-    const rawEthersProvider = new providers.JsonRpcProvider('http://127.0.0.1:8545')
+    const rawEthersProvider = new providers.JsonRpcProvider((web3.currentProvider as any).url)
     const { paymasterAddress, forwarderAddress } = env.contractsDeployment
     const gsnConfig: Partial<GSNConfig> = {
       paymasterAddress: paymasterAddress!,
