@@ -1,5 +1,6 @@
 import Web3 from 'web3'
 import { EventEmitter } from 'events'
+import { Provider } from '@ethersproject/abstract-provider'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
@@ -47,6 +48,7 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
+import { bridgeProvider } from './WrapContract'
 
 // forwarder requests are signed with expiration time.
 
@@ -110,6 +112,18 @@ export class RelayClient {
     }
     this.rawConstructorInput = rawConstructorInput
     this.logger = rawConstructorInput.overrideDependencies?.logger ?? console
+    this.wrapEthersJsProvider()
+  }
+
+  wrapEthersJsProvider (): void {
+    const provider = this.rawConstructorInput.provider as any
+    if (typeof provider.getSigner === 'function') {
+      this.rawConstructorInput.provider = bridgeProvider(provider)
+    } else if (provider instanceof Provider) {
+      throw new Error('Your "provider" instance appears to be an Ethers.js provider but it does not have a "getSigner" method. We recommend constructing JsonRpcProvider or Web3Provider yourself.')
+    } else if (typeof provider.send !== 'function' && typeof provider.sendAsync !== 'function') {
+      throw new Error('Your "provider" instance does not have neither "send" nor "sendAsync" method. This is not supported.')
+    }
   }
 
   async init (): Promise<this> {

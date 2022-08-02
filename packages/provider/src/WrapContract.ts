@@ -1,6 +1,6 @@
 import { Contract, providers } from 'ethers'
 import { Eip1193Bridge } from '@ethersproject/experimental'
-import { ExternalProvider } from '@ethersproject/providers'
+import { ExternalProvider, JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
 import { Signer } from '@ethersproject/abstract-signer'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
@@ -95,4 +95,8 @@ export async function wrapSigner (
   const ethersProvider = new providers.Web3Provider(gsnProvider)
   const address = await signer.getAddress()
   return ethersProvider.getSigner(address)
+}
+
+export function bridgeProvider (provider: JsonRpcProvider | Web3Provider): WrapBridge {
+  return new WrapBridge(new Eip1193Bridge(provider.getSigner(), provider))
 }
