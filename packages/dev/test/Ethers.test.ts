@@ -1,3 +1,4 @@
+import { GSNConfig } from '@opengsn/common'
 import { GsnTestEnvironment, TestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { RelayProvider } from '@opengsn/provider'
 import { Contract, providers, ContractFactory } from 'ethers'
@@ -85,6 +86,29 @@ describe('Ethers client', () => {
     const signerAddress = await signer.getAddress()
     const balanceBefore = await web3.eth.getBalance(signerAddress)
     const ret = await wrappedGsnRecipient.emitMessage('hello', { gasPrice: 1e9 })
+    const rcpt = await ret.wait()
+    const balanceAfter = await web3.eth.getBalance(signerAddress)
+    assert.equal(balanceBefore.toString(), balanceAfter.toString())
+    expectEvent.inLogs(rcpt.events, 'SampleRecipientEmitted', { realSender: signerAddress })
+  })
+
+  it('should automatically wrap ethers.js provider', async function () {
+    const rawEthersProvider = new providers.JsonRpcProvider('http://127.0.0.1:8545')
+    const { paymasterAddress, forwarderAddress } = env.contractsDeployment
+    const gsnConfig: Partial<GSNConfig> = {
+      paymasterAddress: paymasterAddress!,
+      loggerConfiguration: { logLevel: 'error' }
+    }
+    // @ts-ignore
+    const gsnProvider = RelayProvider.newProvider({ provider: rawEthersProvider, config: gsnConfig })
+    await gsnProvider.init()
+    const gsnEthersProvider = new providers.Web3Provider(logProvider(gsnProvider))
+    const recipient = await new ContractFactory(TestRecipient.abi, TestRecipient.bytecode, rawEthersProvider.getSigner()).deploy(forwarderAddress)
+    const gsnSigner = gsnEthersProvider.getSigner()
+    gsnRecipient = recipient.connect(gsnSigner)
+    const signerAddress = await gsnSigner.getAddress()
+    const balanceBefore = await web3.eth.getBalance(signerAddress)
+    const ret = await gsnRecipient.emitMessage('hello', { gasPrice: 1e9 })
     const rcpt = await ret.wait()
     const balanceAfter = await web3.eth.getBalance(signerAddress)
     assert.equal(balanceBefore.toString(), balanceAfter.toString())

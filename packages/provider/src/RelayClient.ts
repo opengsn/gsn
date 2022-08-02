@@ -1,5 +1,6 @@
 import Web3 from 'web3'
 import { EventEmitter } from 'events'
+import { Provider } from '@ethersproject/abstract-provider'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
@@ -24,6 +25,7 @@ import {
   asRelayCallAbi,
   constants,
   decodeRevertReason,
+  getProviderImplementation,
   getRelayRequestID,
   gsnRequiredVersion,
   gsnRuntimeVersion,
@@ -47,6 +49,7 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
+import { bridgeProvider } from './WrapContract'
 
 // forwarder requests are signed with expiration time.
 
@@ -110,6 +113,23 @@ export class RelayClient {
     }
     this.rawConstructorInput = rawConstructorInput
     this.logger = rawConstructorInput.overrideDependencies?.logger ?? console
+    this.wrapEthersJsProvider()
+  }
+
+  wrapEthersJsProvider (): void {
+    const provider = this.rawConstructorInput.provider as any
+    if (typeof provider.getSigner === 'function') {
+      this.rawConstructorInput.provider = bridgeProvider(provider)
+    } else if (provider instanceof Provider) {
+      throw new Error('Your "provider" instance appears to be an Ethers.js provider but it does not have a "getSigner" method. We recommend constructing JsonRpcProvider or Web3Provider yourself.')
+    } else if (!(
+      provider instanceof Web3.providers.HttpProvider ||
+      provider instanceof Web3.providers.WebsocketProvider ||
+      provider instanceof Web3.providers.IpcProvider) &&
+      getProviderImplementation(provider) === 'unknown'
+    ) {
+      this.logger.error('Provider type is unknown. This may result in non-informative errors. We recommend constructing a Web3.js provider yourself.')
+    }
   }
 
   async init (): Promise<this> {
