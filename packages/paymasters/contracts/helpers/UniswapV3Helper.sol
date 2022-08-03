@@ -13,7 +13,7 @@ library UniswapV3Helper {
         uint256 amountOut,
         uint24 fee,
         ISwapRouter uniswap
-    ) internal {
+    ) internal returns (uint256 amountIn) {
         ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams(
             token, //tokenIn
             weth, //tokenOut
@@ -26,7 +26,7 @@ library UniswapV3Helper {
             0
         );
 
-        uniswap.exactOutputSingle(params);
+        amountIn = uniswap.exactOutputSingle(params);
         // use "amountOut" as withdrawal's "amountMinimum" just in case
         IPeripheryPayments(address(uniswap)).unwrapWETH9(amountOut, address(this));
     }
@@ -36,21 +36,21 @@ library UniswapV3Helper {
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
+        uint256 amountOutMin,
         uint24 fee,
         ISwapRouter uniswap
-    ) internal {
+    ) internal returns (uint256 amountOut) {
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams(
             tokenIn, //tokenIn
             tokenOut, //tokenOut
             fee,
-            address(this), //recipient - keep WETH at SwapRouter for withdrawal
+            address(this),
         // solhint-disable-next-line not-rely-on-time
             block.timestamp, //deadline
             amountIn,
-            0,
+            amountOutMin,
             0
         );
-
-        uniswap.exactInputSingle(params);
+        amountOut = uniswap.exactInputSingle(params);
     }
 }

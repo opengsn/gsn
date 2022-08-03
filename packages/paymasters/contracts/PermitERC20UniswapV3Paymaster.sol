@@ -17,6 +17,7 @@ import "./interfaces/IChainlinkOracle.sol";
 
 import "./helpers/UniswapV3Helper.sol";
 import "./helpers/PermitInterfaceDAI.sol";
+import "../../contracts/src/interfaces/IERC20Token.sol";
 
 /**
  * A paymaster allowing addresses holding ERC20 tokens with 'permit' functionality
@@ -28,16 +29,14 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
     event Received(address indexed sender, uint256 eth);
     event TokensCharged(uint256 gasUseWithoutPost, uint256 gasJustPost, uint256 tokenActualCharge, uint256 ethActualCharge);
+
     mapping(IERC20Metadata => IChainlinkOracle) public priceFeeds;
-
     mapping(IERC20Metadata => uint256) public priceDivisors;
-
+    mapping(IERC20Metadata => uint24) public uniswapPoolFees;
     ISwapRouter public uniswap;
     IERC20Metadata[] public tokens;
     IERC20 public immutable weth;
     mapping(IERC20Metadata => bytes4) public permitMethodSignatures;
-
-    uint24 public uniswapPoolFee;
     uint256 public gasUsedByPost;
 
 
@@ -53,9 +52,9 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         IERC20Metadata[] tokens;
         IRelayHub relayHub;
         IChainlinkOracle[] priceFeeds;
+        uint24[] uniswapPoolFees;
         ISwapRouter uniswap;
         address trustedForwarder;
-        uint24 uniswapPoolFee;
         uint256 gasUsedByPost;
         string[] permitMethodSignatures;
         uint256 minHubBalance;
@@ -68,7 +67,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         PaymasterConfig memory config
     ) {
         weth = config.weth;
-        setUniswap(config.uniswap, config.uniswapPoolFee);
+        setUniswap(config.uniswap);
         setMinHubBalance(config.minHubBalance);
         setTargetHubBalance(config.targetHubBalance);
         setMinWithdrawalAmount(config.minWithdrawalAmount);
@@ -77,7 +76,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         setRelayHub(config.relayHub);
         setPostGasUsage(config.gasUsedByPost);
         setTrustedForwarder(config.trustedForwarder);
-        setTokens(config.tokens, config.priceFeeds, config.permitMethodSignatures);
+        setTokens(config.tokens, config.priceFeeds, config.permitMethodSignatures, config.uniswapPoolFees);
     }
 
     /**
@@ -105,12 +104,15 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         minWithdrawalAmount = _minWithdrawalAmount;
     }
 
-    function setUniswap(ISwapRouter _uniswap, uint24 _uniswapPoolFee) public onlyOwner {
+    function setUniswap(ISwapRouter _uniswap) public onlyOwner {
         uniswap = _uniswap;
-        uniswapPoolFee = _uniswapPoolFee;
     }
 
-    function setTokens(IERC20Metadata[] memory _tokens, IChainlinkOracle[] memory _priceFeeds, string[] memory _permitMethodSignatures) public onlyOwner {
+    function setTokens(
+        IERC20Metadata[] memory _tokens,
+        IChainlinkOracle[] memory _priceFeeds,
+        string[] memory _permitMethodSignatures,
+        uint24[] memory _poolFees) public onlyOwner {
         tokens = _tokens;
         // allow uniswap to transfer from paymaster balance
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -119,11 +121,18 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             priceDivisors[token] = 10 ** uint256(_priceFeeds[i].decimals() + token.decimals());
             priceFeeds[token] = _priceFeeds[i];
             permitMethodSignatures[token] = bytes4(keccak256(bytes(_permitMethodSignatures[i])));
+            uniswapPoolFees[token] = _poolFees[i];
         }
     }
 
     function refillHubDeposit(uint256 amount) public onlyOwner {
         _refillHubDeposit(amount);
+    }
+
+    function withdrawTokens(IERC20[] calldata _tokens, address target, uint256[] calldata amounts) public onlyOwner {
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            _tokens[i].safeTransfer(target, amounts[i]);
+        }
     }
 
     function _calculateCharge(
@@ -209,15 +218,27 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
     function _refillHubDeposit(uint256 minDepositAmount) private {
         IERC20Metadata mainToken = tokens[0];
+        uint256 mainQuote = uint256(priceFeeds[mainToken].latestAnswer());
+        uint256 mainDivisor = priceDivisors[mainToken];
+        uint24 mainPoolFee = uniswapPoolFees[mainToken];
         for (uint256 i = 1; i < tokens.length; i++) {
             IERC20Metadata tokenIn = tokens[i];
             uint256 tokenBalance = tokenIn.balanceOf(address(this));
             if (tokenBalance > 0) {
+                uint256 quote = uint256(priceFeeds[tokenIn].latestAnswer());
+                uint24 poolFee = uniswapPoolFees[tokenIn];
+                uint256 amountOutMin;
+                if (i == 1) {
+                    amountOutMin = tokenBalance * quote / mainQuote * mainDivisor / priceDivisors[tokenIn] * 99 / 100;
+                } else {
+                    amountOutMin = 0;
+                }
                 UniswapV3Helper.swapToToken(
                     address(tokenIn),
                     address(mainToken),
                     tokenBalance,
-                    uniswapPoolFee,
+                    amountOutMin,
+                    poolFee,
                     uniswap
                 );
             }
@@ -226,7 +247,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             address(mainToken),
             address(weth),
             minDepositAmount,
-            uniswapPoolFee,
+            mainPoolFee,
             uniswap
         );
 //        relayHub.depositFor{value : address(this).balance}(address(this));
