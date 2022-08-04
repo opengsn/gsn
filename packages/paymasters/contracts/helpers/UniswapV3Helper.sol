@@ -7,7 +7,7 @@ import "@uniswap/v3-periphery/contracts/interfaces/IPeripheryPayments.sol";
 
 library UniswapV3Helper {
     // turn ERC-20 tokens into native unwrapped ETH at market price
-    function swapToEth(
+    function swapToWeth(
         address token,
         address weth,
         uint256 amountOut,
@@ -25,10 +25,11 @@ library UniswapV3Helper {
             type(uint256).max,
             0
         );
-
         amountIn = uniswap.exactOutputSingle(params);
-        // use "amountOut" as withdrawal's "amountMinimum" just in case
-        IPeripheryPayments(address(uniswap)).unwrapWETH9(amountOut, address(this));
+    }
+
+    function unwrapWeth(ISwapRouter uniswap, uint256 amount) internal {
+        IPeripheryPayments(address(uniswap)).unwrapWETH9(amount, address(this));
     }
 
     // swap ERC-20 tokens at market price
@@ -44,7 +45,7 @@ library UniswapV3Helper {
             tokenIn, //tokenIn
             tokenOut, //tokenOut
             fee,
-            address(this),
+            address(uniswap),
         // solhint-disable-next-line not-rely-on-time
             block.timestamp, //deadline
             amountIn,
