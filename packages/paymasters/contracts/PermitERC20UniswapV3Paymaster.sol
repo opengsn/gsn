@@ -237,10 +237,6 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
                     uint256 divisor = priceDivisors[tokenIn];
                     uint24 poolFee = uniswapPoolFees[tokenIn];
                     uint256 amountOutMin = _tokenToWei(tokenBalance, divisor, quote) * 99 / 100;
-//                    emit Debug(amountOut);
-//                    emit Debug(tokenBalance);
-//                    emit Debug(quote);
-//                    emit Debug(divisor);
                     uint256 amountOut = UniswapV3Helper.swapToToken(
                         address(tokenIn),
                         address(weth),
@@ -260,7 +256,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         }
         relayHub.depositFor{value : depositAmount}(address(this));
     }
-    event Debug(uint256 amount);
+
     function _withdrawToOwnerIfNeeded() private {
         uint256 hubBalance = relayHub.balanceOf(address(this));
         if (hubBalance >= minWithdrawalAmount + targetHubBalance) {

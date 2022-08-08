@@ -26,10 +26,9 @@ import {
   signAndEncodeEIP2612Permit,
   SWAP_ROUTER_CONTRACT_ADDRESS,
   UNI_CONTRACT_ADDRESS,
-  UNISWAP_V3_DAI_USDC_4_POOL_CONTRACT_ADDRESS,
-  UNISWAP_V3_DAI_WETH_POOL_CONTRACT_ADDRESS,
+  UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS,
   UNISWAP_V3_QUOTER_CONTRACT_ADDRESS,
-  UNISWAP_V3_UNI_DAI_POOL_CONTRACT_ADDRESS,
+  UNISWAP_V3_UNI_DAI_POOL_CONTRACT_ADDRESS, UNISWAP_V3_USDC_WETH_POOL_CONTRACT_ADDRESS,
   USDC_CONTRACT_ADDRESS,
   WETH9_CONTRACT_ADDRESS
 } from '../src/PermitPaymasterUtils'
@@ -50,8 +49,8 @@ const MAJOR_DAI_AND_UNI_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503'
 
 const GAS_USED_BY_POST = 204766
 const MAX_POSSIBLE_GAS = 1e6
-const DAI_ETH_POOL_FEE = 3000
-const USDC_ETH_POOL_FEE = 3000
+const DAI_ETH_POOL_FEE = 500
+const USDC_ETH_POOL_FEE = 500
 const UNI_ETH_POOL_FEE = 3000
 const MIN_HUB_BALANCE = 1e17.toString()
 const TARGET_HUB_BALANCE = 1e18.toString()
@@ -437,16 +436,20 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           this.skip()
         }
       })
-      async function rechargePaymaster (oracle: IChainlinkOracleInstance, token: IERC20MetadataInstance): Promise<TokenInfo> {
+      async function rechargePaymaster (
+        oracle: IChainlinkOracleInstance,
+        token: IERC20MetadataInstance,
+        tokenAmount = minDepositAmount,
+        withPreCharge = true): Promise<TokenInfo> {
         const priceQuote = await oracle.latestAnswer()
         const priceDivisor = await permitPaymaster.priceDivisors(token.address)
         const decimals = await token.decimals()
         const preChargeMultiplier = toBN(10).pow(decimals)
-        const tokenDepositAmount = minDepositAmount.mul(priceDivisor).div(priceQuote).div(ETHER)
-        const tokenPreCharge = toBN(TOKEN_PRE_CHARGE).mul(preChargeMultiplier)
+        const tokenDepositAmount = tokenAmount.mul(priceDivisor).div(priceQuote).div(ETHER)
+        const tokenPreCharge = withPreCharge ? toBN(TOKEN_PRE_CHARGE).mul(preChargeMultiplier) : toBN(0)
 
         await token.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
-        const preBalance = tokenDepositAmount.add(tokenPreCharge)
+        const preBalance = tokenDepositAmount.add(tokenPreCharge).muln(1.1)
         await token.transfer(permitPaymaster.address, preBalance, { from: account0 })
 
         const pmContext = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), tokenPreCharge.toString()])
@@ -459,11 +462,11 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
       }
       beforeEach(async function () {
         await skipWithoutFork(this)
-        daiPaymasterInfo = await rechargePaymaster(chainlinkOracleDAIETH, daiPermittableToken)
       })
 
       it('should refund sender excess tokens without refilling hub deposit when greater than minHubBalance', async function () {
         await skipWithoutFork(this)
+        daiPaymasterInfo = await rechargePaymaster(chainlinkOracleDAIETH, daiPermittableToken)
         await web3.eth.sendTransaction({
           from: account0,
           to: permitPaymaster.address,
@@ -484,6 +487,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
 
       it('should withdraw hub balance to owner when greater than minWithdrawalAmount', async function () {
         await skipWithoutFork(this)
+        daiPaymasterInfo = await rechargePaymaster(chainlinkOracleDAIETH, daiPermittableToken)
         const expectedBalance = toBN(TARGET_HUB_BALANCE).add(toBN(MIN_WITHDRAWAL_AMOUNT))
         await web3.eth.sendTransaction({
           from: account0,
@@ -518,6 +522,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
 
       it('should refund sender excess tokens and refill hub deposit when lower than minHubBalance', async function () {
         await skipWithoutFork(this)
+        daiPaymasterInfo = await rechargePaymaster(chainlinkOracleDAIETH, daiPermittableToken)
         await web3.eth.sendTransaction({
           from: account0,
           to: permitPaymaster.address,
@@ -563,7 +568,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
         assert.isTrue(actualRatio.gte(expectedRatio.muln(0.98)))
         // swap(1): transfer WETH from Pool to Router
         expectEvent(res, 'Transfer', {
-          from: UNISWAP_V3_DAI_WETH_POOL_CONTRACT_ADDRESS,
+          from: UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS,
           to: SWAP_ROUTER_CONTRACT_ADDRESS,
           value: expectedWethAmountOut.toString()
         })
@@ -571,7 +576,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
         // swap(2): transfer DAI from Paymaster to Pool
         expectEvent(res, 'Transfer', {
           from: permitPaymaster.address,
-          to: UNISWAP_V3_DAI_WETH_POOL_CONTRACT_ADDRESS,
+          to: UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS,
           value: expectedDaiAmountIn.toString()
         })
 
@@ -602,11 +607,12 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
       })
 
       context('with multiple tokens', function () {
-        it('should swap all tokens to main token and refill hub deposit', async function () {
-          // console.log('recharge dai')
-          // await rechargePaymaster(chainlinkOracleDAIETH, daiPermittableToken)
+        it('should swap multiple tokens to weth and refill hub deposit', async function () {
+          await skipWithoutFork(this)
+          console.log('recharge dai')
+          daiPaymasterInfo = await rechargePaymaster(chainlinkOracleDAIETH, daiPermittableToken, minDepositAmount.divn(3), false)
           console.log('recharge uni')
-          uniPaymasterInfo = await rechargePaymaster(chainlinkOracleUNIETH, uniPermittableToken)
+          uniPaymasterInfo = await rechargePaymaster(chainlinkOracleUNIETH, uniPermittableToken, minDepositAmount.divn(3), false)
           console.log('recharge usdc')
           usdcPaymasterInfo = await rechargePaymaster(chainlinkOracleUSDCETH, usdcPermittableToken)
           console.log('after all')
@@ -619,16 +625,25 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           await permitPaymaster.refillHubDeposit(MIN_HUB_BALANCE, { from: owner })
           const paymasterHubBalance = await testRelayHub.balanceOf(permitPaymaster.address)
           assert.equal(paymasterHubBalance.toString(), MIN_HUB_BALANCE)
-          const expectedTokenDeposit = await quoter.contract.methods.quoteExactOutputSingle(
-            USDC_CONTRACT_ADDRESS,
-            WETH9_CONTRACT_ADDRESS,
-            DAI_ETH_POOL_FEE,
-            minDepositAmount.toString(),
-            0).call()
+
+          const paymasterEthBalance = toBN(await web3.eth.getBalance(permitPaymaster.address))
           const paymasterDaiBalance = await daiPermittableToken.balanceOf(permitPaymaster.address)
           const paymasterUsdcBalance = await usdcPermittableToken.balanceOf(permitPaymaster.address)
           const paymasterUniBalance = await uniPermittableToken.balanceOf(permitPaymaster.address)
           console.log('wtf balances dai usdc uni', paymasterDaiBalance.toString(), paymasterUsdcBalance.toString(), paymasterUniBalance.toString())
+          const expectedUsdcAmountIn = usdcPaymasterInfo.preBalance.sub(usdcPaymasterInfo.expectedRefund)
+          const expectedWethFromUsdc = await quoter.contract.methods.quoteExactInputSingle(
+            USDC_CONTRACT_ADDRESS,
+            WETH9_CONTRACT_ADDRESS,
+            USDC_ETH_POOL_FEE,
+            expectedUsdcAmountIn.toString(),
+            0).call()
+          const expectedWethFromDai = await quoter.contract.methods.quoteExactInputSingle(
+            DAI_CONTRACT_ADDRESS,
+            WETH9_CONTRACT_ADDRESS,
+            DAI_ETH_POOL_FEE,
+            paymasterDaiBalance.toString(),
+            0).call()
           const res = await testRelayHub.callPostRC(permitPaymaster.address, usdcPaymasterInfo.pmContext, gasUseWithoutPost, usdcPaymasterInfo.modifiedRequest.relayData, { gasPrice: GAS_PRICE })
           res.logs.forEach(log => {
             // @ts-ignore
@@ -647,7 +662,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           console.log('wtf hub', testRelayHub.address)
 
           console.log('wtf log[0]')
-          // Paymaster refunds remaining DAI tokens to sender
+          // Paymaster refunds remaining USDC tokens to sender
           expectEvent(res, 'Transfer', {
             from: permitPaymaster.address,
             to: relayRequest.request.from,
@@ -672,33 +687,32 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           console.log('wtf usdc priceDivisor', usdcPaymasterInfo.priceDivisor.toString())
           console.log('wtf dai priceDivisor', daiPaymasterInfo.priceDivisor.toString())
           console.log('wtf expected value?', usdcToDaiAmountOutMin.toString())
-          // swap(1): transfer DAI from pool to paymaster
+          // transfer WETH from pool to router for DAI-WETH swap
           expectEvent(res, 'Transfer', {
-            from: UNISWAP_V3_DAI_USDC_4_POOL_CONTRACT_ADDRESS,
-            to: permitPaymaster.address,
-            // value: paymasterUsdcBalance.sub(usdcPaymasterInfo.expectedRefund).mul(usdcPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceQuote).mul(usdcPaymasterInfo.priceDivisor).div(daiPaymasterInfo.priceDivisor).toString()
+            from: UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS,
+            to: SWAP_ROUTER_CONTRACT_ADDRESS,
+            value: expectedWethFromDai //paymasterUsdcBalance.sub(usdcPaymasterInfo.expectedRefund).mul(usdcPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceQuote).mul(usdcPaymasterInfo.priceDivisor).div(daiPaymasterInfo.priceDivisor).toString()
           })
-          assert.isTrue(usdcToDaiAmountOutMin.lte(toBN(res.logs[2].args.value)))
-          assert.equal(res.logs[2].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase(), 'wrong dai')
+          assert.equal(res.logs[2].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase(), 'wrong weth')
 
           console.log('wtf logs[3]')
-          // swap(1): transfer USDC from paymaster to pool
+          // transfer DAI from paymaster to pool
           expectEvent(res, 'Transfer', {
             from: permitPaymaster.address,
-            to: UNISWAP_V3_DAI_USDC_4_POOL_CONTRACT_ADDRESS,
-            value: usdcTokenIn.toString()
+            to: UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS,
+            value: paymasterDaiBalance.toString()
           })
-          assert.equal(res.logs[3].address.toLowerCase(), USDC_CONTRACT_ADDRESS.toLowerCase(), 'wrong udsc')
+          assert.equal(res.logs[3].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase(), 'wrong dai')
 
           console.log('wtf logs[4]', res.logs[4].args.amount0.toString(), res.logs[4].args.amount1.toString())
-          // swap(1): swap USDC to DAI from router to paymaster in pool
+          // swap DAI to WETH from router
           expectEvent(res, 'Swap', {
             sender: SWAP_ROUTER_CONTRACT_ADDRESS,
-            recipient: permitPaymaster.address
+            recipient: SWAP_ROUTER_CONTRACT_ADDRESS
             // amount0:
             // amount1:
           })
-          assert.equal(res.logs[4].address.toLowerCase(), UNISWAP_V3_DAI_USDC_4_POOL_CONTRACT_ADDRESS.toLowerCase(), 'wrong pool')
+          assert.equal(res.logs[4].address.toLowerCase(), UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS.toLowerCase(), 'wrong pool')
 
           console.log('wtf logs[5]')
           const daiReceived: BN = toBN(res.logs[5].args.value)
@@ -718,68 +732,56 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           console.log('wtf uni balance after', (await uniPermittableToken.balanceOf(permitPaymaster.address)).toString())
           console.log('wtf uni refund', uniPaymasterInfo.expectedRefund.toString())
 
-          // swap(1): transfer DAI from Pool to paymaster
+          // transfer WETH from pool to router for USDC-WETH swap
           expectEvent(res, 'Transfer', {
-            from: UNISWAP_V3_UNI_DAI_POOL_CONTRACT_ADDRESS,
-            to: permitPaymaster.address,
+            from: UNISWAP_V3_USDC_WETH_POOL_CONTRACT_ADDRESS,
+            to: SWAP_ROUTER_CONTRACT_ADDRESS,
+            value: expectedWethFromUsdc.toString()
           })
           assert.isTrue(uniSent.mul(uniToDaiMul).lte(daiReceived))
-          assert.equal(res.logs[5].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase(), 'wrong dai')
+          assert.equal(res.logs[5].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase(), 'wrong weth')
 
           console.log('wtf logs[6]')
-          // swap(1): transfer UNI from paymaster to pool
+          // transfer USDC from paymaster to pool
           expectEvent(res, 'Transfer', {
             from: permitPaymaster.address,
-            to: UNISWAP_V3_UNI_DAI_POOL_CONTRACT_ADDRESS,
-            value: uniTokenIn.toString()
+            to: UNISWAP_V3_USDC_WETH_POOL_CONTRACT_ADDRESS,
+            value: expectedUsdcAmountIn.toString()
           })
-          assert.equal(res.logs[6].address.toLowerCase(), UNI_CONTRACT_ADDRESS.toLowerCase(), 'wrong uni')
-          console.log('wtf 11')
-          // swap(1): swap UNI to DAI from router to paymaster in pool
+          assert.equal(res.logs[6].address.toLowerCase(), USDC_CONTRACT_ADDRESS.toLowerCase(), 'wrong usdc')
+          console.log('wtf logs[7]')
+          // swap USDC to WETH from router to paymaster in pool
           expectEvent(res, 'Swap', {
             sender: SWAP_ROUTER_CONTRACT_ADDRESS,
-            recipient: permitPaymaster.address,
-            // value: minDepositAmount.toString()
+            recipient: SWAP_ROUTER_CONTRACT_ADDRESS,
+            // amount0:
+            // amount1:
           })
-          assert.equal(res.logs[7].address.toLowerCase(), UNISWAP_V3_UNI_DAI_POOL_CONTRACT_ADDRESS.toLowerCase(), 'wrong pool')
-          console.log('wtf 12')
-          // swap(1): transfer WETH from pool to Router
-          expectEvent(res, 'Transfer', {
-            from: UNISWAP_V3_DAI_WETH_POOL_CONTRACT_ADDRESS,
-            to: SWAP_ROUTER_CONTRACT_ADDRESS,
-            // value: minDepositAmount.toString()
-          })
-          assert.equal(res.logs[8].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase(), 'wrong weth')
-          console.log('wtf 13')
-          // swap(2): transfer DAI from Paymaster to Pool
-          expectEvent(res, 'Transfer', {
-            from: permitPaymaster.address,
-            to: UNISWAP_V3_DAI_WETH_POOL_CONTRACT_ADDRESS,
-            // value: expectedTokenDeposit.toString()
-          })
-          assert.equal(res.logs[9].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase(), 'wrong dai')
-          console.log('wtf 14')
-          // swap(3): execute swap; note that WETH remains in a SwapRouter so it unwraps it for us
-          expectEvent(res, 'Swap', {
-            sender: SWAP_ROUTER_CONTRACT_ADDRESS,
-            recipient: SWAP_ROUTER_CONTRACT_ADDRESS
-          })
-          assert.equal(res.logs[10].address.toLowerCase(), UNISWAP_V3_DAI_WETH_POOL_CONTRACT_ADDRESS.toLowerCase(), 'wrong pool')
-          console.log('wtf 15')
-          // swap(4): SwapRouter unwraps ETH and sends it into Paymaster
+          assert.equal(res.logs[7].address.toLowerCase(), UNISWAP_V3_USDC_WETH_POOL_CONTRACT_ADDRESS.toLowerCase(), 'wrong pool')
+          console.log('wtf logs[8]')
+          // SwapRouter unwraps ETH and sends it into Paymaster
+          const totalWethReceived = paymasterEthBalance.add(toBN(expectedWethFromUsdc)).add(toBN(expectedWethFromDai))
           expectEvent(res, 'Withdrawal', {
             src: SWAP_ROUTER_CONTRACT_ADDRESS,
-            wad: minDepositAmount.toString()
+            wad: totalWethReceived.toString()
           })
-          assert.equal(res.logs[11].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase(), 'wrong weth')
-          console.log('wtf 16')
+          assert.isTrue(totalWethReceived.gte(minDepositAmount))
+          assert.equal(res.logs[8].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase(), 'wrong weth')
+
+          console.log('wtf logs[9]')
+          expectEvent(res, 'Received', {
+            sender: SWAP_ROUTER_CONTRACT_ADDRESS,
+            eth: totalWethReceived.toString()
+          })
+          assert.equal(res.logs[9].address.toLowerCase(), permitPaymaster.address.toLowerCase(), 'wrong paymaster')
+
           // swap(5): Paymaster deposits received ETH to RelayHub
           expectEvent(res, 'Deposited', {
             from: permitPaymaster.address,
             paymaster: permitPaymaster.address,
             amount: minDepositAmount.toString()
           })
-          assert.equal(res.logs[12].address.toLowerCase(), testRelayHub.address.toLowerCase(), 'wrong hub')
+          assert.equal(res.logs[10].address.toLowerCase(), testRelayHub.address.toLowerCase(), 'wrong hub')
           console.log('wtf end')
         })
       })
