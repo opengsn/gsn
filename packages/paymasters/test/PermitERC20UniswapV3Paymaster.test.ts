@@ -650,18 +650,12 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
             log.args.value ? log.args.value = log.args.value.toString() : null
           })
           console.log('logs are', res.logs.length, res.logs)
-          console.log('logs[7] amounts',
-            res.logs[7].args.sender,
-            res.logs[7].args.recipient,
-            res.logs[7].args.amount0.toString(),
-            res.logs[7].args.amount1.toString())
           // check correct tokens are transferred
           console.log('wtf paymaster', permitPaymaster.address)
           console.log('wtf relay', relay)
           console.log('wtf client', usdcPaymasterInfo.modifiedRequest.request.from)
           console.log('wtf hub', testRelayHub.address)
 
-          console.log('wtf log[0]')
           // Paymaster refunds remaining USDC tokens to sender
           expectEvent(res, 'Transfer', {
             from: permitPaymaster.address,
@@ -670,7 +664,6 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           })
           assert.equal(res.logs[0].address.toLowerCase(), USDC_CONTRACT_ADDRESS.toLowerCase(), 'wrong udsc')
 
-          console.log('wtf log[1]')
           expectEvent(res, 'TokensCharged',
             {
               tokenActualCharge: usdcPaymasterInfo.tokenActualCharge.toString(),
@@ -678,24 +671,14 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
             })
           assert.equal(res.logs[1].address.toLowerCase(), permitPaymaster.address.toLowerCase(), 'wrong paymaster')
 
-          console.log('wtf logs[2]', res.logs[2].args.value)
-          const usdcTokenIn = paymasterUsdcBalance.sub(usdcPaymasterInfo.expectedRefund)
-          const usdcToDaiAmountOutMin = usdcTokenIn.mul(usdcPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceQuote).mul(daiPaymasterInfo.priceDivisor).div(usdcPaymasterInfo.priceDivisor).muln(0.994)
-          console.log('wtf usdc balanceIn', usdcTokenIn.toString())
-          console.log('wtf usdc priceQuote', usdcPaymasterInfo.priceQuote.toString())
-          console.log('wtf dai priceQuote', daiPaymasterInfo.priceQuote.toString())
-          console.log('wtf usdc priceDivisor', usdcPaymasterInfo.priceDivisor.toString())
-          console.log('wtf dai priceDivisor', daiPaymasterInfo.priceDivisor.toString())
-          console.log('wtf expected value?', usdcToDaiAmountOutMin.toString())
           // transfer WETH from pool to router for DAI-WETH swap
           expectEvent(res, 'Transfer', {
             from: UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS,
             to: SWAP_ROUTER_CONTRACT_ADDRESS,
-            value: expectedWethFromDai //paymasterUsdcBalance.sub(usdcPaymasterInfo.expectedRefund).mul(usdcPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceQuote).mul(usdcPaymasterInfo.priceDivisor).div(daiPaymasterInfo.priceDivisor).toString()
+            value: expectedWethFromDai
           })
           assert.equal(res.logs[2].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase(), 'wrong weth')
 
-          console.log('wtf logs[3]')
           // transfer DAI from paymaster to pool
           expectEvent(res, 'Transfer', {
             from: permitPaymaster.address,
@@ -704,33 +687,12 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           })
           assert.equal(res.logs[3].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase(), 'wrong dai')
 
-          console.log('wtf logs[4]', res.logs[4].args.amount0.toString(), res.logs[4].args.amount1.toString())
           // swap DAI to WETH from router
           expectEvent(res, 'Swap', {
             sender: SWAP_ROUTER_CONTRACT_ADDRESS,
             recipient: SWAP_ROUTER_CONTRACT_ADDRESS
-            // amount0:
-            // amount1:
           })
           assert.equal(res.logs[4].address.toLowerCase(), UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS.toLowerCase(), 'wrong pool')
-
-          console.log('wtf logs[5]')
-          const daiReceived: BN = toBN(res.logs[5].args.value)
-          const uniSent: BN = toBN(res.logs[6].args.value)
-          const uniToDaiMul = uniPaymasterInfo.priceQuote.div(daiPaymasterInfo.priceQuote).mul(daiPaymasterInfo.priceDivisor).div(uniPaymasterInfo.priceDivisor)
-          console.log('wtf uniSent daiReceived', uniSent.toString(), daiReceived.toString())
-          console.log('wtf multiplier', uniToDaiMul.toString())
-
-          const uniTokenIn = paymasterUniBalance.sub(uniPaymasterInfo.expectedRefund)
-          const uniToDaiAmountOutMin = uniTokenIn.mul(uniPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceQuote).mul(daiPaymasterInfo.priceDivisor).div(uniPaymasterInfo.priceDivisor).muln(0.994)
-          console.log('wtf uni balanceIn', uniTokenIn.toString())
-          console.log('wtf uni priceQuote', uniPaymasterInfo.priceQuote.toString())
-          console.log('wtf dai priceQuote', daiPaymasterInfo.priceQuote.toString())
-          console.log('wtf uni priceDivisor', uniPaymasterInfo.priceDivisor.toString())
-          console.log('wtf dai priceDivisor', daiPaymasterInfo.priceDivisor.toString())
-          console.log('wtf expected value?', uniToDaiAmountOutMin.toString())
-          console.log('wtf uni balance after', (await uniPermittableToken.balanceOf(permitPaymaster.address)).toString())
-          console.log('wtf uni refund', uniPaymasterInfo.expectedRefund.toString())
 
           // transfer WETH from pool to router for USDC-WETH swap
           expectEvent(res, 'Transfer', {
@@ -738,10 +700,8 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
             to: SWAP_ROUTER_CONTRACT_ADDRESS,
             value: expectedWethFromUsdc.toString()
           })
-          assert.isTrue(uniSent.mul(uniToDaiMul).lte(daiReceived))
           assert.equal(res.logs[5].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase(), 'wrong weth')
 
-          console.log('wtf logs[6]')
           // transfer USDC from paymaster to pool
           expectEvent(res, 'Transfer', {
             from: permitPaymaster.address,
@@ -749,16 +709,14 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
             value: expectedUsdcAmountIn.toString()
           })
           assert.equal(res.logs[6].address.toLowerCase(), USDC_CONTRACT_ADDRESS.toLowerCase(), 'wrong usdc')
-          console.log('wtf logs[7]')
+
           // swap USDC to WETH from router to paymaster in pool
           expectEvent(res, 'Swap', {
             sender: SWAP_ROUTER_CONTRACT_ADDRESS,
             recipient: SWAP_ROUTER_CONTRACT_ADDRESS,
-            // amount0:
-            // amount1:
           })
           assert.equal(res.logs[7].address.toLowerCase(), UNISWAP_V3_USDC_WETH_POOL_CONTRACT_ADDRESS.toLowerCase(), 'wrong pool')
-          console.log('wtf logs[8]')
+
           // SwapRouter unwraps ETH and sends it into Paymaster
           const totalWethReceived = paymasterEthBalance.add(toBN(expectedWethFromUsdc)).add(toBN(expectedWethFromDai))
           expectEvent(res, 'Withdrawal', {
@@ -768,21 +726,21 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           assert.isTrue(totalWethReceived.gte(minDepositAmount))
           assert.equal(res.logs[8].address.toLowerCase(), WETH9_CONTRACT_ADDRESS.toLowerCase(), 'wrong weth')
 
-          console.log('wtf logs[9]')
           expectEvent(res, 'Received', {
             sender: SWAP_ROUTER_CONTRACT_ADDRESS,
             eth: totalWethReceived.toString()
           })
           assert.equal(res.logs[9].address.toLowerCase(), permitPaymaster.address.toLowerCase(), 'wrong paymaster')
 
-          // swap(5): Paymaster deposits received ETH to RelayHub
+          // Paymaster deposits received ETH to RelayHub
           expectEvent(res, 'Deposited', {
             from: permitPaymaster.address,
             paymaster: permitPaymaster.address,
             amount: minDepositAmount.toString()
           })
           assert.equal(res.logs[10].address.toLowerCase(), testRelayHub.address.toLowerCase(), 'wrong hub')
-          console.log('wtf end')
+
+          assert.equal(res.logs.length, 11)
         })
       })
     })
