@@ -4,7 +4,7 @@ import EthereumHDKey from 'ethereumjs-wallet/dist/hdkey'
 
 import fs from 'fs'
 import ow from 'ow'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { TypedTransaction } from '@ethereumjs/tx'
 
 export const KEYSTORE_FILENAME = 'keystore'
@@ -62,7 +62,7 @@ export class KeyManager {
     this.nonces = {}
     for (let index = 0; index < count; index++) {
       const w = this.hdkey.deriveChild(index).getWallet()
-      const address = w.getAddress().toString('hex')
+      const address = bufferToHex(w.getAddress())
       this._privateKeys[address] = w.getPrivateKey()
       this.nonces[index] = 0
     }
