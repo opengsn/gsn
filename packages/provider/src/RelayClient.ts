@@ -103,19 +103,23 @@ export class RelayClient {
       createClientLogger(rawConstructorInput.config?.loggerConfiguration ?? defaultLoggerConfiguration)
   }
 
-  async init (): Promise<this> {
+  async init (useTokenPaymaster = false): Promise<this> {
     if (this.initialized) {
       throw new Error('init() already called')
     }
-    this.initializingPromise = this._initInternal()
+    this.initializingPromise = this._initInternal(useTokenPaymaster)
     await this.initializingPromise
     this.initialized = true
     return this
   }
 
-  async _initInternal (): Promise<void> {
+  async _initInternal (useTokenPaymaster = false): Promise<void> {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
+    if (useTokenPaymaster && this.config.tokenPaymasterAddress != null) {
+      this.logger.debug(`Using token paymaster ${this.config.paymasterAddress}`)
+      this.config.paymasterAddress = this.config.tokenPaymasterAddress
+    }
     this.dependencies = await this._resolveDependencies(this.rawConstructorInput)
     if (!this.config.skipErc165Check) {
       await this.dependencies.contractInteractor._validateERC165InterfacesClient()

@@ -41,6 +41,7 @@ export interface GSNConfig {
   minMaxPriorityFeePerGas: number
   maxRelayNonceGap: number
   paymasterAddress?: Address
+  tokenPaymasterAddress?: Address
   skipErc165Check: boolean
   clientId: IntString
   auditorsCount: number

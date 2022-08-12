@@ -11,8 +11,8 @@ import {
   MessageTypes
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
-import daiPermitAbi from '../build/contracts/PermitInterfaceDAI.json'
-import eip2612PermitAbi from '../build/contracts/PermitInterfaceEIP2612.json'
+import daiPermitAbi from './interfaces/PermitInterfaceDAI.json'
+import eip2612PermitAbi from './interfaces/PermitInterfaceEIP2612.json'
 
 export const DAI_CONTRACT_ADDRESS = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
 export const WETH9_CONTRACT_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
@@ -54,6 +54,15 @@ export function getDaiDomainSeparator (): Record<string, unknown> {
     version: '1',
     chainId: 1,
     verifyingContract: DAI_CONTRACT_ADDRESS
+  }
+}
+
+export function getUSDCDomainSeparator (): Record<string, unknown> {
+  return {
+    name: 'USD Coin',
+    version: '2',
+    chainId: 1,
+    verifyingContract: USDC_CONTRACT_ADDRESS
   }
 }
 
@@ -148,7 +157,7 @@ export async function signAndEncodeDaiPermit (
   const web3 = new Web3(web3Input.currentProvider)
   const DaiContract = TruffleContract({
     contractName: 'DAIPermitInterface',
-    abi: daiPermitAbi.abi
+    abi: daiPermitAbi
   })
 
   DaiContract.setProvider(web3.currentProvider, undefined)
@@ -197,7 +206,7 @@ export async function signAndEncodeEIP2612Permit (
   const web3 = new Web3(web3Input.currentProvider)
   const EIP2612Contract = TruffleContract({
     contractName: 'EIP2612Contract',
-    abi: eip2612PermitAbi.abi
+    abi: eip2612PermitAbi
   })
 
   EIP2612Contract.setProvider(web3.currentProvider, undefined)

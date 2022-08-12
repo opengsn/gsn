@@ -97,8 +97,8 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     })
   }
 
-  async init (): Promise<this> {
-    await this.relayClient.init()
+  async init (useTokenPaymaster = false): Promise<this> {
+    await this.relayClient.init(useTokenPaymaster)
     this.config = this.relayClient.config
     this.logger.info(`Created new RelayProvider ver.${gsnRuntimeVersion}`)
     return this

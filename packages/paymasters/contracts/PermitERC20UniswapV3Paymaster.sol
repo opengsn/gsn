@@ -16,7 +16,6 @@ import "@opengsn/contracts/src/utils/GsnUtils.sol";
 import "./interfaces/IChainlinkOracle.sol";
 
 import "./helpers/UniswapV3Helper.sol";
-import "./helpers/PermitInterfaceDAI.sol";
 import "../../contracts/src/interfaces/IERC20Token.sol";
 
 /**
@@ -124,6 +123,10 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             permitMethodSignatures[token] = bytes4(keccak256(bytes(_permitMethodSignatures[i])));
             uniswapPoolFees[token] = _poolFees[i];
         }
+    }
+
+    function getTokens() public view returns (IERC20Metadata[] memory){
+        return tokens;
     }
 
     function refillHubDeposit(uint256 amount) public payable onlyOwner {

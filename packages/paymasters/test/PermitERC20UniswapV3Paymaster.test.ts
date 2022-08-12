@@ -18,7 +18,7 @@ import {
   CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS,
   DAI_CONTRACT_ADDRESS,
   getDaiDomainSeparator,
-  getUniDomainSeparator,
+  getUniDomainSeparator, getUSDCDomainSeparator,
   GSN_FORWARDER_CONTRACT_ADDRESS,
   PERMIT_SIGNATURE_DAI,
   PERMIT_SIGNATURE_EIP2612,
@@ -28,13 +28,13 @@ import {
   UNI_CONTRACT_ADDRESS,
   UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS,
   UNISWAP_V3_QUOTER_CONTRACT_ADDRESS,
-  UNISWAP_V3_UNI_DAI_POOL_CONTRACT_ADDRESS, UNISWAP_V3_USDC_WETH_POOL_CONTRACT_ADDRESS,
+  UNISWAP_V3_USDC_WETH_POOL_CONTRACT_ADDRESS,
   USDC_CONTRACT_ADDRESS,
   WETH9_CONTRACT_ADDRESS
 } from '../src/PermitPaymasterUtils'
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
-import { EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { removeHexPrefix } from '@opengsn/common/dist'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
@@ -92,11 +92,11 @@ interface PaymasterConfig {
   paymasterFee: number | BN | string
 }
 
-contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, owner]) {
+contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, owner]) {
   let permitPaymaster: PermitERC20UniswapV3PaymasterInstance
   let daiPermittableToken: PermitInterfaceDAIInstance
   let uniPermittableToken: PermitInterfaceEIP2612Instance
-  let usdcPermittableToken: PermitInterfaceDAIInstance
+  let usdcPermittableToken: PermitInterfaceEIP2612Instance
   let chainlinkOracleDAIETH: IChainlinkOracleInstance
   let chainlinkOracleUSDCETH: IChainlinkOracleInstance
   let chainlinkOracleUNIETH: IChainlinkOracleInstance
@@ -356,35 +356,49 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           if (!await detectMainnet()) {
             this.skip()
           }
-        })
-        it('should execute permit method on a target EIP2612 token', async function () {
-          await skipWithoutFork(this)
-          const approvalBefore = await uniPermittableToken.allowance(account0, permitPaymaster.address)
-          assert.equal(approvalBefore.toString(), '0', 'unexpected approval')
-          const encodedCallToPermit = await signAndEncodeEIP2612Permit(
-            account0,
-            permitPaymaster.address,
-            uniPermittableToken.address,
-            constants.MAX_UINT256.toString(),
-            constants.MAX_UINT256.toString(),
-            web3,
-            getUniDomainSeparator(),
-            EIP712DomainTypeWithoutVersion
-          )
-          const modifiedRequest = mergeRelayRequest(relayRequest, {
-            paymaster: permitPaymaster.address,
-            paymasterData: encodedCallToPermit.concat(removeHexPrefix(UNI_CONTRACT_ADDRESS))
-          })
-          await testRelayHub.callPreRC(
-            modifiedRequest,
-            '0x',
-            '0x',
-            MAX_POSSIBLE_GAS
-          )
+        });
+        ['uni', 'usdc'].forEach((tokenName) => {
+          it(`should execute permit method on a target EIP2612 token (${tokenName})`, async function () {
+            await skipWithoutFork(this)
+            let token
+            let domainSeparator
+            let domainType
+            if (tokenName === 'uni') {
+              token = uniPermittableToken
+              domainSeparator = getUniDomainSeparator()
+              domainType = EIP712DomainTypeWithoutVersion
+            } else {
+              token = usdcPermittableToken
+              domainSeparator = getUSDCDomainSeparator()
+              domainType = EIP712DomainType
+            }
+            const approvalBefore = await token.allowance(account0, permitPaymaster.address)
+            assert.equal(approvalBefore.toString(), '0', 'unexpected approval')
+            const encodedCallToPermit = await signAndEncodeEIP2612Permit(
+              account0,
+              permitPaymaster.address,
+              token.address,
+              constants.MAX_UINT256.toString(),
+              constants.MAX_UINT256.toString(),
+              web3,
+              domainSeparator,
+              domainType
+            )
+            const modifiedRequest = mergeRelayRequest(relayRequest, {
+              paymaster: permitPaymaster.address,
+              paymasterData: encodedCallToPermit.concat(removeHexPrefix(token.address))
+            })
+            await testRelayHub.callPreRC(
+              modifiedRequest,
+              '0x',
+              '0x',
+              MAX_POSSIBLE_GAS
+            )
 
-          // note that Uni allowance is stored as uint96
-          const approvalAfter = await uniPermittableToken.allowance(account0, permitPaymaster.address)
-          assert.equal(approvalAfter.toString(), constants.MAX_UINT96.toString(), 'insufficient approval')
+            // note that Uni allowance is stored as uint96
+            const approvalAfter = await token.allowance(account0, permitPaymaster.address)
+            assert.isTrue(approvalAfter.gte(constants.MAX_UINT96), 'insufficient approval')
+          })
         })
       })
     })
@@ -422,15 +436,9 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
       const gasUseWithoutPost = 100000
       const ethActualCharge = (gasUseWithoutPost + GAS_USED_BY_POST) * parseInt(GAS_PRICE)
       const minDepositAmount = toBN(TARGET_HUB_BALANCE).sub(toBN(MIN_HUB_BALANCE)).add(toBN(ethActualCharge))
-      // let tokenActualCharge: BN
-      // let priceQuote: BN
-      // let priceDivisor: BN
-      // let pmContext: any
-      // let modifiedRequest: RelayRequest
-      // let expectedRefund: BN
       let daiPaymasterInfo: TokenInfo
       let usdcPaymasterInfo: TokenInfo
-      let uniPaymasterInfo: TokenInfo
+      // let uniPaymasterInfo: TokenInfo
       before(async function () {
         if (!await detectMainnet()) {
           this.skip()
@@ -496,7 +504,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
         })
         await permitPaymaster.refillHubDeposit(expectedBalance, { from: owner })
         const paymasterHubBalance = await testRelayHub.balanceOf(permitPaymaster.address)
-        assert.equal(paymasterHubBalance.toString(), expectedBalance)
+        assert.equal(paymasterHubBalance.toString(), expectedBalance.toString())
         const ownerBalanceBefore = toBN(await web3.eth.getBalance(owner))
         const res = await testRelayHub.callPostRC(permitPaymaster.address, daiPaymasterInfo.pmContext, gasUseWithoutPost, daiPaymasterInfo.modifiedRequest.relayData, { gasPrice: GAS_PRICE })
         // Paymaster refunds remaining DAI tokens to sender
@@ -564,6 +572,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
         expectEvent(res, 'TokensCharged')
 
         const expectedRatio = expectedDaiAmountIn.div(expectedWethAmountOutMin)
+        // @ts-ignore
         const actualRatio = res.logs[3].args.value.div(res.logs[2].args.value)
         assert.isTrue(actualRatio.gte(expectedRatio.muln(0.98)))
         // swap(1): transfer WETH from Pool to Router
@@ -609,13 +618,12 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
       context('with multiple tokens', function () {
         it('should swap multiple tokens to weth and refill hub deposit', async function () {
           await skipWithoutFork(this)
-          console.log('recharge dai')
+          // console.log('recharge dai')
           daiPaymasterInfo = await rechargePaymaster(chainlinkOracleDAIETH, daiPermittableToken, minDepositAmount.divn(3), false)
-          console.log('recharge uni')
-          uniPaymasterInfo = await rechargePaymaster(chainlinkOracleUNIETH, uniPermittableToken, minDepositAmount.divn(3), false)
-          console.log('recharge usdc')
+          // console.log('recharge uni')
+          await rechargePaymaster(chainlinkOracleUNIETH, uniPermittableToken, minDepositAmount.divn(3), false)
+          // console.log('recharge usdc')
           usdcPaymasterInfo = await rechargePaymaster(chainlinkOracleUSDCETH, usdcPermittableToken)
-          console.log('after all')
 
           await web3.eth.sendTransaction({
             from: account0,
@@ -628,9 +636,9 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
 
           const paymasterEthBalance = toBN(await web3.eth.getBalance(permitPaymaster.address))
           const paymasterDaiBalance = await daiPermittableToken.balanceOf(permitPaymaster.address)
-          const paymasterUsdcBalance = await usdcPermittableToken.balanceOf(permitPaymaster.address)
-          const paymasterUniBalance = await uniPermittableToken.balanceOf(permitPaymaster.address)
-          console.log('wtf balances dai usdc uni', paymasterDaiBalance.toString(), paymasterUsdcBalance.toString(), paymasterUniBalance.toString())
+          // const paymasterUsdcBalance = await usdcPermittableToken.balanceOf(permitPaymaster.address)
+          // const paymasterUniBalance = await uniPermittableToken.balanceOf(permitPaymaster.address)
+          // console.log('balances dai usdc uni', paymasterDaiBalance.toString(), paymasterUsdcBalance.toString(), paymasterUniBalance.toString())
           const expectedUsdcAmountIn = usdcPaymasterInfo.preBalance.sub(usdcPaymasterInfo.expectedRefund)
           const expectedWethFromUsdc = await quoter.contract.methods.quoteExactInputSingle(
             USDC_CONTRACT_ADDRESS,
@@ -645,11 +653,11 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
             paymasterDaiBalance.toString(),
             0).call()
           const res = await testRelayHub.callPostRC(permitPaymaster.address, usdcPaymasterInfo.pmContext, gasUseWithoutPost, usdcPaymasterInfo.modifiedRequest.relayData, { gasPrice: GAS_PRICE })
-          res.logs.forEach(log => {
-            // @ts-ignore
-            log.args.value ? log.args.value = log.args.value.toString() : null
-          })
-          console.log('logs are', res.logs.length, res.logs)
+          // res.logs.forEach(log => {
+          //   // @ts-ignore
+          //   log.args.value ? log.args.value = log.args.value.toString() : null
+          // })
+          // console.log('logs are', res.logs.length, res.logs)
           // check correct tokens are transferred
           console.log('wtf paymaster', permitPaymaster.address)
           console.log('wtf relay', relay)
@@ -713,7 +721,7 @@ contract.only('PermitERC20UniswapV3Paymaster', function ([account0, account1, re
           // swap USDC to WETH from router to paymaster in pool
           expectEvent(res, 'Swap', {
             sender: SWAP_ROUTER_CONTRACT_ADDRESS,
-            recipient: SWAP_ROUTER_CONTRACT_ADDRESS,
+            recipient: SWAP_ROUTER_CONTRACT_ADDRESS
           })
           assert.equal(res.logs[7].address.toLowerCase(), UNISWAP_V3_USDC_WETH_POOL_CONTRACT_ADDRESS.toLowerCase(), 'wrong pool')
 
