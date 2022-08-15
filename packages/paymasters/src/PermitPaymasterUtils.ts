@@ -1,5 +1,5 @@
 import Web3 from 'web3'
-import { PrefixedHexString, fromRpcSig } from 'ethereumjs-util'
+import { PrefixedHexString, fromRpcSig, bufferToHex, keccakFromString } from 'ethereumjs-util'
 import { getEip712Signature, TruffleContract } from '@opengsn/common'
 import { TypedMessage } from 'eth-sig-util'
 
@@ -13,6 +13,7 @@ import {
 
 import daiPermitAbi from './interfaces/PermitInterfaceDAI.json'
 import eip2612PermitAbi from './interfaces/PermitInterfaceEIP2612.json'
+import BN from 'bn.js'
 
 export const DAI_CONTRACT_ADDRESS = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
 export const WETH9_CONTRACT_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
@@ -47,6 +48,8 @@ export const CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS = '0xD6aA3D25116d8dA79Ea024
 
 export const PERMIT_SIGNATURE_DAI = 'permit(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)'
 export const PERMIT_SIGNATURE_EIP2612 = 'permit(address,address,uint256,uint256,uint8,bytes32,bytes32)'
+export const PERMIT_SIGHASH_DAI = bufferToHex(keccakFromString(PERMIT_SIGNATURE_DAI).slice(0, 4))
+export const PERMIT_SIGHASH_EIP2612 = bufferToHex(keccakFromString(PERMIT_SIGNATURE_EIP2612).slice(0, 4))
 
 export function getDaiDomainSeparator (): Record<string, unknown> {
   return {
@@ -97,6 +100,22 @@ export interface PermitInterfaceEIP2612 {
   nonce: IntString
   deadline: IntString
   value: IntString
+}
+
+export interface PaymasterConfig {
+  weth: string
+  tokens: string[]
+  relayHub: string
+  priceFeeds: string[]
+  uniswap: string
+  trustedForwarder: string
+  uniswapPoolFees: number[] | BN[] | string[]
+  gasUsedByPost: number | BN | string
+  permitMethodSignatures: string[]
+  minHubBalance: number | BN | string
+  targetHubBalance: number | BN | string
+  minWithdrawalAmount: number | BN | string
+  paymasterFee: number | BN | string
 }
 
 // currently not imposing any limitations on how the 'Permit' type can look like

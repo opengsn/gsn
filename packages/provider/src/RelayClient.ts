@@ -120,7 +120,11 @@ export class RelayClient {
       this.logger.debug(`Using token paymaster ${this.config.paymasterAddress}`)
       this.config.paymasterAddress = this.config.tokenPaymasterAddress
     }
-    this.dependencies = await this._resolveDependencies(this.rawConstructorInput)
+    this.dependencies = await this._resolveDependencies({
+      config: this.config,
+      provider: this.rawConstructorInput.provider,
+      overrideDependencies: this.rawConstructorInput.overrideDependencies
+    })
     if (!this.config.skipErc165Check) {
       await this.dependencies.contractInteractor._validateERC165InterfacesClient()
     }

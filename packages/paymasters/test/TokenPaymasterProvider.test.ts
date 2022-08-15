@@ -6,36 +6,73 @@ import { HttpProvider } from 'web3-core'
 import abi from 'web3-eth-abi'
 
 import {
-  ProxyDeployingPaymasterInstance,
-  ProxyFactoryInstance,
-  TestCounterInstance,
+  PermitERC20UniswapV3PaymasterInstance, ProxyFactoryInstance,
+  TestCounterInstance, TestHubInstance,
   TestTokenInstance
 } from '@opengsn/paymasters/types/truffle-contracts'
-import ProxyRelayProvider from '../src/ProxyRelayProvider'
 import { GSNConfig } from '@opengsn/provider'
+import { TokenPaymasterProvider } from '../src/TokenPaymasterProvider'
+import {
+  CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS,
+  DAI_CONTRACT_ADDRESS, GSN_FORWARDER_CONTRACT_ADDRESS, PaymasterConfig, PERMIT_SIGNATURE_DAI, PERMIT_SIGNATURE_EIP2612,
+  SWAP_ROUTER_CONTRACT_ADDRESS,
+  UNI_CONTRACT_ADDRESS,
+  USDC_CONTRACT_ADDRESS,
+  WETH9_CONTRACT_ADDRESS
+} from '../src/PermitPaymasterUtils'
+import { deployTestHub } from './TestUtils'
+import { toBN } from 'web3-utils'
+import { ProxyRelayProvider } from '../src'
 
 const RelayHub = artifacts.require('RelayHub')
 const TestToken = artifacts.require('TestToken')
 const TestCounter = artifacts.require('TestCounter')
 const TestUniswap = artifacts.require('TestUniswap')
 const ProxyFactory = artifacts.require('ProxyFactory')
-const ProxyDeployingPaymaster = artifacts.require('ProxyDeployingPaymaster')
+const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
 
-contract.skip('TokenPaymasterProvider', function () {
+const GAS_USED_BY_POST = 204766
+const MAX_POSSIBLE_GAS = 1e6
+const DAI_ETH_POOL_FEE = 500
+const USDC_ETH_POOL_FEE = 500
+const UNI_ETH_POOL_FEE = 3000
+const MIN_HUB_BALANCE = 1e17.toString()
+const TARGET_HUB_BALANCE = 1e18.toString()
+const MIN_WITHDRAWAL_AMOUNT = 2e18.toString()
+const ETHER = toBN(1e18.toString())
+
+
+contract('TokenPaymasterProvider', function ([owner, ]) {
   let token: TestTokenInstance
-  let proxyFactory: ProxyFactoryInstance
-  let paymaster: ProxyDeployingPaymasterInstance
+  let paymaster: PermitERC20UniswapV3PaymasterInstance
+  let tokenPaymasterProvider: TokenPaymasterProvider
+  let proxyFactory:ProxyFactoryInstance
   let proxyRelayProvider: ProxyRelayProvider
+  let testRelayHub: TestHubInstance
 
   before(async function () {
-    proxyFactory = await ProxyFactory.new()
+    testRelayHub = await deployTestHub() as TestHubInstance
     const uniswap = await TestUniswap.new(2, 1, {
       value: (5e18).toString(),
       gas: 1e7
     })
-    proxyFactory = await ProxyFactory.new()
     token = await TestToken.at(await uniswap.tokenAddress())
-    paymaster = await ProxyDeployingPaymaster.new([uniswap.address], proxyFactory.address)
+    const config: PaymasterConfig = {
+      weth: WETH9_CONTRACT_ADDRESS,
+      tokens: [DAI_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS, UNI_CONTRACT_ADDRESS],
+      relayHub: testRelayHub.address,
+      uniswap: SWAP_ROUTER_CONTRACT_ADDRESS,
+      priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS],
+      trustedForwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
+      uniswapPoolFees: [DAI_ETH_POOL_FEE, USDC_ETH_POOL_FEE, UNI_ETH_POOL_FEE],
+      gasUsedByPost: GAS_USED_BY_POST,
+      permitMethodSignatures: [PERMIT_SIGNATURE_DAI, PERMIT_SIGNATURE_EIP2612, PERMIT_SIGNATURE_EIP2612],
+      minHubBalance: MIN_HUB_BALANCE,
+      targetHubBalance: TARGET_HUB_BALANCE,
+      minWithdrawalAmount: MIN_WITHDRAWAL_AMOUNT,
+      paymasterFee: 5
+    }
+    paymaster = await PermitERC20UniswapV3Paymaster.new(config, { from: owner })
     const host = (web3.currentProvider as HttpProvider).host
     const {
       httpServer,
@@ -50,8 +87,8 @@ contract.skip('TokenPaymasterProvider', function () {
     httpServer.relayService?.config.maxAcceptanceBudget = 1e15.toString()
 
     const hub = await RelayHub.at(relayHubAddress!)
-    await paymaster.setRelayHub(hub.address)
-    await paymaster.setTrustedForwarder(forwarderAddress!)
+    // await paymaster.setRelayHub(hub.address)
+    // await paymaster.setTrustedForwarder(forwarderAddress!)
     await hub.depositFor(paymaster.address, {
       value: 1e18.toString()
     })
@@ -77,7 +114,7 @@ contract.skip('TokenPaymasterProvider', function () {
     ).init()
   })
 
-  context('#_ethSendTransaction()', function () {
+  context('initialization', function () {
     let counter: TestCounterInstance
     let gaslessAccount: AccountKeypair
     let proxyAddress: Address
@@ -118,4 +155,8 @@ contract.skip('TokenPaymasterProvider', function () {
       await expectEvent.inTransaction(tx2.receipt.actualTransactionHash, TestToken, 'Transfer')
     })
   })
+
+  context('#_buildPaymasterData()')
+  context('#useToken()')
+  context('Relay transparently through token paymaster provider')
 })

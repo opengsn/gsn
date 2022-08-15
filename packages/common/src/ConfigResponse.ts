@@ -42,6 +42,7 @@ export interface GSNConfig {
   maxRelayNonceGap: number
   paymasterAddress?: Address
   tokenPaymasterAddress?: Address
+  domainSeparators?: Record<Address, Record<string, unknown>>
   skipErc165Check: boolean
   clientId: IntString
   auditorsCount: number
