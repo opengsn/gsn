@@ -51,7 +51,7 @@ export const PERMIT_SIGNATURE_EIP2612 = 'permit(address,address,uint256,uint256,
 export const PERMIT_SIGHASH_DAI = bufferToHex(keccakFromString(PERMIT_SIGNATURE_DAI).slice(0, 4))
 export const PERMIT_SIGHASH_EIP2612 = bufferToHex(keccakFromString(PERMIT_SIGNATURE_EIP2612).slice(0, 4))
 
-export function getDaiDomainSeparator (): Record<string, unknown> {
+export function getDaiDomainSeparator (): EIP712Domain {
   return {
     name: 'Dai Stablecoin',
     version: '1',
@@ -60,7 +60,7 @@ export function getDaiDomainSeparator (): Record<string, unknown> {
   }
 }
 
-export function getUSDCDomainSeparator (): Record<string, unknown> {
+export function getUSDCDomainSeparator (): EIP712Domain {
   return {
     name: 'USD Coin',
     version: '2',
@@ -69,7 +69,7 @@ export function getUSDCDomainSeparator (): Record<string, unknown> {
   }
 }
 
-export function getUniDomainSeparator (): Record<string, unknown> {
+export function getUniDomainSeparator (): EIP712Domain {
   return {
     name: 'Uniswap',
     chainId: 1,

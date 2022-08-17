@@ -2,7 +2,7 @@
 
 import BN from 'bn.js'
 import { RelayClient, RelayProvider, GSNUnresolvedConstructorInput } from '@opengsn/provider'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { PrefixedHexString, toChecksumAddress } from 'ethereumjs-util'
 import { Address, removeHexPrefix, Web3ProviderBaseInterface } from '@opengsn/common/dist'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
@@ -12,15 +12,17 @@ import {
 } from '@opengsn/paymasters/types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
-  getDaiDomainSeparator, getUniDomainSeparator, PERMIT_SIGHASH_DAI, PERMIT_SIGHASH_EIP2612,
+  PERMIT_SIGHASH_DAI, PERMIT_SIGHASH_EIP2612,
   PERMIT_SIGNATURE_DAI,
   PERMIT_SIGNATURE_EIP2612,
   signAndEncodeDaiPermit,
   signAndEncodeEIP2612Permit
 } from './PermitPaymasterUtils'
 import { constants } from '@opengsn/common/dist/Constants'
-import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { EIP712Domain, EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { TokenPaymasterInteractor } from './TokenPaymasterInteractor'
+import { JsonRpcPayload } from 'web3-core-helpers'
+import { JsonRpcCallback } from '@opengsn/provider/dist'
 // import abiCoder, { AbiCoder } from 'web3-eth-abi'
 
 // const abi: AbiCoder = abiCoder as any
@@ -49,6 +51,9 @@ export class TokenPaymasterProvider extends RelayProvider {
   }
 
   static newProvider (input: TokenPaymasterUnresolvedConstructorInput): TokenPaymasterProvider {
+    if (input.config.maxPaymasterDataLength == null) {
+      input.config.maxPaymasterDataLength = 300
+    }
     const provider = new TokenPaymasterProvider(new RelayClient(input), input.provider)
     // input.overrideDependencies = input.overrideDependencies ?? {}
     // input.overrideDependencies.asyncPaymasterData = provider._buildPaymasterData.bind(provider)
@@ -73,8 +78,8 @@ export class TokenPaymasterProvider extends RelayProvider {
     }
     const allowance = await this.token.allowance(relayRequest.request.from, relayRequest.relayData.paymaster)
     let permitMethod = ''
-    // todo: decide domain separator and type based on token given
     if (allowance.eqn(0)) {
+      const domainSeparator: EIP712Domain = this.config.domainSeparators![this.token.address]
       if (this.permitSignature === PERMIT_SIGNATURE_DAI) {
         permitMethod = await signAndEncodeDaiPermit(
           relayRequest.request.from,
@@ -82,10 +87,9 @@ export class TokenPaymasterProvider extends RelayProvider {
           this.token.address,
           constants.MAX_UINT256.toString(),
           this.web3,
-          getDaiDomainSeparator()
+          domainSeparator
         )
       } else {
-        const domainSeparator = getUniDomainSeparator()
         permitMethod = await signAndEncodeEIP2612Permit(
           relayRequest.request.from,
           relayRequest.relayData.paymaster,
@@ -99,7 +103,7 @@ export class TokenPaymasterProvider extends RelayProvider {
       }
     }
     // return abi.encodeParameters(['bytes', 'address'], [permitMethod, this.token.address])
-    return removeHexPrefix(permitMethod) + removeHexPrefix(this.token.address)
+    return '0x' + removeHexPrefix(permitMethod) + removeHexPrefix(this.token.address)
   }
 
   async useToken (tokenAddress: Address): Promise<void> {
@@ -107,7 +111,10 @@ export class TokenPaymasterProvider extends RelayProvider {
     if (!isSupported) {
       throw new Error(`token ${tokenAddress} not supported`)
     }
-    this.config.tokenAddress = tokenAddress
+    this.config.tokenAddress = toChecksumAddress(tokenAddress)
+    if (this.config.domainSeparators == null || this.config.domainSeparators[this.config.tokenAddress] == null) {
+      throw new Error(`Domain separator not found for token ${tokenAddress}`)
+    }
     const permitSigHash = await this.paymaster.permitMethodSignatures(tokenAddress)
     if (permitSigHash === PERMIT_SIGHASH_DAI) {
       this.permitSignature = PERMIT_SIGNATURE_DAI

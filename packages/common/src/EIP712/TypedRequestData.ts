@@ -76,7 +76,7 @@ export const GsnDomainSeparatorType = {
   version: '3'
 }
 
-export function getDomainSeparator (verifier: Address, chainId: number): Record<string, unknown> {
+export function getDomainSeparator (verifier: Address, chainId: number): EIP712Domain {
   return {
     name: GsnDomainSeparatorType.name,
     version: GsnDomainSeparatorType.version,
@@ -86,7 +86,7 @@ export function getDomainSeparator (verifier: Address, chainId: number): Record<
 }
 
 export function getDomainSeparatorHash (verifier: Address, chainId: number): PrefixedHexString {
-  return bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', getDomainSeparator(verifier, chainId), { EIP712Domain: EIP712DomainType }))
+  return bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', getDomainSeparator(verifier, chainId) as Record<string, unknown>, { EIP712Domain: EIP712DomainType }))
 }
 
 export class TypedRequestData implements TypedMessage<Types> {

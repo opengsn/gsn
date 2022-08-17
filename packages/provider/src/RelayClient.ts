@@ -117,7 +117,7 @@ export class RelayClient {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
     if (useTokenPaymaster && this.config.tokenPaymasterAddress != null) {
-      this.logger.debug(`Using token paymaster ${this.config.paymasterAddress}`)
+      this.logger.debug(`Using token paymaster ${this.config.tokenPaymasterAddress}`)
       this.config.paymasterAddress = this.config.tokenPaymasterAddress
     }
     this.dependencies = await this._resolveDependencies({

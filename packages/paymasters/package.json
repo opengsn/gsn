@@ -44,6 +44,7 @@
     "@types/mocha": "^8.2.0",
     "@types/web3": "1.2.2",
     "ganache-cli": "^6.12.2",
+    "ts-node": "8.6.2",
     "solhint": "^3.3.2"
   }
 }

@@ -4,6 +4,7 @@ import {
   NpmLogLevel
 } from './types/Aliases'
 import { Environment } from './Environments'
+import { EIP712Domain } from './EIP712/TypedRequestData'
 
 export interface LoggerConfiguration {
   logLevel: NpmLogLevel
@@ -42,7 +43,7 @@ export interface GSNConfig {
   maxRelayNonceGap: number
   paymasterAddress?: Address
   tokenPaymasterAddress?: Address
-  domainSeparators?: Record<Address, Record<string, unknown>>
+  domainSeparators?: Record<Address, EIP712Domain>
   skipErc165Check: boolean
   clientId: IntString
   auditorsCount: number

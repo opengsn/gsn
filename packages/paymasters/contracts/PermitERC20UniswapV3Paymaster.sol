@@ -286,6 +286,15 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         emit Received(msg.sender, msg.value);
     }
 
+    function getGasAndDataLimits() public override view returns (IPaymaster.GasAndDataLimits memory limits) {
+        return IPaymaster.GasAndDataLimits(
+            2e5,
+            2e5,
+            4e5,
+            CALLDATA_SIZE_LIMIT
+        );
+    }
+
     function versionPaymaster() external override virtual view returns (string memory){
         return "3.0.0-alpha.5+opengsn.permit-erc20-uniswap-v3.ipaymaster";
     }
