@@ -1,5 +1,3 @@
-// import abiDecoder from 'abi-decoder'
-
 import BN from 'bn.js'
 import { RelayClient, RelayProvider, GSNUnresolvedConstructorInput } from '@opengsn/provider'
 import { PrefixedHexString, toChecksumAddress } from 'ethereumjs-util'
@@ -21,13 +19,6 @@ import {
 import { constants } from '@opengsn/common/dist/Constants'
 import { EIP712Domain, EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { TokenPaymasterInteractor } from './TokenPaymasterInteractor'
-import { JsonRpcPayload } from 'web3-core-helpers'
-import { JsonRpcCallback } from '@opengsn/provider/dist'
-// import abiCoder, { AbiCoder } from 'web3-eth-abi'
-
-// const abi: AbiCoder = abiCoder as any
-
-// abiDecoder.addABI(PermitERC20UniswapV3Paymaster.abi)
 
 export interface TokenPaymasterConfig extends GSNConfig {
   tokenAddress: Address
@@ -79,7 +70,10 @@ export class TokenPaymasterProvider extends RelayProvider {
     const allowance = await this.token.allowance(relayRequest.request.from, relayRequest.relayData.paymaster)
     let permitMethod = ''
     if (allowance.eqn(0)) {
-      const domainSeparator: EIP712Domain = this.config.domainSeparators![this.token.address]
+      if (this.config.domainSeparators == null) {
+        throw new Error('TokenPaymasterProvider not initialized. Call init() first')
+      }
+      const domainSeparator: EIP712Domain = this.config.domainSeparators[this.token.address]
       if (this.permitSignature === PERMIT_SIGNATURE_DAI) {
         permitMethod = await signAndEncodeDaiPermit(
           relayRequest.request.from,

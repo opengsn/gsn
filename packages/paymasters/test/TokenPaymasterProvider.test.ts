@@ -23,7 +23,7 @@ import { deployHub, revert, snapshot, startRelay, stopRelay } from '@opengsn/dev
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { toBN, toWei } from 'web3-utils'
+import { toWei } from 'web3-utils'
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import {

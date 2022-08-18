@@ -1,16 +1,13 @@
 import BN from 'bn.js'
 import { toBN, toWei } from 'web3-utils'
 import {
-  ForwarderInstance,
   IChainlinkOracleInstance, IERC20MetadataInstance,
-  IQuoterInstance, PenalizerInstance,
+  IQuoterInstance,
   PermitERC20UniswapV3PaymasterInstance,
   PermitInterfaceDAIInstance,
-  PermitInterfaceEIP2612Instance, RelayHubInstance,
+  PermitInterfaceEIP2612Instance,
   SampleRecipientInstance,
-  StakeManagerInstance,
-  TestHubInstance,
-  TestTokenInstance
+  TestHubInstance
 } from '../types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -24,7 +21,7 @@ import {
   getUniDomainSeparator,
   getUSDCDomainSeparator,
   GSN_FORWARDER_CONTRACT_ADDRESS,
-  PaymasterConfig, PERMIT_SIGHASH_DAI, PERMIT_SIGHASH_EIP2612,
+  PaymasterConfig,
   PERMIT_SIGNATURE_DAI,
   PERMIT_SIGNATURE_EIP2612,
   signAndEncodeDaiPermit,
@@ -37,15 +34,10 @@ import {
   USDC_CONTRACT_ADDRESS,
   WETH9_CONTRACT_ADDRESS
 } from '../src/PermitPaymasterUtils'
-import { deployHub, revert, snapshot, startRelay, stopRelay } from '@opengsn/dev/dist/test/TestUtils'
+import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { defaultEnvironment, removeHexPrefix } from '@opengsn/common/dist'
-import { TokenPaymasterConfig, TokenPaymasterProvider } from '../src/TokenPaymasterProvider'
-import { HttpProvider } from 'web3-core'
-import chai from 'chai'
-import chaiAsPromised from 'chai-as-promised'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { removeHexPrefix } from '@opengsn/common/dist'
 import {
   DAI_ETH_POOL_FEE,
   detectMainnet, ETHER, GAS_PRICE,
@@ -61,13 +53,6 @@ const PermitInterfaceDAI = artifacts.require('PermitInterfaceDAI')
 const IChainlinkOracle = artifacts.require('IChainlinkOracle')
 const SampleRecipient = artifacts.require('SampleRecipient')
 const IQuoter = artifacts.require('IQuoter')
-
-const Forwarder = artifacts.require('Forwarder')
-const StakeManager = artifacts.require('StakeManager')
-const Penalizer = artifacts.require('Penalizer')
-const TestToken = artifacts.require('TestToken')
-
-const { expect, assert } = chai.use(chaiAsPromised)
 
 const MAX_POSSIBLE_GAS = 1e6
 const TOKEN_PRE_CHARGE = 1000
