@@ -839,7 +839,7 @@ contract('RelayClient', function (accounts) {
         jsonConfig = await relayClient.dependencies.httpClient.getNetworkConfiguration(defaultGsnConfig.clientDefaultConfigUrl)
         supportedNetworks = Object.keys(jsonConfig.networks).map(k => parseInt(k))
       })
-      it('should get configuration from opengsn for all supported networks', async function () {
+      it.skip('should get configuration from opengsn for all supported networks', async function () {
         for (const network of supportedNetworks) {
           const config = await relayClient._resolveConfigurationFromServer(network, defaultGsnConfig.clientDefaultConfigUrl)
           const GSNConfigKeys = Object.keys(defaultGsnConfig)
