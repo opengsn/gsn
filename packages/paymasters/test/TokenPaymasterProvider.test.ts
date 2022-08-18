@@ -324,7 +324,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
 
     const gsnConfig: Partial<TokenPaymasterConfig> = {
       tokenPaymasterAddress: permitPaymaster.address,
-      loggerConfiguration: { logLevel: 'debug' },
+      loggerConfiguration: { logLevel: 'error' },
       tokenAddress: UNI_CONTRACT_ADDRESS,
       methodSuffix: '',
       jsonStringifyRequest: false,

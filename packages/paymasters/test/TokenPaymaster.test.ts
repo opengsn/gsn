@@ -68,7 +68,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       [from, 500, token.address, uniswap.address]
     )
     await token.mint(toWei('1', 'ether'))
-    const gasUsedByPost = await calculatePostGas(token, paymaster, from, context)
+    const gasUsedByPost = await calculatePostGas(token, paymaster, '0x', from, context)
     await paymaster.setPostGasUsage(gasUsedByPost)
     await paymaster.setRelayHub(hub.address)
 
