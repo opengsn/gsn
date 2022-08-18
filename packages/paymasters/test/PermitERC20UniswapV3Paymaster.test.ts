@@ -46,8 +46,6 @@ import { HttpProvider } from 'web3-core'
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { RelayProvider } from '@opengsn/provider/dist'
-import { GSNConfig } from '@opengsn/common/dist/ConfigResponse'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
 const PermitInterfaceEIP2612 = artifacts.require('PermitInterfaceEIP2612')
@@ -973,29 +971,6 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
         provider: web3.currentProvider as HttpProvider
       })
       await tokenPaymasterProvider.init()
-
-      /////////////
-      const paymaster = await AcceptEverythingPaymaster.new({ from: owner })
-      await paymaster.setTrustedForwarder(forwarderAddress, { from: owner })
-      await paymaster.setRelayHub(relayHub.address, { from: owner })
-      await web3.eth.sendTransaction({
-        from: account0,
-        to: paymaster.address,
-        value: stake
-      })
-      // await paymaster.deposit({ value: web3.utils.toWei('2', 'ether') })
-      const otherConfig: Partial<GSNConfig> = {
-        loggerConfiguration: { logLevel: 'error' },
-        paymasterAddress: paymaster.address,
-        methodSuffix: '',
-        jsonStringifyRequest: false
-      }
-      const relayProvider = RelayProvider.newProvider({
-        config: otherConfig,
-        provider: web3.currentProvider as HttpProvider
-      })
-      await relayProvider.init()
-      /////////////
 
       await testToken.mint(stake, { from: owner })
       await testToken.approve(stakeManager.address, stake, { from: owner })
