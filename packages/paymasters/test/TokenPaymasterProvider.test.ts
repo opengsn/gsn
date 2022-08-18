@@ -1,29 +1,372 @@
-//
-//
-// const RelayHub = artifacts.require('RelayHub')
-// const TestToken = artifacts.require('TestToken')
-// const TestCounter = artifacts.require('TestCounter')
-// const TestUniswap = artifacts.require('TestUniswap')
-// const ProxyFactory = artifacts.require('ProxyFactory')
-// const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
-//
-// const Forwarder = artifacts.require('Forwarder')
-// const StakeManager = artifacts.require('StakeManager')
-// const Penalizer = artifacts.require('Penalizer')
-// const TestToken = artifacts.require('TestToken')
-// const AcceptEverythingPaymaster = artifacts.require('AcceptEverythingPaymaster')
-//
-// const GAS_USED_BY_POST = 204766
-// const MAX_POSSIBLE_GAS = 1e6
-// const DAI_ETH_POOL_FEE = 500
-// const USDC_ETH_POOL_FEE = 500
-// const UNI_ETH_POOL_FEE = 3000
-// const MIN_HUB_BALANCE = 1e17.toString()
-// const TARGET_HUB_BALANCE = 1e18.toString()
-// const MIN_WITHDRAWAL_AMOUNT = 2e18.toString()
-// const ETHER = toBN(1e18.toString())
-//
-//
-// contract('TokenPaymasterProvider', function ([owner]) {
-//
-// })
+import { TokenPaymasterConfig, TokenPaymasterProvider } from '../src/TokenPaymasterProvider'
+import { HttpProvider } from 'web3-core'
+import {
+  CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS,
+  DAI_CONTRACT_ADDRESS, GSN_FORWARDER_CONTRACT_ADDRESS, PaymasterConfig,
+  PERMIT_SIGHASH_DAI, PERMIT_SIGHASH_EIP2612,
+  PERMIT_SIGNATURE_DAI,
+  PERMIT_SIGNATURE_EIP2612, SWAP_ROUTER_CONTRACT_ADDRESS, UNI_CONTRACT_ADDRESS,
+  USDC_CONTRACT_ADDRESS, WETH9_CONTRACT_ADDRESS
+} from '../src/PermitPaymasterUtils'
+import { deployTestHub, mergeRelayRequest } from './TestUtils'
+import { constants } from '@opengsn/common/dist/Constants'
+import { defaultEnvironment, removeHexPrefix } from '@opengsn/common/dist'
+import {
+  ForwarderInstance,
+  PenalizerInstance,
+  PermitERC20UniswapV3PaymasterInstance, PermitInterfaceDAIInstance, PermitInterfaceEIP2612Instance,
+  RelayHubInstance, SampleRecipientInstance,
+  StakeManagerInstance, TestHubInstance,
+  TestTokenInstance
+} from '../types/truffle-contracts'
+import { deployHub, revert, snapshot, startRelay, stopRelay } from '@opengsn/dev/dist/test/TestUtils'
+import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { expectEvent } from '@openzeppelin/test-helpers'
+import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { toBN, toWei } from 'web3-utils'
+import chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+import {
+  DAI_ETH_POOL_FEE,
+  detectMainnet, ETHER, GAS_PRICE,
+  GAS_USED_BY_POST,
+  MAJOR_DAI_AND_UNI_HOLDER, MIN_HUB_BALANCE, MIN_WITHDRAWAL_AMOUNT, skipWithoutFork, TARGET_HUB_BALANCE,
+  UNI_ETH_POOL_FEE,
+  USDC_ETH_POOL_FEE
+} from './ForkTestUtils'
+
+const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
+const PermitInterfaceEIP2612 = artifacts.require('PermitInterfaceEIP2612')
+const PermitInterfaceDAI = artifacts.require('PermitInterfaceDAI')
+const SampleRecipient = artifacts.require('SampleRecipient')
+
+const Forwarder = artifacts.require('Forwarder')
+const StakeManager = artifacts.require('StakeManager')
+const Penalizer = artifacts.require('Penalizer')
+const TestToken = artifacts.require('TestToken')
+
+const { expect, assert } = chai.use(chaiAsPromised)
+
+contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
+  let permitPaymaster: PermitERC20UniswapV3PaymasterInstance
+  let daiPermittableToken: PermitInterfaceDAIInstance
+  let uniPermittableToken: PermitInterfaceEIP2612Instance
+  let usdcPermittableToken: PermitInterfaceEIP2612Instance
+  let sampleRecipient: SampleRecipientInstance
+  let testRelayHub: TestHubInstance
+
+  let relayRequest: RelayRequest
+
+  let id: string
+
+  before(async function () {
+    if (!await detectMainnet()) {
+      this.skip()
+    }
+    sampleRecipient = await SampleRecipient.new()
+    await sampleRecipient.setForwarder(GSN_FORWARDER_CONTRACT_ADDRESS)
+    daiPermittableToken = await PermitInterfaceDAI.at(DAI_CONTRACT_ADDRESS)
+    uniPermittableToken = await PermitInterfaceEIP2612.at(UNI_CONTRACT_ADDRESS)
+    usdcPermittableToken = await PermitInterfaceEIP2612.at(USDC_CONTRACT_ADDRESS)
+    testRelayHub = await deployTestHub() as TestHubInstance
+    // in case the MAJOR_DAI_AND_UNI_HOLDER account does not have ETH on actual mainnet
+    await web3.eth.sendTransaction({
+      from: account0,
+      to: MAJOR_DAI_AND_UNI_HOLDER,
+      value: 1e18
+    })
+    // we cannot sign on behalf of an impersonated account - transfer tokens to an account we control
+    await daiPermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
+    await uniPermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
+    await usdcPermittableToken.transfer(account0, toWei('0.0001', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
+    const config: PaymasterConfig = {
+      weth: WETH9_CONTRACT_ADDRESS,
+      tokens: [DAI_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS, UNI_CONTRACT_ADDRESS],
+      relayHub: testRelayHub.address,
+      uniswap: SWAP_ROUTER_CONTRACT_ADDRESS,
+      priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS],
+      trustedForwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
+      uniswapPoolFees: [DAI_ETH_POOL_FEE, USDC_ETH_POOL_FEE, UNI_ETH_POOL_FEE],
+      gasUsedByPost: GAS_USED_BY_POST,
+      permitMethodSignatures: [PERMIT_SIGNATURE_DAI, PERMIT_SIGNATURE_EIP2612, PERMIT_SIGNATURE_EIP2612],
+      minHubBalance: MIN_HUB_BALANCE,
+      targetHubBalance: TARGET_HUB_BALANCE,
+      minWithdrawalAmount: MIN_WITHDRAWAL_AMOUNT,
+      paymasterFee: 5
+    }
+    permitPaymaster = await PermitERC20UniswapV3Paymaster.new(config, { from: owner })
+    relayRequest = {
+      relayData: {
+        relayWorker: relay,
+        paymaster: permitPaymaster.address,
+        forwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
+        pctRelayFee: '0',
+        baseRelayFee: '0',
+        transactionCalldataGasUsed: '0',
+        maxFeePerGas: GAS_PRICE,
+        maxPriorityFeePerGas: GAS_PRICE,
+        paymasterData: '0x',
+        clientId: '1'
+      },
+      request: {
+        data: sampleRecipient.contract.methods.something().encodeABI(),
+        nonce: '0',
+        value: '0',
+        validUntilTime: '0',
+        from: account0,
+        to: sampleRecipient.address,
+        gas: 1e6.toString()
+      }
+    }
+  })
+
+  beforeEach(async function () {
+    id = (await snapshot()).result
+  })
+
+  afterEach(async function () {
+    await revert(id)
+  })
+
+  let tokenPaymasterProvider: TokenPaymasterProvider
+  context('initialization', function () {
+    it('should initialize provider without token address', async function () {
+      await skipWithoutFork(this)
+
+      const gsnConfig: Partial<TokenPaymasterConfig> = {
+        tokenPaymasterAddress: permitPaymaster.address,
+        loggerConfiguration: { logLevel: 'error' },
+        // TODO remove this flag once testing against v3 test deployment
+        skipErc165Check: true
+      }
+      tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+        config: gsnConfig,
+        provider: web3.currentProvider as HttpProvider
+      })
+      await tokenPaymasterProvider.init()
+      assert.isTrue(tokenPaymasterProvider.config.tokenAddress == null)
+      assert.equal(tokenPaymasterProvider.config.tokenPaymasterAddress, permitPaymaster.address)
+      assert.equal(tokenPaymasterProvider.config.paymasterAddress, permitPaymaster.address)
+      assert.isTrue(tokenPaymasterProvider.permitSignature == null)
+    })
+    it('should initialize provider with token address', async function () {
+      await skipWithoutFork(this)
+
+      const gsnConfig: Partial<TokenPaymasterConfig> = {
+        tokenPaymasterAddress: permitPaymaster.address,
+        loggerConfiguration: { logLevel: 'error' },
+        // TODO remove this flag once testing against v3 test deployment
+        skipErc165Check: true,
+        tokenAddress: USDC_CONTRACT_ADDRESS
+      }
+      tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+        config: gsnConfig,
+        provider: web3.currentProvider as HttpProvider
+      })
+      await tokenPaymasterProvider.init()
+      assert.equal(tokenPaymasterProvider.config.tokenAddress, USDC_CONTRACT_ADDRESS)
+      assert.equal(tokenPaymasterProvider.config.tokenPaymasterAddress, permitPaymaster.address)
+      assert.equal(tokenPaymasterProvider.config.paymasterAddress, permitPaymaster.address)
+      assert.equal(tokenPaymasterProvider.permitSignature, PERMIT_SIGNATURE_EIP2612)
+    })
+    it('should throw if given unsupported token', async function () {
+      await skipWithoutFork(this)
+
+      const gsnConfig: Partial<TokenPaymasterConfig> = {
+        tokenPaymasterAddress: permitPaymaster.address,
+        loggerConfiguration: { logLevel: 'error' },
+        // TODO remove this flag once testing against v3 test deployment
+        skipErc165Check: true,
+        tokenAddress: USDC_CONTRACT_ADDRESS
+      }
+      tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+        config: gsnConfig,
+        provider: web3.currentProvider as HttpProvider
+      })
+      await tokenPaymasterProvider.init()
+      const promise = tokenPaymasterProvider.useToken(owner)
+      await expect(promise).to.be.eventually.rejectedWith(`token ${owner} not supported`)
+    })
+    it('should be able to change used token', async function () {
+      await skipWithoutFork(this)
+
+      const gsnConfig: Partial<TokenPaymasterConfig> = {
+        tokenPaymasterAddress: permitPaymaster.address,
+        loggerConfiguration: { logLevel: 'error' },
+        // TODO remove this flag once testing against v3 test deployment
+        skipErc165Check: true,
+        tokenAddress: USDC_CONTRACT_ADDRESS
+      }
+      tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+        config: gsnConfig,
+        provider: web3.currentProvider as HttpProvider
+      })
+      await tokenPaymasterProvider.init()
+      await tokenPaymasterProvider.useToken(DAI_CONTRACT_ADDRESS)
+      assert.equal(tokenPaymasterProvider.config.tokenAddress, DAI_CONTRACT_ADDRESS)
+      assert.equal(tokenPaymasterProvider.permitSignature, PERMIT_SIGNATURE_DAI)
+    })
+  })
+  context('#_buildPaymasterData()', function () {
+    it('should throw if paymaster address in provider doesn\'t match relayRequest', async function () {
+      await skipWithoutFork(this)
+      const gsnConfig: Partial<TokenPaymasterConfig> = {
+        tokenPaymasterAddress: permitPaymaster.address,
+        loggerConfiguration: { logLevel: 'error' },
+        tokenAddress: USDC_CONTRACT_ADDRESS,
+        // TODO remove this flag once testing against v3 test deployment
+        skipErc165Check: true
+      }
+      tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+        config: gsnConfig,
+        provider: web3.currentProvider as HttpProvider
+      })
+      await tokenPaymasterProvider.init()
+      const promise = tokenPaymasterProvider._buildPaymasterData(mergeRelayRequest(relayRequest, { paymaster: '0x' }))
+      await expect(promise).to.be.eventually.rejectedWith('Paymaster address mismatch')
+    })
+    it('should build paymaster data without permit method', async function () {
+      await skipWithoutFork(this)
+      const gsnConfig: Partial<TokenPaymasterConfig> = {
+        tokenPaymasterAddress: permitPaymaster.address,
+        loggerConfiguration: { logLevel: 'error' },
+        tokenAddress: USDC_CONTRACT_ADDRESS,
+        // TODO remove this flag once testing against v3 test deployment
+        skipErc165Check: true
+      }
+      tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+        config: gsnConfig,
+        provider: web3.currentProvider as HttpProvider
+      })
+      await tokenPaymasterProvider.init()
+      await usdcPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
+      const paymasterData = await tokenPaymasterProvider._buildPaymasterData(relayRequest)
+      assert.equal(paymasterData, USDC_CONTRACT_ADDRESS)
+    })
+    context('with permit method', function () {
+      it('should build paymaster data for dai', async function () {
+        await skipWithoutFork(this)
+        const gsnConfig: Partial<TokenPaymasterConfig> = {
+          tokenPaymasterAddress: permitPaymaster.address,
+          loggerConfiguration: { logLevel: 'error' },
+          tokenAddress: DAI_CONTRACT_ADDRESS,
+          // TODO remove this flag once testing against v3 test deployment
+          skipErc165Check: true
+        }
+        tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+          config: gsnConfig,
+          provider: web3.currentProvider as HttpProvider
+        })
+        await tokenPaymasterProvider.init()
+        const paymasterData = await tokenPaymasterProvider._buildPaymasterData(relayRequest)
+        assert.equal(paymasterData.slice(-40), removeHexPrefix(DAI_CONTRACT_ADDRESS))
+        assert.equal(paymasterData.slice(0, 10), PERMIT_SIGHASH_DAI)
+      })
+      it('should build paymaster data for usdc', async function () {
+        await skipWithoutFork(this)
+        const gsnConfig: Partial<TokenPaymasterConfig> = {
+          tokenPaymasterAddress: permitPaymaster.address,
+          loggerConfiguration: { logLevel: 'error' },
+          tokenAddress: USDC_CONTRACT_ADDRESS,
+          // TODO remove this flag once testing against v3 test deployment
+          skipErc165Check: true
+        }
+        tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+          config: gsnConfig,
+          provider: web3.currentProvider as HttpProvider
+        })
+        await tokenPaymasterProvider.init()
+        const paymasterData = await tokenPaymasterProvider._buildPaymasterData(relayRequest)
+        assert.equal(paymasterData.slice(-40), removeHexPrefix(USDC_CONTRACT_ADDRESS))
+        assert.equal(paymasterData.slice(0, 10), PERMIT_SIGHASH_EIP2612)
+      })
+      it('should build paymaster data for uni', async function () {
+        await skipWithoutFork(this)
+        const gsnConfig: Partial<TokenPaymasterConfig> = {
+          tokenPaymasterAddress: permitPaymaster.address,
+          loggerConfiguration: { logLevel: 'error' },
+          tokenAddress: UNI_CONTRACT_ADDRESS,
+          // TODO remove this flag once testing against v3 test deployment
+          skipErc165Check: true
+        }
+        tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+          config: gsnConfig,
+          provider: web3.currentProvider as HttpProvider
+        })
+        await tokenPaymasterProvider.init()
+        const paymasterData = await tokenPaymasterProvider._buildPaymasterData(relayRequest)
+        assert.equal(paymasterData.slice(-40), removeHexPrefix(UNI_CONTRACT_ADDRESS))
+        assert.equal(paymasterData.slice(0, 10), PERMIT_SIGHASH_EIP2612)
+      })
+    })
+  })
+  it('should relay transparently', async function () {
+    await skipWithoutFork(this)
+
+    const stake = ETHER
+    const testToken: TestTokenInstance = await TestToken.new()
+    const stakeManager: StakeManagerInstance = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
+    const penalizer: PenalizerInstance = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
+    const relayHub: RelayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
+    const forwarderInstance: ForwarderInstance = await Forwarder.new()
+    const forwarderAddress = forwarderInstance.address
+    await registerForwarderForGsn(forwarderInstance)
+    await sampleRecipient.setForwarder(forwarderAddress)
+
+    await permitPaymaster.setTrustedForwarder(forwarderAddress, { from: owner })
+    await permitPaymaster.setRelayHub(relayHub.address, { from: owner })
+    await web3.eth.sendTransaction({
+      from: account0,
+      to: permitPaymaster.address,
+      value: stake
+    })
+    await permitPaymaster.refillHubDeposit(stake, { from: owner })
+
+    const gsnConfig: Partial<TokenPaymasterConfig> = {
+      tokenPaymasterAddress: permitPaymaster.address,
+      loggerConfiguration: { logLevel: 'debug' },
+      tokenAddress: UNI_CONTRACT_ADDRESS,
+      methodSuffix: '',
+      jsonStringifyRequest: false,
+      // TODO remove this flag once testing against v3 test deployment
+      skipErc165Check: true
+    }
+    tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+      config: gsnConfig,
+      provider: web3.currentProvider as HttpProvider
+    })
+    await tokenPaymasterProvider.init()
+
+    await testToken.mint(stake, { from: owner })
+    await testToken.approve(stakeManager.address, stake, { from: owner })
+    console.log('wtf starting relay')
+    const relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
+      relaylog: process.env.relaylog,
+      initialReputation: 100,
+      stake: stake.toString(),
+      relayOwner: owner,
+      ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
+    })
+    console.log('wtf relay started', await web3.eth.getNodeInfo())
+    // @ts-ignore
+    SampleRecipient.web3.setProvider(tokenPaymasterProvider)
+    // sampleRecipient = await SampleRecipient.new()
+    try {
+      const res = await sampleRecipient.something({ gasPrice: 50e9, gas: 3e5, from: account0 })
+      // const receipt = await web3.eth.getTransactionReceipt(res.receipt.actualTransactionHash)
+      const hubLogs = await relayHub.getPastEvents('TransactionRelayed', { fromBlock: res.receipt.blockNumber })
+      expectEvent(res, 'Sender', {
+        _msgSenderFunc: account0,
+        sender: forwarderAddress
+      })
+      assert.equal(hubLogs.length, 1)
+      assert.equal(hubLogs[0].event, 'TransactionRelayed')
+      assert.equal(hubLogs[0].returnValues.from, account0)
+      assert.equal(hubLogs[0].returnValues.to, sampleRecipient.address)
+      assert.equal(hubLogs[0].returnValues.status, '0')
+      assert.equal(hubLogs[0].returnValues.paymaster, permitPaymaster.address)
+    } finally {
+      stopRelay(relayProcess)
+    }
+  })
+})

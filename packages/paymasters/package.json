@@ -10,7 +10,7 @@
     "lint:js": "eslint -f unix .",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
     "test": "yarn tsc && yarn truffle-test-compile-all",
-    "test-fork": "truffle test test/PermitERC20UniswapV3Paymaster.test.ts --compile-all --network npmtest",
+    "test-fork": "truffle test test/PermitERC20UniswapV3Paymaster.test.ts test/TokenPaymasterProvider.test.ts --compile-all --network npmtest",
     "test-only": "truffle test --network npmtest",
     "truffle-test-compile-all": "truffle test --compile-all --network npmtest",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
