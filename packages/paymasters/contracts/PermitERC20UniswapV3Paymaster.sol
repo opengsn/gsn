@@ -158,7 +158,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     function _weiToToken(uint256 amount, uint256 divisor, uint256 quote) internal pure returns (uint256) {
         return amount * divisor / quote / 1e18;
     }
-
+    // solhint-disable-next-line no-empty-blocks
     function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {}
 
     function isTokenSupported(IERC20Metadata token) public view returns (bool) {
@@ -177,14 +177,14 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         (signature, approvalData);
 
         // paymasterData must contain the token address, and optionally a a valid "permit" call on the token.
-        require(relayRequest.relayData.paymasterData.length >= 20, "paymasterData: must contain token address");
+        require(relayRequest.relayData.paymasterData.length >= 20, "must contain token address");
         IERC20Metadata token = _getTokenFromPaymasterData(relayRequest.relayData.paymasterData);
         require(isTokenSupported(token),"unsupported token");
         if (relayRequest.relayData.paymasterData.length != 20) {
-            require(relayRequest.relayData.paymasterData.length >= 24, "paymasterData: must contain \"permit\" method and token address");
+            require(relayRequest.relayData.paymasterData.length >= 24, "must contain \"permit\" and token");
             require(
                 permitMethodSignatures[token] == GsnUtils.getMethodSig(relayRequest.relayData.paymasterData),
-                "paymasterData: wrong \"permit\" method sig");
+                "wrong \"permit\" method sig");
             // execute permit method for this token
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory ret) = address(token).call(relayRequest.relayData.paymasterData[:relayRequest.relayData.paymasterData.length - 20]);

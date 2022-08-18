@@ -219,7 +219,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
               '0x',
               MAX_POSSIBLE_GAS
             )
-          ), /paymasterData: must contain token address/)
+          ), /must contain token address/)
 
         modifiedRequest.relayData.paymasterData = concatHexStrings('ff', DAI_CONTRACT_ADDRESS)
 
@@ -231,7 +231,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
               '0x',
               MAX_POSSIBLE_GAS
             )
-          ), /paymasterData: must contain "permit" method/)
+          ), /must contain "permit" and token/)
       })
 
       it('should revert if token is unsupported', async function () {
@@ -265,7 +265,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
               '0x',
               MAX_POSSIBLE_GAS
             )
-          ), /paymasterData: wrong "permit" method sig/)
+          ), /wrong "permit" method sig/)
       })
 
       it('should revert if permit call reverts', async function () {
