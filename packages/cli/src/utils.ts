@@ -3,9 +3,8 @@ import commander, { CommanderStatic } from 'commander'
 import fs from 'fs'
 import path from 'path'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
-import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { Address, RelayHubConfiguration, GSNContractsDeployment } from '@opengsn/common'
+
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 
 const cliInfuraId = '$INFURA_ID'
@@ -124,6 +123,8 @@ export function saveDeployment (deploymentResult: GSNContractsDeployment, workdi
   saveContractToFile(deploymentResult.relayHubAddress, workdir, 'RelayHub.json')
   saveContractToFile(deploymentResult.paymasterAddress, workdir, 'Paymaster.json')
   saveContractToFile(deploymentResult.forwarderAddress, workdir, 'Forwarder.json')
+  saveContractToFile(deploymentResult.relayRegistrarAddress, workdir, 'RelayRegistrar.json')
+  saveContractToFile(deploymentResult.managerStakeTokenAddress, workdir, 'ManagerStakeTokenAddress.json')
 }
 
 export function showDeployment (deploymentResult: GSNContractsDeployment, title: string | undefined, paymasterTitle: string | undefined = undefined): void {
@@ -149,6 +150,7 @@ export function loadDeployment (workdir: string): GSNContractsDeployment {
     relayHubAddress: getAddress('RelayHub'),
     relayRegistrarAddress: getAddress('RelayRegistrar'),
     stakeManagerAddress: getAddress('StakeManager'),
+    managerStakeTokenAddress: getAddress('ManagerStakeTokenAddress'),
     penalizerAddress: getAddress('Penalizer'),
     forwarderAddress: getAddress('Forwarder'),
     paymasterAddress: getAddress('Paymaster')
@@ -171,6 +173,9 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         break
       case 'm':
         commander.option('-m, --mnemonic <mnemonic>', 'mnemonic file to generate private key for account \'from\'')
+        commander.option('--derivationPath <string>', 'derivation path for the mnemonic to use, defaults to m/44\'/60\'/0\'/0/')
+        commander.option('--derivationIndex <string>', 'derivation index to use with a given mnemonic, defaults to 0', '0')
+        commander.option('--privateKeyHex <string>', 'private key to use directly without mnemonic')
         break
       case 'g':
         commander.option('-g, --gasPrice <number>', 'gas price to give to the transaction, in gwei.')

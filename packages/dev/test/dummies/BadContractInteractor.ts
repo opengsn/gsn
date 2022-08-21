@@ -1,6 +1,6 @@
 import { TransactionReceipt } from 'web3-core'
 
-import { ContractInteractor, ConstructorParams, RelayCallABI } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, ConstructorParams, RelayCallABI } from '@opengsn/common'
 
 export class BadContractInteractor extends ContractInteractor {
   static readonly message = 'This is not the contract you are looking for'
@@ -13,11 +13,12 @@ export class BadContractInteractor extends ContractInteractor {
     this.failValidateARC = failValidateARC
   }
 
-  async validateRelayCall (relayCallABIData: RelayCallABI, viewCallGasLimit: BN, isDryRun: boolean): Promise<{ paymasterAccepted: boolean, returnValue: string, reverted: boolean }> {
+  async validateRelayCall (relayCallABIData: RelayCallABI, viewCallGasLimit: BN, isDryRun: boolean): Promise<{ paymasterAccepted: boolean, returnValue: string, relayHubReverted: boolean, recipientReverted: boolean }> {
     if (this.failValidateARC) {
       return {
         paymasterAccepted: false,
-        reverted: true,
+        relayHubReverted: true,
+        recipientReverted: false,
         returnValue: BadContractInteractor.message
       }
     }

@@ -100,8 +100,6 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         relayWorker: relay,
         paymaster: permitPaymaster.address,
         forwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
-        pctRelayFee: '0',
-        baseRelayFee: '0',
         transactionCalldataGasUsed: '0',
         maxFeePerGas: GAS_PRICE,
         maxPriorityFeePerGas: GAS_PRICE,

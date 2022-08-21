@@ -3,18 +3,22 @@ import { TxOptions } from '@ethereumjs/tx'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import {
+  ContractInteractor,
+  GSNContractsDeployment,
+  GsnTransactionDetails,
+  LoggerInterface,
+  defaultEnvironment,
+  signedTransactionToHash
+} from '@opengsn/common'
+
 import { NetworkSimulatingProvider } from '@opengsn/common/dist/dev/NetworkSimulatingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { createClientLogger } from '@opengsn/provider/dist/ClientWinstonLogger'
+import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { evmMine, increaseTime, revert, snapshot } from './TestUtils'
-import { signedTransactionToHash } from '@opengsn/common/dist/Utils'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
-import { defaultEnvironment, toNumber } from '@opengsn/common'
+
 import sinon from 'sinon'
 import chaiAsPromised from 'chai-as-promised'
 
@@ -109,7 +113,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
 
       it('should not boost and resend transactions if not that many blocks passed since it was sent', async function () {
         const latestBlock = await env.web3.eth.getBlock('latest')
-        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number, toNumber(latestBlock.timestamp))
+        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock)
         assert.equal(allBoostedTransactions.size, 0)
         const storedTxs = await env.relayServer.txStoreManager.getAll()
         assert.equal(storedTxs.length, stuckTransactionsCount)
@@ -123,7 +127,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
         await increaseTime(pendingTransactionTimeoutSeconds)
 
         const latestBlock = await env.web3.eth.getBlock('latest')
-        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number, toNumber(latestBlock.timestamp))
+        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock)
 
         // NOTE: this is needed for the 'repeated boosting' test
         for (const [originalTxHash, signedTransactionDetails] of allBoostedTransactions) {
@@ -144,14 +148,14 @@ contract('Network Simulation for Relay Server', function (accounts) {
       it('should not resend the transaction if not enough blocks passed since it was boosted', async function () {
         await increaseTime(pendingTransactionTimeoutSeconds - 1)
         const latestBlock = await env.web3.eth.getBlock('latest')
-        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number, toNumber(latestBlock.timestamp))
+        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock)
         assert.equal(allBoostedTransactions.size, 0)
       })
 
       it('should boost transactions that are not mined after being boosted another time', async function () {
         await evmMine()
         const latestBlock = await env.web3.eth.getBlock('latest')
-        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number, toNumber(latestBlock.timestamp))
+        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock)
         assert.equal(allBoostedTransactions.size, stuckTransactionsCount - 1)
         await assertGasPrice(allBoostedTransactions, expectedGasPriceAfterSecondBoost)
       })
@@ -170,10 +174,17 @@ contract('Network Simulation for Relay Server', function (accounts) {
         const storedTxs = await env.relayServer.txStoreManager.getAll()
         const latestNonce = await env.web3.eth.getTransactionCount(storedTxs[0].from)
         assert.equal(storedTxs[0].nonce, latestNonce)
-        await env.relayServer.txStoreManager.removeTxsUntilNonce(storedTxs[0].from, latestNonce)
+        const signer = env.relayServer.transactionManager.workersKeyManager.getAddress(0).toLowerCase()
+        // @ts-ignore
+        await env.relayServer.txStoreManager.txstore.removeAsync({
+          $and: [
+            { 'nonceSigner.nonce': { $lte: latestNonce } },
+            { 'nonceSigner.signer': signer }
+          ]
+        }, { multi: true })
         await increaseTime(pendingTransactionTimeoutSeconds)
         const latestBlock = await web3.eth.getBlock('latest')
-        await expect(env.relayServer._boostStuckPendingTransactions(latestBlock.number, toNumber(latestBlock.timestamp))).to.be.eventually.rejectedWith(
+        await expect(env.relayServer._boostStuckPendingTransactions(latestBlock)).to.be.eventually.rejectedWith(
           `Boosting: missing nonce ${latestNonce}. Lowest stored tx nonce: ${storedTxs[1].nonce}`)
       })
       it('should not boost any transactions if config.pendingTransactionTimeoutBlocks did not pass yet', async function () {
@@ -185,13 +196,13 @@ contract('Network Simulation for Relay Server', function (accounts) {
         const latestNonce = await env.web3.eth.getTransactionCount(storedTxs[0].from)
         assert.equal(storedTxs[0].nonce, latestNonce)
         const spy = sinon.spy(env.relayServer.logger, 'debug')
-        const message = `${storedTxs[0].from} : awaiting transaction with ID: ${storedTxs[0].txId} to be mined. creationBlockNumber: ${storedTxs[0].creationBlockNumber} creationBlockHash: ${storedTxs[0].creationBlockHash} nonce: ${storedTxs[0].nonce}`
+        const message = `${storedTxs[0].from} : awaiting transaction with ID: ${storedTxs[0].txId} to be mined. creationBlockNumber: ${storedTxs[0].creationBlock.number} creationBlockHash: ${storedTxs[0].creationBlock.hash} nonce: ${storedTxs[0].nonce}`
         let latestBlock = await web3.eth.getBlock('latest')
-        await env.relayServer._boostStuckPendingTransactions(latestBlock.number, toNumber(latestBlock.timestamp))
+        await env.relayServer._boostStuckPendingTransactions(latestBlock)
         sinon.assert.calledWith(spy, message)
         await increaseTime(pendingTransactionTimeoutSeconds - 1)
         latestBlock = await web3.eth.getBlock('latest')
-        await env.relayServer._boostStuckPendingTransactions(latestBlock.number, toNumber(latestBlock.timestamp))
+        await env.relayServer._boostStuckPendingTransactions(latestBlock)
         sinon.assert.calledWith(spy, message)
         sinon.restore()
       })
@@ -239,7 +250,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
       const storedTxsBefore = await env.relayServer.txStoreManager.getAll()
       await increaseTime(pendingTransactionTimeoutSeconds)
       const latestBlock = await env.web3.eth.getBlock('latest')
-      const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock.number, toNumber(latestBlock.timestamp))
+      const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock)
       // NOTE: this is needed for the 'repeated boosting' test
       for (const [originalTxHash, signedTransactionDetails] of allBoostedTransactions) {
         overrideParamsPerTx.set(signedTransactionDetails.transactionHash, overrideParamsPerTx.get(originalTxHash)!)
@@ -251,9 +262,9 @@ contract('Network Simulation for Relay Server', function (accounts) {
       for (let i = 0; i < storedTxsBefore.length; i++) {
         assert.equal(storedTxsBefore[i].attempts + 1, storedTxsAfter[i].attempts)
         if (i === fairlyPricedTransactionIndex) {
-          sinon.assert.calledWith(spyCalls[i], storedTxsBefore[i], sinon.match.any, sinon.match.any, storedTxsBefore[i].maxFeePerGas, storedTxsBefore[i].maxPriorityFeePerGas, sinon.match.any)
+          sinon.assert.calledWith(spyCalls[i], storedTxsBefore[i], sinon.match.any, storedTxsBefore[i].maxFeePerGas, storedTxsBefore[i].maxPriorityFeePerGas, sinon.match.any)
         } else {
-          sinon.assert.calledWith(spyCalls[i], storedTxsBefore[i], sinon.match.any, sinon.match.any, parseInt(expectedGasPriceAfterBoost), parseInt(expectedGasPriceAfterBoost), sinon.match.any)
+          sinon.assert.calledWith(spyCalls[i], storedTxsBefore[i], sinon.match.any, parseInt(expectedGasPriceAfterBoost), parseInt(expectedGasPriceAfterBoost), sinon.match.any)
         }
       }
       sinon.restore()

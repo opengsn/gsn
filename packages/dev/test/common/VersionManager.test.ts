@@ -1,6 +1,5 @@
 /* eslint-disable no-new */
-import { VersionsManager } from '@opengsn/common/dist/VersionsManager'
-require('source-map-support').install({ errorFormatterForce: true })
+import { VersionsManager } from '@opengsn/common'
 
 describe('VersionManager', function () {
   context('constructor', function () {

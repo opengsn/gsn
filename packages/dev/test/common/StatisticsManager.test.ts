@@ -1,12 +1,11 @@
 import { HttpProvider } from 'web3-core'
 
 import { StatisticsManager } from '@opengsn/common/dist/statistics/StatisticsManager'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
+import { HttpClient, HttpWrapper, toNumber } from '@opengsn/common'
+
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { TestPaymasterConfigurableMisbehaviorInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { evmMine } from '../TestUtils'
-import { toNumber } from '@opengsn/common'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
@@ -30,10 +29,7 @@ contract('StatisticsManager', function (accounts) {
     // create 3 relays
     await env.newServerInstance()
     const relayToUnregister = env.relayServer.managerAddress
-    await env.newServerInstance({
-      baseRelayFee: '77777777777', // 77.7 gwei
-      pctRelayFee: 66
-    })
+    await env.newServerInstance()
     await env.newServerInstance()
     let currentBlockNumber = await web3.eth.getBlockNumber()
     const block = await web3.eth.getBlock(currentBlockNumber)

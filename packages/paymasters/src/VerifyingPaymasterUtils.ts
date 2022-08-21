@@ -1,7 +1,6 @@
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest, ForwardRequest, RelayData } from '@opengsn/common'
 import { ecsign, keccak256, toRpcSig, PrefixedHexString } from 'ethereumjs-util'
-import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
-import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
+
 import abiCoder, { AbiCoder } from 'web3-eth-abi'
 
 const abi: AbiCoder = abiCoder as any
@@ -31,6 +30,6 @@ export function packForwardRequest (req: ForwardRequest): string {
 
 export function packRelayData (data: RelayData): string {
   return abi.encodeParameters(
-    ['uint256', 'uint256', 'uint256', 'uint256', 'address', 'address', 'bytes', 'uint256'],
-    [data.maxFeePerGas, data.maxPriorityFeePerGas, data.pctRelayFee, data.baseRelayFee, data.relayWorker, data.paymaster, data.paymasterData, data.clientId])
+    ['uint256', 'uint256', 'address', 'address', 'bytes', 'uint256'],
+    [data.maxFeePerGas, data.maxPriorityFeePerGas, data.relayWorker, data.paymaster, data.paymasterData, data.clientId])
 }

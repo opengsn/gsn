@@ -2,30 +2,36 @@ import Web3 from 'web3'
 import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import BN from 'bn.js'
+import { toChecksumAddress } from 'ethereumjs-util'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import {
+  ContractInteractor,
+  LoggerInterface,
+  constants,
+  defaultEnvironment,
+  ether,
+  toNumber
+} from '@opengsn/common'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { RegistrationManager } from '@opengsn/relay/dist/RegistrationManager'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 import { configureServer, ServerConfigParams, ServerDependencies } from '@opengsn/relay/dist/ServerConfigParams'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
-import { constants } from '@opengsn/common/dist/Constants'
 
-import { evmMine, revert, setNextBlockTimestamp, snapshot } from './TestUtils'
+import { deployHub, evmMine, evmMineMany, revert, setNextBlockTimestamp, snapshot } from './TestUtils'
 
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
-import { ether } from '@opengsn/common/dist/Utils'
+
 import sinon from 'sinon'
 import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { toNumber } from '@opengsn/common'
+import { expectEvent } from '@openzeppelin/test-helpers'
 
 const TestRelayHub = artifacts.require('TestRelayHub')
 const TestToken = artifacts.require('TestToken')
@@ -115,38 +121,43 @@ contract('RegistrationManager', function (accounts) {
       await assertRelayAdded(receipts, relayServer)
     })
 
+    const maxPageSize = Number.MAX_SAFE_INTEGER
+    let logger: LoggerInterface
+    let managerKeyManager: KeyManager
+    let txStoreManager: TxStoreManager
+    let serverWeb3provider: HttpProvider
+    let contractInteractor: ContractInteractor
+    let params: Partial<ServerConfigParams>
+    let serverDependencies: ServerDependencies
+
     it('should start again after restarting process', async () => {
-      const params: Partial<ServerConfigParams> = {
-        coldRestartLogsFromBlock: 1,
+      params = {
         relayHubAddress: env.relayHub.address,
         ownerAddress: env.relayOwner,
         url: LocalhostOne,
-        baseRelayFee: '0',
-        pctRelayFee: 0,
         gasPriceFactor: 1,
         runPaymasterReputations: false,
         checkInterval: 100
       }
-      const logger = createServerLogger('error', '', '')
-      const managerKeyManager = new KeyManager(1, serverWorkdirs.managerWorkdir)
+      logger = createServerLogger('error', '', '')
+      managerKeyManager = new KeyManager(1, serverWorkdirs.managerWorkdir)
       const workersKeyManager = new KeyManager(1, serverWorkdirs.workersWorkdir)
-      const txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir }, logger)
-      const serverWeb3provider = new Web3.providers.HttpProvider((web3.currentProvider as HttpProvider).host)
-      const maxPageSize = Number.MAX_SAFE_INTEGER
-      const contractInteractor = new ContractInteractor({
+      txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir }, logger)
+      serverWeb3provider = new Web3.providers.HttpProvider((web3.currentProvider as HttpProvider).host)
+      contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider: serverWeb3provider,
         logger,
         maxPageSize,
         deployment: {
           managerStakeTokenAddress: env.testToken.address,
-          paymasterAddress: env.paymaster.address
+          relayHubAddress: env.relayHub.address
         }
       })
       await contractInteractor.init()
       const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 
-      const serverDependencies: ServerDependencies = {
+      serverDependencies = {
         logger,
         txStoreManager,
         managerKeyManager,
@@ -161,52 +172,55 @@ contract('RegistrationManager', function (accounts) {
       await newRelayServer._worker(latestBlock)
       assert.equal(relayServer.isReady(), true, 'relay not ready?')
     })
-  })
 
-  // When running server after both staking & funding it
-  // Skipping this test: there is no way after OG-401 to stake for server without it running & calling 'setOwner'
-  // There is no point in artificially simulating this situation IMO
-  describe.skip('single step server initialization', function () {
-    beforeEach(async function () {
-      id = (await snapshot()).result
-    })
-
-    afterEach(async function () {
-      await revert(id)
-    })
-
-    let newServer: RelayServer
-    it('should initialize relay after staking and funding it', async function () {
-      await env.newServerInstance({}, undefined, unstakeDelay)
-      newServer = env.relayServer
-      await newServer.init()
-      assert.equal(newServer.registrationManager.ownerAddress, undefined)
-      await newServer.registrationManager.refreshStake()
-      assert.deepEqual(newServer.registrationManager.stakeRequired!.currentValue, oneEther)
-      assert.equal(newServer.registrationManager.ownerAddress, relayOwner, 'owner should be set after refreshing stake')
-
-      const expectedGasPrice = parseInt(await env.web3.eth.getGasPrice()) * newServer.config.gasPriceFactor
-      assert.equal(newServer.isReady(), false)
-      assert.equal(newServer.lastScannedBlock, 0)
-      const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
-      assert.equal(workerBalanceBefore.toString(), '0')
+    it('should call authorizeHubByManager if configured RelayHub address changed after restart', async function () {
+      const relayHubInstance = await deployHub(env.stakeManager.address, env.penalizer.address, constants.ZERO_ADDRESS, env.testToken.address, '1')
+      const newContractInteractor = new ContractInteractor({
+        environment: defaultEnvironment,
+        provider: serverWeb3provider,
+        logger,
+        maxPageSize,
+        deployment: {
+          managerStakeTokenAddress: env.testToken.address,
+          relayHubAddress: relayHubInstance.address
+        }
+      })
+      await newContractInteractor.init()
+      // cannot reuse worker as it will rightfully revert on "this worker has a manager"
+      const newWorkersKeyManager = new KeyManager(1)
+      const newServerDependencies =
+        Object.assign({}, serverDependencies, {
+          workersKeyManager: newWorkersKeyManager,
+          contractInteractor: newContractInteractor
+        })
+      const newParams = Object.assign({}, params, { relayHubAddress: relayHubInstance.address })
+      const transactionManager = new TransactionManager(newServerDependencies, configureServer(newParams))
+      const newRelayServer = new RelayServer(newParams, transactionManager, newServerDependencies)
+      const sentTransactions = await newRelayServer.init()
+      assert.equal(sentTransactions.length, 1)
+      await expectEvent.inTransaction(sentTransactions[0], env.stakeManager, 'HubAuthorized', {
+        relayManager: toChecksumAddress(newRelayServer.managerAddress),
+        relayHub: toChecksumAddress(relayHubInstance.address)
+      })
+      // worker will not send registrations for 10 blocks and these tests don't create enough transactions
+      await evmMineMany(11)
       let latestBlock = await env.web3.eth.getBlock('latest')
-      const receipts = await newServer._worker(latestBlock)
+      const registrationSentTransactions = await newRelayServer._worker(latestBlock)
+      assert.equal(registrationSentTransactions.length, 2)
+      await expectEvent.inTransaction(registrationSentTransactions[0], relayHubInstance, 'RelayWorkersAdded', {
+        relayManager: toChecksumAddress(newRelayServer.managerAddress),
+        newRelayWorkers: [toChecksumAddress(newWorkersKeyManager.getAddress(0))],
+        workersCount: 1
+      })
+      // @ts-ignore
+      await expectEvent.inTransaction(registrationSentTransactions[1], relayHubInstance._secretRegistrarInstance, 'RelayServerRegistered', {
+        relayManager: toChecksumAddress(newRelayServer.managerAddress),
+        relayHub: toChecksumAddress(relayHubInstance.address)
+      })
+      await evmMine()
       latestBlock = await env.web3.eth.getBlock('latest')
-      await newServer._worker(latestBlock)
-      assert.equal(newServer.lastScannedBlock, latestBlock.number + 1)
-      assert.equal(newServer.minMaxPriorityFeePerGas, expectedGasPrice)
-      assert.equal(newServer.isReady(), true, 'relay no ready?')
-      const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
-      assert.deepEqual(newServer.registrationManager.stakeRequired!.currentValue, oneEther)
-      assert.equal(newServer.registrationManager.ownerAddress, relayOwner)
-      assert.equal(workerBalanceAfter.toString(), newServer.config.workerTargetBalance.toString())
-      await assertRelayAdded(receipts, newServer)
-    })
-
-    after('txstore cleanup', async function () {
-      await newServer.transactionManager.txStoreManager.clearAll()
-      assert.deepEqual([], await newServer.transactionManager.txStoreManager.getAll())
+      await newRelayServer._worker(latestBlock)
+      assert.equal(newRelayServer.isReady(), true, 'relay not ready?')
     })
   })
 
@@ -231,14 +245,14 @@ contract('RegistrationManager', function (accounts) {
 
       block.number = 1000000
 
-      relayServer.config.baseRelayFee = (parseInt(relayServer.config.baseRelayFee) + 1).toString()
+      relayServer.config.url = relayServer.config.url + '1'
       transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
       latestBlock = await env.web3.eth.getBlock('latest')
       await relayServer._worker(latestBlock)
 
-      relayServer.config.pctRelayFee++
+      relayServer.config.url = relayServer.config.url + '1'
       transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
@@ -500,7 +514,7 @@ contract('RegistrationManager', function (accounts) {
         newServer.registrationManager.isHubAuthorized = true
         newServer.registrationManager.stakeRequired!.requiredValue = toBN(0)
         newServer.registrationManager.balanceRequired!.requiredValue = toBN(0)
-        await newServer.registrationManager.refreshStake()
+        await newServer.registrationManager.refreshStake(latestBlock.number, latestBlock.hash, toNumber(latestBlock.timestamp))
         assert.deepEqual(newServer.registrationManager.stakeRequired!.currentValue, oneEther)
         assert.equal(newServer.registrationManager.ownerAddress, relayOwner, 'owner should be set after refreshing stake')
       })
@@ -525,6 +539,7 @@ contract('RegistrationManager', function (accounts) {
     describe('RelayHub/StakeManager misconfiguration', function () {
       const errorMessage1 = 'Relay manager is staked on StakeManager but not on RelayHub.'
       const errorMessage2 = 'Minimum stake/minimum unstake delay/stake token misconfigured?'
+      let latestBlock: any
       beforeEach(async function () {
         id = (await snapshot()).result
         // await env.newServerInstance({}, undefined, unstakeDelay)
@@ -533,7 +548,7 @@ contract('RegistrationManager', function (accounts) {
         newServer = env.relayServer
         sinon.spy(newServer.logger, 'error')
         await env.fundServer()
-        const latestBlock = await env.web3.eth.getBlock('latest')
+        latestBlock = await env.web3.eth.getBlock('latest')
         await newServer._worker(latestBlock)
         newServer.registrationManager.isStakeLocked = true
         newServer.registrationManager.isHubAuthorized = true
@@ -547,7 +562,7 @@ contract('RegistrationManager', function (accounts) {
 
       it('should not attempt registration if unstake delay is too low on hub', async function () {
         await env.stakeAndAuthorizeHub(ether('1'), unstakeDelay - 1)
-        await newServer.registrationManager.refreshStake()
+        await newServer.registrationManager.refreshStake(latestBlock.number, latestBlock.hash, toNumber(latestBlock.timestamp))
         const receipts = await newServer.registrationManager.attemptRegistration(0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
         assert.equal(receipts.length, 0)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
@@ -556,7 +571,7 @@ contract('RegistrationManager', function (accounts) {
 
       it('should not attempt registration if stake amount is too low on hub', async function () {
         await env.stakeAndAuthorizeHub(ether('0.1'), unstakeDelay)
-        await newServer.registrationManager.refreshStake()
+        await newServer.registrationManager.refreshStake(latestBlock.number, latestBlock.hash, toNumber(latestBlock.timestamp))
         const receipts = await newServer.registrationManager.attemptRegistration(0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
         assert.equal(receipts.length, 0)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)
@@ -574,7 +589,7 @@ contract('RegistrationManager', function (accounts) {
         await env.stakeManager.authorizeHubByOwner(env.relayServer.managerAddress, env.relayHub.address, {
           from: env.relayOwner
         })
-        await newServer.registrationManager.refreshStake()
+        await newServer.registrationManager.refreshStake(latestBlock.number, latestBlock.hash, toNumber(latestBlock.timestamp))
         const receipts = await newServer.registrationManager.attemptRegistration(0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
         assert.equal(receipts.length, 0)
         expect(newServer.logger.error).to.have.been.calledWith(errorMessage1)

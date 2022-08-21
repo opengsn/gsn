@@ -7,8 +7,8 @@ import terminalLink from 'terminal-link'
 import { PrefixedHexString } from 'ethereumjs-util'
 import * as asciichart from 'asciichart'
 
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
-import { IntString, ObjectMap, SemVerString } from '@opengsn/common/dist/types/Aliases'
+import { GSNContractsDeployment, IntString, ObjectMap, SemVerString } from '@opengsn/common'
+
 import { CommandLineStatisticsPresenterConfig } from './CommandLineStatisticsPresenterConfig'
 
 import {
@@ -18,7 +18,6 @@ import {
   RelayHubConstructorParams,
   RelayHubEvents,
   RelayServerInfo,
-  RelayServerRegistrationInfo,
   RelayServerStakeStatus
 } from '@opengsn/common/dist/types/GSNStatistics'
 
@@ -116,11 +115,10 @@ export class CommandLineStatisticsPresenter {
           : relayServerInfo.registrationInfo.pingResult.error?.toString().substr(0, 20) ??
           'unknown'
       const addressesAndBalances = this.createAddressesAndBalancesSubTable(relayServerInfo)
-      const fee = this.createFeeSubTable(relayServerInfo.registrationInfo)
       const authorizedHubs = this.createAuthorizedHubsSubTable(relayServerInfo)
       const recentChart = this.createRecentTransactionsChart(currentBlock, relayServerInfo.relayHubEvents.transactionRelayedEvents, relayServerInfo.relayHubEvents.transactionRejectedEvents)
       const registrationRenewals = this.createRegistrationRenewalsSubTable(currentBlock, relayServerInfo.relayHubEvents.relayRegisteredEvents)
-      table.push([host, pingStatus, addressesAndBalances, fee, authorizedHubs, recentChart, registrationRenewals])
+      table.push([host, pingStatus, addressesAndBalances, authorizedHubs, recentChart, registrationRenewals])
     }
     return table.toString()
   }
@@ -156,12 +154,6 @@ export class CommandLineStatisticsPresenter {
     table2.push(['RelayHub earnings ', relayHubEarningsBalance])
     table2.push(['Deposited Stake', totalDepositedStake])
     return table.toString() + '\n' + table2.toString()
-  }
-
-  createFeeSubTable (registrationInfo: RelayServerRegistrationInfo): string {
-    const table = new Table({ head: ['Base', 'Percent'] })
-    table.push([this.ethValueStr(registrationInfo.lastRegisteredBaseFee, 'gwei'), `${registrationInfo.lastRegisteredPctFee}%`])
-    return table.toString()
   }
 
   createAuthorizedHubsSubTable (relayServerInfo: RelayServerInfo): string {

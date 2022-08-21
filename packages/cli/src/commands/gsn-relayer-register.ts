@@ -3,7 +3,7 @@ import { ether } from '@opengsn/common'
 import { CommandsLogic, RegisterOptions } from '../CommandsLogic'
 import { getNetworkUrl, gsnCommander, getMnemonic } from '../utils'
 import { toWei } from 'web3-utils'
-import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 
 const commander = gsnCommander(['n', 'f', 'm', 'g'])
   .option('--relayUrl <url>', 'url to advertise the relayer', 'http://localhost:8090')
@@ -34,7 +34,7 @@ const commander = gsnCommander(['n', 'f', 'm', 'g'])
   const logger = createCommandsLogger(commander.loglevel)
   const logic = await new CommandsLogic(host, logger, {
     managerStakeTokenAddress: commander.token
-  }, mnemonic).init()
+  }, mnemonic, commander.derivationPath, commander.derivationIndex, commander.privateKeyHex).init()
   const registerOptions: RegisterOptions = {
     sleepMs: parseInt(commander.sleep),
     sleepCount: parseInt(commander.sleepCount),

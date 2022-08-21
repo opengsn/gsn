@@ -11,6 +11,7 @@ import { HardhatUserConfig } from 'hardhat/config'
 import { NetworkUserConfig } from 'hardhat/src/types/config'
 import path from 'path'
 import chalk from 'chalk'
+import './src/exportTask'
 
 const mnemonicFileName = process.env.MNEMONIC_FILE
 let mnemonic = 'test '.repeat(11) + 'junk'
@@ -73,6 +74,7 @@ const config: HardhatUserConfig = {
     aox: getNetwork('https://arbitrum.xdaichain.com/'),
 
     goerli: getInfuraNetwork('goerli'),
+    ropsten: getInfuraNetwork('ropsten'),
     kovan: getInfuraNetwork('kovan'),
     fuji: getNetwork('https://api.avax-test.network/ext/bc/C/rpc'),
     mumbai: getNetwork('https://rpc-mumbai.maticvigil.com'),

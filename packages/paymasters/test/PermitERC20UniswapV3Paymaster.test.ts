@@ -9,8 +9,7 @@ import {
   SampleRecipientInstance,
   TestHubInstance
 } from '../types/truffle-contracts'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { constants } from '@opengsn/common/dist/Constants'
+
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
 import {
   CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS,
@@ -37,7 +36,7 @@ import {
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { removeHexPrefix } from '@opengsn/common/dist'
+import { removeHexPrefix, constants, RelayRequest } from '@opengsn/common/dist'
 import {
   DAI_ETH_POOL_FEE,
   detectMainnet, ETHER, GAS_PRICE,
@@ -126,8 +125,6 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
         relayWorker: relay,
         paymaster: permitPaymaster.address,
         forwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
-        pctRelayFee: '0',
-        baseRelayFee: '0',
         transactionCalldataGasUsed: '0',
         maxFeePerGas: GAS_PRICE,
         maxPriorityFeePerGas: GAS_PRICE,

@@ -1,13 +1,14 @@
 {
   "name": "@opengsn/paymasters",
   "license": "GPL-3.0-only",
-  "version": "3.0.0-alpha.6",
+  "version": "3.0.0-beta.1",
   "scripts": {
     "truffle-compile": "truffle compile --compile-all",
     "typechain-generate": "yarn truffle-compile && typechain --target truffle-v5 './build/contracts/**/*.json'",
     "tsc": "tsc",
     "lint": "yarn run lint:js && yarn run lint:sol",
     "lint:js": "eslint -f unix .",
+    "lint-fix": "eslint -f unix . --fix",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
     "test": "yarn tsc && yarn truffle-test-compile-all",
     "test-fork": "truffle test test/PermitERC20UniswapV3Paymaster.test.ts test/TokenPaymasterProvider.test.ts --compile-all --network npmtest",
@@ -28,23 +29,29 @@
     "access": "public"
   },
   "dependencies": {
-    "@opengsn/common": "^3.0.0-alpha.6",
-    "@opengsn/contracts": "^3.0.0-alpha.6",
-    "@opengsn/dev": "^3.0.0-alpha.6",
-    "@opengsn/provider": "^3.0.0-alpha.6",
+    "@metamask/eth-sig-util": "^4.0.1",
+    "@opengsn/common": "^3.0.0-beta.1",
+    "@opengsn/contracts": "^3.0.0-beta.1",
+    "@opengsn/dev": "^3.0.0-beta.1",
+    "@opengsn/provider": "^3.0.0-beta.1",
     "@openzeppelin/contracts": "^4.2.0",
     "@uniswap/v3-periphery": "^1.1.1",
-    "ethereumjs-util": "^7.1.0"
+    "ethereumjs-util": "^7.1.0",
+    "web3": "^1.7.4",
+    "web3-core-helpers": "^1.7.4",
+    "web3-eth-abi": "^1.7.4",
+    "web3-eth-contract": "^1.7.4",
+    "web3-utils": "^1.7.4"
   },
   "devDependencies": {
-    "@ethereumjs/tx": "^3.2.0",
-    "@typechain/truffle-v5": "^6.0.0",
-    "@types/chai": "^4.2.12",
+    "@opengsn/cli": "^3.0.0-beta.1",
+    "@openzeppelin/test-helpers": "^0.5.15",
     "@types/ethereumjs-util": "^6.1.0",
-    "@types/mocha": "^8.2.0",
     "@types/web3": "1.2.2",
-    "ganache-cli": "^6.12.2",
+    "bn.js": "^5.2.1",
     "ts-node": "8.6.2",
-    "solhint": "^3.3.2"
+    "solhint": "^3.3.2",
+    "ts-node": "8.6.2",
+    "web3-core": "^1.7.4"
   }
 }

@@ -3,31 +3,39 @@ import BN from 'bn.js'
 import chai from 'chai'
 import { toBN } from 'web3-utils'
 
-import { decodeRevertReason, getEip712Signature, removeHexPrefix } from '@opengsn/common/dist/Utils'
-import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import {
+  RelayCallStatusCodes,
+  RelayRequest,
+  TypedRequestData,
+  cloneRelayRequest,
+  constants,
+  decodeRevertReason,
+  defaultEnvironment,
+  getEip712Signature,
+  registerForwarderForGsn,
+  removeHexPrefix,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
 
 import {
-  RelayHubInstance,
-  PenalizerInstance,
-  StakeManagerInstance,
-  TestRecipientInstance,
   ForwarderInstance,
-  TestPaymasterEverythingAcceptedInstance,
+  GatewayForwarderInstance,
+  PenalizerInstance,
+  RelayHubInstance,
+  StakeManagerInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
-  GatewayForwarderInstance, TestTokenInstance
+  TestPaymasterEverythingAcceptedInstance,
+  TestPaymasterStoreContextInstance,
+  TestRecipientInstance,
+  TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub, encodeRevertReason, revert, snapshot } from './TestUtils'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
 
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
-import { constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
-const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -41,8 +49,6 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectWorker]) { // eslint-disable-line no-unused-vars
-  const baseRelayFee = '10000'
-  const pctRelayFee = '10'
   const gasPrice = 1e9.toString()
   const maxFeePerGas = 1e9.toString()
   const maxPriorityFeePerGas = 1e9.toString()
@@ -51,16 +57,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
   let sharedRelayRequestData: RelayRequest
   const paymasterData = '0x'
   const clientId = '1'
-
-  const RelayCallStatusCodes = {
-    OK: new BN('0'),
-    RelayedCallFailed: new BN('1'),
-    RejectedByPreRelayed: new BN('2'),
-    RejectedByForwarder: new BN('3'),
-    RejectedByRecipientRevert: new BN('4'),
-    PostRelayedFailed: new BN('5'),
-    PaymasterBalanceChanged: new BN('6')
-  }
 
   const chainId = defaultEnvironment.chainId
   const oneEther = ether('1')
@@ -165,7 +161,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
       await testDeposit(other, paymaster, amount)
 
       const { tx } = await paymasterContract.withdrawRelayHubDepositTo(amount.divn(2), dest, { from: paymasterOwner })
-      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+      await expectEvent.inTransaction(tx, relayHubInstance, 'Withdrawn', {
         account: paymaster,
         dest,
         amount: amount.divn(2)
@@ -177,7 +173,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
       await testDeposit(other, paymaster, amount)
 
       const { tx } = await paymasterContract.withdrawRelayHubDepositTo(amount, dest, { from: paymasterOwner })
-      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+      await expectEvent.inTransaction(tx, relayHubInstance, 'Withdrawn', {
         account: paymaster,
         dest,
         amount
@@ -203,12 +199,12 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         { from: paymasterOwner })
       const balanceAfter = await testRelayHubInstance.balanceOf(paymasterOwner)
       assert.equal(balanceAfter.toString(), balanceBefore.sub(toBN(withdrawAmount1)).sub(toBN(withdrawAmount2)).toString())
-      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+      await expectEvent.inTransaction(tx, testRelayHubInstance, 'Withdrawn', {
         account: paymasterOwner,
         dest: other,
         amount: withdrawAmount1
       })
-      await expectEvent.inTransaction(tx, RelayHub, 'Withdrawn', {
+      await expectEvent.inTransaction(tx, testRelayHubInstance, 'Withdrawn', {
         account: paymasterOwner,
         dest: dest,
         amount: withdrawAmount2
@@ -244,8 +240,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           validUntilTime: '0'
         },
         relayData: {
-          pctRelayFee,
-          baseRelayFee,
           transactionCalldataGasUsed: 7e6.toString(),
           maxFeePerGas,
           maxPriorityFeePerGas,
@@ -414,7 +408,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         encodedFunction = recipientContract.contract.methods.emitMessage(message).encodeABI()
 
         await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
-        await relayRegistrar.registerRelayServer(relayHub, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar(url), { from: relayManager })
+        await relayRegistrar.registerRelayServer(relayHub, splitRelayUrlForRegistrar(url), { from: relayManager })
         relayRequest = cloneRelayRequest(sharedRelayRequestData)
         relayRequest.request.data = encodedFunction
         const dataToSign = new TypedRequestData(
@@ -474,9 +468,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           function clearRelayRequest (relayRequest: RelayRequest): RelayRequest {
             const clone = cloneRelayRequest(relayRequest)
             clone.relayData.relayWorker = constants.ZERO_ADDRESS
-            clone.relayData.pctRelayFee = ''
-            clone.relayData.baseRelayFee = ''
-            clone.relayData.transactionCalldataGasUsed = ''
+            clone.relayData.transactionCalldataGasUsed = '0'
             return clone
           }
 
@@ -491,13 +483,13 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
                 gas: 7e6,
                 gasPrice: 1e9
               })
-            assert.equal(relayCallView.returnValue, null)
+            assert.equal(relayCallView.returnValue, web3.eth.abi.encodeParameter('string', 'emitMessage return value'))
             assert.equal(relayCallView.paymasterAccepted, true)
           })
 
           it('should return failure if forwarder rejects for incorrect nonce', async function () {
             const relayRequestWrongNonce = clearRelayRequest(relayRequest)
-            relayRequestWrongNonce.request.nonce = (parseInt(relayRequestWrongNonce.request.nonce) - 1).toString()
+            relayRequestWrongNonce.request.nonce = (parseInt(relayRequestWrongNonce.request.nonce) + 77).toString()
             const relayCallView =
               await relayHubInstance.contract.methods
                 .relayCall(10e6, relayRequestWrongNonce, '0x', '0x')
@@ -540,7 +532,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
       context('with funded paymaster', function () {
         let signature
 
-        let paymasterWithContext
+        let paymasterWithContext: TestPaymasterStoreContextInstance
         let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
 
         let relayRequestPaymasterWithContext: RelayRequest
@@ -627,7 +619,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           const nonceAfter = await forwarderInstance.getNonce(senderAddress)
           assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
 
-          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+          await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted', {
             message,
             realSender: senderAddress,
             msgSender: forwarder,
@@ -670,7 +662,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           const nonceAfter = await forwarderInstance.getNonce(senderAddress)
           assert.equal(nonceBefore.addn(1).toNumber(), nonceAfter.toNumber())
 
-          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+          await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted', {
             message,
             realSender: senderAddress,
             msgSender: forwarder,
@@ -693,7 +685,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             gas,
             gasPrice
           })
-          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted')
+          await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted')
 
           const ret = await relayHubInstance.relayCall(10e6, relayRequest, signatureWithPermissivePaymaster, '0x', {
             from: relayWorker,
@@ -722,7 +714,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             gas,
             gasPrice
           })
-          await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+          await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted', {
             message: messageWithNoParams,
             realSender: senderAddress,
             msgSender: forwarder,
@@ -767,7 +759,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               gasPrice
             })
 
-          await expectEvent.inTransaction(tx, TestPaymasterStoreContext, 'SampleRecipientPostCallWithValues', {
+          await expectEvent.inTransaction(tx, paymasterWithContext, 'SampleRecipientPostCallWithValues', {
             context: 'context passed from preRelayedCall to postRelayedCall'
           })
         })
@@ -814,8 +806,6 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             const maxPossibleCharge = (await relayHubInstance.calculateCharge(gasLimit, {
               maxFeePerGas,
               maxPriorityFeePerGas,
-              pctRelayFee,
-              baseRelayFee,
               transactionCalldataGasUsed: 7e6.toString(),
               relayWorker,
               forwarder,
@@ -823,7 +813,8 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               paymasterData: '0x',
               clientId: '1'
             })).toNumber()
-            await paymaster2.deposit({ value: (maxPossibleCharge - 1).toString() }) // TODO: replace with correct margin calculation
+            const value = (maxPossibleCharge - 1).toString()
+            await paymaster2.deposit({ value }) // TODO: replace with correct margin calculation
 
             const relayRequestPaymaster2 = cloneRelayRequest(relayRequest)
             relayRequestPaymaster2.relayData.paymaster = paymaster2.address
@@ -1005,7 +996,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               from: batchGateway,
               gas
             })
-            await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+            await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted', {
               message: 'Method with no parameters'
             })
           })
@@ -1048,7 +1039,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               from: batchGateway,
               gas
             })
-            await expectEvent.inTransaction(tx, TestRecipient, 'SampleRecipientEmitted', {
+            await expectEvent.inTransaction(tx, recipientContract, 'SampleRecipientEmitted', {
               message: 'Method with no parameters',
               realSender: senderAddress,
               msgSender: gatewayForwarder.address,

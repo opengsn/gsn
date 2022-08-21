@@ -5,9 +5,19 @@ import { HttpProvider } from 'web3-core'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
 
-import { getEip712Signature } from '@opengsn/common/dist/Utils'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import {
+  ContractInteractor,
+  ForwardRequest,
+  GSNContractsDeployment,
+  RelayData,
+  RelayRequest,
+  TypedRequestData,
+  constants,
+  defaultEnvironment,
+  getEip712Signature,
+  registerForwarderForGsn,
+  splitRelayUrlForRegistrar
+} from '@opengsn/common'
 
 import {
   RelayHubInstance,
@@ -17,12 +27,8 @@ import {
   ForwarderInstance,
   TestPaymasterConfigurableMisbehaviorInstance, RelayRegistrarInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { constants, ContractInteractor, GSNContractsDeployment, splitRelayUrlForRegistrar } from '@opengsn/common'
-import { ForwardRequest } from '@opengsn/common/dist/EIP712/ForwardRequest'
-import { RelayData } from '@opengsn/common/dist/EIP712/RelayData'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { deployHub, encodeRevertReason } from './TestUtils'
 
@@ -126,9 +132,6 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
   let paymaster: string
   let forwarder: string
 
-  const baseRelayFee = '0'
-  const pctRelayFee = '0'
-
   before(async function () {
     const stake = ether('2')
     testToken = await TestToken.new()
@@ -160,7 +163,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     await stakeManager.authorizeHubByOwner(relayManager, relayHub, { from: relayOwner })
 
     await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayRegistrar.registerRelayServer(relayHub, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar('url'), { from: relayManager })
+    await relayRegistrar.registerRelayServer(relayHub, splitRelayUrlForRegistrar('url'), { from: relayManager })
   })
 
   describe('paymaster commitments', function () {
@@ -194,8 +197,6 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
           validUntilTime: '0'
         },
         relayData: {
-          pctRelayFee,
-          baseRelayFee,
           transactionCalldataGasUsed: '0',
           maxFeePerGas: '1',
           maxPriorityFeePerGas: '1',
@@ -270,7 +271,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1062)
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 998)
       const relayCallParams: [number, RelayRequest, string, string, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       // @ts-ignore
@@ -298,7 +299,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1062)
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 998)
       const relayCallParams: [number, RelayRequest, string, string, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       // @ts-ignore

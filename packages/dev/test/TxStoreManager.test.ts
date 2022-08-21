@@ -2,7 +2,7 @@ import fs from 'fs'
 
 import { ServerAction, StoredTransaction } from '@opengsn/relay/dist/StoredTransaction'
 import { TXSTORE_FILENAME, TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { toHex } from 'web3-utils'
 import { Logger } from 'winston'
 import sinon from 'sinon'
@@ -10,7 +10,7 @@ import { serverDefaultConfiguration } from '@opengsn/relay/dist/ServerConfigPara
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import sinonChai from 'sinon-chai'
-import { sleep } from '@opengsn/common/dist'
+import { sleep } from '@opengsn/common'
 
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
@@ -57,11 +57,18 @@ contract('TxStoreManager', function (accounts) {
       value: toHex(1e18),
       txId: '123456',
       serverAction: ServerAction.VALUE_TRANSFER,
-      creationBlockNumber: 0,
-      creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      creationBlockTimestamp: 0,
-      minedBlockNumber: 0,
-      attempts: 1
+      creationBlock: {
+        hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        number: 0,
+        timestamp: 0
+      },
+      minedBlock: {
+        hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        number: 10,
+        timestamp: 100
+      },
+      attempts: 1,
+      rawSerializedTx: '0xdeadbeef'
     }
     tx2 = {
       from: '',
@@ -74,11 +81,18 @@ contract('TxStoreManager', function (accounts) {
       value: toHex(1e18),
       txId: '1234567',
       serverAction: ServerAction.VALUE_TRANSFER,
-      creationBlockNumber: 0,
-      creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      creationBlockTimestamp: 0,
-      minedBlockNumber: 0,
-      attempts: 1
+      creationBlock: {
+        hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        number: 0,
+        timestamp: 0
+      },
+      minedBlock: {
+        hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        number: 20,
+        timestamp: 200
+      },
+      attempts: 1,
+      rawSerializedTx: '0xdeadbeef'
     }
     tx3 =
       {
@@ -92,11 +106,18 @@ contract('TxStoreManager', function (accounts) {
         value: toHex(1e18),
         txId: '12345678',
         serverAction: ServerAction.VALUE_TRANSFER,
-        creationBlockNumber: 0,
-        creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-        creationBlockTimestamp: 0,
-        minedBlockNumber: 0,
-        attempts: 1
+        creationBlock: {
+          hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+          number: 0,
+          timestamp: 0
+        },
+        minedBlock: {
+          hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+          number: 30,
+          timestamp: 300
+        },
+        attempts: 1,
+        rawSerializedTx: '0xdeadbeef'
       }
   })
 
@@ -114,7 +135,7 @@ contract('TxStoreManager', function (accounts) {
     assert.equal(tx.txId, txByNonce.txId)
   })
 
-  it('should remove txs until nonce', async function () {
+  it('should remove txs until block and time', async function () {
     await txmanager.putTx(tx2)
     await txmanager.putTx(tx3)
     let txByNonce = await txmanager.getTxByNonce(tx.from, tx.nonce)
@@ -124,7 +145,7 @@ contract('TxStoreManager', function (accounts) {
     let tx3ByNonce = await txmanager.getTxByNonce(tx.from, tx3.nonce)
     assert.equal(tx3.txId, tx3ByNonce.txId)
     assert.deepEqual(3, (await txmanager.getAll()).length)
-    await txmanager.removeTxsUntilNonce(tx.from, tx2.nonce)
+    await txmanager.removeArchivedTransactions(20, 200)
     txByNonce = await txmanager.getTxByNonce(tx.from, tx.nonce)
     assert.equal(null, txByNonce)
     tx2ByNonce = await txmanager.getTxByNonce(tx.from, tx2.nonce)
@@ -170,12 +191,15 @@ contract('TxStoreManager', function (accounts) {
     assert.equal(9, linesCount)
     const clock = sinon.useFakeTimers(Date.now())
     try {
-      txmanager = new TxStoreManager({ workdir, autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval }, logger)
+      txmanager = new TxStoreManager({
+        workdir,
+        autoCompactionInterval: serverDefaultConfiguration.dbAutoCompactionInterval
+      }, logger)
       // @ts-ignore
-      sinon.spy(txmanager.txstore.persistence, 'compactDatafile')
+      sinon.spy(txmanager.txstore, 'compactDatafile')
       await clock.tickAsync(serverDefaultConfiguration.dbAutoCompactionInterval)
       // @ts-ignore
-      expect(txmanager.txstore.persistence.compactDatafile).to.have.been.calledOnce
+      expect(txmanager.txstore.compactDatafile).to.have.been.calledOnce
       clock.restore()
       await sleep(500)
       linesCount = (fs.readFileSync(txStoreFilePath, 'utf8')).split('\n').length

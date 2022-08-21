@@ -1,0 +1,9 @@
+ports:
+- port: 8545
+  visibility: public
+
+tasks:
+  - name: setup
+    init: |
+      yarn
+      yarn preprocess

@@ -1,5 +1,6 @@
-import { Address } from '@opengsn/common/dist/types/Aliases'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import { Mutex } from 'async-mutex'
+import { Address, LoggerInterface } from '@opengsn/common'
+
 import { ReputationStoreManager } from './ReputationStoreManager'
 import { ReputationChange } from './ReputationEntry'
 
@@ -55,6 +56,7 @@ export class ReputationManager {
   config: ReputationManagerConfiguration
   reputationStoreManager: ReputationStoreManager
   logger: LoggerInterface
+  mutex = new Mutex()
 
   constructor (reputationStoreManager: ReputationStoreManager, logger: LoggerInterface, partialConfig: Partial<ReputationManagerConfiguration>) {
     this.config = resolveReputationManagerConfiguration(partialConfig)
@@ -63,25 +65,30 @@ export class ReputationManager {
   }
 
   async getPaymasterStatus (paymaster: Address, currentBlockNumber: number): Promise<PaymasterStatus> {
-    const entry =
-      await this.reputationStoreManager.getEntry(paymaster) ??
-      await this.reputationStoreManager.createEntry(paymaster, this.config.initialReputation)
-    if (entry.reputation <= this.config.blockReputation) {
-      return PaymasterStatus.BLOCKED
-    }
-    if (entry.abuseStartedBlock !== 0) {
-      if (currentBlockNumber - entry.abuseStartedBlock <= this.config.abuseTimeWindowBlocks) {
-        return PaymasterStatus.ABUSED
-      } else {
-        await this.reputationStoreManager.clearAbuseFlag(paymaster, this.config.abuseTimeoutReputation)
+    const releaseMutex = await this.mutex.acquire()
+    try {
+      const entry =
+        await this.reputationStoreManager.getEntry(paymaster) ??
+        await this.reputationStoreManager.createEntry(paymaster, this.config.initialReputation)
+      if (entry.reputation <= this.config.blockReputation) {
+        return PaymasterStatus.BLOCKED
       }
+      if (entry.abuseStartedBlock !== 0) {
+        if (currentBlockNumber - entry.abuseStartedBlock <= this.config.abuseTimeWindowBlocks) {
+          return PaymasterStatus.ABUSED
+        } else {
+          await this.reputationStoreManager.clearAbuseFlag(paymaster, this.config.abuseTimeoutReputation)
+        }
+      }
+      if (
+        entry.reputation < this.config.throttleReputation &&
+        Date.now() - entry.lastAcceptedRelayRequestTs <= this.config.throttleDelayMs) {
+        return PaymasterStatus.THROTTLED
+      }
+      return PaymasterStatus.GOOD
+    } finally {
+      releaseMutex()
     }
-    if (
-      entry.reputation < this.config.throttleReputation &&
-      Date.now() - entry.lastAcceptedRelayRequestTs <= this.config.throttleDelayMs) {
-      return PaymasterStatus.THROTTLED
-    }
-    return PaymasterStatus.GOOD
   }
 
   async onRelayRequestAccepted (paymaster: Address): Promise<void> {

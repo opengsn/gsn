@@ -1,17 +1,14 @@
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { evmMine, evmMineMany } from './TestUtils'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+import { ContractInteractor, LoggerInterface, GSNContractsDeployment, defaultEnvironment } from '@opengsn/common'
 import { HttpProvider } from 'web3-core'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
-import { defaultEnvironment } from '@opengsn/common'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
-  const callsPerStateRefresh = 13
+  const callsPerStateRefresh = 17
   const callsPerBlock = 0
   const callsPerTransaction = 12
 

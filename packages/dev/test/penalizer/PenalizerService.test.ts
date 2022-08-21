@@ -3,11 +3,8 @@ import { Transaction } from '@ethereumjs/tx'
 import { toBN } from 'web3-utils'
 
 import { PenalizerDependencies, PenalizerService } from '@opengsn/relay/dist/penalizer/PenalizerService'
-import { AuditRequest } from '@opengsn/common/dist/types/AuditRequest'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
-
-import { constants } from '@opengsn/common/dist/Constants'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { AuditRequest, constants, Address } from '@opengsn/common'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { MockTxByNonceService } from './MockTxByNonceService'

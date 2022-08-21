@@ -10,7 +10,7 @@ import {
   TestTokenInstance,
   TestUniswapInstance,
   TokenPaymasterInstance
-} from '@opengsn/paymasters/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import {
   ForwarderInstance,
   PenalizerInstance,
@@ -18,9 +18,8 @@ import {
   StakeManagerInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
-import { RelayRequest, cloneRelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
+import { RelayRequest, cloneRelayRequest, defaultEnvironment, decodeRevertReason, getEip712Signature, constants } from '@opengsn/common'
 import { calculatePostGas, deployTestHub, mergeRelayRequest, registerAsRelayServer, revertReason } from './TestUtils'
-import { defaultEnvironment, decodeRevertReason, getEip712Signature, constants } from '@opengsn/common'
 
 import Web3 from 'web3'
 import { toWei } from 'web3-utils'
@@ -36,7 +35,7 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const TestProxy = artifacts.require('TestProxy')
 
-export const transferErc20Error = '\'ERC20: insufficient allowance\' -- Reason given: ERC20: insufficient allowance.'
+export const transferErc20Error = /ERC20: insufficient allowance/
 
 // TODO: this test recreates GSN manually. Use GSN tools to do it instead.
 contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) => {
@@ -91,8 +90,6 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
         relayWorker: relay,
         paymaster: paymaster.address,
         forwarder: forwarder.address,
-        pctRelayFee: '1',
-        baseRelayFee: '0',
         transactionCalldataGasUsed: '0',
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: gasPrice,
@@ -142,13 +139,13 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       it('should reject if unknown paymasterData', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: '0x1234' })
         const signature = await getEip712Signature(web3, new TypedRequestData(1, forwarder.address, req))
-        assert.equal(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), '\'paymasterData: invalid length for Uniswap v1 exchange address\' -- Reason given: paymasterData: invalid length for Uniswap v1 exchange address.')
+        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /paymasterData: invalid length for Uniswap v1 exchange address/)
       })
 
       it('should reject if unsupported uniswap in paymasterData', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', nonUniswap) })
         const signature = await getEip712Signature(web3, new TypedRequestData(1, forwarder.address, req))
-        assert.equal(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), '\'unsupported token uniswap\' -- Reason given: unsupported token uniswap.')
+        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /unsupported token uniswap/)
       })
     })
 
@@ -160,7 +157,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
 
       it('should reject if no token approval', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
-        assert.equal(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), transferErc20Error)
+        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), transferErc20Error)
       })
 
       context('with token approved for paymaster', function () {
@@ -227,8 +224,6 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       _relayRequest.request.nonce = (await forwarder.getNonce(from)).toString()
       _relayRequest.relayData.maxFeePerGas = 1e9.toString()
       _relayRequest.relayData.maxPriorityFeePerGas = 1e9.toString()
-      _relayRequest.relayData.pctRelayFee = '0'
-      _relayRequest.relayData.baseRelayFee = '0'
       _relayRequest.relayData.paymasterData = web3.eth.abi.encodeParameter('address', uniswap.address)
 
       // note that by default, ganache is buggy: getChainId returns 1337 but on-chain "chainid" returns 1.

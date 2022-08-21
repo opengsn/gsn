@@ -5,8 +5,7 @@ import { evmMineMany, revert, snapshot } from './TestUtils'
 import BN from 'bn.js'
 
 import { StakeManagerInstance, TestTokenInstance } from '@opengsn/contracts/types/truffle-contracts'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { constants, toNumber } from '@opengsn/common'
+import { defaultEnvironment, constants, toNumber } from '@opengsn/common'
 
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 
@@ -36,14 +35,14 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
         from: owner
       })
 
-      expectEvent.inTransaction(tx, StakeManager, 'StakeAdded', {
+      await expectEvent.inTransaction(tx, stakeManager, 'StakeAdded', {
         relayManager,
         owner,
         stake: initialStake,
         unstakeDelay: initialUnstakeDelay
       })
 
-      await expectEvent.inTransaction(tx, TestToken, 'Transfer', {
+      await expectEvent.inTransaction(tx, testToken, 'Transfer', {
         from: owner,
         to: stakeManager.address,
         value: initialStake
@@ -483,7 +482,7 @@ contract('StakeManager', function ([burnAddress, relayManager, anyRelayHub, owne
 
     it('should allow owner to change burn address', async function () {
       const { tx } = await stakeManager.setBurnAddress(burnAddress)
-      await expectEvent.inTransaction(tx, StakeManager, 'BurnAddressSet', {
+      await expectEvent.inTransaction(tx, stakeManager, 'BurnAddressSet', {
         burnAddress
       })
     })

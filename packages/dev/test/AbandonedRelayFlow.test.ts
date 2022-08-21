@@ -15,8 +15,6 @@ const devAddress = '0x9999999999999999999999999999999999999999'
 
 contract('Abandoned Relay Flow', function ([_, relayManager, relayOwner, relayWorker]: string[]) {
   const oneEther = ether('1')
-  const baseRelayFee = '10000'
-  const pctRelayFee = '10'
   const url = 'http://relay.com'
 
   let relayHubInstance: RelayHubInstance
@@ -53,7 +51,7 @@ contract('Abandoned Relay Flow', function ([_, relayManager, relayOwner, relayWo
     relayRegistrar = await RelayRegistrar.at(await relayHubInstance.getRelayRegistrar())
     await stakeManager.authorizeHubByOwner(relayManager, relayHubInstance.address, { from: relayOwner })
     await relayHubInstance.addRelayWorkers([relayWorker], { from: relayManager })
-    await relayRegistrar.registerRelayServer(relayHubInstance.address, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar(url), { from: relayManager })
+    await relayRegistrar.registerRelayServer(relayHubInstance.address, splitRelayUrlForRegistrar(url), { from: relayManager })
   })
 
   it('should not allow to mark a relay server with a recent keepalive transaction as abandoned', async function () {
@@ -90,7 +88,7 @@ contract('Abandoned Relay Flow', function ([_, relayManager, relayOwner, relayWo
 
   it('should allow relay registrar to update relay keepalive timestamp on the StakeManager', async function () {
     const keepaliveTimeBefore = (await stakeManager.getStakeInfo(relayManager))[0].keepaliveTime
-    const res = await relayRegistrar.registerRelayServer(relayHubInstance.address, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar(url), { from: relayManager })
+    const res = await relayRegistrar.registerRelayServer(relayHubInstance.address, splitRelayUrlForRegistrar(url), { from: relayManager })
     const blockTimestamp = await getBlockTimestamp(res)
     const keepaliveTimeAfter = (await stakeManager.getStakeInfo(relayManager))[0].keepaliveTime
     assert.notEqual(keepaliveTimeBefore.toString(), blockTimestamp.toString())

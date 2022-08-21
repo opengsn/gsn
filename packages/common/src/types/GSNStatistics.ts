@@ -54,8 +54,6 @@ export interface StakeMangerEvents {
 
 export interface RelayServerRegistrationInfo {
   lastRegisteredUrl: string
-  lastRegisteredBaseFee: IntString
-  lastRegisteredPctFee: IntString
   pingResult: PingResult
   registeredWorkers: Address[]
   workerBalances: ObjectMap<IntString>

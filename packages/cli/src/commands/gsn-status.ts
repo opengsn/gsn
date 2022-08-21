@@ -1,20 +1,16 @@
 import Web3 from 'web3'
 import clear from 'clear'
 
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+import { ContractInteractor, HttpClient, HttpWrapper, GSNContractsDeployment, defaultEnvironment } from '@opengsn/common'
 
 import { getNetworkUrl, getRelayHubAddress, gsnCommander, networksBlockExplorers } from '../utils'
 import { StatisticsManager } from '@opengsn/common/dist/statistics/StatisticsManager'
-import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 import { CommandLineStatisticsPresenter } from '../CommandLineStatisticsPresenter'
 import {
   CommandLineStatisticsPresenterConfig,
   defaultCommandLineStatisticsPresenterConfig
 } from '../CommandLineStatisticsPresenterConfig'
-import { defaultEnvironment } from '@opengsn/common'
 
 const commander = gsnCommander(['n', 'h'])
   .parse(process.argv);

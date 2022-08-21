@@ -1,17 +1,15 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { recoverTypedSignature_v4 } from 'eth-sig-util'
+import { SignTypedDataVersion, recoverTypedSignature } from '@metamask/eth-sig-util'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { HttpProvider } from 'web3-core'
 import { constants } from '@openzeppelin/test-helpers'
 
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
-import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { TypedRequestData } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { RelayRequest, TypedRequestData, defaultEnvironment, isSameAddress } from '@opengsn/common'
+
 import { configureGSN } from '../TestUtils'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { isSameAddress } from '@opengsn/common/dist/Utils'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -72,8 +70,6 @@ contract('AccountManager', function (accounts) {
         validUntilTime: '0'
       },
       relayData: {
-        pctRelayFee: '1',
-        baseRelayFee: '1',
         transactionCalldataGasUsed: '0',
         maxFeePerGas: '1',
         maxPriorityFeePerGas: '1',
@@ -101,9 +97,10 @@ contract('AccountManager', function (accounts) {
         relayRequestWithoutExtraData(relayRequest)
       )
       const signature = await accountManager.sign(relayRequest)
-      const rec = recoverTypedSignature_v4({
+      const rec = recoverTypedSignature({
         data: signedData,
-        sig: signature
+        signature,
+        version: SignTypedDataVersion.V4
       })
       assert.ok(isSameAddress(relayRequest.request.from.toLowerCase(), rec))
       expect(accountManager._signWithControlledKey).to.have.been.calledWith(privateKey, signedData)
@@ -117,9 +114,10 @@ contract('AccountManager', function (accounts) {
         relayRequestWithoutExtraData(relayRequest)
       )
       const signature = await accountManager.sign(relayRequest)
-      const rec = recoverTypedSignature_v4({
+      const rec = recoverTypedSignature({
         data: signedData,
-        sig: signature
+        signature,
+        version: SignTypedDataVersion.V4
       })
       assert.ok(isSameAddress(relayRequest.request.from.toLowerCase(), rec))
       expect(accountManager._signWithProvider).to.have.been.calledWith(signedData)

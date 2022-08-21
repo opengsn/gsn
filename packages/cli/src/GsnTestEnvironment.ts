@@ -1,5 +1,13 @@
 import net from 'net'
-import { ether } from '@opengsn/common/dist/Utils'
+import {
+  Address,
+  ContractInteractor,
+  GSNContractsDeployment,
+  constants,
+  defaultEnvironment,
+  ether,
+  isSameAddress
+} from '@opengsn/common'
 
 import { CommandsLogic, RegisterOptions } from './CommandsLogic'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
@@ -8,27 +16,28 @@ import { getNetworkUrl, loadDeployment, supportedNetworks } from './utils'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { HttpServer } from '@opengsn/relay/dist/HttpServer'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import Web3 from 'web3'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+
 import { configureServer, ServerConfigParams, ServerDependencies } from '@opengsn/relay/dist/ServerConfigParams'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
+
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClient'
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
-import { constants } from '@opengsn/common'
+
+import { ChildProcess } from 'child_process'
 
 export interface TestEnvironment {
   contractsDeployment: GSNContractsDeployment
   relayProvider: RelayProvider
   httpServer: HttpServer
   relayUrl: string
+  hardhatNode?: ChildProcess
 }
 
 class GsnTestEnvironmentClass {
@@ -41,6 +50,7 @@ class GsnTestEnvironmentClass {
    */
   async startGsn (host: string): Promise<TestEnvironment> {
     await this.stopGsn()
+    let hardhatNode: ChildProcess | undefined
     const _host: string = getNetworkUrl(host)
     if (_host == null) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -112,7 +122,8 @@ class GsnTestEnvironmentClass {
       contractsDeployment: deploymentResult,
       relayProvider,
       relayUrl,
-      httpServer: this.httpServer
+      httpServer: this.httpServer,
+      hardhatNode
     }
   }
 
@@ -186,14 +197,11 @@ class GsnTestEnvironmentClass {
       reputationManager
     }
     const relayServerParams: Partial<ServerConfigParams> = {
-      coldRestartLogsFromBlock: 1,
       devMode: true,
       url: relayUrl,
       relayHubAddress: deploymentResult.relayHubAddress,
       ownerAddress: from,
       gasPriceFactor: 1,
-      baseRelayFee: '0',
-      pctRelayFee: 0,
       checkInterval: 50,
       refreshStateTimeoutBlocks: 1,
       runPaymasterReputations: true,
@@ -215,9 +223,32 @@ class GsnTestEnvironmentClass {
   /**
    * return deployment saved by "gsn start"
    * @param workdir
+   * @param url - an Ethereum RPC API Node URL
    */
-  loadDeployment (workdir = './build/gsn'): GSNContractsDeployment {
-    return loadDeployment(workdir)
+  async loadDeployment (
+    url: string,
+    workdir = './build/gsn'
+  ): Promise<GSNContractsDeployment> {
+    const deployment = loadDeployment(workdir)
+    const contractInteractor = new ContractInteractor(
+      {
+        provider: new Web3.providers.HttpProvider(url),
+        logger: console,
+        maxPageSize: Number.MAX_SAFE_INTEGER,
+        environment: defaultEnvironment,
+        deployment
+      })
+    await contractInteractor.initDeployment(deployment)
+    await contractInteractor._validateERC165InterfacesClient(true)
+    await contractInteractor._validateERC165InterfacesRelay()
+    const tokenAddress = deployment.managerStakeTokenAddress
+    if (tokenAddress != null && !isSameAddress(tokenAddress, constants.ZERO_ADDRESS)) {
+      const code = await contractInteractor.getCode(tokenAddress)
+      if (code.length <= 2) {
+        throw new Error(`No contract deployed for ERC-20 ManagerStakeTokenAddress at ${tokenAddress}`)
+      }
+    }
+    return deployment
   }
 }
 

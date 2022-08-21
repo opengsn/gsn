@@ -45,8 +45,6 @@ export async function assertRelayAdded (transactionHashes: PrefixedHexString[], 
   assert.isNotNull(registeredLog)
   assert.equal(registeredLog.name, 'RelayServerRegistered')
   assert.equal(registeredLog.args.relayManager.toLowerCase(), server.managerAddress.toLowerCase())
-  assert.equal(registeredLog.args.baseRelayFee, server.config.baseRelayFee)
-  assert.equal(registeredLog.args.pctRelayFee, server.config.pctRelayFee)
   assert.equal(packRelayUrlForRegistrar(registeredLog.args.relayUrl), server.config.url)
 
   if (checkWorkers) {

@@ -1,5 +1,4 @@
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
-import BN from 'bn.js'
 
 import {
   PenalizerInstance,
@@ -9,8 +8,7 @@ import {
   TestPaymasterEverythingAcceptedInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { deployHub } from './TestUtils'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { constants, splitRelayUrlForRegistrar } from '@opengsn/common'
+import { defaultEnvironment, constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -19,8 +17,6 @@ const TestToken = artifacts.require('TestToken')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, relayWorker1, relayWorker2, relayWorker3]) {
-  const baseRelayFee = new BN('10')
-  const pctRelayFee = new BN('20')
   const stake = ether('2')
   const relayUrl = splitRelayUrlForRegistrar('http://new-relay.com')
 
@@ -65,7 +61,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
 
       it('should not allow relayManager to register a relay server', async function () {
         await expectRevert(
-          relayRegistrar.registerRelayServer(relayHub.address, baseRelayFee, pctRelayFee, relayUrl, { from: relayManager }),
+          relayRegistrar.registerRelayServer(relayHub.address, relayUrl, { from: relayManager }),
           'this hub is not authorized by SM')
       })
     })
@@ -84,7 +80,7 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
 
     it('should not allow relayManager to register a relay server', async function () {
       await expectRevert(
-        relayRegistrar.registerRelayServer(relayHub.address, baseRelayFee, pctRelayFee, relayUrl, { from: relayManager }),
+        relayRegistrar.registerRelayServer(relayHub.address, relayUrl, { from: relayManager }),
         'no relay workers')
     })
 
@@ -129,11 +125,9 @@ contract('RelayHub Relay Management', function ([_, relayOwner, relayManager, re
     })
 
     it('should allow relayManager to update transaction fee and url', async function () {
-      const { logs } = await relayRegistrar.registerRelayServer(relayHub.address, baseRelayFee, pctRelayFee, relayUrl, { from: relayManager })
+      const { logs } = await relayRegistrar.registerRelayServer(relayHub.address, relayUrl, { from: relayManager })
       expectEvent.inLogs(logs, 'RelayServerRegistered', {
         relayManager,
-        pctRelayFee,
-        baseRelayFee,
         relayUrl
       })
     })

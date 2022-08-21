@@ -1,19 +1,21 @@
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import {
+  Address,
+  GsnTransactionDetails,
+  HttpClient,
+  LoggerInterface,
+  PartialRelayInfo,
+  PingFilter,
+  RelayInfo,
+  RelayInfoUrl,
+  WaitForSuccessResults,
+  isInfoFromEvent,
+  isSameAddress,
+  waitForSuccess
+} from '@opengsn/common'
 
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { PartialRelayInfo, RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { Address, PingFilter } from '@opengsn/common/dist/types/Aliases'
-import { isInfoFromEvent, RelayInfoUrl } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
 import { GSNConfig } from './GSNConfigurator'
 import { KnownRelaysManager } from './KnownRelaysManager'
-
-interface RaceResult {
-  winner?: PartialRelayInfo
-  errors: Map<string, Error>
-}
 
 export class RelaySelectionManager {
   private readonly knownRelaysManager: KnownRelaysManager
@@ -41,12 +43,12 @@ export class RelaySelectionManager {
    * Ping those relays that were not pinged yet, and remove both the returned relay or relays re from {@link remainingRelays}
    * @returns the first relay to respond to a ping message. Note: will never return the same relay twice.
    */
-  async selectNextRelay (paymaster?: Address): Promise<RelayInfo | undefined> {
+  async selectNextRelay (relayHub: Address, paymaster?: Address): Promise<RelayInfo | undefined> {
     while (true) {
       const slice = this._getNextSlice()
       let relayInfo: RelayInfo | undefined
       if (slice.length > 0) {
-        relayInfo = await this._nextRelayInternal(slice, paymaster)
+        relayInfo = await this._nextRelayInternal(slice, relayHub, paymaster)
         if (relayInfo == null) {
           continue
         }
@@ -55,11 +57,11 @@ export class RelaySelectionManager {
     }
   }
 
-  async _nextRelayInternal (relays: RelayInfoUrl[], paymaster?: Address): Promise<RelayInfo | undefined> {
+  async _nextRelayInternal (relays: RelayInfoUrl[], relayHub: Address, paymaster?: Address): Promise<RelayInfo | undefined> {
     this.logger.info('nextRelay: find fastest relay from: ' + JSON.stringify(relays))
-    const raceResult = await this._raceToSuccess(relays, paymaster)
+    const raceResult = await this._waitForSuccess(relays, relayHub, paymaster)
     this.logger.info(`race finished with a result: ${JSON.stringify(raceResult, replaceErrors)}`)
-    this._handleRaceResults(raceResult)
+    this._handleWaitForSuccessResults(raceResult)
     if (raceResult.winner != null) {
       if (isInfoFromEvent(raceResult.winner.relayInfo)) {
         return (raceResult.winner as RelayInfo)
@@ -76,15 +78,15 @@ export class RelaySelectionManager {
             relayInfo
           }
         } else {
-          // TODO: do not throw! The preferred relay may be removed since.
-          throw new Error('Could not find register event for the winning preferred relay')
+          this.logger.error('Could not find registration info in the RelayRegistrar for the selected preferred relay')
+          return undefined
         }
       }
     }
   }
 
   async init (): Promise<this> {
-    this.remainingRelays = await this.knownRelaysManager.getRelaysSortedForTransaction(this.gsnTransactionDetails)
+    this.remainingRelays = await this.knownRelaysManager.getRelaysShuffledForTransaction()
     this.isInitialized = true
     return this
   }
@@ -98,7 +100,7 @@ export class RelaySelectionManager {
   _getNextSlice (): RelayInfoUrl[] {
     if (!this.isInitialized) { throw new Error('init() not called') }
     for (const relays of this.remainingRelays) {
-      const bulkSize = Math.min(this.config.sliceSize, relays.length)
+      const bulkSize = Math.min(this.config.waitForSuccessSliceSize, relays.length)
       const slice = relays.slice(0, bulkSize)
       if (slice.length === 0) {
         continue
@@ -111,12 +113,15 @@ export class RelaySelectionManager {
   /**
    * @returns JSON response from the relay server, but adds the requested URL to it :'-(
    */
-  async _getRelayAddressPing (relayInfo: RelayInfoUrl, paymaster?: Address): Promise<PartialRelayInfo> {
+  async _getRelayAddressPing (relayInfo: RelayInfoUrl, relayHub: Address, paymaster?: Address): Promise<PartialRelayInfo> {
     this.logger.info(`getRelayAddressPing URL: ${relayInfo.relayUrl}`)
     const pingResponse = await this.httpClient.getPingResponse(relayInfo.relayUrl, paymaster)
 
     if (!pingResponse.ready) {
       throw new Error(`Relay not ready ${JSON.stringify(pingResponse)}`)
+    }
+    if (!isSameAddress(relayHub, pingResponse.relayHubAddress)) {
+      throw new Error(`Client is using RelayHub ${relayHub} while the server responded with RelayHub address ${pingResponse.relayHubAddress}`)
     }
     this.pingFilter(pingResponse, this.gsnTransactionDetails)
     return {
@@ -125,33 +130,15 @@ export class RelaySelectionManager {
     }
   }
 
-  /**
-   * From https://stackoverflow.com/a/37235207 (added types, modified to catch exceptions)
-   * Accepts an array of promises.
-   * Resolves once any promise resolves, ignores the rest. Exceptions returned separately.
-   */
-  async _raceToSuccess (relays: RelayInfoUrl[], paymaster?: Address): Promise<RaceResult> {
-    const errors: Map<string, Error> = new Map<string, Error>()
-    return await new Promise((resolve) => {
-      relays.forEach((relay: RelayInfoUrl) => {
-        this._getRelayAddressPing(relay, paymaster)
-          .then((winner: PartialRelayInfo) => {
-            resolve({
-              winner,
-              errors
-            })
-          })
-          .catch((err: Error) => {
-            errors.set(relay.relayUrl, err)
-            if (errors.size === relays.length) {
-              resolve({ errors })
-            }
-          })
-      })
+  async _waitForSuccess (relays: RelayInfoUrl[], relayHub: Address, paymaster?: Address): Promise<WaitForSuccessResults<PartialRelayInfo>> {
+    const promises = relays.map(async (relay: RelayInfoUrl) => {
+      return await this._getRelayAddressPing(relay, relayHub, paymaster)
     })
+    const errorKeys = relays.map(it => { return it.relayUrl })
+    return await waitForSuccess(promises, errorKeys, this.config.waitForSuccessPingGrace)
   }
 
-  _handleRaceResults (raceResult: RaceResult): void {
+  _handleWaitForSuccessResults (raceResult: WaitForSuccessResults<PartialRelayInfo>): void {
     if (!this.isInitialized) { throw new Error('init() not called') }
     this.errors = new Map([...this.errors, ...raceResult.errors])
     this.remainingRelays = this.remainingRelays.map(relays =>

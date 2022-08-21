@@ -2,7 +2,7 @@ import { EventData } from 'web3-eth-contract'
 
 import { ContractInteractor } from '../ContractInteractor'
 import { HttpClient } from '../HttpClient'
-import { Address, EventName, IntString, ObjectMap, SemVerString } from '../types/Aliases'
+import { Address, EventName, ObjectMap, SemVerString } from '../types/Aliases'
 import { eventsComparator, isSameAddress } from '../Utils'
 
 import {
@@ -111,7 +111,7 @@ export class StatisticsManager {
     const depositedEvents = this.extractTransactionInfos<DepositedEventInfo>(transactionDepositedEventsData, Deposited)
 
     const relayRegisteredEventsData =
-      await this.contractInteractor.getPastEventsForHub([], { fromBlock: 1 }, [RelayServerRegistered])
+      await this.contractInteractor.getPastEventsForRegistrar([], { fromBlock: 1 }, [RelayServerRegistered])
     const relayRegisteredEvents = this.extractTransactionInfos<RelayRegisteredEventInfo>(relayRegisteredEventsData, RelayServerRegistered)
 
     const transactionRelayedEventsData =
@@ -238,35 +238,31 @@ export class StatisticsManager {
       transactionRejectedEvents
     }
 
-    const isRegistered = stakeStatus === RelayServerStakeStatus.STAKE_LOCKED && relayRegisteredEvents.length !== 0
+    // const isRegistered = stakeStatus === RelayServerStakeStatus.STAKE_LOCKED && relayRegisteredEvents.length !== 0
     const relayHubEarningsBalance = (await this.contractInteractor.hubBalanceOf(managerAddress)).toString()
     const stakeInfo = await this.contractInteractor.getStakeInfo(managerAddress)
     const ownerBalance = await this.contractInteractor.getBalance(stakeInfo.owner)
     const managerBalance = await this.contractInteractor.getBalance(managerAddress)
-    if (isRegistered) {
-      const lastRegisteredUrl = relayRegisteredEvents[relayRegisteredEvents.length - 1].returnValues.relayUrl
-      const lastRegisteredBaseFee = relayRegisteredEvents[relayRegisteredEvents.length - 1].returnValues.baseRelayFee
-      const lastRegisteredPctFee = relayRegisteredEvents[relayRegisteredEvents.length - 1].returnValues.pctRelayFee
-      const pingResult = await this.attemptPing(lastRegisteredUrl)
-      const registeredWorkers: Address[] = await this.contractInteractor.getRegisteredWorkers(managerAddress)
-      const workerBalances: ObjectMap<IntString> = {}
-      for (const worker of registeredWorkers) {
-        workerBalances[worker] = await this.contractInteractor.getBalance(worker)
-      }
-      registrationInfo = {
-        pingResult,
-        workerBalances,
-        lastRegisteredUrl,
-        lastRegisteredBaseFee,
-        lastRegisteredPctFee,
-        registeredWorkers
-      }
-    }
+    // if (isRegistered) {
+    //   const lastRegisteredUrl = relayRegisteredEvents[relayRegisteredEvents.length - 1].returnValues.relayUrl
+    //   const pingResult = await this.attemptPing(lastRegisteredUrl)
+    //   const registeredWorkers: Address[] = await this.contractInteractor.getRegisteredWorkers(managerAddress)
+    //   const workerBalances: ObjectMap<IntString> = {}
+    //   for (const worker of registeredWorkers) {
+    //     workerBalances[worker] = await this.contractInteractor.getBalance(worker)
+    //   }
+    //   registrationInfo = {
+    //     pingResult,
+    //     workerBalances,
+    //     lastRegisteredUrl,
+    //     registeredWorkers
+    //   }
+    // }
     return {
       ownerBalance,
       managerBalance,
       stakeStatus,
-      isRegistered,
+      isRegistered: false,
       authorizedHubs,
       managerAddress,
       stakeInfo,

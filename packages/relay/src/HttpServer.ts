@@ -1,4 +1,3 @@
-import * as core from 'express-serve-static-core'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import express, { Express, Request, Response } from 'express'
@@ -6,10 +5,18 @@ import { Server } from 'http'
 import ow from 'ow'
 
 import { PenalizerService } from './penalizer/PenalizerService'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
+import {
+  AuditRequest,
+  AuditRequestShape,
+  AuditResponse,
+  LoggerInterface,
+  RelayTransactionRequestShape
+} from '@opengsn/common'
 import { RelayServer } from './RelayServer'
-import { AuditRequest, AuditRequestShape, AuditResponse } from '@opengsn/common/dist/types/AuditRequest'
-import { RelayTransactionRequestShape } from '@opengsn/common/dist/types/RelayTransactionRequest'
+
+export interface ParamsDictionary {
+  [key: string]: string
+}
 
 export class HttpServer {
   app: Express
@@ -110,8 +117,8 @@ export class HttpServer {
     }
     try {
       ow(req.body, ow.object.exactShape(RelayTransactionRequestShape))
-      const signedTx = await this.relayService.createRelayTransaction(req.body)
-      res.send({ signedTx })
+      const { signedTx, nonceGapFilled } = await this.relayService.createRelayTransaction(req.body)
+      res.send({ signedTx, nonceGapFilled })
     } catch (e: any) {
       const error: string = e.message
       res.send({ error })
@@ -119,7 +126,7 @@ export class HttpServer {
     }
   }
 
-  async auditHandler (req: Request<core.ParamsDictionary, AuditResponse, AuditRequest>, res: Response<AuditResponse>): Promise<void> {
+  async auditHandler (req: Request<ParamsDictionary, AuditResponse, AuditRequest>, res: Response<AuditResponse>): Promise<void> {
     if (this.penalizerService == null) {
       throw new Error('PenalizerService not initialized')
     }

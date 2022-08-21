@@ -66,7 +66,8 @@ export function printSampleEnvironment (defaultDevAddress: string, chainId: numb
   }
   const sampleEnv = {
     relayHubConfiguration: {
-      devAddress: defaultDevAddress
+      devAddress: defaultDevAddress,
+      devFee: 10
     },
     deploymentConfiguration
   }
@@ -153,13 +154,11 @@ export async function printRelayInfo (hre: HardhatRuntimeEnvironment): Promise<v
   const network = hre.network.config as HttpNetworkConfig
   console.log(chalk.white('Example for Relayer config JSON file:'))
   console.log(chalk.grey(JSON.stringify({
-    baseRelayFee: 0,
-    pctRelayFee: 70,
     relayHubAddress: hub.address,
     ownerAddress: deployer,
     managerStakeTokenAddress: stakingTokenAddress,
     gasPriceFactor: 1,
-    maxGasPrice: 1e12,
+    maxFeePerGas: 1e12,
     ethereumNodeUrl: network.url
   }, null, 2)))
   console.log(chalk.white('Relayer register:'))
@@ -196,7 +195,8 @@ async function getTokenUpdateStakeOrNull (hub: Contract, tokenAddr: string, conf
 }
 
 async function applyStakingTokenConfiguration (hre: HardhatRuntimeEnvironment, env: Environment, hub: Contract): Promise<void> {
-  const testStakingTokenAddress = await hre.deployments.get('WrappedEthToken').then(t => t?.address).catch(null)
+  const deployments = await hre.deployments.all()
+  const testStakingTokenAddress = deployments.WrappedEthToken?.address
 
   const configChanges = await Promise.all(Object.entries(env.deploymentConfiguration?.minimumStakePerToken ?? [])
     .map(async ([tokenAddr, configMinimumStake]) =>

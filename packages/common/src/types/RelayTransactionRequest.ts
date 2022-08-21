@@ -7,6 +7,7 @@ import { RelayRequest } from '../EIP712/RelayRequest'
 export interface RelayMetadata {
   approvalData: PrefixedHexString
   relayHubAddress: Address
+  relayLastKnownNonce: number
   relayMaxNonce: number
   signature: PrefixedHexString
   maxAcceptanceBudget: PrefixedHexString
@@ -31,8 +32,6 @@ export const RelayTransactionRequestShape = {
     relayData: {
       maxPriorityFeePerGas: ow.string,
       maxFeePerGas: ow.string,
-      pctRelayFee: ow.string,
-      baseRelayFee: ow.string,
       transactionCalldataGasUsed: ow.string,
       relayWorker: ow.string,
       paymaster: ow.string,
@@ -42,6 +41,7 @@ export const RelayTransactionRequestShape = {
     }
   },
   metadata: {
+    relayLastKnownNonce: ow.number,
     approvalData: ow.string,
     relayHubAddress: ow.string,
     relayMaxNonce: ow.number,

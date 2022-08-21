@@ -8,8 +8,6 @@ import "./TestPaymasterConfigurableMisbehavior.sol";
 
 contract TestRecipient is ERC2771Recipient {
 
-    string public override versionRecipient = "3.0.0-alpha.5+opengsn.test.irelayrecipient";
-
     constructor(address forwarder) {
         _setTrustedForwarder(forwarder);
     }
@@ -31,6 +29,10 @@ contract TestRecipient is ERC2771Recipient {
     receive() external payable {}
 
     event SampleRecipientEmitted(string message, address realSender, address msgSender, address origin, uint256 msgValue, uint256 gasLeft, uint256 balance);
+
+    function recipientRevert() public {
+        revert("this method reverts consistently");
+    }
 
     function emitMessage(string memory message) public payable returns (string memory) {
         uint256 gasLeft = gasleft();

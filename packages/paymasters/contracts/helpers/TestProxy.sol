@@ -7,8 +7,6 @@ import "@opengsn/contracts/src/ERC2771Recipient.sol";
 
 contract TestProxy is ERC2771Recipient, Ownable  {
 
-    string public override versionRecipient = "2.0.0-beta.1+opengsn.testproxy.irelayrecipient";
-
     constructor(address forwarder) {
         _setTrustedForwarder(forwarder);
     }

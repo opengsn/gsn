@@ -1,7 +1,7 @@
-import { ether } from '@opengsn/common/dist/Utils'
+import { ether } from '@opengsn/common'
 import { CommandsLogic } from '../CommandsLogic'
 import { getMnemonic, getNetworkUrl, getPaymasterAddress, getRelayHubAddress, gsnCommander } from '../utils'
-import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 
 const commander = gsnCommander(['n', 'f', 'h', 'm'])
   .option('--paymaster <address>',
@@ -22,7 +22,7 @@ const commander = gsnCommander(['n', 'f', 'h', 'm'])
 
   const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
-  const logic = new CommandsLogic(nodeURL, logger, { relayHubAddress: hub }, mnemonic)
+  const logic = new CommandsLogic(nodeURL, logger, { relayHubAddress: hub }, mnemonic, commander.derivationPath, commander.derivationIndex, commander.privateKeyHex)
   await logic.init()
   const from = commander.from ?? await logic.findWealthyAccount()
   const amount = commander.amount ?? ether('1')

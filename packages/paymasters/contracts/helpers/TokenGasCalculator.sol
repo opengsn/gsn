@@ -47,7 +47,7 @@ contract TokenGasCalculator is RelayHub, AllEvents {
         bytes memory ctx1,
         bytes memory paymasterData
     ) public returns (uint256 gasUsedByPost) {
-        GsnTypes.RelayData memory relayData = GsnTypes.RelayData(1, 1, 0, 0, 0, address(0), address(0), address(0), paymasterData, 0);
+        GsnTypes.RelayData memory relayData = GsnTypes.RelayData(1, 1, 0, address(0), address(0), address(0), paymasterData, 0);
 
         //with precharge
         uint256 gas0 = gasleft();

@@ -4,11 +4,28 @@ import BN from 'bn.js'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import { Contract } from 'web3-eth-contract'
-import { HttpProvider } from 'web3-core'
 import { fromWei, toBN, toHex } from 'web3-utils'
 import ow from 'ow'
 
-import { ether, isSameAddress, sleep } from '@opengsn/common/dist/Utils'
+import {
+  Address,
+  ContractInteractor,
+  GSNContractsDeployment,
+  HttpClient,
+  HttpWrapper,
+  IntString,
+  LoggerInterface,
+  PenalizerConfiguration,
+  RelayHubConfiguration,
+  constants,
+  defaultEnvironment,
+  ether,
+  formatTokenAmount,
+  isSameAddress,
+  registerForwarderForGsn,
+  sleep,
+  toNumber
+} from '@opengsn/common'
 
 // compiled folder populated by "preprocess"
 import StakeManager from './compiled/StakeManager.json'
@@ -18,21 +35,10 @@ import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import WrappedEthToken from './compiled/WrappedEthToken.json'
-import { Address, IntString } from '@opengsn/common/dist/types/Aliases'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { HttpClient } from '@opengsn/common/dist/HttpClient'
-import { constants } from '@opengsn/common/dist/Constants'
-import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { LoggerInterface } from '@opengsn/common/dist/LoggerInterface'
-import { HttpWrapper } from '@opengsn/common/dist/HttpWrapper'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { PenalizerConfiguration } from '@opengsn/common/dist/types/PenalizerConfiguration'
+
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
-import { formatTokenAmount, toNumber } from '@opengsn/common'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -114,15 +120,35 @@ export class CommandsLogic {
     host: string,
     logger: LoggerInterface,
     deployment: GSNContractsDeployment,
-    mnemonic?: string
+    mnemonic?: string,
+    derivationPath?: string,
+    derivationIndex: string = '0',
+    privateKey?: string
   ) {
-    let provider: HttpProvider | HDWalletProvider = new Web3.providers.HttpProvider(host, {
+    let provider: any = new Web3.providers.HttpProvider(host, {
       keepAlive: true,
       timeout: 120000
     })
-    if (mnemonic != null) {
-      // web3 defines provider type quite narrowly
-      provider = new HDWalletProvider(mnemonic, provider) as unknown as HttpProvider
+    provider.sendAsync = provider.send.bind(provider)
+    if (mnemonic != null || privateKey != null) {
+      let hdWalletConstructorArguments: any
+      if (mnemonic != null) {
+        const addressIndex = parseInt(derivationIndex)
+        hdWalletConstructorArguments = {
+          mnemonic,
+          derivationPath,
+          addressIndex,
+          provider
+        }
+      } else {
+        hdWalletConstructorArguments = {
+          privateKeys: [privateKey],
+          provider
+        }
+      }
+      provider = new HDWalletProvider(hdWalletConstructorArguments)
+      const hdWalletAddress: string = provider.getAddress()
+      console.log(`Using HDWalletProvider for address ${hdWalletAddress}`)
     }
     this.httpClient = new HttpClient(new HttpWrapper(), logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
@@ -245,8 +271,9 @@ export class CommandsLogic {
       }
       const relayAddress = response.relayManagerAddress
       const relayHubAddress = response.relayHubAddress
+      await this.contractInteractor._resolveDeploymentFromRelayHub(relayHubAddress)
 
-      const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
+      const relayHub = await this.contractInteractor.relayHubInstance
       const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { stake, unstakeDelay, owner, token } = (await stakeManager.getStakeInfo(relayAddress))[0]
@@ -400,9 +427,12 @@ export class CommandsLogic {
     const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
     const fromBlock = await relayHub.getCreationBlock()
     const toBlock = Math.min(toNumber(fromBlock) + 5000, await this.contractInteractor.getBlockNumber())
-    const tokens = await this.contractInteractor.getPastEventsForHub([], { fromBlock, toBlock }, ['StakingTokenDataChanged'])
+    const tokens = await this.contractInteractor.getPastEventsForHub([], {
+      fromBlock,
+      toBlock
+    }, ['StakingTokenDataChanged'])
     if (tokens.length === 0) {
-      throw new Error(`no registered staking tokens on relayhub ${relayHubAddress}`)
+      throw new Error(`no registered staking tokens on RelayHub ${relayHubAddress}`)
     }
     return tokens[0].returnValues.token
   }
@@ -557,7 +587,7 @@ export class CommandsLogic {
     }
     await registerForwarderForGsn(fInstance, options)
 
-    let stakingTokenAddress = deployOptions.stakeManagerAddress ?? ''
+    let stakingTokenAddress = deployOptions.stakingTokenAddress
 
     let ttInstance: Contract | undefined
     if (deployOptions.deployTestToken ?? false) {
@@ -567,9 +597,9 @@ export class CommandsLogic {
       stakingTokenAddress = ttInstance.options.address
     }
 
-    const stakingContact = await this.contractInteractor._createERC20(stakingTokenAddress)
-    const tokenDecimals = await stakingContact.decimals()
-    const tokenSymbol = await stakingContact.symbol()
+    const stakingTokenContract = await this.contractInteractor._createERC20(stakingTokenAddress ?? '')
+    const tokenDecimals = await stakingTokenContract.decimals()
+    const tokenSymbol = await stakingTokenContract.symbol()
 
     const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, tokenSymbol)
 

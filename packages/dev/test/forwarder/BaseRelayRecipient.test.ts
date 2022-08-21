@@ -4,8 +4,6 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import { toHex } from 'web3-utils'
 
-require('source-map-support').install({ errorFormatterForce: true })
-
 const TestForwarderTarget = artifacts.require('TestForwarderTarget')
 
 const Forwarder = artifacts.require('Forwarder')

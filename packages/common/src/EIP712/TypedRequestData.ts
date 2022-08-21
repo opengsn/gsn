@@ -2,7 +2,7 @@ import { Address } from '../types/Aliases'
 import { RelayRequest } from './RelayRequest'
 
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
-import { TypedDataUtils, TypedMessage } from 'eth-sig-util'
+import { TypedDataUtils, TypedMessage, SignTypedDataVersion } from '@metamask/eth-sig-util'
 
 export interface MessageTypeProperty {
   name: string
@@ -38,8 +38,6 @@ export const EIP712DomainTypeWithoutVersion: MessageTypeProperty[] = [
 const RelayDataType = [
   { name: 'maxFeePerGas', type: 'uint256' },
   { name: 'maxPriorityFeePerGas', type: 'uint256' },
-  { name: 'pctRelayFee', type: 'uint256' },
-  { name: 'baseRelayFee', type: 'uint256' },
   { name: 'transactionCalldataGasUsed', type: 'uint256' },
   { name: 'relayWorker', type: 'address' },
   { name: 'paymaster', type: 'address' },
@@ -86,7 +84,13 @@ export function getDomainSeparator (verifier: Address, chainId: number): EIP712D
 }
 
 export function getDomainSeparatorHash (verifier: Address, chainId: number): PrefixedHexString {
-  return bufferToHex(TypedDataUtils.hashStruct('EIP712Domain', getDomainSeparator(verifier, chainId) as Record<string, unknown>, { EIP712Domain: EIP712DomainType }))
+  return bufferToHex(
+    TypedDataUtils.hashStruct(
+      'EIP712Domain',
+      getDomainSeparator(verifier, chainId) as Record<string, unknown>,
+      { EIP712Domain: EIP712DomainType },
+      SignTypedDataVersion.V4)
+  )
 }
 
 export class TypedRequestData implements TypedMessage<Types> {
@@ -117,5 +121,5 @@ export class TypedRequestData implements TypedMessage<Types> {
 
 export const GsnRequestType = {
   typeName: 'RelayRequest',
-  typeSuffix: 'RelayData relayData)RelayData(uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 pctRelayFee,uint256 baseRelayFee,uint256 transactionCalldataGasUsed,address relayWorker,address paymaster,address forwarder,bytes paymasterData,uint256 clientId)'
+  typeSuffix: 'RelayData relayData)RelayData(uint256 maxFeePerGas,uint256 maxPriorityFeePerGas,uint256 transactionCalldataGasUsed,address relayWorker,address paymaster,address forwarder,bytes paymasterData,uint256 clientId)'
 }

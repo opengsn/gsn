@@ -1,15 +1,14 @@
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
-import { constants } from '@opengsn/common/dist/Constants'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+import { constants, ContractInteractor, defaultEnvironment } from '@opengsn/common'
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import {
   PaymasterStatus,
   ReputationManager,
   ReputationManagerConfiguration
 } from '@opengsn/relay/dist/ReputationManager'
 import { evmMineMany } from './TestUtils'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
+
 import { HttpProvider } from 'web3-core'
-import { defaultEnvironment } from '@opengsn/common'
 
 /**
  * Attention: these tests are often order and timestamp-dependent! Use debugger with caution.

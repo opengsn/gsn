@@ -27,7 +27,7 @@ import {
   decodeRevertReason,
   errorAsBoolean,
   event2topic,
-  formatTokenAmount,
+  formatTokenAmount, isSameAddress,
   packRelayUrlForRegistrar,
   PaymasterGasAndDataLimits,
   splitRelayUrlForRegistrar,
@@ -54,13 +54,9 @@ import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import {
   ActiveManagerEvents,
-  HubUnauthorized,
-  RelayRegisteredEventInfo,
   RelayServerRegistered,
   RelayWorkersAdded,
-  StakeInfo,
-  StakePenalized,
-  StakeUnlocked
+  StakeInfo
 } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
 import { Environment } from './Environments'
@@ -68,7 +64,8 @@ import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from 'bignumber.js'
 import { TransactionType } from './types/TransactionType'
-import { constants, erc165Interfaces } from './Constants'
+import { RegistrarRelayInfo } from './types/RelayInfo'
+import { constants, erc165Interfaces, RelayCallStatusCodes } from './Constants'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -77,6 +74,7 @@ export interface ConstructorParams {
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
   maxPageSize: number
+  maxPageCount?: number
   environment: Environment
 }
 
@@ -109,8 +107,9 @@ export interface ERC20TokenMetadata {
 
 export interface ViewCallVerificationResult {
   paymasterAccepted: boolean
+  recipientReverted: boolean
   returnValue: string
-  reverted: boolean
+  relayHubReverted: boolean
 }
 
 export class ContractInteractor {
@@ -140,6 +139,7 @@ export class ContractInteractor {
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
   private readonly maxPageSize: number
+  private readonly maxPageCount: number
   private lastBlockNumber: number
 
   private rawTxOptions?: TxOptions
@@ -153,6 +153,7 @@ export class ContractInteractor {
   constructor (
     {
       maxPageSize,
+      maxPageCount,
       provider,
       versionManager,
       logger,
@@ -160,6 +161,7 @@ export class ContractInteractor {
       deployment = {}
     }: ConstructorParams) {
     this.maxPageSize = maxPageSize
+    this.maxPageCount = maxPageCount ?? Number.MAX_SAFE_INTEGER
     this.logger = logger
     this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.web3 = new Web3(provider as any)
@@ -219,14 +221,14 @@ export class ContractInteractor {
     }
     const block = await this.web3.eth.getBlock('latest').catch((e: Error) => { throw new Error(`getBlock('latest') failed: ${e.message}\nCheck your internet/ethereum node connection`) })
     if (block.baseFeePerGas != null) {
-      this.logger.debug('Network supports type two (eip 1559) transactions. Checking rpc node eth_feeHistory method')
+      this.logger.info('Network supports Type 2 Transactions (EIP-1559). Checking RPC node \'eth_feeHistory\' method')
       try {
         await this.getFeeHistory('0x1', 'latest', [0.5])
         this.transactionType = TransactionType.TYPE_TWO
-        this.logger.debug('Rpc node supports eth_feeHistory. Initializing to type two transactions')
+        this.logger.debug('RPC node supports \'eth_feeHistory\'. Initializing to Type 2 Transactions.')
       } catch (e: any) {
-        this.logger.debug('eth_feeHistory failed. Aborting.')
-        throw e
+        this.logger.warn('Call to \'eth_feeHistory\' failed. Falling back to Legacy Transaction Type.')
+        this.transactionType = TransactionType.LEGACY
       }
     }
     await this._resolveDeployment()
@@ -330,10 +332,16 @@ export class ContractInteractor {
     }
   }
 
-  async _validateERC165InterfacesClient (): Promise<void> {
+  async _validateERC165InterfacesClient (allowNoPaymaster: boolean = false): Promise<void> {
     this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
     const fwPromise = this._trySupportsInterface('Forwarder', this.forwarderInstance, erc165Interfaces.forwarder)
-    const pmPromise = this._trySupportsInterface('Paymaster', this.paymasterInstance, erc165Interfaces.paymaster)
+    let pmPromise: Promise<boolean>
+    if (allowNoPaymaster && isSameAddress(this.paymasterInstance.address, constants.ZERO_ADDRESS)) {
+      this.logger.debug('skipping ERC-165 check for paymaster: address is not set')
+      pmPromise = Promise.resolve(true)
+    } else {
+      pmPromise = this._trySupportsInterface('Paymaster', this.paymasterInstance, erc165Interfaces.paymaster)
+    }
     const [fw, pm] = await Promise.all([fwPromise, pmPromise])
     const all = fw && pm
     if (!all) {
@@ -543,43 +551,29 @@ export class ContractInteractor {
       this.logger.debug('relayCall res=' + res)
 
       // @ts-ignore
-      const decoded = abi.decodeParameters(['bool', 'bytes'], res)
+      const decoded = abi.decodeParameters(['bool', 'uint256', 'uint256', 'bytes'], res)
       const paymasterAccepted: boolean = decoded[0]
-      let returnValue: string
-      if (paymasterAccepted) {
-        returnValue = decoded[1]
-      } else {
-        returnValue = this._decodeRevertFromResponse({}, { result: decoded[1] }) ?? decoded[1]
+      const relayCallStatus: number = parseInt(decoded[2])
+      let returnValue: string = decoded[3]
+      const recipientReverted = RelayCallStatusCodes.RelayedCallFailed.eqn(relayCallStatus)
+      if (!paymasterAccepted || recipientReverted) {
+        returnValue = this._decodeRevertFromResponse({}, { result: returnValue }) ?? returnValue
       }
       return {
         returnValue: returnValue,
-        paymasterAccepted: paymasterAccepted,
-        reverted: false
+        paymasterAccepted,
+        recipientReverted,
+        relayHubReverted: false
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : JSON.stringify(e, replaceErrors)
       return {
         paymasterAccepted: false,
-        reverted: true,
+        recipientReverted: false,
+        relayHubReverted: true,
         returnValue: `view call to 'relayCall' reverted in client: ${message}`
       }
     }
-  }
-
-  async getMaxViewableGasLimit (relayRequest: RelayRequest, maxViewableGasLimit: IntString): Promise<BN> {
-    const maxViewableGasLimitBN = toBN(maxViewableGasLimit)
-    const gasPrice = toBN(relayRequest.relayData.maxFeePerGas)
-    if (gasPrice.eqn(0)) {
-      return maxViewableGasLimitBN
-    }
-    const workerBalanceString = await this.getBalance(relayRequest.relayData.relayWorker)
-    if (workerBalanceString == null) {
-      this.logger.error('getMaxViewableGasLimit: failed to get relay worker balance')
-      return maxViewableGasLimitBN
-    }
-    const workerBalance = toBN(workerBalanceString)
-    const workerGasLimit = workerBalance.div(gasPrice)
-    return BN.min(maxViewableGasLimitBN, workerGasLimit)
   }
 
   /**
@@ -637,10 +631,16 @@ export class ContractInteractor {
     return await this._getPastEventsPaginated(this.penalizerInstance.contract, names, extraTopics, options)
   }
 
-  getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): number {
+  getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): {
+    rangeSize: number
+    pagesForRange: number
+  } {
     // save 'getBlockNumber' roundtrip for a known max value
     if (this.maxPageSize === Number.MAX_SAFE_INTEGER) {
-      return 1
+      return {
+        rangeSize: 1,
+        pagesForRange: 1
+      }
     }
     // noinspection SuspiciousTypeOfGuard - known false positive
     if (typeof fromBlock !== 'number' || typeof toBlock !== 'number') {
@@ -652,7 +652,10 @@ export class ContractInteractor {
     if (pagesForRange > 1) {
       this.logger.info(`Splitting request for ${rangeSize} blocks into ${pagesForRange} smaller paginated requests!`)
     }
-    return pagesForRange
+    return {
+      rangeSize,
+      pagesForRange
+    }
   }
 
   splitRange (fromBlock: BlockNumber, toBlock: BlockNumber, parts: number): Array<{ fromBlock: BlockNumber, toBlock: BlockNumber }> {
@@ -700,7 +703,12 @@ export class ContractInteractor {
       this.logger.error(message)
       throw new Error(message)
     }
-    let pagesCurrent: number = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
+    let { pagesForRange: pagesCurrent, rangeSize } = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
+    if (pagesCurrent > this.maxPageCount) {
+      throw new Error(
+        `Failed to make a paginated request to 'getPastEvents' in block range [${options.fromBlock.toString()}..${options.toBlock.toString()}] with page size ${rangeSize}.
+This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxPageCount' is ${this.maxPageCount}`)
+    }
     const relayEventParts: EventData[][] = []
     while (true) {
       const rangeParts = await this.splitRange(options.fromBlock, options.toBlock, pagesCurrent)
@@ -911,11 +919,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
   }
 
-  async getMaxPriorityFee (): Promise<string> {
-    const gasFees = await this.getGasFees()
-    return gasFees.priorityFeePerGas
-  }
-
   async getGasFees (): Promise<{ baseFeePerGas: string, priorityFeePerGas: string }> {
     if (this.transactionType === TransactionType.LEGACY) {
       const gasPrice = await this.getGasPrice()
@@ -969,6 +972,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   async workerToManager (worker: Address): Promise<string> {
     return await this.relayHubInstance.getWorkerManager(worker)
+  }
+
+  async getMinimumStakePerToken (tokenAddress: Address): Promise<BN> {
+    return await this.relayHubInstance.getMinimumStakePerToken(tokenAddress)
   }
 
   /**
@@ -1050,9 +1057,14 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
-  async getRegisterRelayMethod (relayHub: Address, baseRelayFee: IntString, pctRelayFee: number, url: string): Promise<any> {
+  async getRegisterRelayMethod (relayHub: Address, url: string): Promise<any> {
     const registrar = this.relayRegistrar
-    return registrar?.contract.methods.registerRelayServer(relayHub, baseRelayFee, pctRelayFee, splitRelayUrlForRegistrar(url))
+    return registrar?.contract.methods.registerRelayServer(relayHub, splitRelayUrlForRegistrar(url))
+  }
+
+  async getAuthorizeHubByManagerMethod (): Promise<any> {
+    const hub = this.relayHubInstance.address
+    return this.stakeManagerInstance.contract.methods.authorizeHubByManager(hub)
   }
 
   async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
@@ -1147,47 +1159,20 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return this.penalizerInstance.address
   }
 
-  /**
-   * discover registered relays
-   */
-  async getRegisteredRelays (): Promise<RelayRegisteredEventInfo[]> {
-    return await this.getRegisteredRelaysFromRegistrar()
-  }
-
   async getRelayRegistrationMaxAge (): Promise<BN> {
     return await this.relayRegistrar.getRelayRegistrationMaxAge()
   }
 
-  async getRegisteredRelaysFromEvents (subsetManagers?: string[], fromBlock?: number): Promise<RelayRegisteredEventInfo[]> {
-    // each topic in getPastEvent is either a string or array-of-strings, to search for any.
-    const extraTopics = subsetManagers == null ? [] : [subsetManagers?.map(address2topic)] as any
-    const registerEvents = await this.getPastEventsForRegistrar(extraTopics,
-      { fromBlock },
-      [RelayServerRegistered])
-    const unregisterEvents = await this.getPastEventsForStakeManager([HubUnauthorized, StakePenalized, StakeUnlocked], [extraTopics], { fromBlock })
-    // we don't check event order: removed relayer can't be re-registered, so we simply ignore any "register" of a relayer that was ever removed/unauthorized/penalized
-    const removed = new Set(unregisterEvents.map(event => event.returnValues.relayManager))
-    const relaySet: { [relayManager: string]: RelayRegisteredEventInfo } = {}
-    registerEvents
-      .filter(event => !removed.has(event.returnValues.relayManager))
-      .map(event => {
-        const { relayManager, pctRelayFee, baseRelayFee, url } = event.returnValues
-        const ret: RelayRegisteredEventInfo = {
-          relayManager, pctRelayFee, baseRelayFee, relayUrl: url
-        }
-        return ret
-      })
-      .forEach(info => {
-        relaySet[info.relayManager] = info
-      })
-    return Object.values(relaySet)
+  async getRelayInfo (relayManagerAddress: string): Promise<RegistrarRelayInfo> {
+    const relayInfo = await this.relayRegistrar.getRelayInfo(this.relayHubInstance.address, relayManagerAddress)
+    return Object.assign({}, relayInfo, { relayUrl: packRelayUrlForRegistrar(relayInfo.urlParts) })
   }
 
   /**
    * get registered relayers from registrar
    * (output format matches event info)
    */
-  async getRegisteredRelaysFromRegistrar (): Promise<RelayRegisteredEventInfo[]> {
+  async getRegisteredRelays (): Promise<RegistrarRelayInfo[]> {
     if (this.relayRegistrar == null) {
       throw new Error('Relay Registrar is not initialized')
     }
@@ -1198,12 +1183,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub)
 
     return relayInfos.map(info => {
-      return {
-        relayManager: info.relayManager,
-        pctRelayFee: info.pctRelayFee.toString(),
-        baseRelayFee: info.baseRelayFee.toString(),
+      return Object.assign({}, info, {
         relayUrl: packRelayUrlForRegistrar(info.urlParts)
-      }
+      })
     })
   }
 

@@ -6,10 +6,9 @@ import {
 import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { deployHub } from './TestUtils'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+import { registerForwarderForGsn, defaultEnvironment, constants } from '@opengsn/common'
+
 import { TestForwarderMessage } from '@opengsn/contracts/types/truffle-contracts/TestForwarderTarget'
-import { constants } from '@opengsn/common'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')

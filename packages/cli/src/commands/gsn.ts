@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import commander from 'commander'
-import { gsnRuntimeVersion } from '@opengsn/common/dist/Version'
+import { gsnRuntimeVersion } from '@opengsn/common'
 
 commander
   .version(gsnRuntimeVersion)

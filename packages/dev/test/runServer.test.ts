@@ -11,13 +11,11 @@ import {
 import { deployHub, emptyBalance, serverWorkDir, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
-import { constants, ether } from '@opengsn/common'
+import { registerForwarderForGsn, defaultEnvironment, constants, ether, Address } from '@opengsn/common'
+
 import Web3 from 'web3'
 import fs from 'fs'
 import { KEYSTORE_FILENAME } from '@opengsn/relay/dist/KeyManager'
-import { Address } from '@opengsn/common/dist/types/Aliases'
 
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
@@ -66,6 +64,7 @@ contract('runServer', function (accounts) {
     await rhub.depositFor(paymaster.address, { value: (5e18).toString() })
 
     relayClientConfig = {
+      gasPriceFactorPercent: 1000,
       loggerConfiguration: { logLevel: 'error' },
       paymasterAddress: paymaster.address,
       maxApprovalDataLength: 4,
@@ -92,10 +91,10 @@ contract('runServer', function (accounts) {
       await deployGsnContracts()
       differentHubs.add(rhub.address)
       relayProcess = await startRelay(rhub.address, testToken, sm, {
+        maxFeePerGas: 1e14.toString(),
         stake,
         stakeTokenAddress: testToken.address,
         delay: 3600 * 24 * 7,
-        pctRelayFee: 12,
         url: 'asd',
         relayOwner: accounts[0],
         // @ts-ignore

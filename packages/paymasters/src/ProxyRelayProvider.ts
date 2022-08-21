@@ -1,14 +1,13 @@
 /* eslint-disable no-void */
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
 import { RelayClient, JsonRpcCallback, RelayProvider, GSNUnresolvedConstructorInput } from '@opengsn/provider'
 
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import { Address, GsnTransactionDetails } from '@opengsn/common'
 
 import { JsonRpcPayload } from 'web3-core-helpers'
 import Contract from 'web3-eth-contract'
 
-import ProxyIdentityArtifact from '@opengsn/paymasters/build/contracts/ProxyIdentity.json'
-import ProxyFactoryArtifact from '@opengsn/paymasters/build/contracts/ProxyFactory.json'
+import ProxyIdentityArtifact from '../build/contracts/ProxyIdentity.json'
+import ProxyFactoryArtifact from '../build/contracts/ProxyFactory.json'
 
 export default class ProxyRelayProvider extends RelayProvider {
   private readonly proxyFactoryAddress: Address

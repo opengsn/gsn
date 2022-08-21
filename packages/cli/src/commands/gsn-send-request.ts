@@ -7,13 +7,14 @@ import { toHex, toWei } from 'web3-utils'
 
 import {
   LoggerInterface
+  , Address, Web3ProviderBaseInterface
 } from '@opengsn/common'
-import { Address, Web3ProviderBaseInterface } from '@opengsn/common/dist/types/Aliases'
+
 import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput, RelayProvider } from '@opengsn/provider'
 
 import { getMnemonic, getNetworkUrl, gsnCommander } from '../utils'
 import { CommandsLogic } from '../CommandsLogic'
-import { createCommandsLogger } from '../CommandsWinstonLogger'
+import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 import { PrefixedHexString } from 'ethereumjs-util'
 
 function commaSeparatedList (value: string, _dummyPrevious: string[]): string[] {
@@ -52,7 +53,7 @@ async function getProvider (
     console.log('using', from)
   } else if (mnemonic != null) {
     const hdwallet = EthereumHDKey.fromMasterSeed(
-      bip39.mnemonicToSeedSync(mnemonic)
+      Buffer.from(bip39.mnemonicToSeedSync(mnemonic))
     )
     // add mnemonic private key to the account manager as an 'ephemeral key'
     const wallet = hdwallet.deriveChild(0).getWallet()
@@ -92,7 +93,7 @@ async function getProvider (
   const nodeURL = getNetworkUrl(network)
   const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
-  const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic)
+  const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic, commander.derivationPath, commander.derivationIndex, commander.privateKeyHex)
   const { provider, from } = await getProvider(
     commander.to,
     commander.paymaster,

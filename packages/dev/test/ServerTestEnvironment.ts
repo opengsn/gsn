@@ -4,9 +4,24 @@ import Web3 from 'web3'
 import crypto from 'crypto'
 import sinon from 'sinon'
 import { HttpProvider } from 'web3-core'
-import { toHex } from 'web3-utils'
+import { toBN, toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
-import { Address } from '@opengsn/common/dist/types/Aliases'
+import {
+  Address,
+  ContractInteractor,
+  GSNContractsDeployment,
+  GsnTransactionDetails,
+  PingResponse,
+  RegistrarRelayInfo,
+  RelayHubConfiguration,
+  RelayInfo,
+  RelayTransactionRequest,
+  constants,
+  defaultEnvironment,
+  ether,
+  registerForwarderForGsn,
+  removeHexPrefix
+} from '@opengsn/common'
 import {
   IERC2771RecipientInstance,
   IForwarderInstance,
@@ -17,32 +32,26 @@ import {
   TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './ServerTestUtils'
-import { ContractInteractor } from '@opengsn/common/dist/ContractInteractor'
-import { GsnTransactionDetails } from '@opengsn/common/dist/types/GsnTransactionDetails'
-import { PingResponse } from '@opengsn/common/dist/PingResponse'
+
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
-import { RelayInfo } from '@opengsn/common/dist/types/RelayInfo'
-import { RelayRegisteredEventInfo } from '@opengsn/common/dist/types/GSNContractsDataTypes'
+
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { configureServer, ServerConfigParams, serverDefaultConfiguration } from '@opengsn/relay/dist/ServerConfigParams'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { constants } from '@opengsn/common/dist/Constants'
+
 import { deployHub } from './TestUtils'
-import { ether, removeHexPrefix } from '@opengsn/common/dist/Utils'
-import { RelayTransactionRequest } from '@opengsn/common/dist/types/RelayTransactionRequest'
+
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
 import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { RelayHubConfiguration } from '@opengsn/common/dist/types/RelayHubConfiguration'
-import { createServerLogger } from '@opengsn/relay/dist/ServerWinstonLogger'
+
+import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
-import { GSNContractsDeployment } from '@opengsn/common/dist/GSNContractsDeployment'
-import { defaultEnvironment } from '@opengsn/common/dist/Environments'
+
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 
@@ -66,8 +75,6 @@ export interface PrepareRelayRequestOption {
   to: string
   from: string
   paymaster: string
-  pctRelayFee: number
-  baseRelayFee: string
 }
 
 export class ServerTestEnvironment {
@@ -209,7 +216,6 @@ export class ServerTestEnvironment {
 
   newServerInstanceNoFunding (config: Partial<ServerConfigParams> = {}, serverWorkdirs?: ServerWorkdirs): void {
     const shared: Partial<ServerConfigParams> = {
-      coldRestartLogsFromBlock: 1,
       runPaymasterReputations: false,
       ownerAddress: this.relayOwner,
       relayHubAddress: this.relayHub.address,
@@ -254,9 +260,11 @@ export class ServerTestEnvironment {
       relayHubAddress: this.relayHub.address,
       relayWorkerAddress: this.relayServer.workerAddress
     }
-    const eventInfo: RelayRegisteredEventInfo = {
-      baseRelayFee: this.relayServer.config.baseRelayFee,
-      pctRelayFee: this.relayServer.config.pctRelayFee.toString(),
+    const eventInfo: RegistrarRelayInfo = {
+      firstSeenBlockNumber: toBN(0),
+      lastSeenBlockNumber: toBN(0),
+      firstSeenTimestamp: toBN(0),
+      lastSeenTimestamp: toBN(0),
       relayManager: '',
       relayUrl: ''
     }
@@ -295,7 +303,7 @@ export class ServerTestEnvironment {
     txHash: PrefixedHexString
   }> {
     const req = await this.createRelayHttpRequest(overrideDetails)
-    const signedTx = await this.relayServer.createRelayTransaction(req)
+    const { signedTx } = await this.relayServer.createRelayTransaction(req)
     const txHash = ethUtils.bufferToHex(ethUtils.keccak256(Buffer.from(removeHexPrefix(signedTx), 'hex')))
 
     if (assertRelayed) {

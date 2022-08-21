@@ -296,11 +296,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     }
 
     function versionPaymaster() external override virtual view returns (string memory){
-        return "3.0.0-alpha.5+opengsn.permit-erc20-uniswap-v3.ipaymaster";
-    }
-
-    function versionRecipient() external override virtual view returns (string memory){
-        return "3.0.0-alpha.5+opengsn.permit-erc20-uniswap-v3.irelayrecipient";
+        return "3.0.0-beta.0+opengsn.permit-erc20-uniswap-v3.ipaymaster";
     }
 
     function getTrustedForwarder() override(BasePaymaster, ERC2771Recipient) public view returns (address forwarder){
