@@ -7,7 +7,7 @@ import {
   PermitERC20UniswapV3PaymasterInstance,
   PermitInterfaceDAIInstance,
   PermitInterfaceEIP2612Instance
-} from '@opengsn/paymasters/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
   PERMIT_SIGHASH_DAI, PERMIT_SIGHASH_EIP2612,
