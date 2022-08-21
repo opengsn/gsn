@@ -105,12 +105,12 @@ export interface GSNConfig {
    * The address of the Payamster contract to be used.
    */
   paymasterAddress?: Address
-  
+
   /**
   * The address of the token paymaster contract used by TokenPaymasterProvider
   */
   tokenPaymasterAddress?: Address
-  
+
   /**
   * Fields required by TokenPaymasterProvider for the supported tokens
   */
