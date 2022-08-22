@@ -18,7 +18,6 @@ let contractsFolderToExtract
 let files
 let jsonFilesLocation
 if (process.argv.length >= 2 && process.argv[2] === 'paymasters') {
-  console.log('wtf paymasters!')
   outAbiFolder = 'packages/paymasters/src/interfaces/'
   contractsFolderToExtract = 'packages/paymasters/contracts/interfaces'
   files = fs.readdirSync(contractsFolderToExtract)
