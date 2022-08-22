@@ -337,7 +337,6 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
 
     await testToken.mint(stake, { from: owner })
     await testToken.approve(stakeManager.address, stake, { from: owner })
-    console.log('wtf starting relay')
     const relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
       relaylog: process.env.relaylog,
       initialReputation: 100,
@@ -345,7 +344,6 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       relayOwner: owner,
       ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
     })
-    console.log('wtf relay started', await web3.eth.getNodeInfo())
     // @ts-ignore
     SampleRecipient.web3.setProvider(tokenPaymasterProvider)
     // sampleRecipient = await SampleRecipient.new()
