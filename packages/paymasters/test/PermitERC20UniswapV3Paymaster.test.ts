@@ -169,7 +169,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
     tokenAmount = minDepositAmount,
     withPreCharge = true): Promise<TokenInfo> {
     const priceQuote = await oracle.latestAnswer()
-    const priceDivisor = await paymaster.priceDivisors(token.address)
+    const priceDivisor = toBN((await paymaster.getTokenSwapData(token.address)).priceDivisor.toString())
     const decimals = await token.decimals()
     const preChargeMultiplier = toBN(10).pow(decimals)
     const tokenDepositAmount = tokenAmount.mul(priceDivisor).div(priceQuote).div(ETHER)
@@ -349,7 +349,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
         assert.equal(accountDifference.toString(), paymasterBalanceAfter.toString(), 'unexpected balance')
         const latestAnswer = await chainlinkOracleDAIETH.latestAnswer()
         const maxPossibleEth = await testRelayHub.calculateCharge(MAX_POSSIBLE_GAS, relayRequest.relayData)
-        const priceDivisor = await permitPaymaster.priceDivisors(DAI_CONTRACT_ADDRESS)
+        const priceDivisor = toBN((await permitPaymaster.getTokenSwapData(DAI_CONTRACT_ADDRESS)).priceDivisor.toString())
         const expectedCharge = await permitPaymaster.addPaymasterFee(priceDivisor.mul(maxPossibleEth).div(latestAnswer).div(ETHER))
         assert.equal(accountDifference.toString(), paymasterBalanceAfter.toString(), 'unexpected balance')
         assert.equal(accountDifference.toString(), expectedCharge.toString(), 'unexpected charge')

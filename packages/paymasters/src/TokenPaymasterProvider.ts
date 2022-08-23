@@ -109,7 +109,7 @@ export class TokenPaymasterProvider extends RelayProvider {
     if (this.config.domainSeparators == null || this.config.domainSeparators[this.config.tokenAddress] == null) {
       throw new Error(`Domain separator not found for token ${tokenAddress}`)
     }
-    const permitSigHash = await this.paymaster.permitMethodSignatures(tokenAddress)
+    const permitSigHash = (await this.paymaster.getTokenSwapData(tokenAddress)).permitMethodSignature
     if (permitSigHash === PERMIT_SIGHASH_DAI) {
       this.permitSignature = PERMIT_SIGNATURE_DAI
       this.token = await this.tokenPaymasterInteractor._createPermitInterfaceDAIToken(tokenAddress)
