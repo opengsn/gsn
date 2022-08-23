@@ -40,7 +40,7 @@ import { removeHexPrefix, constants, RelayRequest } from '@opengsn/common/dist'
 import {
   DAI_ETH_POOL_FEE,
   detectMainnet, ETHER, GAS_PRICE,
-  GAS_USED_BY_POST,
+  GAS_USED_BY_POST, impersonateAccount,
   MAJOR_DAI_AND_UNI_HOLDER, MIN_HUB_BALANCE, MIN_WITHDRAWAL_AMOUNT, skipWithoutFork, TARGET_HUB_BALANCE,
   UNI_ETH_POOL_FEE,
   USDC_ETH_POOL_FEE
@@ -84,6 +84,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
     if (!await detectMainnet()) {
       this.skip()
     }
+    await impersonateAccount(MAJOR_DAI_AND_UNI_HOLDER)
     sampleRecipient = await SampleRecipient.new()
     await sampleRecipient.setForwarder(GSN_FORWARDER_CONTRACT_ADDRESS)
     quoter = await IQuoter.at(UNISWAP_V3_QUOTER_CONTRACT_ADDRESS)

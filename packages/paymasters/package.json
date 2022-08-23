@@ -44,6 +44,9 @@
     "web3-utils": "^1.7.4"
   },
   "devDependencies": {
+    "@ethersproject/abstract-signer": "^5.6.2",
+    "@ethersproject/experimental": "^5.6.3",
+    "@ethersproject/providers": "^5.6.5",
     "@opengsn/cli": "^3.0.0-beta.1",
     "@openzeppelin/test-helpers": "^0.5.15",
     "@types/ethereumjs-util": "^6.1.0",
@@ -52,6 +55,7 @@
     "bn.js": "^5.2.1",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
+    "ethers": "^5.6.5",
     "ts-node": "8.6.2",
     "solhint": "^3.3.2",
     "ts-node": "8.6.2",

@@ -43,7 +43,8 @@
   "scripts": {
     "test": "yarn preprocess && yarn lerna-run-test-with-hardhat",
     "ganache": "ganache-cli --chainId 1337 --hardfork 'istanbul' --gasLimit 120000000 --defaultBalanceEther 1000 --deterministic --keepAliveTimeout 2147483647",
-    "ganache-fork-mainnet": "ganache-cli --fork https://mainnet.infura.io/v3/f40be2b1a3914db682491dc62a19ad43 --port 8544 --chainId 1 --l 10000000  --unlock 0xF977814e90dA44bFA03b6295A0616a897441aceC",
+    "ganache-fork-mainnet": "ganache-cli --fork https://mainnet.infura.io/v3/f40be2b1a3914db682491dc62a19ad43 --port 8544 --chainId 1 --l 10000000  --unlock 0x28C6c06298d514Db089934071355E5743bf21d60",
+    "hardhat-fork-mainnet":  "hardhat node --port 8544 --fork https://mainnet.infura.io/v3/f40be2b1a3914db682491dc62a19ad43",
     "preprocess": "yarn lerna-rm-dist && yarn lerna-typechain-generate && yarn extract_abi && yarn lerna-tsc && yarn lerna-chmod-commands",
     "preprocess-paymasters": "yarn lerna-rm-dist --scope @opengsn/paymasters && yarn lerna-typechain-generate-paymasters && yarn extract_abi_paymasters && yarn lerna-tsc-paymasters && yarn lerna-lint-paymasters",
     "extract_abi": "./scripts/extract_abi.js",
@@ -101,7 +102,7 @@
     "eslint-plugin-promise": "4.2.1",
     "eslint-plugin-standard": "4.0.1",
     "ethereumjs-abi": "^0.6.8",
-    "ganache-cli": "^6.12.2",
+    "ganache-cli": "6.12.2",
     "lerna": "^5.1.8",
     "run-with-hardhat-node": "^0.4.3",
     "solpp": "^0.11.5",
