@@ -269,10 +269,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             }
             UniswapV3Helper.unwrapWeth(uniswap, amountSwapped);
         }
-        if (balance + amountSwapped < depositAmount) {
-            depositAmount = balance + amountSwapped;
-        }
-        relayHub.depositFor{value : depositAmount}(address(this));
+        relayHub.depositFor{value : balance + amountSwapped}(address(this));
     }
 
     function _withdrawToOwnerIfNeeded() private {
