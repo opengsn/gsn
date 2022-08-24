@@ -161,7 +161,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               clientId
             }
           }
-        encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
+        encodedCall = relayHub.contract.methods.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
 
         legacyTx = new Transaction({
           nonce: relayCallArgs.nonce,
@@ -742,7 +742,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             clientId
           }
         }
-      const encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
+      const encodedCall = relayHub.contract.methods.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
 
       const transaction = Transaction.fromTxData({
         nonce: relayCallArgs.nonce,

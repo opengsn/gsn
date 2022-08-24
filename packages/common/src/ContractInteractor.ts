@@ -76,9 +76,11 @@ export interface ConstructorParams {
   maxPageSize: number
   maxPageCount?: number
   environment: Environment
+  domainSeparatorName?: string
 }
 
 export interface RelayCallABI {
+  domainSeparatorName: string
   signature: PrefixedHexString
   relayRequest: RelayRequest
   approvalData: PrefixedHexString
@@ -87,6 +89,7 @@ export interface RelayCallABI {
 
 export function asRelayCallAbi (r: RelayTransactionRequest): RelayCallABI {
   return {
+    domainSeparatorName: r.metadata.domainSeparatorName,
     relayRequest: r.relayRequest,
     signature: r.metadata.signature,
     approvalData: r.metadata.approvalData,
@@ -149,6 +152,7 @@ export class ContractInteractor {
   private paymasterVersion?: SemVerString
   readonly environment: Environment
   transactionType: TransactionType = TransactionType.LEGACY
+  readonly domainSeparatorName: string
 
   constructor (
     {
@@ -158,6 +162,7 @@ export class ContractInteractor {
       versionManager,
       logger,
       environment,
+      domainSeparatorName,
       deployment = {}
     }: ConstructorParams) {
     this.maxPageSize = maxPageSize
@@ -169,6 +174,7 @@ export class ContractInteractor {
     this.provider = provider
     this.lastBlockNumber = 0
     this.environment = environment
+    this.domainSeparatorName = domainSeparatorName ?? ''
     this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
       abi: paymasterAbi
@@ -611,7 +617,7 @@ export class ContractInteractor {
   encodeABI (
     _: RelayCallABI
   ): PrefixedHexString {
-    return this.relayCallMethod(_.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData).encodeABI()
+    return this.relayCallMethod(_.domainSeparatorName, _.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData).encodeABI()
   }
 
   async getPastEventsForHub (extraTopics: Array<string[] | string | undefined>, options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
@@ -863,6 +869,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   /**
+   * Only used by the RelayClient.
    * @param relayRequestOriginal request input of the 'relayCall' method with some fields not yet initialized
    * @param variableFieldSizes configurable sizes of 'relayCall' parameters with variable size types
    * @return {PrefixedHexString} top boundary estimation of how much gas sending this data will consume
@@ -884,6 +891,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const signature = '0x' + 'ff'.repeat(65)
     const approvalData = '0x' + 'ff'.repeat(variableFieldSizes.maxApprovalDataLength)
     const encodedData = this.encodeABI({
+      domainSeparatorName: this.domainSeparatorName,
       relayRequest,
       signature,
       approvalData,

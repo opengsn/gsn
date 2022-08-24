@@ -381,6 +381,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           })
 
           const encodedData = contractInteractor.encodeABI({
+            domainSeparatorName: defaultGsnConfig.domainSeparatorName,
             maxAcceptanceBudget: 10e6.toString(),
             relayRequest,
             signature,
@@ -464,7 +465,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             web3,
             dataToSign
           )
-          const relayCall = relayHub.contract.methods.relayCall(10e6, relayRequest, signature, approvalData)
+          const relayCall = relayHub.contract.methods.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, approvalData)
           const receipt = await relayCall.send({
             from: relayWorker,
             gas: externalGasLimit,
@@ -574,6 +575,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   // how much gas we actually spent on this tx
                   const workerWeiGasUsed = beforeBalances.relayWorkers.sub(afterBalances.relayWorkers)
                   const encodedData = contractInteractor.encodeABI({
+                    domainSeparatorName: defaultGsnConfig.domainSeparatorName,
                     maxAcceptanceBudget: 10e6.toString(),
                     relayRequest,
                     signature,

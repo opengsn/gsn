@@ -306,6 +306,8 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         console.log("relayCall relayRequest.relayData.forwarder", relayRequest.relayData.forwarder);
         console.log("relayCall relayRequest.relayData.clientId", relayRequest.relayData.clientId);
 
+        console.log("relayCall domainSeparatorName");
+        console.logString(domainSeparatorName);
         console.log("relayCall signature");
         console.logBytes(signature);
         console.log("relayCall approvalData");
@@ -335,7 +337,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft);
 
-        RelayHubValidator.verifyTransactionPacking(relayRequest,signature,approvalData);
+        RelayHubValidator.verifyTransactionPacking(domainSeparatorName,relayRequest,signature,approvalData);
 
     {
 

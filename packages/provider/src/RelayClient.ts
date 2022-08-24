@@ -576,6 +576,7 @@ export class RelayClient {
         maxPageSize: this.config.pastEventsQueryMaxPageSize,
         maxPageCount: this.config.pastEventsQueryMaxPageCount,
         environment: this.config.environment,
+        domainSeparatorName: this.config.domainSeparatorName,
         deployment: { paymasterAddress: config?.paymasterAddress }
       }).init()
     const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, contractInteractor.chainId, this.config)
@@ -628,6 +629,7 @@ export class RelayClient {
     this.fillRelayInfo(relayRequest, dryRunRelayInfo)
     // note that here 'maxAcceptanceBudget' is set to the entire transaction 'maxViewableGasLimit'
     const relayCallABI: RelayCallABI = {
+      domainSeparatorName: this.config.domainSeparatorName,
       relayRequest,
       signature: '0x',
       approvalData: '0x',

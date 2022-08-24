@@ -476,7 +476,8 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
 
           it('should get \'paymasterAccepted = true\' and no revert reason as view call result of \'relayCall\' for a valid transaction', async function () {
             const clearedRelayRequest = clearRelayRequest(relayRequest)
-            const relayCallView = await relayHubInstance.contract.methods.relayCall(defaultGsnConfig.domainSeparatorName,
+            const relayCallView = await relayHubInstance.contract.methods.relayCall(
+              defaultGsnConfig.domainSeparatorName,
               10e6,
               clearedRelayRequest,
               '0x', '0x')
@@ -504,7 +505,8 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         })
 
         it('should get \'paymasterAccepted = true\' and no revert reason as view call result of \'relayCall\' for a valid transaction', async function () {
-          const relayCallView = await relayHubInstance.contract.methods.relayCall(defaultGsnConfig.domainSeparatorName,
+          const relayCallView = await relayHubInstance.contract.methods.relayCall(
+            defaultGsnConfig.domainSeparatorName,
             10e6,
             relayRequest,
             signatureWithPermissivePaymaster, '0x')

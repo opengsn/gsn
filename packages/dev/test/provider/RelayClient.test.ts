@@ -313,9 +313,9 @@ contract.only('RelayClient', function (accounts) {
       assert.equal(destination, relayHub.address.toString().toLowerCase())
     })
 
-    it.only('should use alternative ERC-712 domain separator', async function () {
+    it('should use alternative ERC-712 domain separator', async function () {
       const newDomainSeparatorName = 'This is not the old domain separator name'
-      // await registerForwarderForGsn(newDomainSeparatorName, forwarderInstance)
+      await registerForwarderForGsn(newDomainSeparatorName, forwarderInstance)
       const newConfig = Object.assign({}, gsnConfig, { domainSeparatorName: newDomainSeparatorName })
       const relayClient = new RelayClient({
         provider: underlyingProvider,
@@ -323,7 +323,7 @@ contract.only('RelayClient', function (accounts) {
       })
       await relayClient.init()
       const relayingResult = await relayClient.relayTransaction(options)
-      const validTransactionHash: string = relayingResult.transaction!.hash().toString('hex')
+      const validTransactionHash: string = `0x${relayingResult.transaction!.hash().toString('hex')}`
       const res = await web3.eth.getTransactionReceipt(validTransactionHash)
       const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256,uint256,uint256)') ?? ''
       assert.ok(res.logs.find(log => log.topics.includes(topic)), 'log not found')
