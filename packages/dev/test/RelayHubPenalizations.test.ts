@@ -642,7 +642,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             value: ether('1')
           })
           const externalGasLimit = gasLimit.add(new BN(1e6))
-          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+          const relayCallTx = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
             from: relayWorker,
             gas: externalGasLimit,
             gasPrice

@@ -216,7 +216,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       }, { from: relayHub.address })) - 21000
 
       const externalGasLimit = 5e6
-      const tx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+      const tx = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: externalGasLimit.toString(),
         gasPrice
@@ -267,7 +267,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       assert.equal(viewRelayCallResponse[2], RelayCallStatusCodes.RejectedByPreRelayed.toString())
       assert.equal(viewRelayCallResponse[3], null) // no revert string on out-of-gas
 
-      const res = await relayHub.relayCall(10e6, relayRequestMisbehaving, signature, '0x', {
+      const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequestMisbehaving, signature, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice: gasPrice
@@ -374,7 +374,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             web3,
             dataToSign
           )
-          const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+          const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
             from: relayWorker,
             gas: externalGasLimit,
             gasPrice: gasPrice
@@ -554,7 +554,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     web3,
                     dataToSign
                   )
-                  const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+                  const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
                     from: relayWorker,
                     gas: externalGasLimit,
                     gasPrice: gasPrice

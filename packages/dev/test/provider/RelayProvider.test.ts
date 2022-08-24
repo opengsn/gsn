@@ -451,7 +451,7 @@ contract('RelayProvider', function (accounts) {
         signature
       } = await prepareTransaction(testRecipient, accounts[0], accounts[0], misbehavingPaymaster.address, web3)
       await misbehavingPaymaster.setReturnInvalidErrorCode(true)
-      const paymasterRejectedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+      const paymasterRejectedReceiptTruffle = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
         from: accounts[0],
         gas,
         gasPrice: '4494095'
@@ -469,7 +469,7 @@ contract('RelayProvider', function (accounts) {
       relayProvider = RelayProvider.newProvider({ provider: underlyingProvider, config: gsnConfig })
       await relayProvider.init()
 
-      const innerTxFailedReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+      const innerTxFailedReceiptTruffle = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
         from: accounts[0],
         gas,
         gasPrice: '4494095'
@@ -480,7 +480,7 @@ contract('RelayProvider', function (accounts) {
       innerTxFailedReceipt = await web3.eth.getTransactionReceipt(innerTxFailedReceiptTruffle.tx)
 
       await misbehavingPaymaster.setRevertPreRelayCall(false)
-      const innerTxSuccessReceiptTruffle = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+      const innerTxSuccessReceiptTruffle = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
         from: accounts[0],
         gas,
         gasPrice: '4494095'

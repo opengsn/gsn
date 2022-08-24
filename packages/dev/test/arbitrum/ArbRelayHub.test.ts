@@ -130,7 +130,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
     })
 
     it('should use aggregateGasleft results when calculating charge', async function () {
-      const res = await arbRelayHub.relayCall(10e6, relayRequest, signature, '0x', {
+      const res = await arbRelayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 10000000,
         gasPrice: 1e8.toString()

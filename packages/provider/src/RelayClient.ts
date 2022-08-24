@@ -471,6 +471,7 @@ export class RelayClient {
     const relayMaxNonce = relayLastKnownNonce + this.config.maxRelayNonceGap
     const relayHubAddress = this.dependencies.contractInteractor.getDeployment().relayHubAddress ?? ''
     const metadata: RelayMetadata = {
+      domainSeparatorName: this.config.domainSeparatorName,
       maxAcceptanceBudget: relayInfo.pingResponse.maxAcceptanceBudget,
       relayHubAddress,
       signature,

@@ -11,6 +11,7 @@ export interface RelayMetadata {
   relayMaxNonce: number
   signature: PrefixedHexString
   maxAcceptanceBudget: PrefixedHexString
+  domainSeparatorName: string
 }
 
 export interface RelayTransactionRequest {
@@ -41,6 +42,7 @@ export const RelayTransactionRequestShape = {
     }
   },
   metadata: {
+    domainSeparatorName: ow.string,
     relayLastKnownNonce: ow.number,
     approvalData: ow.string,
     relayHubAddress: ow.string,

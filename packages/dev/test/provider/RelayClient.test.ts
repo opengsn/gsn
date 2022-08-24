@@ -15,6 +15,7 @@ import { toBN, toHex } from 'web3-utils'
 
 import {
   RelayHubInstance,
+  ForwarderInstance,
   PenalizerInstance,
   TestTokenInstance,
   StakeManagerInstance,
@@ -111,10 +112,11 @@ class MockHttpClient extends HttpClient {
   }
 }
 
-contract('RelayClient', function (accounts) {
+contract.only('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let relayRegistrar: RelayRegistrarInstance
+  let forwarderInstance: ForwarderInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
@@ -162,7 +164,7 @@ contract('RelayClient', function (accounts) {
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
-    const forwarderInstance = await Forwarder.new()
+    forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)
     testRecipientWithoutFallback = await TestRecipientWithoutFallback.new(forwarderAddress)
@@ -309,6 +311,22 @@ contract('RelayClient', function (accounts) {
 
       const destination: string = validTransaction.to!.toString()
       assert.equal(destination, relayHub.address.toString().toLowerCase())
+    })
+
+    it.only('should use alternative ERC-712 domain separator', async function () {
+      const newDomainSeparatorName = 'This is not the old domain separator name'
+      // await registerForwarderForGsn(newDomainSeparatorName, forwarderInstance)
+      const newConfig = Object.assign({}, gsnConfig, { domainSeparatorName: newDomainSeparatorName })
+      const relayClient = new RelayClient({
+        provider: underlyingProvider,
+        config: newConfig
+      })
+      await relayClient.init()
+      const relayingResult = await relayClient.relayTransaction(options)
+      const validTransactionHash: string = relayingResult.transaction!.hash().toString('hex')
+      const res = await web3.eth.getTransactionReceipt(validTransactionHash)
+      const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256,uint256,uint256)') ?? ''
+      assert.ok(res.logs.find(log => log.topics.includes(topic)), 'log not found')
     })
 
     it('should skip timed-out server', async function () {
@@ -751,6 +769,7 @@ contract('RelayClient', function (accounts) {
       const relayTransactionRequest: RelayTransactionRequest = {
         relayRequest,
         metadata: {
+          domainSeparatorName: defaultGsnConfig.domainSeparatorName,
           relayMaxNonce: 4,
           relayLastKnownNonce: 1,
           signature: '',
