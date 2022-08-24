@@ -46,8 +46,6 @@ export class TokenPaymasterProvider extends RelayProvider {
       input.config.maxPaymasterDataLength = 300
     }
     const provider = new TokenPaymasterProvider(new RelayClient(input), input.provider)
-    // input.overrideDependencies = input.overrideDependencies ?? {}
-    // input.overrideDependencies.asyncPaymasterData = provider._buildPaymasterData.bind(provider)
     return provider
   }
 
@@ -97,7 +95,7 @@ export class TokenPaymasterProvider extends RelayProvider {
       }
     }
     // return abi.encodeParameters(['bytes', 'address'], [permitMethod, this.token.address])
-    return '0x' + removeHexPrefix(permitMethod) + removeHexPrefix(this.token.address)
+    return '0x' + removeHexPrefix(this.token.address) + removeHexPrefix(permitMethod)
   }
 
   async useToken (tokenAddress: Address): Promise<void> {

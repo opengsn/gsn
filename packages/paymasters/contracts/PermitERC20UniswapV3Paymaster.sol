@@ -27,7 +27,6 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     using SafeERC20 for IERC20Metadata;
 
     event Received(address indexed sender, uint256 eth);
-    event FundingNeeded();
     event TokensCharged(uint256 gasUseWithoutPost, uint256 gasJustPost, uint256 tokenActualCharge, uint256 ethActualCharge);
 
     struct TokenSwapData {
@@ -199,12 +198,12 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         if (paymasterDataLength != 20) {
             require(paymasterDataLength >= 24, "must contain \"permit\" and token");
             require(
-                tokenSwapData.permitMethodSignature == GsnUtils.getMethodSig(relayRequest.relayData.paymasterData),
+                tokenSwapData.permitMethodSignature == GsnUtils.getMethodSig(relayRequest.relayData.paymasterData[20:]),
                 "wrong \"permit\" method sig");
             // execute permit method for this token
             {
                 // solhint-disable-next-line avoid-low-level-calls
-                (bool success, bytes memory ret) = address(token).call(relayRequest.relayData.paymasterData[:paymasterDataLength - 20]);
+                (bool success, bytes memory ret) = address(token).call(relayRequest.relayData.paymasterData[20:]);
                 require(success, string(abi.encodePacked("permit call reverted:", string(ret))));
             }
         }
@@ -271,7 +270,6 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             UniswapV3Helper.unwrapWeth(uniswap, amountSwapped);
         }
         if (balance + amountSwapped < depositAmount) {
-            emit FundingNeeded();
             depositAmount = balance + amountSwapped;
         }
         relayHub.depositFor{value : depositAmount}(address(this));
@@ -285,7 +283,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     }
 
     function _getTokenFromPaymasterData(bytes calldata paymasterData) internal pure returns (IERC20Metadata) {
-        return IERC20Metadata(address(bytes20(paymasterData[paymasterData.length - 20:])));
+        return IERC20Metadata(address(bytes20(paymasterData[:20])));
     }
 
     function addPaymasterFee(uint256 charge) public view returns (uint256) {
@@ -303,7 +301,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         emit Received(msg.sender, msg.value);
     }
 
-    function getGasAndDataLimits() public override view returns (IPaymaster.GasAndDataLimits memory limits) {
+    function getGasAndDataLimits() public override pure returns (IPaymaster.GasAndDataLimits memory limits) {
         return IPaymaster.GasAndDataLimits(
             2e5,
             2e5,

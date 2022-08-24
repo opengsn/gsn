@@ -219,7 +219,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
             )
           ), /must contain token address/)
 
-        modifiedRequest.relayData.paymasterData = concatHexStrings('ff', DAI_CONTRACT_ADDRESS)
+        modifiedRequest.relayData.paymasterData = concatHexStrings(DAI_CONTRACT_ADDRESS, 'ff')
 
         assert.match(
           await revertReason(
@@ -252,7 +252,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
       it('should revert if paymasterData is not an encoded call to permit method', async function () {
         await skipWithoutFork(this)
         const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: concatHexStrings('0x123456789', DAI_CONTRACT_ADDRESS)
+          paymasterData: concatHexStrings(DAI_CONTRACT_ADDRESS, '0x12345678')
         })
 
         assert.match(
@@ -281,7 +281,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           true
         )
         const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: encodedCallToPermit.concat(removeHexPrefix(DAI_CONTRACT_ADDRESS))
+          paymasterData: concatHexStrings(DAI_CONTRACT_ADDRESS, encodedCallToPermit)
         })
         assert.match(
           await revertReason(
@@ -330,7 +330,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           web3
         )
         const modifiedRequest = mergeRelayRequest(relayRequest, {
-          paymasterData: encodedCallToPermit.concat(removeHexPrefix(DAI_CONTRACT_ADDRESS))
+          paymasterData: concatHexStrings(DAI_CONTRACT_ADDRESS, encodedCallToPermit)
         })
         await testRelayHub.callPreRC(
           modifiedRequest,
@@ -390,7 +390,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
             )
             const modifiedRequest = mergeRelayRequest(relayRequest, {
               paymaster: permitPaymaster.address,
-              paymasterData: encodedCallToPermit.concat(removeHexPrefix(token.address))
+              paymasterData: concatHexStrings(token.address, encodedCallToPermit)
             })
             await testRelayHub.callPreRC(
               modifiedRequest,
