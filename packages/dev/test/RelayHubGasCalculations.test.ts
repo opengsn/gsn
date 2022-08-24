@@ -160,6 +160,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     const logger = createClientLogger({ logLevel: 'error' })
     const deployment: GSNContractsDeployment = { paymasterAddress: paymaster.address }
     contractInteractor = new ContractInteractor({
+      domainSeparatorName: defaultGsnConfig.domainSeparatorName,
       environment: defaultEnvironment,
       provider: web3.currentProvider as HttpProvider,
       logger,
@@ -257,7 +258,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       )
       const viewRelayCallResponse =
         await relayHub.contract.methods
-          .relayCall(10e6, relayRequestMisbehaving, signature, '0x')
+          .relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequestMisbehaving, signature, '0x')
           .call({
             from: relayRequestMisbehaving.relayData.relayWorker,
             gas: externalGasLimit,

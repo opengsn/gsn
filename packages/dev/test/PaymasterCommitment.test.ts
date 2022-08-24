@@ -74,6 +74,7 @@ async function makeRequest (
     relayHubAddress: relayHubInstance.address
   }
   const contractInteractor = new ContractInteractor({
+    domainSeparatorName: defaultGsnConfig.domainSeparatorName,
     environment: defaultEnvironment,
     provider: web3.eth.currentProvider as HttpProvider,
     logger: createServerLogger('error', '', ''),
@@ -273,7 +274,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 998)
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1094)
       const relayCallParams: [string, number, RelayRequest, string, string, Truffle.TransactionDetails?] = [defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, hugeApprovalData]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       // @ts-ignore
@@ -301,7 +302,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 998)
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1094)
       const relayCallParams: [string, number, RelayRequest, string, string, Truffle.TransactionDetails?] = [defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, hugeApprovalData]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       // @ts-ignore

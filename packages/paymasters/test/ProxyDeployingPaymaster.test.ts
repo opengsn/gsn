@@ -234,7 +234,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
             )
           )
           const gas = 5000000
-          const relayCall: any = await relayHub.relayCall.call(10e6, relayRequest, wrongSignature, '0x', {
+          const relayCall: any = await relayHub.relayCall.call(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, wrongSignature, '0x', {
             from: relayWorker,
             gas
           })
