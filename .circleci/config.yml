@@ -146,7 +146,7 @@ jobs: # a collection of steps
           at: .
       - run: # run hardhat mainnet fork
           name: hardhat-fork-mainnet
-          command: CHAINID=1 yarn hardhat-fork-mainnet
+          command: yarn hardhat-fork-mainnet
           background: true
       # https://discuss.circleci.com/t/run-http-server-in-background-during-tests/3177
       # wait for the server to start responding. We expect Bad Request 400 once it starts listening.
