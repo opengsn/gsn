@@ -114,7 +114,7 @@ export interface GSNConfig {
   /**
   * Fields required by TokenPaymasterProvider for the supported tokens
   */
-  domainSeparators?: Record<Address, EIP712Domain>
+  tokenPaymasterDomainSeparators?: Record<Address, EIP712Domain>
 
   /**
    * If set to 'true' the Relay will not perform an ERC-165 interfaces check on the GSN contracts.

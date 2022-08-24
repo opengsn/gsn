@@ -35,17 +35,15 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         uint24 uniswapPoolFee;
         bytes4 permitMethodSignature;
         uint256 priceDivisor;
+        uint256 validFromBlockNumber;
     }
 
-//    mapping(IERC20Metadata => IChainlinkOracle) public priceFeeds;
-//    mapping(IERC20Metadata => uint256) public priceDivisors;
-//    mapping(IERC20Metadata => uint24) public uniswapPoolFees;
-//    mapping(IERC20Metadata => bytes4) public permitMethodSignatures;
     mapping(IERC20Metadata => TokenSwapData) public tokensSwapData;
     ISwapRouter public uniswap;
     IERC20Metadata[] public tokens;
     IERC20 public immutable weth;
     uint256 public gasUsedByPost;
+    uint256 public tokensBlockNumber;
 
 
     // Upon reaching minHubBalance, the paymaster will deposit eth to RelayHub to reach targetHubBalance
@@ -122,6 +120,8 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         string[] memory _permitMethodSignatures,
         uint24[] memory _poolFees) public onlyOwner {
         tokens = _tokens;
+        uint256 blockNumber = block.number;
+        tokensBlockNumber = blockNumber;
         // allow uniswap to transfer from paymaster balance
         for (uint256 i = 0; i < tokens.length; i++) {
             TokenSwapData memory data;
@@ -131,6 +131,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             data.priceFeed = _priceFeeds[i];
             data.permitMethodSignature = bytes4(keccak256(bytes(_permitMethodSignatures[i])));
             data.uniswapPoolFee = _poolFees[i];
+            data.validFromBlockNumber = blockNumber;
             tokensSwapData[token] = data;
         }
     }
@@ -176,7 +177,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {}
 
     function isTokenSupported(IERC20Metadata token) public view returns (bool) {
-        return tokensSwapData[token].priceDivisor != 0;
+        return tokensSwapData[token].validFromBlockNumber == tokensBlockNumber;
     }
 
     function _preRelayedCall(

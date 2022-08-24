@@ -70,10 +70,10 @@ export class TokenPaymasterProvider extends RelayProvider {
     const allowance = await this.token.allowance(relayRequest.request.from, relayRequest.relayData.paymaster)
     let permitMethod = ''
     if (allowance.eqn(0)) {
-      if (this.config.domainSeparators == null) {
+      if (this.config.tokenPaymasterDomainSeparators == null) {
         throw new Error('TokenPaymasterProvider not initialized. Call init() first')
       }
-      const domainSeparator: EIP712Domain = this.config.domainSeparators[this.token.address]
+      const domainSeparator: EIP712Domain = this.config.tokenPaymasterDomainSeparators[this.token.address]
       if (this.permitSignature === PERMIT_SIGNATURE_DAI) {
         permitMethod = await signAndEncodeDaiPermit(
           relayRequest.request.from,
@@ -106,7 +106,7 @@ export class TokenPaymasterProvider extends RelayProvider {
       throw new Error(`token ${tokenAddress} not supported`)
     }
     this.config.tokenAddress = toChecksumAddress(tokenAddress)
-    if (this.config.domainSeparators == null || this.config.domainSeparators[this.config.tokenAddress] == null) {
+    if (this.config.tokenPaymasterDomainSeparators == null || this.config.tokenPaymasterDomainSeparators[this.config.tokenAddress] == null) {
       throw new Error(`Domain separator not found for token ${tokenAddress}`)
     }
     const permitSigHash = (await this.paymaster.getTokenSwapData(tokenAddress)).permitMethodSignature
