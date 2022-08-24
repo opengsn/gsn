@@ -70,24 +70,23 @@ interface Types extends MessageTypes {
 // use these values in registerDomainSeparator
 export const GsnDomainSeparatorType = {
   prefix: 'string name,string version',
-  name: 'GSN Relayed Transaction',
   version: '3'
 }
 
-export function getDomainSeparator (verifier: Address, chainId: number): Record<string, unknown> {
+export function getDomainSeparator (name: string, verifier: Address, chainId: number): Record<string, unknown> {
   return {
-    name: GsnDomainSeparatorType.name,
+    name,
     version: GsnDomainSeparatorType.version,
     chainId: chainId,
     verifyingContract: verifier
   }
 }
 
-export function getDomainSeparatorHash (verifier: Address, chainId: number): PrefixedHexString {
+export function getDomainSeparatorHash (name: string, verifier: Address, chainId: number): PrefixedHexString {
   return bufferToHex(
     TypedDataUtils.hashStruct(
       'EIP712Domain',
-      getDomainSeparator(verifier, chainId),
+      getDomainSeparator(name, verifier, chainId),
       { EIP712Domain: EIP712DomainType },
       SignTypedDataVersion.V4)
   )
@@ -100,6 +99,7 @@ export class TypedRequestData implements TypedMessage<Types> {
   readonly message: any
 
   constructor (
+    name: string,
     chainId: number,
     verifier: Address,
     relayRequest: RelayRequest) {
@@ -108,7 +108,7 @@ export class TypedRequestData implements TypedMessage<Types> {
       RelayRequest: RelayRequestType,
       RelayData: RelayDataType
     }
-    this.domain = getDomainSeparator(verifier, chainId)
+    this.domain = getDomainSeparator(name, verifier, chainId)
     this.primaryType = 'RelayRequest'
     // in the signature, all "request" fields are flattened out at the top structure.
     // other params are inside "relayData" sub-type

@@ -33,6 +33,7 @@ import { deployHub, encodeRevertReason, revert, snapshot } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -96,7 +97,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
     recipientContract = await TestRecipient.new(forwarder)
 
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     target = recipientContract.address
     paymaster = paymasterContract.address
@@ -412,6 +413,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         relayRequest = cloneRelayRequest(sharedRelayRequestData)
         relayRequest.request.data = encodedFunction
         const dataToSign = new TypedRequestData(
+          defaultGsnConfig.domainSeparatorName,
           chainId,
           forwarder,
           relayRequest
@@ -558,6 +560,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             from: other
           })
           let dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest
@@ -572,6 +575,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           relayRequestMisbehavingPaymaster.relayData.paymaster = misbehavingPaymaster.address
 
           dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequestMisbehavingPaymaster
@@ -584,6 +588,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           relayRequestPaymasterWithContext = cloneRelayRequest(relayRequest)
           relayRequestPaymasterWithContext.relayData.paymaster = paymasterWithContext.address
           dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequestPaymasterWithContext
@@ -643,6 +648,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           eip1559relayRequest.relayData.maxPriorityFeePerGas = 1e9.toString()
           const gasPrice = 1e10.toString()
           const dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             eip1559relayRequest.relayData.forwarder,
             eip1559relayRequest
@@ -701,6 +707,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           const relayRequestNoCallData = cloneRelayRequest(relayRequest)
           relayRequestNoCallData.request.data = encodedFunction
           const dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequestNoCallData
@@ -727,6 +734,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           const relayRequestRevert = cloneRelayRequest(relayRequest)
           relayRequestRevert.request.data = encodedFunction
           const dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequestRevert
@@ -899,6 +907,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             relayRequestMisbehavingPaymaster = cloneRelayRequest(relayRequest)
             relayRequestMisbehavingPaymaster.relayData.paymaster = misbehavingPaymaster.address
             const dataToSign = new TypedRequestData(
+              defaultGsnConfig.domainSeparatorName,
               chainId,
               forwarder,
               relayRequestMisbehavingPaymaster
@@ -944,7 +953,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           before(async function () {
             relayRequest = cloneRelayRequest(sharedRelayRequestData)
             gatewayForwarder = await GatewayForwarder.new()
-            await registerForwarderForGsn(gatewayForwarder)
+            await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, gatewayForwarder)
             relayHubInstance = await deployHub(stakeManager.address, penalizer.address, batchGateway, testToken.address, oneEther.toString())
             recipientContract = await TestRecipient.new(gatewayForwarder.address)
             await gatewayForwarder.setTrustedRelayHub(relayHubInstance.address)
@@ -982,6 +991,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
 
           it('should relay relayCall with correct non-empty signature coming from the BatchGateway', async function () {
             const dataToSign = new TypedRequestData(
+              defaultGsnConfig.domainSeparatorName,
               chainId,
               gatewayForwarder.address,
               relayRequest
@@ -1025,6 +1035,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             const relayRequestWithNonce = cloneRelayRequest(relayRequest)
             relayRequestWithNonce.request.nonce = (await gatewayForwarder.getNonce(relayRequest.request.from)).toString()
             const dataToSign = new TypedRequestData(
+              defaultGsnConfig.domainSeparatorName,
               chainId,
               gatewayForwarder.address,
               relayRequestWithNonce

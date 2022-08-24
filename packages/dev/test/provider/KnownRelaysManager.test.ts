@@ -14,7 +14,7 @@ import {
   registerForwarderForGsn,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
-import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
   PenalizerInstance,
   RelayHubInstance,
@@ -105,7 +105,7 @@ contract('KnownRelaysManager', function (
       const forwarderInstance = await Forwarder.new()
       const forwarderAddress = forwarderInstance.address
       testRecipient = await TestRecipient.new(forwarderAddress)
-      await registerForwarderForGsn(forwarderInstance)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
       paymaster = await TestPaymasterConfigurableMisbehavior.new()
       await paymaster.setTrustedForwarder(forwarderAddress)

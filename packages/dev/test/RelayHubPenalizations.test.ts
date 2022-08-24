@@ -34,6 +34,7 @@ import {
 import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
 
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -96,7 +97,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     encodedCallArgs.paymaster = paymaster.address
@@ -627,6 +628,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             }
           }
           const dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest

@@ -169,4 +169,11 @@ export interface GSNConfig {
    * The number of milliseconds to wait after the first Relay Server responds to the ping before picking a winner.
    */
   waitForSuccessPingGrace: number
+
+  /**
+   * The name of the EIP-712 Domain Separator field. Note that this is usually the name of the requiest the
+   * users will see in MetaMask or other wallets.
+   * Warning! The domain type must be first registered on-chain by calling 'Forwarder::registerDomainSeparator'.
+   */
+  domainSeparatorName: string
 }

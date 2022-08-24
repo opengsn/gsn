@@ -167,7 +167,7 @@ contract('RelayClient', function (accounts) {
     testRecipient = await TestRecipient.new(forwarderAddress)
     testRecipientWithoutFallback = await TestRecipientWithoutFallback.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setTrustedForwarder(forwarderAddress)
     await paymaster.setRelayHub(relayHub.address)

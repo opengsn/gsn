@@ -39,6 +39,7 @@ import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
 
 import * as process from 'process'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -101,7 +102,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),
@@ -145,6 +146,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
     }
     const dataToSign = new TypedRequestData(
+      defaultGsnConfig.domainSeparatorName,
       chainId,
       forwarder,
       relayRequest
@@ -244,6 +246,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       relayRequestMisbehaving.relayData.paymaster = misbehavingPaymaster.address
       relayRequestMisbehaving.request.nonce = senderNonce
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         chainId,
         forwarder,
         relayRequestMisbehaving
@@ -362,6 +365,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             maxApprovalDataLength: 0
           })
           const dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest
@@ -451,6 +455,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             }
           }
           const dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest
@@ -540,6 +545,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     maxApprovalDataLength: 0
                   })
                   const dataToSign = new TypedRequestData(
+                    defaultGsnConfig.domainSeparatorName,
                     chainId,
                     forwarder,
                     relayRequest

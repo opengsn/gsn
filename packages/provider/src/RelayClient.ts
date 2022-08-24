@@ -454,7 +454,7 @@ export class RelayClient {
     relayInfo: RelayInfo
   ): Promise<RelayTransactionRequest> {
     this.emit(new GsnSignRequestEvent())
-    const signature = await this.dependencies.accountManager.sign(relayRequest)
+    const signature = await this.dependencies.accountManager.sign(this.config.domainSeparatorName, relayRequest)
     const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
 
     if (toBuffer(relayRequest.relayData.paymasterData).length >

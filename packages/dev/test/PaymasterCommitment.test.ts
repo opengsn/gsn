@@ -31,6 +31,7 @@ import {
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { deployHub, encodeRevertReason } from './TestUtils'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const TestToken = artifacts.require('TestToken')
 const StakeManager = artifacts.require('StakeManager')
@@ -88,6 +89,7 @@ async function makeRequest (
   const sig = await getEip712Signature(
     web3,
     new TypedRequestData(
+      defaultGsnConfig.domainSeparatorName,
       chainId,
       filledRequest.relayData.forwarder,
       filledRequest
@@ -147,7 +149,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     const testUtil = await TestUtil.new()
     chainId = (await testUtil.libGetChainID()).toNumber()
 
-    await registerForwarderForGsn(forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     target = recipientContract.address
     relayHub = relayHubInstance.address

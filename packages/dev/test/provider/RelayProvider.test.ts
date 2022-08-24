@@ -11,7 +11,7 @@ import { toBN } from 'web3-utils'
 import { toChecksumAddress } from 'ethereumjs-util'
 
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
-import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
   RelayHubInstance,
   PenalizerInstance,
@@ -88,6 +88,7 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
     }
   }
   const dataToSign = new TypedRequestData(
+    defaultGsnConfig.domainSeparatorName,
     defaultEnvironment.chainId,
     testRecipientForwarderAddress,
     relayRequest
@@ -125,7 +126,7 @@ contract('RelayProvider', function (accounts) {
     relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
-    await registerForwarderForGsn(forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address

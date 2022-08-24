@@ -25,6 +25,7 @@ import {
 
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { cleanValue } from './utils/chaiHelper'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const { assert } = chai.use(chaiAsPromised)
 
@@ -83,7 +84,7 @@ contract('RelayHub Configuration',
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
       // Register hub's RelayRequest with forwarder, if not already done.
-      await registerForwarderForGsn(forwarderInstance)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
       await relayHub.depositFor(paymaster.address, {
         value: ether('1'),
@@ -123,6 +124,7 @@ contract('RelayHub Configuration',
 
       }
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         chainId,
         forwarder,
         relayRequest
