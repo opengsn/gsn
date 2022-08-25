@@ -115,6 +115,7 @@ export interface PaymasterConfig {
   minHubBalance: number | BN | string
   targetHubBalance: number | BN | string
   minWithdrawalAmount: number | BN | string
+  minSwapAmount: number | BN | string
   paymasterFee: number | BN | string
 }
 

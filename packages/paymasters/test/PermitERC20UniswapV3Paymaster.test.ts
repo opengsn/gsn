@@ -46,7 +46,7 @@ import {
   GAS_USED_BY_POST,
   impersonateAccount,
   MAJOR_DAI_AND_UNI_HOLDER,
-  MIN_HUB_BALANCE,
+  MIN_HUB_BALANCE, MIN_SWAP_AMOUNT,
   MIN_WITHDRAWAL_AMOUNT,
   skipWithoutFork,
   SLIPPAGE,
@@ -129,6 +129,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
       minHubBalance: MIN_HUB_BALANCE,
       targetHubBalance: TARGET_HUB_BALANCE,
       minWithdrawalAmount: MIN_WITHDRAWAL_AMOUNT,
+      minSwapAmount: MIN_SWAP_AMOUNT,
       paymasterFee: 5
     }
     permitPaymaster = await PermitERC20UniswapV3Paymaster.new(config, { from: owner })
@@ -647,6 +648,41 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           assert.equal(paymasterBalanceAfter.toString(), '0')
         })
 
+        it('should not swap tokens with less than minSwapAmount equivalent token balance', async function () {
+          await skipWithoutFork(this)
+          daiPaymasterInfo = await rechargePaymaster(permitPaymaster, chainlinkOracleDAIETH, daiPermittableToken)
+          await web3.eth.sendTransaction({
+            from: account0,
+            to: permitPaymaster.address,
+            value: MIN_HUB_BALANCE
+          })
+          await permitPaymaster.refillHubDeposit(MIN_HUB_BALANCE, { from: owner })
+          const paymasterHubBalance = await testRelayHub.balanceOf(permitPaymaster.address)
+          const paymasterBalance = toBN(await web3.eth.getBalance(permitPaymaster.address))
+          assert.equal(paymasterBalance.toString(), '0')
+          assert.equal(paymasterHubBalance.toString(), MIN_HUB_BALANCE)
+
+          const expectedDaiAmountIn = daiPaymasterInfo.preBalance.sub(daiPaymasterInfo.expectedRefund)
+          const expectedWethAmountOutMin = await permitPaymaster.addSlippage(expectedDaiAmountIn.mul(ETHER).mul(daiPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceDivisor), SLIPPAGE)
+          await permitPaymaster.setMinSwapAmount(expectedWethAmountOutMin.muln(2), { from: owner })
+          const res = await testRelayHub.callPostRC(permitPaymaster.address, daiPaymasterInfo.pmContext, gasUseWithoutPost, daiPaymasterInfo.modifiedRequest.relayData, { gasPrice: GAS_PRICE })
+          assert.equal(res.logs.length, 2)
+          // check correct tokens are transferred
+          assert.equal(res.logs[0].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase(), 'wrong dai')
+
+          // Paymaster refunds remaining DAI tokens to sender
+          expectEvent(res, 'Transfer', {
+            from: permitPaymaster.address,
+            to: relayRequest.request.from,
+            value: daiPaymasterInfo.expectedRefund.toString()
+          })
+
+          expectEvent(res, 'TokensCharged')
+
+          const paymasterBalanceAfter = await web3.eth.getBalance(permitPaymaster.address)
+          assert.equal(paymasterBalanceAfter.toString(), '0')
+        })
+
         it('should not revert if uniswap reverts', async function () {
           await skipWithoutFork(this)
           daiPaymasterInfo = await rechargePaymaster(permitPaymaster, chainlinkOracleDAIETH, daiPermittableToken)
@@ -658,6 +694,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           await permitPaymaster.refillHubDeposit(MIN_HUB_BALANCE, { from: owner })
           const paymasterHubBalance = await testRelayHub.balanceOf(permitPaymaster.address)
           assert.equal(paymasterHubBalance.toString(), MIN_HUB_BALANCE)
+          const paymasterBalance = toBN(await web3.eth.getBalance(permitPaymaster.address))
+          assert.equal(paymasterBalance.toString(), '0')
           const expectedDaiAmountIn = daiPaymasterInfo.preBalance.sub(daiPaymasterInfo.expectedRefund)
           const expectedWethAmountOutMin = await permitPaymaster.addSlippage(expectedDaiAmountIn.mul(ETHER).mul(daiPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceDivisor), SLIPPAGE)
 
@@ -671,7 +709,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           //   log.args.amount ? log.args.amount = log.args.amount.toString() : null
           // })
           // console.log('logs are', res.logs.length, res.logs)
-          assert.equal(res.logs.length, 4)
+          assert.equal(res.logs.length, 3)
           // check correct tokens are transferred
           assert.equal(res.logs[0].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase(), 'wrong dai')
 
@@ -689,13 +727,6 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
             tokenOut: WETH9_CONTRACT_ADDRESS,
             amountIn: expectedDaiAmountIn.toString(),
             amountOutMin: expectedWethAmountOutMin
-          })
-
-          // Paymaster deposits received ETH to RelayHub
-          expectEvent(res, 'Deposited', {
-            from: permitPaymaster.address,
-            paymaster: permitPaymaster.address,
-            amount: '0'
           })
         })
       })
@@ -855,6 +886,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
         minHubBalance: MIN_HUB_BALANCE,
         targetHubBalance: TARGET_HUB_BALANCE,
         minWithdrawalAmount: MIN_WITHDRAWAL_AMOUNT,
+        minSwapAmount: 0,
         paymasterFee: 5
       }
       const permitPaymasterZeroGUBP = await PermitERC20UniswapV3Paymaster.new(config)

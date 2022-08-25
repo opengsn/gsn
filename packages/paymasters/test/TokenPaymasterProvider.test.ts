@@ -30,7 +30,7 @@ import {
   DAI_ETH_POOL_FEE,
   detectMainnet, ETHER, GAS_PRICE,
   GAS_USED_BY_POST, impersonateAccount,
-  MAJOR_DAI_AND_UNI_HOLDER, MIN_HUB_BALANCE, MIN_WITHDRAWAL_AMOUNT, skipWithoutFork, SLIPPAGE, TARGET_HUB_BALANCE,
+  MAJOR_DAI_AND_UNI_HOLDER, MIN_HUB_BALANCE, MIN_SWAP_AMOUNT, MIN_WITHDRAWAL_AMOUNT, skipWithoutFork, SLIPPAGE, TARGET_HUB_BALANCE,
   UNI_ETH_POOL_FEE,
   USDC_ETH_POOL_FEE
 } from './ForkTestUtils'
@@ -97,6 +97,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       minHubBalance: MIN_HUB_BALANCE,
       targetHubBalance: TARGET_HUB_BALANCE,
       minWithdrawalAmount: MIN_WITHDRAWAL_AMOUNT,
+      minSwapAmount: MIN_SWAP_AMOUNT,
       paymasterFee: 5
     }
     permitPaymaster = await PermitERC20UniswapV3Paymaster.new(config, { from: owner })

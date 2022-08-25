@@ -52,6 +52,8 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     uint256 public targetHubBalance;
     // Minimum eth amount, above targetHubBalance, to send to the owner
     uint256 public minWithdrawalAmount;
+    // Minimum eth amount to get from a swap
+    uint256 public minSwapAmount;
     uint256 public paymasterFee;
 
     struct PaymasterConfig {
@@ -68,6 +70,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         uint256 minHubBalance;
         uint256 targetHubBalance;
         uint256 minWithdrawalAmount;
+        uint256 minSwapAmount;
         uint256 paymasterFee;
     }
 
@@ -79,6 +82,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         setMinHubBalance(config.minHubBalance);
         setTargetHubBalance(config.targetHubBalance);
         setMinWithdrawalAmount(config.minWithdrawalAmount);
+        setMinSwapAmount(config.minSwapAmount);
 
         setPaymasterFee(config.paymasterFee);
         setRelayHub(config.relayHub);
@@ -110,6 +114,10 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
     function setMinWithdrawalAmount(uint256 _minWithdrawalAmount) public onlyOwner {
         minWithdrawalAmount = _minWithdrawalAmount;
+    }
+
+    function setMinSwapAmount(uint256 _minSwapAmount) public onlyOwner {
+        minSwapAmount = _minSwapAmount;
     }
 
     function setUniswap(ISwapRouter _uniswap) public onlyOwner {
@@ -262,6 +270,9 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
                     TokenSwapData memory tokenSwapData = tokensSwapData[tokenIn];
                     uint256 quote = uint256(tokenSwapData.priceFeed.latestAnswer());
                     uint256 amountOutMin = addSlippage(_tokenToWei(tokenBalance, tokenSwapData.priceDivisor, quote), tokenSwapData.slippage);
+                    if (amountOutMin < minSwapAmount) {
+                        continue;
+                    }
                     uint256 amountOut = UniswapV3Helper.swapToToken(
                         address(tokenIn),
                         address(weth),
@@ -273,9 +284,13 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
                     amountSwapped += amountOut;
                 }
             }
-            UniswapV3Helper.unwrapWeth(uniswap, amountSwapped);
+            if (amountSwapped > 0) {
+                UniswapV3Helper.unwrapWeth(uniswap, amountSwapped);
+            }
         }
-        relayHub.depositFor{value : balance + amountSwapped}(address(this));
+        if (balance + amountSwapped > 0) {
+            relayHub.depositFor{value : balance + amountSwapped}(address(this));
+        }
     }
 
     function _withdrawToOwnerIfNeeded() private {

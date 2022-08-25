@@ -42,5 +42,6 @@ export const SLIPPAGE = 10
 export const MIN_HUB_BALANCE = 1e17.toString()
 export const TARGET_HUB_BALANCE = 1e18.toString()
 export const MIN_WITHDRAWAL_AMOUNT = 2e18.toString()
+export const MIN_SWAP_AMOUNT = 1e17.toString()
 export const ETHER = toBN(1e18.toString())
 export const GAS_PRICE = '10000000000'
