@@ -119,6 +119,27 @@ export interface ServerConfigParams {
   blacklistedPaymasters: Address[]
 
   /**
+   * The Recipients in this array will not be served.
+   */
+  blacklistedRecipients: Address[]
+  /**
+   * Only the Paymasters in this array will be served. Can only be set together with 'runningInPrivateMode: true'.
+   */
+  whitelistedPaymasters: Address[]
+
+  /**
+   * Only the Recipients in this array will be served. Can only be set together with 'runningInPrivateMode: true'.
+   * Empty whitelist means the whitelist will not be applied.
+   */
+  whitelistedRecipients: Address[]
+
+  /**
+   * If set to 'true', the Relay Server will not advertise its public URL on-chain.
+   * It may also serve only whitelisted Recipients and/or Paymasters.
+   */
+  privateMode: boolean
+
+  /**
    * The 'gasPrice'/'maxPriorityFeePerGas' reported by the network will be multiplied by this value.
    */
   gasPriceFactor: number
@@ -313,6 +334,9 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
   blacklistedPaymasters: [],
+  blacklistedRecipients: [],
+  whitelistedPaymasters: [],
+  whitelistedRecipients: [],
   gasPriceFactor: 1,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
@@ -350,7 +374,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   pastEventsQueryMaxPageCount: 20,
   recentActionAvoidRepeatDistanceBlocks: 10,
-  skipErc165Check: false
+  skipErc165Check: false,
+  privateMode: false
 }
 
 const ConfigParamsTypes = {
@@ -391,6 +416,9 @@ const ConfigParamsTypes = {
 
   trustedPaymasters: 'list',
   blacklistedPaymasters: 'list',
+  blacklistedRecipients: 'list',
+  whitelistedPaymasters: 'list',
+  whitelistedRecipients: 'list',
 
   runPenalizer: 'boolean',
 
@@ -416,7 +444,8 @@ const ConfigParamsTypes = {
   dbPruneTxAfterSeconds: 'number',
   environmentName: 'string',
   recentActionAvoidRepeatDistanceBlocks: 'number',
-  skipErc165Check: 'boolean'
+  skipErc165Check: 'boolean',
+  runningInPrivateMode: 'boolean'
 } as any
 
 // helper function: throw and never return..
@@ -537,10 +566,17 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (config.ownerAddress == null || config.ownerAddress === constants.ZERO_ADDRESS) error('missing param: ownerAddress')
   if (config.managerStakeTokenAddress == null || config.managerStakeTokenAddress === constants.ZERO_ADDRESS) error('missing param: managerStakeTokenAddress')
   const finalConfig = { ...serverDefaultConfiguration, ...config }
+  validatePrivateModeParams(finalConfig)
   validateBalanceParams(finalConfig)
   return {
     config: finalConfig,
     environment
+  }
+}
+
+export function validatePrivateModeParams (config: ServerConfigParams): void {
+  if (!config.privateMode && (config.whitelistedRecipients.length !== 0 || config.whitelistedPaymasters.length !== 0)) {
+    throw new Error('Cannot whitelist recipients or paymasters on a public Relay Server')
   }
 }
 

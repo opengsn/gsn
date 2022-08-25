@@ -22,7 +22,7 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { configureGSN, deployHub, startRelay, stopRelay } from '../TestUtils'
+import { configureGSN, deployHub, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
@@ -136,12 +136,13 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerPaymasterRejected], {
         from: activePaymasterRejected
       })
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('aaa'), { from: activeTransactionRelayed })
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('bbb'), { from: activePaymasterRejected })
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('ccc'), { from: activeRelayWorkersAdded })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('http://aaa.test'), { from: activeTransactionRelayed })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('http://bbb.test'), { from: activePaymasterRejected })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('http://ccc.test'), { from: activeRelayWorkersAdded })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('http://ccc.test'), { from: activeRelayWorkersAdded })
 
       /** events that are supposed to be visible to the manager */
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('ddd'), { from: activeRelayServerRegistered })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('http://ddd.test'), { from: activeRelayServerRegistered })
       await relayHub.addRelayWorkers([workerRelayWorkersAdded2], {
         from: activeRelayWorkersAdded
       })
@@ -158,7 +159,7 @@ contract('KnownRelaysManager', function (
       })
     })
 
-    it('should contain all relay managers from chain',
+    it('should contain all relay managers from chain with valid relay URL',
       async function () {
         const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
         const infos = await knownRelaysManager.getRelayInfoForManagers()
@@ -168,6 +169,32 @@ contract('KnownRelaysManager', function (
         assert.equal(actual[1], activePaymasterRejected)
         assert.equal(actual[2], activeRelayWorkersAdded)
         assert.equal(actual[3], activeRelayServerRegistered)
+      })
+
+    it('should not contain relay managers from chain with valid relay URL',
+      async function () {
+        const id = (await snapshot()).result
+        const relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
+        const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
+        let infos = await knownRelaysManager.getRelayInfoForManagers()
+        const actual = infos.map(info => info.relayManager)
+        assert.equal(actual.length, 4)
+        // creating garbage registrations and breaking accounts' roles in other tests - only testing if URL valid here
+        await stake(testToken, stakeManager, relayHub, workerRelayWorkersAdded, owner)
+        await stake(testToken, stakeManager, relayHub, workerTransactionRelayed, owner)
+        await stake(testToken, stakeManager, relayHub, workerNotActive, owner)
+        await relayHub.addRelayWorkers([activeRelayWorkersAdded], { from: workerRelayWorkersAdded })
+        await relayHub.addRelayWorkers([activeRelayServerRegistered], { from: workerTransactionRelayed })
+        await relayHub.addRelayWorkers([activePaymasterRejected], { from: workerNotActive })
+        await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: workerRelayWorkersAdded })
+        await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('invalid'), { from: workerTransactionRelayed })
+        await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('https://www.example.com'), { from: workerNotActive })
+        infos = await knownRelaysManager.getRelayInfoForManagers()
+        assert.equal(infos.length, 5)
+        assert.equal(infos[4].relayManager, workerNotActive)
+        assert.equal(infos[4].relayUrl, 'https://www.example.com')
+        // undo all garbage registrations
+        await revert(id)
       })
 
     describe('#getRelaysShuffledForTransaction()', function () {
@@ -282,10 +309,10 @@ contract('KnownRelaysManager 2', function (accounts) {
       await stake(testToken, stakeManager, relayHub, accounts[2], accounts[0])
       await stake(testToken, stakeManager, relayHub, accounts[3], accounts[0])
       await stake(testToken, stakeManager, relayHub, accounts[4], accounts[0])
-      await register(relayHub, accounts[1], accounts[6], 'stakeAndAuthorization1')
-      await register(relayHub, accounts[2], accounts[7], 'stakeAndAuthorization2')
-      await register(relayHub, accounts[3], accounts[8], 'stakeUnlocked')
-      await register(relayHub, accounts[4], accounts[9], 'hubUnauthorized')
+      await register(relayHub, accounts[1], accounts[6], 'http://stakeAndAuthorization1.test')
+      await register(relayHub, accounts[2], accounts[7], 'http://stakeAndAuthorization2.test')
+      await register(relayHub, accounts[3], accounts[8], 'http://stakeUnlocked.test')
+      await register(relayHub, accounts[4], accounts[9], 'http://hubUnauthorized.test')
 
       await stakeManager.unlockStake(accounts[3])
       await stakeManager.unauthorizeHubByOwner(accounts[4], relayHub.address)
