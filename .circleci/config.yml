@@ -112,7 +112,7 @@ jobs: # a collection of steps
           at: .
       - run: # run tests
           name: lint
-          command: yarn lerna-lint
+          command: yarn lerna-lint && yarn lerna-lint-paymasters
   depcheck:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker

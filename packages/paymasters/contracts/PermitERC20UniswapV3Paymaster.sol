@@ -32,6 +32,8 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     struct TokenSwapData {
         IChainlinkOracle priceFeed;
         uint24 uniswapPoolFee;
+        // between 0 to 1000, with 2 decimals, that is, 10 = 1%
+        uint8 slippage;
         bytes4 permitMethodSignature;
         uint256 priceDivisor;
         uint256 validFromBlockNumber;
@@ -58,6 +60,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         IRelayHub relayHub;
         IChainlinkOracle[] priceFeeds;
         uint24[] uniswapPoolFees;
+        uint8[] slippages;
         ISwapRouter uniswap;
         address trustedForwarder;
         uint256 gasUsedByPost;
@@ -81,7 +84,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         setRelayHub(config.relayHub);
         setPostGasUsage(config.gasUsedByPost);
         setTrustedForwarder(config.trustedForwarder);
-        setTokens(config.tokens, config.priceFeeds, config.permitMethodSignatures, config.uniswapPoolFees);
+        setTokens(config.tokens, config.priceFeeds, config.permitMethodSignatures, config.uniswapPoolFees, config.slippages);
     }
 
     /**
@@ -117,7 +120,8 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         IERC20Metadata[] memory _tokens,
         IChainlinkOracle[] memory _priceFeeds,
         string[] memory _permitMethodSignatures,
-        uint24[] memory _poolFees) public onlyOwner {
+        uint24[] memory _poolFees,
+        uint8[] memory _slippages) public onlyOwner {
         tokens = _tokens;
         uint256 blockNumber = block.number;
         tokensBlockNumber = blockNumber;
@@ -130,6 +134,8 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             data.priceFeed = _priceFeeds[i];
             data.permitMethodSignature = bytes4(keccak256(bytes(_permitMethodSignatures[i])));
             data.uniswapPoolFee = _poolFees[i];
+            require(_slippages[i] <= 1000, "slippage above 100%");
+            data.slippage = _slippages[i];
             data.validFromBlockNumber = blockNumber;
             tokensSwapData[token] = data;
         }
@@ -255,7 +261,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
                 if (tokenBalance > 0) {
                     TokenSwapData memory tokenSwapData = tokensSwapData[tokenIn];
                     uint256 quote = uint256(tokenSwapData.priceFeed.latestAnswer());
-                    uint256 amountOutMin = _tokenToWei(tokenBalance, tokenSwapData.priceDivisor, quote) * 99 / 100;
+                    uint256 amountOutMin = addSlippage(_tokenToWei(tokenBalance, tokenSwapData.priceDivisor, quote), tokenSwapData.slippage);
                     uint256 amountOut = UniswapV3Helper.swapToToken(
                         address(tokenIn),
                         address(weth),
@@ -285,6 +291,10 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
 
     function addPaymasterFee(uint256 charge) public view returns (uint256) {
         return charge * (100 + paymasterFee) / 100;
+    }
+
+    function addSlippage(uint256 amount, uint8 slippage) public pure returns (uint256) {
+        return amount * (1000 - slippage) / 1000;
     }
 
     // as this Paymaster already has a permission from a user to operate the tokens on behalf of the gasless account,

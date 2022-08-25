@@ -38,6 +38,7 @@ export const GAS_USED_BY_POST = 230000
 export const DAI_ETH_POOL_FEE = 500
 export const USDC_ETH_POOL_FEE = 500
 export const UNI_ETH_POOL_FEE = 3000
+export const SLIPPAGE = 10
 export const MIN_HUB_BALANCE = 1e17.toString()
 export const TARGET_HUB_BALANCE = 1e18.toString()
 export const MIN_WITHDRAWAL_AMOUNT = 2e18.toString()

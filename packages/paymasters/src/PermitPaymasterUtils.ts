@@ -109,6 +109,7 @@ export interface PaymasterConfig {
   uniswap: string
   trustedForwarder: string
   uniswapPoolFees: number[] | BN[] | string[]
+  slippages: number[] | BN[] | string[]
   gasUsedByPost: number | BN | string
   permitMethodSignatures: string[]
   minHubBalance: number | BN | string

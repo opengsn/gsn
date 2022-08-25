@@ -1,7 +1,8 @@
 import BN from 'bn.js'
 import { toBN, toWei } from 'web3-utils'
 import {
-  IChainlinkOracleInstance, IERC20MetadataInstance,
+  IChainlinkOracleInstance,
+  IERC20MetadataInstance,
   IQuoterInstance,
   PermitERC20UniswapV3PaymasterInstance,
   PermitInterfaceDAIInstance,
@@ -36,12 +37,20 @@ import {
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { removeHexPrefix, constants, RelayRequest } from '@opengsn/common/dist'
+import { constants, RelayRequest, removeHexPrefix } from '@opengsn/common/dist'
 import {
   DAI_ETH_POOL_FEE,
-  detectMainnet, ETHER, GAS_PRICE,
-  GAS_USED_BY_POST, impersonateAccount,
-  MAJOR_DAI_AND_UNI_HOLDER, MIN_HUB_BALANCE, MIN_WITHDRAWAL_AMOUNT, skipWithoutFork, TARGET_HUB_BALANCE,
+  detectMainnet,
+  ETHER,
+  GAS_PRICE,
+  GAS_USED_BY_POST,
+  impersonateAccount,
+  MAJOR_DAI_AND_UNI_HOLDER,
+  MIN_HUB_BALANCE,
+  MIN_WITHDRAWAL_AMOUNT,
+  skipWithoutFork,
+  SLIPPAGE,
+  TARGET_HUB_BALANCE,
   UNI_ETH_POOL_FEE,
   USDC_ETH_POOL_FEE
 } from './ForkTestUtils'
@@ -114,6 +123,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
       priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS],
       trustedForwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
       uniswapPoolFees: [DAI_ETH_POOL_FEE, USDC_ETH_POOL_FEE, UNI_ETH_POOL_FEE],
+      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE],
       gasUsedByPost: GAS_USED_BY_POST,
       permitMethodSignatures: [PERMIT_SIGNATURE_DAI, PERMIT_SIGNATURE_EIP2612, PERMIT_SIGNATURE_EIP2612],
       minHubBalance: MIN_HUB_BALANCE,
@@ -519,7 +529,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
             assert.equal(paymasterBalance.toString(), scenario.value)
             assert.equal(paymasterHubBalance.toString(), MIN_HUB_BALANCE)
             const expectedDaiAmountIn = daiPaymasterInfo.preBalance.sub(daiPaymasterInfo.expectedRefund)
-            const expectedWethAmountOutMin = expectedDaiAmountIn.mul(ETHER).mul(daiPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceDivisor).muln(99).divn(100)
+            const expectedWethAmountOutMin = await permitPaymaster.addSlippage(expectedDaiAmountIn.mul(ETHER).mul(daiPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceDivisor), SLIPPAGE)
             const expectedWethAmountOut = await quoter.contract.methods.quoteExactInputSingle(
               DAI_CONTRACT_ADDRESS,
               WETH9_CONTRACT_ADDRESS,
@@ -649,7 +659,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           const paymasterHubBalance = await testRelayHub.balanceOf(permitPaymaster.address)
           assert.equal(paymasterHubBalance.toString(), MIN_HUB_BALANCE)
           const expectedDaiAmountIn = daiPaymasterInfo.preBalance.sub(daiPaymasterInfo.expectedRefund)
-          const expectedWethAmountOutMin = expectedDaiAmountIn.mul(ETHER).mul(daiPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceDivisor).muln(99).divn(100)
+          const expectedWethAmountOutMin = await permitPaymaster.addSlippage(expectedDaiAmountIn.mul(ETHER).mul(daiPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceDivisor), SLIPPAGE)
 
           const testUniswap = await TestUniswap.new(1, 1, { value: '1' })
           await permitPaymaster.setUniswap(testUniswap.address, { from: owner })
@@ -839,6 +849,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
         priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS],
         trustedForwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
         uniswapPoolFees: [DAI_ETH_POOL_FEE],
+        slippages: [SLIPPAGE],
         gasUsedByPost: 0,
         permitMethodSignatures: [PERMIT_SIGNATURE_DAI],
         minHubBalance: MIN_HUB_BALANCE,
