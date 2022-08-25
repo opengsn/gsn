@@ -52,6 +52,7 @@ const PermitInterfaceDAI = artifacts.require('PermitInterfaceDAI')
 const IChainlinkOracle = artifacts.require('IChainlinkOracle')
 const SampleRecipient = artifacts.require('SampleRecipient')
 const IQuoter = artifacts.require('IQuoter')
+const TestUniswap = artifacts.require('TestUniswap')
 
 const MAX_POSSIBLE_GAS = 1e6
 const TOKEN_PRE_CHARGE = 1000
@@ -634,6 +635,58 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           })
           const paymasterBalanceAfter = await web3.eth.getBalance(permitPaymaster.address)
           assert.equal(paymasterBalanceAfter.toString(), '0')
+        })
+
+        it('should not revert if uniswap reverts', async function () {
+          await skipWithoutFork(this)
+          daiPaymasterInfo = await rechargePaymaster(permitPaymaster, chainlinkOracleDAIETH, daiPermittableToken)
+          await web3.eth.sendTransaction({
+            from: account0,
+            to: permitPaymaster.address,
+            value: MIN_HUB_BALANCE
+          })
+          await permitPaymaster.refillHubDeposit(MIN_HUB_BALANCE, { from: owner })
+          const paymasterHubBalance = await testRelayHub.balanceOf(permitPaymaster.address)
+          assert.equal(paymasterHubBalance.toString(), MIN_HUB_BALANCE)
+          const expectedDaiAmountIn = daiPaymasterInfo.preBalance.sub(daiPaymasterInfo.expectedRefund)
+          const expectedWethAmountOutMin = expectedDaiAmountIn.mul(ETHER).mul(daiPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceDivisor).muln(99).divn(100)
+
+          const testUniswap = await TestUniswap.new(1, 1, { value: '1' })
+          await permitPaymaster.setUniswap(testUniswap.address, { from: owner })
+          assert.equal(await permitPaymaster.uniswap(), testUniswap.address)
+          const res = await testRelayHub.callPostRC(permitPaymaster.address, daiPaymasterInfo.pmContext, gasUseWithoutPost, daiPaymasterInfo.modifiedRequest.relayData, { gasPrice: GAS_PRICE })
+          // res.logs.forEach(log => {
+          //   @ts-ignore
+          //   log.args.value ? log.args.value = log.args.value.toString() : null
+          //   log.args.amount ? log.args.amount = log.args.amount.toString() : null
+          // })
+          // console.log('logs are', res.logs.length, res.logs)
+          assert.equal(res.logs.length, 4)
+          // check correct tokens are transferred
+          assert.equal(res.logs[0].address.toLowerCase(), DAI_CONTRACT_ADDRESS.toLowerCase(), 'wrong dai')
+
+          // Paymaster refunds remaining DAI tokens to sender
+          expectEvent(res, 'Transfer', {
+            from: permitPaymaster.address,
+            to: relayRequest.request.from,
+            value: daiPaymasterInfo.expectedRefund.toString()
+          })
+
+          expectEvent(res, 'TokensCharged')
+
+          expectEvent(res, 'UniswapReverted', {
+            tokenIn: DAI_CONTRACT_ADDRESS,
+            tokenOut: WETH9_CONTRACT_ADDRESS,
+            amountIn: expectedDaiAmountIn.toString(),
+            amountOutMin: expectedWethAmountOutMin
+          })
+
+          // Paymaster deposits received ETH to RelayHub
+          expectEvent(res, 'Deposited', {
+            from: permitPaymaster.address,
+            paymaster: permitPaymaster.address,
+            amount: '0'
+          })
         })
       })
 

@@ -6,6 +6,7 @@ import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/IPeripheryPayments.sol";
 
 library UniswapV3Helper {
+    event UniswapReverted(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin);
     // turn ERC-20 tokens into native unwrapped ETH at market price
     function swapToWeth(
         address token,
@@ -52,6 +53,11 @@ library UniswapV3Helper {
             amountOutMin,
             0
         );
-        amountOut = uniswap.exactInputSingle(params);
+        try uniswap.exactInputSingle(params) returns (uint256 _amountOut) {
+            amountOut = _amountOut;
+        } catch {
+            emit UniswapReverted(tokenIn, tokenOut, amountIn, amountOutMin);
+            amountOut = 0;
+        }
     }
 }

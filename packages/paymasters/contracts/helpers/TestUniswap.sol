@@ -57,4 +57,11 @@ contract TestUniswap is IUniswapV3 {
     function getTokenToEthOutputPrice(uint256 ethBought) public override view returns (uint256 out) {
         return ethBought * rateMult / rateDiv;
     }
+
+    function exactInputSingle(ExactInputSingleParams calldata) external override payable returns (uint256 amountOut) {
+        revert("No swap for you");
+    }
+
+    // solhint-disable-next-line no-empty-blocks
+    function unwrapWETH9(uint256, address) external payable {}
 }

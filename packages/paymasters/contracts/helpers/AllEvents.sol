@@ -13,7 +13,7 @@ interface AllEvents {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event TokensCharged(uint256 gasUseWithoutPost, uint256 gasJustPost, uint256 tokenActualCharge, uint256 ethActualCharge);
-    event Debug(uint256 amount);
+    event UniswapReverted(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin);
 
     event Swap(
         address indexed sender,
