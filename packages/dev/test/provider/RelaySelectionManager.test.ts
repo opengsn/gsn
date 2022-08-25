@@ -125,7 +125,7 @@ contract('RelaySelectionManager', function (accounts) {
     })
 
     describe('with preferred relay URL', function () {
-      const preferredRelayUrl = 'preferredRelayUrl'
+      const preferredRelayUrl = 'http://preferredRelayUrl.test'
       const relayManager = accounts[1]
       let relaySelectionManager: RelaySelectionManager
       let stubWaitForSuccess: SinonStub

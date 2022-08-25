@@ -869,8 +869,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return this.config.blacklistedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
   }
 
-  _isBlacklistedRecipient (paymaster: string): boolean {
-    return this.config.blacklistedRecipients.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
+  _isBlacklistedRecipient (recipient: string): boolean {
+    return this.config.blacklistedRecipients.map(it => it.toLowerCase()).includes(recipient.toLowerCase())
   }
 
   _isWhitelistedPaymaster (paymaster: string): boolean {
@@ -878,9 +878,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       this.config.whitelistedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
   }
 
-  _isWhitelistedRecipient (paymaster: string): boolean {
+  _isWhitelistedRecipient (recipient: string): boolean {
     return this.config.whitelistedRecipients.length === 0 ||
-      this.config.whitelistedRecipients.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
+      this.config.whitelistedRecipients.map(it => it.toLowerCase()).includes(recipient.toLowerCase())
   }
 
   isReady (): boolean {
