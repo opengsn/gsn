@@ -202,18 +202,18 @@ contract('KnownRelaysManager', function (
         const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, Object.assign({}, config, { preferredRelays: ['http://localhost:8090'] }))
         await knownRelaysManager.refresh()
         assert.equal(knownRelaysManager.allRelayers.length, 4)
-        knownRelaysManager.saveRelayFailure(100, activeTransactionRelayed, 'aaa')
-        knownRelaysManager.saveRelayFailure(100, activePaymasterRejected, 'bbb')
-        knownRelaysManager.saveRelayFailure(100, activeRelayWorkersAdded, 'ccc')
+        knownRelaysManager.saveRelayFailure(100, activeTransactionRelayed, 'http://aaa.test')
+        knownRelaysManager.saveRelayFailure(100, activePaymasterRejected, 'http://bbb.test')
+        knownRelaysManager.saveRelayFailure(100, activeRelayWorkersAdded, 'http://ccc.test')
         const shuffled = await knownRelaysManager.getRelaysShuffledForTransaction()
         assert.equal(shuffled[0].length, 1)
         assert.equal(shuffled[0][0].relayUrl, 'http://localhost:8090', 'wrong preffered relay URL')
         assert.equal(shuffled[1].length, 1)
-        assert.equal(shuffled[1][0].relayUrl, 'ddd', 'wrong good relay url')
+        assert.equal(shuffled[1][0].relayUrl, 'http://ddd.test', 'wrong good relay url')
         assert.equal(shuffled[2].length, 3)
-        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'aaa'), 'wrong bad relay url')
-        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'bbb'), 'wrong bad relay url')
-        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'ccc'), 'wrong bad relay url')
+        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'http://aaa.test'), 'wrong bad relay url')
+        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'http://bbb.test'), 'wrong bad relay url')
+        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'http://ccc.test'), 'wrong bad relay url')
       })
 
       describe('#_refreshFailures()', function () {
@@ -331,8 +331,8 @@ contract('KnownRelaysManager 2', function (accounts) {
       assert.deepEqual(activeRelays.map((r: any) => r.relayUrl),
         [
           'http://localhost:8090',
-          'stakeAndAuthorization1',
-          'stakeAndAuthorization2'
+          'http://stakeAndAuthorization1.test',
+          'http://stakeAndAuthorization2.test'
         ])
     })
 
@@ -344,7 +344,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       await knownRelaysManagerWithFilter.refresh()
       const relays = knownRelaysManagerWithFilter.allRelayers
       assert.equal(relays.length, 1)
-      assert.equal(relays[0].relayUrl, 'stakeAndAuthorization2')
+      assert.equal(relays[0].relayUrl, 'http://stakeAndAuthorization2.test')
     })
 
     it('should use DefaultRelayFilter to remove unsuitable relays when none was provided', async function () {

@@ -123,12 +123,12 @@ export interface ServerConfigParams {
    */
   blacklistedRecipients: Address[]
   /**
-   * Only the Paymasters in this array will be served. Can only be set together with 'runningInPrivateMode: true'.
+   * Only the Paymasters in this array will be served. Can only be set together with 'privateMode: true'.
    */
   whitelistedPaymasters: Address[]
 
   /**
-   * Only the Recipients in this array will be served. Can only be set together with 'runningInPrivateMode: true'.
+   * Only the Recipients in this array will be served. Can only be set together with 'privateMode: true'.
    * Empty whitelist means the whitelist will not be applied.
    */
   whitelistedRecipients: Address[]
@@ -445,7 +445,7 @@ const ConfigParamsTypes = {
   environmentName: 'string',
   recentActionAvoidRepeatDistanceBlocks: 'number',
   skipErc165Check: 'boolean',
-  runningInPrivateMode: 'boolean'
+  privateMode: 'boolean'
 } as any
 
 // helper function: throw and never return..
