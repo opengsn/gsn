@@ -420,7 +420,7 @@ const ConfigParamsTypes = {
   pendingTransactionTimeoutSeconds: 'number',
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
-  maxFeePerGas: 'string',
+  maxMaxFeePerGas: 'string',
   getGasFeesBlocks: 'number',
   getGasFeesPercentile: 'number',
   defaultPriorityFee: 'string',
