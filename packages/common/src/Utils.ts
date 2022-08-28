@@ -476,3 +476,8 @@ export async function waitForSuccess<T> (
     }
   })
 }
+
+export function averageBN (array: BN[]): BN {
+  const sum = array.reduce((a, v) => a.add(v))
+  return sum.divn(array.length)
+}

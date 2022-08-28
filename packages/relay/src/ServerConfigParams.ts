@@ -230,7 +230,17 @@ export interface ServerConfigParams {
   /**
    * The absolute maximum gas fee the Relay is willing to pay.
    */
-  maxFeePerGas: string
+  maxMaxFeePerGas: string
+
+  /**
+   * The number of past blocks to query in 'eth_getGasFees' RPC request.
+   */
+  getGasFeesBlocks: number
+
+  /**
+   * The miner reward "percentile" to query in 'eth_getGasFees' RPC request.
+   */
+  getGasFeesPercentile: number
 
   /**
    * In case the RPC node reports 'maxPriorityFeePerGas' to be 0, override it with this value.
@@ -342,8 +352,10 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   dbAutoCompactionInterval: 604800000, // Week in ms: 1000*60*60*24*7
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
-  maxFeePerGas: 500e9.toString(),
+  maxMaxFeePerGas: 500e9.toString(),
   defaultPriorityFee: 1e9.toString(),
+  getGasFeesBlocks: 5,
+  getGasFeesPercentile: 50,
 
   requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
   runPaymasterReputations: true,
@@ -409,6 +421,8 @@ const ConfigParamsTypes = {
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
   maxFeePerGas: 'string',
+  getGasFeesBlocks: 'number',
+  getGasFeesPercentile: 'number',
   defaultPriorityFee: 'string',
   pastEventsQueryMaxPageSize: 'number',
   pastEventsQueryMaxPageCount: 'number',

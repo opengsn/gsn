@@ -61,10 +61,15 @@ export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHe
 
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
   if (
-    gsnTransactionDetails.maxPriorityFeePerGas != null &&
     parseInt(pingResponse.minMaxPriorityFeePerGas) > parseInt(gsnTransactionDetails.maxPriorityFeePerGas)
   ) {
     throw new Error(`Proposed priority gas fee: ${parseInt(gsnTransactionDetails.maxPriorityFeePerGas)}; relay's minMaxPriorityFeePerGas: ${pingResponse.minMaxPriorityFeePerGas}`)
+  }
+  if (gsnTransactionDetails.maxFeePerGas > pingResponse.maxMaxFeePerGas) {
+    throw new Error(`Proposed fee per gas: ${parseInt(gsnTransactionDetails.maxFeePerGas)}; relay's configured maxFeePerGas: ${pingResponse.maxMaxFeePerGas}`)
+  }
+  if (gsnTransactionDetails.maxFeePerGas < pingResponse.minMaxFeePerGas) {
+    throw new Error(`Proposed fee per gas: ${parseInt(gsnTransactionDetails.maxFeePerGas)}; relay's minMaxFeePerGas: ${pingResponse.maxMaxFeePerGas}`)
   }
 }
 
@@ -304,7 +309,7 @@ export class RelayClient {
 
   async calculateGasFees (): Promise<{ maxFeePerGas: PrefixedHexString, maxPriorityFeePerGas: PrefixedHexString }> {
     const pct = this.config.gasPriceFactorPercent
-    const gasFees = await this.dependencies.contractInteractor.getGasFees()
+    const gasFees = await this.dependencies.contractInteractor.getGasFees(this.config.getGasFeesBlocks, this.config.getGasFeesPercentile)
     let priorityFee = Math.round(parseInt(gasFees.priorityFeePerGas) * (pct + 100) / 100)
     if (this.config.minMaxPriorityFeePerGas != null && priorityFee < this.config.minMaxPriorityFeePerGas) {
       priorityFee = this.config.minMaxPriorityFeePerGas
@@ -617,6 +622,8 @@ export class RelayClient {
         relayManagerAddress: constants.ZERO_ADDRESS,
         relayHubAddress: constants.ZERO_ADDRESS,
         ownerAddress: constants.ZERO_ADDRESS,
+        maxMaxFeePerGas: '0',
+        minMaxFeePerGas: '0',
         minMaxPriorityFeePerGas: '0',
         maxAcceptanceBudget: '0',
         ready: true,

@@ -23,6 +23,7 @@ import { replaceErrors } from './ErrorReplacerJSON'
 import { LoggerInterface } from './LoggerInterface'
 import {
   address2topic,
+  averageBN,
   calculateCalldataBytesZeroNonzero,
   decodeRevertReason,
   errorAsBoolean,
@@ -919,14 +920,17 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
   }
 
-  async getGasFees (): Promise<{ baseFeePerGas: string, priorityFeePerGas: string }> {
+  async getGasFees (
+    blockCount: number,
+    rewardPercentile: number
+  ): Promise<{ baseFeePerGas: string, priorityFeePerGas: string }> {
     if (this.transactionType === TransactionType.LEGACY) {
       const gasPrice = await this.getGasPrice()
       return { baseFeePerGas: gasPrice, priorityFeePerGas: gasPrice }
     }
-    const networkHistoryFees = await this.getFeeHistory('0x1', 'latest', [0.5])
+    const networkHistoryFees = await this.getFeeHistory(toHex(blockCount), 'pending', [rewardPercentile])
     const baseFeePerGas = networkHistoryFees.baseFeePerGas[0]
-    const priorityFeePerGas = networkHistoryFees.reward[0][0]
+    const priorityFeePerGas = averageBN(networkHistoryFees.reward.map(rewards => rewards[0]).map(toBN)).toString()
     return { baseFeePerGas, priorityFeePerGas }
   }
 
