@@ -417,7 +417,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         } catch (e: any) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message,
-            `network maxPriorityFeePerGas ${env.relayServer.minMaxPriorityFeePerGas} is higher than config.maxFeePerGas ${env.relayServer.config.maxMaxFeePerGas}`)
+            `network maxPriorityFeePerGas ${env.relayServer.minMaxPriorityFeePerGas} is higher than config.maxMaxFeePerGas ${env.relayServer.config.maxMaxFeePerGas}`)
         } finally {
           env.relayServer.config.maxMaxFeePerGas = originalMaxPrice
         }
