@@ -13,6 +13,17 @@ import {
 
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
 import {
+  PaymasterConfig,
+  PERMIT_SIGNATURE_DAI,
+  PERMIT_SIGNATURE_EIP2612,
+  signAndEncodeDaiPermit,
+  signAndEncodeEIP2612Permit
+} from '../src/PermitPaymasterUtils'
+import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
+import { expectEvent } from '@openzeppelin/test-helpers'
+import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { constants, RelayRequest, removeHexPrefix } from '@opengsn/common/dist'
+import {
   CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS,
@@ -21,24 +32,13 @@ import {
   getUniDomainSeparator,
   getUSDCDomainSeparator,
   GSN_FORWARDER_CONTRACT_ADDRESS,
-  PaymasterConfig,
-  PERMIT_SIGNATURE_DAI,
-  PERMIT_SIGNATURE_EIP2612,
-  signAndEncodeDaiPermit,
-  signAndEncodeEIP2612Permit,
   SWAP_ROUTER_CONTRACT_ADDRESS,
   UNI_CONTRACT_ADDRESS,
   UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS,
   UNISWAP_V3_QUOTER_CONTRACT_ADDRESS,
   UNISWAP_V3_USDC_WETH_POOL_CONTRACT_ADDRESS,
   USDC_CONTRACT_ADDRESS,
-  WETH9_CONTRACT_ADDRESS
-} from '../src/PermitPaymasterUtils'
-import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
-import { expectEvent } from '@openzeppelin/test-helpers'
-import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { constants, RelayRequest, removeHexPrefix } from '@opengsn/common/dist'
-import {
+  WETH9_CONTRACT_ADDRESS,
   DAI_ETH_POOL_FEE,
   detectMainnet,
   ETHER,
@@ -191,7 +191,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
     const preBalance = tokenDepositAmount.add(tokenPreCharge).muln(1.1)
     await token.transfer(paymaster.address, preBalance, { from: account0 })
 
-    const pmContext = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), tokenPreCharge.toString()])
+    const pmContext = web3.eth.abi.encodeParameters(['address', 'address', 'uint256', 'uint256'], [token.address, account0, priceQuote.toString(), tokenPreCharge.toString()])
     const modifiedRequest = mergeRelayRequest(relayRequest, {
       paymasterData: token.address
     })
@@ -339,7 +339,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           permitPaymaster.address,
           daiPermittableToken.address,
           constants.MAX_UINT256.toString(),
-          web3
+          web3,
+          getDaiDomainSeparator()
         )
         const modifiedRequest = mergeRelayRequest(relayRequest, {
           paymasterData: concatHexStrings(DAI_CONTRACT_ADDRESS, encodedCallToPermit)
@@ -428,7 +429,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
         const priceQuote = await chainlinkOracleDAIETH.latestAnswer()
         const decimals = await daiPermittableToken.decimals()
         const preChargeMultiplier = toBN(10).pow(decimals)
-        const context = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, priceQuote.toString(), toBN(TOKEN_PRE_CHARGE).mul(preChargeMultiplier).toString()])
+        const context = web3.eth.abi.encodeParameters(['address', 'address', 'uint256', 'uint256'], [daiPermittableToken.address, account0, priceQuote.toString(), toBN(TOKEN_PRE_CHARGE).mul(preChargeMultiplier).toString()])
         const modifiedRequest = mergeRelayRequest(relayRequest, {
           paymasterData: DAI_CONTRACT_ADDRESS
         })
@@ -891,7 +892,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
       }
       const permitPaymasterZeroGUBP = await PermitERC20UniswapV3Paymaster.new(config)
       const daiPaymasterInfo = await rechargePaymaster(permitPaymasterZeroGUBP, chainlinkOracleDAIETH, daiPermittableToken)
-      const context = web3.eth.abi.encodeParameters(['address', 'uint256', 'uint256'], [account0, daiPaymasterInfo.priceQuote.toString(), daiPaymasterInfo.preBalance.toString()])
+      const context = web3.eth.abi.encodeParameters(['address', 'address', 'uint256', 'uint256'], [daiPermittableToken.address, account0, daiPaymasterInfo.priceQuote.toString(), daiPaymasterInfo.preBalance.toString()])
       const postGasUse = await calculatePostGas(daiPermittableToken, permitPaymasterZeroGUBP, daiPermittableToken.address, account0, context)
       assert.closeTo(postGasUse.toNumber(), GAS_USED_BY_POST, 5000)
     })
