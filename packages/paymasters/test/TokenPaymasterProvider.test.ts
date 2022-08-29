@@ -53,7 +53,7 @@ import {
 } from './ForkTestUtils'
 import { providers, ContractFactory } from 'ethers'
 import { ChildProcessWithoutNullStreams } from 'child_process'
-import { wrapContract } from '../src/WrapContract'
+import { TokenPaymasterEthersWrapper } from '../src/WrapContract'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
 const PermitInterfaceEIP2612 = artifacts.require('PermitInterfaceEIP2612')
@@ -411,7 +411,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       // @ts-ignores
       const factory = await new ContractFactory(SampleRecipient.abi, SampleRecipient.bytecode, signer)
       const recipient = await factory.attach(sampleRecipient.address)
-      const wrappedGsnRecipient = await wrapContract(recipient, gsnConfig)
+      const wrappedGsnRecipient = await TokenPaymasterEthersWrapper.wrapContract(recipient, gsnConfig)
       const signerAddress = await signer.getAddress()
       const balanceBefore = await web3.eth.getBalance(signerAddress)
       const ret = await wrappedGsnRecipient.something({ gasPrice: 1e10 })

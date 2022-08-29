@@ -6,7 +6,7 @@ import { Signer } from '@ethersproject/abstract-signer'
 import { TokenPaymasterConfig, TokenPaymasterProvider } from './TokenPaymasterProvider'
 import { GSNDependencies, WrapBridge } from '@opengsn/provider/dist'
 
-export async function wrapContract (
+async function wrapContract (
   contract: Contract,
   config: Partial<TokenPaymasterConfig>,
   overrideDependencies?: Partial<GSNDependencies>
@@ -15,7 +15,7 @@ export async function wrapContract (
   return contract.connect(signer)
 }
 
-export async function wrapSigner (
+async function wrapSigner (
   signer: Signer,
   config: Partial<TokenPaymasterConfig>,
   overrideDependencies?: Partial<GSNDependencies>): Promise<Signer> {
@@ -31,4 +31,9 @@ export async function wrapSigner (
   const ethersProvider = new providers.Web3Provider(gsnProvider)
   const address = await signer.getAddress()
   return ethersProvider.getSigner(address)
+}
+
+export const TokenPaymasterEthersWrapper = {
+  wrapContract,
+  wrapSigner
 }
