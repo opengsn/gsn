@@ -24,7 +24,6 @@ import { TokenPaymasterInteractor } from './TokenPaymasterInteractor'
 
 export interface TokenPaymasterConfig extends GSNConfig {
   tokenAddress: Address
-  permitAmount?: string | number | BN
 }
 
 export interface TokenPaymasterUnresolvedConstructorInput extends GSNUnresolvedConstructorInput {
