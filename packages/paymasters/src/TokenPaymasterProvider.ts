@@ -10,7 +10,9 @@ import {
 } from '../types/truffle-contracts'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
-  PERMIT_SIGHASH_DAI, PERMIT_SIGHASH_EIP2612,
+  MAX_PAYMASTERDATA_LENGTH,
+  PERMIT_SIGHASH_DAI,
+  PERMIT_SIGHASH_EIP2612,
   PERMIT_SIGNATURE_DAI,
   PERMIT_SIGNATURE_EIP2612,
   signAndEncodeDaiPermit,
@@ -42,11 +44,16 @@ export class TokenPaymasterProvider extends RelayProvider {
   }
 
   static newProvider (input: TokenPaymasterUnresolvedConstructorInput): TokenPaymasterProvider {
-    if (input.config.maxPaymasterDataLength == null) {
-      input.config.maxPaymasterDataLength = 300
-    }
+    TokenPaymasterProvider._applyTokenPaymasterConfig(input.config)
     const provider = new TokenPaymasterProvider(new RelayClient(input), input.provider)
     return provider
+  }
+
+  private static _applyTokenPaymasterConfig (config: Partial<TokenPaymasterConfig>): void {
+    if (config.maxPaymasterDataLength != null) {
+      throw new Error('Token paymaster doesn\'t accept maxPaymasterDataLength modification. Please leave this field empty')
+    }
+    config.maxPaymasterDataLength = MAX_PAYMASTERDATA_LENGTH
   }
 
   async init (): Promise<this> {
@@ -94,7 +101,6 @@ export class TokenPaymasterProvider extends RelayProvider {
         )
       }
     }
-    // return abi.encodeParameters(['bytes', 'address'], [permitMethod, this.token.address])
     return '0x' + removeHexPrefix(this.token.address) + removeHexPrefix(permitMethod)
   }
 
