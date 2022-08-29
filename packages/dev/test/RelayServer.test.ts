@@ -288,8 +288,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           assert.fail()
         } catch (e: any) {
           assert.include(e.message,
-            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            `Network ${env.relayServer.contractInteractor.getNetworkType()} doesn't support eip1559`)
+            'Current network does not support EIP-1559 transactions.')
         }
       })
 
