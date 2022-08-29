@@ -46,21 +46,21 @@ export interface PermitInterfaceEIP2612 {
   value: IntString
 }
 
-export interface PaymasterConfig {
-  weth: string
-  tokens: string[]
-  relayHub: string
-  priceFeeds: string[]
+export interface UniswapConfig {
   uniswap: string
-  trustedForwarder: string
+  weth: string
+  minSwapAmount: number | BN | string
+  tokens: string[]
+  priceFeeds: string[]
   uniswapPoolFees: number[] | BN[] | string[]
-  slippages: number[] | BN[] | string[]
-  gasUsedByPost: number | BN | string
   permitMethodSignatures: string[]
+  slippages: number[] | BN[] | string[]
+}
+export interface GasAndEthConfig {
+  gasUsedByPost: number | BN | string
   minHubBalance: number | BN | string
   targetHubBalance: number | BN | string
   minWithdrawalAmount: number | BN | string
-  minSwapAmount: number | BN | string
   paymasterFee: number | BN | string
 }
 

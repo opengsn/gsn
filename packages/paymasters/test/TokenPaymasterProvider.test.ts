@@ -1,11 +1,11 @@
 import { TokenPaymasterConfig, TokenPaymasterProvider } from '../src/TokenPaymasterProvider'
 import { HttpProvider } from 'web3-core'
 import {
-  PaymasterConfig,
+  GasAndEthConfig,
   PERMIT_SIGHASH_DAI,
   PERMIT_SIGHASH_EIP2612,
   PERMIT_SIGNATURE_DAI,
-  PERMIT_SIGNATURE_EIP2612
+  PERMIT_SIGNATURE_EIP2612, UniswapConfig
 } from '../src/PermitPaymasterUtils'
 import { deployTestHub, mergeRelayRequest } from './TestUtils'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -100,24 +100,24 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
     await daiPermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
     await uniPermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
     await usdcPermittableToken.transfer(account0, toWei('0.0001', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
-    const config: PaymasterConfig = {
-      weth: WETH9_CONTRACT_ADDRESS,
-      tokens: [DAI_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS, UNI_CONTRACT_ADDRESS],
-      relayHub: testRelayHub.address,
+    const uniswapConfig: UniswapConfig = {
       uniswap: SWAP_ROUTER_CONTRACT_ADDRESS,
+      weth: WETH9_CONTRACT_ADDRESS,
+      minSwapAmount: MIN_SWAP_AMOUNT,
+      tokens: [DAI_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS, UNI_CONTRACT_ADDRESS],
       priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS],
-      trustedForwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
       uniswapPoolFees: [DAI_ETH_POOL_FEE, USDC_ETH_POOL_FEE, UNI_ETH_POOL_FEE],
-      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE],
-      gasUsedByPost: GAS_USED_BY_POST,
       permitMethodSignatures: [PERMIT_SIGNATURE_DAI, PERMIT_SIGNATURE_EIP2612, PERMIT_SIGNATURE_EIP2612],
+      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE]
+    }
+    const gasAndEthConfig: GasAndEthConfig = {
+      gasUsedByPost: GAS_USED_BY_POST,
       minHubBalance: MIN_HUB_BALANCE,
       targetHubBalance: TARGET_HUB_BALANCE,
       minWithdrawalAmount: MIN_WITHDRAWAL_AMOUNT,
-      minSwapAmount: MIN_SWAP_AMOUNT,
       paymasterFee: 5
     }
-    permitPaymaster = await PermitERC20UniswapV3Paymaster.new(config, { from: owner })
+    permitPaymaster = await PermitERC20UniswapV3Paymaster.new(uniswapConfig, gasAndEthConfig, GSN_FORWARDER_CONTRACT_ADDRESS, testRelayHub.address, { from: owner })
     relayRequest = {
       relayData: {
         relayWorker: relay,
@@ -421,72 +421,4 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       expectEvent.inLogs(rcpt.events, 'Sender', { _msgSenderFunc: signerAddress, sender: forwarderInstance.address })
     })
   })
-  // it('should relay transparently', async function () {
-  //   await skipWithoutFork(this)
-  //
-  //   const stake = ETHER
-  //   const testToken: TestTokenInstance = await TestToken.new()
-  //   const stakeManager: StakeManagerInstance = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
-  //   const penalizer: PenalizerInstance = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
-  //   const relayHub: RelayHubInstance = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
-  //   const forwarderInstance: ForwarderInstance = await Forwarder.new()
-  //   const forwarderAddress = forwarderInstance.address
-  //   await registerForwarderForGsn(forwarderInstance)
-  //   await sampleRecipient.setForwarder(forwarderAddress)
-  //
-  //   await permitPaymaster.setTrustedForwarder(forwarderAddress, { from: owner })
-  //   await permitPaymaster.setRelayHub(relayHub.address, { from: owner })
-  //   await web3.eth.sendTransaction({
-  //     from: account0,
-  //     to: permitPaymaster.address,
-  //     value: stake
-  //   })
-  //   await permitPaymaster.refillHubDeposit(stake, { from: owner })
-  //
-  //   const gsnConfig: Partial<TokenPaymasterConfig> = {
-  //     tokenPaymasterAddress: permitPaymaster.address,
-  //     loggerConfiguration: { logLevel: 'error' },
-  //     tokenAddress: UNI_CONTRACT_ADDRESS,
-  //     methodSuffix: '',
-  //     jsonStringifyRequest: false,
-  //     // TODO remove this flag once testing against v3 test deployment
-  //     skipErc165Check: true
-  //   }
-  //
-  //   await testToken.mint(stake, { from: owner })
-  //   await testToken.approve(stakeManager.address, stake, { from: owner })
-  //   const relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
-  //     relaylog: process.env.relaylog,
-  //     initialReputation: 100,
-  //     stake: stake.toString(),
-  //     relayOwner: owner,
-  //     ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
-  //   })
-  //
-  //   tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
-  //     config: gsnConfig,
-  //     provider: web3.currentProvider as HttpProvider
-  //   })
-  //   await tokenPaymasterProvider.init()
-  //   // @ts-ignore
-  //   SampleRecipient.web3.setProvider(tokenPaymasterProvider)
-  //   // sampleRecipient = await SampleRecipient.new()
-  //   try {
-  //     const res = await sampleRecipient.something({ gasPrice: 50e9, gas: 3e5, from: account0 })
-  //     // const receipt = await web3.eth.getTransactionReceipt(res.receipt.actualTransactionHash)
-  //     const hubLogs = await relayHub.getPastEvents('TransactionRelayed', { fromBlock: res.receipt.blockNumber })
-  //     expectEvent(res, 'Sender', {
-  //       _msgSenderFunc: account0,
-  //       sender: forwarderAddress
-  //     })
-  //     assert.equal(hubLogs.length, 1)
-  //     assert.equal(hubLogs[0].event, 'TransactionRelayed')
-  //     assert.equal(hubLogs[0].returnValues.from, account0)
-  //     assert.equal(hubLogs[0].returnValues.to, sampleRecipient.address)
-  //     assert.equal(hubLogs[0].returnValues.status, '0')
-  //     assert.equal(hubLogs[0].returnValues.paymaster, permitPaymaster.address)
-  //   } finally {
-  //     stopRelay(relayProcess)
-  //   }
-  // })
 })

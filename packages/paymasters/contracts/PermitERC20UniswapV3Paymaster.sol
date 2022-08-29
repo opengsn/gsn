@@ -41,88 +41,68 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     mapping(IERC20 => TokenSwapData) public tokensSwapData;
     ISwapRouter public uniswap;
     IERC20[] public tokens;
-    IERC20 public immutable weth;
-    uint256 public gasUsedByPost;
+    IERC20 public weth;
     uint256 public tokensBlockNumber;
-
-
-    // Upon reaching minHubBalance, the paymaster will deposit eth to RelayHub to reach targetHubBalance
+    uint256 public gasUsedByPost;
     uint256 public minHubBalance;
     uint256 public targetHubBalance;
-    // Minimum eth amount, above targetHubBalance, to send to the owner
     uint256 public minWithdrawalAmount;
-    // Minimum eth amount to get from a swap
     uint256 public minSwapAmount;
     uint256 public paymasterFee;
 
-//    PaymasterConfig config;
-
-    struct PaymasterConfig {
+    struct UniswapConfig {
+        ISwapRouter uniswap;
         IERC20 weth;
+        // Minimum eth amount to get from a swap
+        uint256 minSwapAmount;
         IERC20[] tokens;
-        IRelayHub relayHub;
         IChainlinkOracle[] priceFeeds;
         uint24[] uniswapPoolFees;
-        uint8[] slippages;
-        ISwapRouter uniswap;
-        address trustedForwarder;
-        uint256 gasUsedByPost;
         string[] permitMethodSignatures;
+        uint8[] slippages;
+    }
+
+    struct GasAndEthConfig {
+        /**
+        * set gas used by postRelayedCall, for proper gas calculation.
+        * You can use TokenGasCalculator to calculate these values (they depend on actual code of postRelayedCall,
+        * but also the gas usage of the token and of Uniswap)
+        */
+        uint256 gasUsedByPost;
+        // Upon reaching minHubBalance, the paymaster will deposit eth to RelayHub to reach targetHubBalance
         uint256 minHubBalance;
         uint256 targetHubBalance;
+        // Minimum eth amount, above targetHubBalance, to send to the owner
         uint256 minWithdrawalAmount;
-        uint256 minSwapAmount;
         uint256 paymasterFee;
     }
 
     constructor(
-        PaymasterConfig memory config
+        UniswapConfig memory uniswapConfig,
+        GasAndEthConfig memory gasAndEthConfig,
+        address _trustedForwarder,
+        IRelayHub _relayHub
     ) {
-        weth = config.weth;
-        setUniswap(config.uniswap);
-        setMinHubBalance(config.minHubBalance);
-        setTargetHubBalance(config.targetHubBalance);
-        setMinWithdrawalAmount(config.minWithdrawalAmount);
-        setMinSwapAmount(config.minSwapAmount);
+        setUniswapConfig(uniswapConfig);
+        setGasAndEthConfig(gasAndEthConfig);
 
-        setPaymasterFee(config.paymasterFee);
-        setRelayHub(config.relayHub);
-        setPostGasUsage(config.gasUsedByPost);
-        setTrustedForwarder(config.trustedForwarder);
+        setRelayHub(_relayHub);
+        setTrustedForwarder(_trustedForwarder);
+    }
+
+    function setUniswapConfig(UniswapConfig memory config) public onlyOwner {
+        weth = config.weth;
+        uniswap = config.uniswap;
+        minSwapAmount = config.minSwapAmount;
         setTokens(config.tokens, config.priceFeeds, config.permitMethodSignatures, config.uniswapPoolFees, config.slippages);
     }
 
-    /**
-     * set gas used by postRelayedCall, for proper gas calculation.
-     * You can use TokenGasCalculator to calculate these values (they depend on actual code of postRelayedCall,
-     * but also the gas usage of the token and of Uniswap)
-     */
-    function setPostGasUsage(uint256 _gasUsedByPost) public onlyOwner {
-        gasUsedByPost = _gasUsedByPost;
-    }
-
-    function setPaymasterFee(uint256 _paymasterFee) public onlyOwner {
-        paymasterFee = _paymasterFee;
-    }
-
-    function setMinHubBalance(uint256 _minHubBalance) public onlyOwner {
-        minHubBalance = _minHubBalance;
-    }
-
-    function setTargetHubBalance(uint256 _targetHubBalance) public onlyOwner {
-        targetHubBalance = _targetHubBalance;
-    }
-
-    function setMinWithdrawalAmount(uint256 _minWithdrawalAmount) public onlyOwner {
-        minWithdrawalAmount = _minWithdrawalAmount;
-    }
-
-    function setMinSwapAmount(uint256 _minSwapAmount) public onlyOwner {
-        minSwapAmount = _minSwapAmount;
-    }
-
-    function setUniswap(ISwapRouter _uniswap) public onlyOwner {
-        uniswap = _uniswap;
+    function setGasAndEthConfig(GasAndEthConfig memory config) public onlyOwner {
+        minWithdrawalAmount = config.minWithdrawalAmount;
+        gasUsedByPost = config.gasUsedByPost;
+        targetHubBalance = config.targetHubBalance;
+        minHubBalance = config.minHubBalance;
+        paymasterFee = config.paymasterFee;
     }
 
     function setTokens(
@@ -130,7 +110,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         IChainlinkOracle[] memory _priceFeeds,
         string[] memory _permitMethodSignatures,
         uint24[] memory _poolFees,
-        uint8[] memory _slippages) public onlyOwner {
+        uint8[] memory _slippages) private {
         tokens = _tokens;
         uint256 blockNumber = block.number;
         tokensBlockNumber = blockNumber;
@@ -149,10 +129,6 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             tokensSwapData[token] = data;
         }
     }
-
-//    function setConfig(PaymasterConfig _config) public onlyOwner {
-//        config = _config;
-//    }
 
     function getTokens() public view returns (IERC20[] memory){
         return tokens;

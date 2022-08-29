@@ -68,6 +68,9 @@ export class TokenPaymasterProvider extends RelayProvider {
   }
 
   async _buildPaymasterData (relayRequest: RelayRequest): Promise<PrefixedHexString> {
+    if (this.config.tokenPaymasterDomainSeparators == null) {
+      throw new Error('TokenPaymasterProvider not initialized. Call init() first')
+    }
     //  Optionally encode permit method,then concatenate token address
     if (relayRequest.relayData.paymaster !== this.paymaster.address) {
       throw new Error('Paymaster address mismatch')
@@ -75,9 +78,6 @@ export class TokenPaymasterProvider extends RelayProvider {
     const allowance = await this.token.allowance(relayRequest.request.from, relayRequest.relayData.paymaster)
     let permitMethod = ''
     if (allowance.eqn(0)) {
-      if (this.config.tokenPaymasterDomainSeparators == null) {
-        throw new Error('TokenPaymasterProvider not initialized. Call init() first')
-      }
       const domainSeparator: EIP712Domain = this.config.tokenPaymasterDomainSeparators[this.token.address]
       if (this.permitSignature === PERMIT_SIGNATURE_DAI) {
         permitMethod = await signAndEncodeDaiPermit(

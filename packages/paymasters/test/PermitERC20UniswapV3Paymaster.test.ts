@@ -13,11 +13,11 @@ import {
 
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
 import {
-  PaymasterConfig,
+  GasAndEthConfig,
   PERMIT_SIGNATURE_DAI,
   PERMIT_SIGNATURE_EIP2612,
   signAndEncodeDaiPermit,
-  signAndEncodeEIP2612Permit
+  signAndEncodeEIP2612Permit, UniswapConfig
 } from '../src/PermitPaymasterUtils'
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
@@ -87,6 +87,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
   let quoter: IQuoterInstance
 
   let relayRequest: RelayRequest
+  let uniswapConfig: UniswapConfig
+  let gasAndEthConfig: GasAndEthConfig
 
   let id: string
 
@@ -115,24 +117,24 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
     await daiPermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
     await uniPermittableToken.transfer(account0, toWei('100000', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
     await usdcPermittableToken.transfer(account0, toWei('0.0001', 'ether'), { from: MAJOR_DAI_AND_UNI_HOLDER })
-    const config: PaymasterConfig = {
-      weth: WETH9_CONTRACT_ADDRESS,
-      tokens: [DAI_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS, UNI_CONTRACT_ADDRESS],
-      relayHub: testRelayHub.address,
+    uniswapConfig = {
       uniswap: SWAP_ROUTER_CONTRACT_ADDRESS,
+      weth: WETH9_CONTRACT_ADDRESS,
+      minSwapAmount: MIN_SWAP_AMOUNT,
+      tokens: [DAI_CONTRACT_ADDRESS, USDC_CONTRACT_ADDRESS, UNI_CONTRACT_ADDRESS],
       priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS],
-      trustedForwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
       uniswapPoolFees: [DAI_ETH_POOL_FEE, USDC_ETH_POOL_FEE, UNI_ETH_POOL_FEE],
-      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE],
-      gasUsedByPost: GAS_USED_BY_POST,
       permitMethodSignatures: [PERMIT_SIGNATURE_DAI, PERMIT_SIGNATURE_EIP2612, PERMIT_SIGNATURE_EIP2612],
+      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE],
+    }
+    gasAndEthConfig = {
+      gasUsedByPost: GAS_USED_BY_POST,
       minHubBalance: MIN_HUB_BALANCE,
       targetHubBalance: TARGET_HUB_BALANCE,
       minWithdrawalAmount: MIN_WITHDRAWAL_AMOUNT,
-      minSwapAmount: MIN_SWAP_AMOUNT,
       paymasterFee: 5
     }
-    permitPaymaster = await PermitERC20UniswapV3Paymaster.new(config, { from: owner })
+    permitPaymaster = await PermitERC20UniswapV3Paymaster.new(uniswapConfig, gasAndEthConfig, GSN_FORWARDER_CONTRACT_ADDRESS, testRelayHub.address, { from: owner })
     relayRequest = {
       relayData: {
         relayWorker: relay,
@@ -665,7 +667,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
 
           const expectedDaiAmountIn = daiPaymasterInfo.preBalance.sub(daiPaymasterInfo.expectedRefund)
           const expectedWethAmountOutMin = await permitPaymaster.addSlippage(expectedDaiAmountIn.mul(ETHER).mul(daiPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceDivisor), SLIPPAGE)
-          await permitPaymaster.setMinSwapAmount(expectedWethAmountOutMin.muln(2), { from: owner })
+          const newConfig: UniswapConfig = { ...uniswapConfig, minSwapAmount: expectedWethAmountOutMin.muln(2).toString() }
+          await permitPaymaster.setUniswapConfig(newConfig, { from: owner })
           const res = await testRelayHub.callPostRC(permitPaymaster.address, daiPaymasterInfo.pmContext, gasUseWithoutPost, daiPaymasterInfo.modifiedRequest.relayData, { gasPrice: GAS_PRICE })
           assert.equal(res.logs.length, 2)
           // check correct tokens are transferred
@@ -701,7 +704,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           const expectedWethAmountOutMin = await permitPaymaster.addSlippage(expectedDaiAmountIn.mul(ETHER).mul(daiPaymasterInfo.priceQuote).div(daiPaymasterInfo.priceDivisor), SLIPPAGE)
 
           const testUniswap = await TestUniswap.new(1, 1, { value: '1' })
-          await permitPaymaster.setUniswap(testUniswap.address, { from: owner })
+          const newConfig: UniswapConfig = { ...uniswapConfig, uniswap: testUniswap.address }
+          await permitPaymaster.setUniswapConfig(newConfig, { from: owner })
           assert.equal(await permitPaymaster.uniswap(), testUniswap.address)
           const res = await testRelayHub.callPostRC(permitPaymaster.address, daiPaymasterInfo.pmContext, gasUseWithoutPost, daiPaymasterInfo.modifiedRequest.relayData, { gasPrice: GAS_PRICE })
           // res.logs.forEach(log => {
@@ -873,24 +877,24 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
   context('calculate postRelayCall gas usage', function () {
     it('calculate', async function () {
       await skipWithoutFork(this)
-      const config: PaymasterConfig = {
-        weth: WETH9_CONTRACT_ADDRESS,
-        tokens: [DAI_CONTRACT_ADDRESS],
-        relayHub: testRelayHub.address,
+      const uniswapConfig: UniswapConfig = {
         uniswap: SWAP_ROUTER_CONTRACT_ADDRESS,
+        weth: WETH9_CONTRACT_ADDRESS,
+        minSwapAmount: 0,
+        tokens: [DAI_CONTRACT_ADDRESS],
         priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS],
-        trustedForwarder: GSN_FORWARDER_CONTRACT_ADDRESS,
         uniswapPoolFees: [DAI_ETH_POOL_FEE],
-        slippages: [SLIPPAGE],
-        gasUsedByPost: 0,
         permitMethodSignatures: [PERMIT_SIGNATURE_DAI],
+        slippages: [SLIPPAGE]
+      }
+      const gasAndEthConfig: GasAndEthConfig = {
+        gasUsedByPost: 0,
         minHubBalance: MIN_HUB_BALANCE,
         targetHubBalance: TARGET_HUB_BALANCE,
         minWithdrawalAmount: MIN_WITHDRAWAL_AMOUNT,
-        minSwapAmount: 0,
         paymasterFee: 5
       }
-      const permitPaymasterZeroGUBP = await PermitERC20UniswapV3Paymaster.new(config)
+      const permitPaymasterZeroGUBP = await PermitERC20UniswapV3Paymaster.new(uniswapConfig, gasAndEthConfig, GSN_FORWARDER_CONTRACT_ADDRESS, testRelayHub.address)
       const daiPaymasterInfo = await rechargePaymaster(permitPaymasterZeroGUBP, chainlinkOracleDAIETH, daiPermittableToken)
       const context = web3.eth.abi.encodeParameters(['address', 'address', 'uint256', 'uint256'], [daiPermittableToken.address, account0, daiPaymasterInfo.priceQuote.toString(), daiPaymasterInfo.preBalance.toString()])
       const postGasUse = await calculatePostGas(daiPermittableToken, permitPaymasterZeroGUBP, daiPermittableToken.address, account0, context)
