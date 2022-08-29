@@ -177,6 +177,7 @@ contract('RelayClient', function (accounts) {
     await testToken.approve(stakeManager.address, stake, { from: accounts[1] })
 
     relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
+      maxMaxFeePerGas: Number.MAX_SAFE_INTEGER.toString(),
       initialReputation: 100,
       stake: 1e18.toString(),
       relayOwner: accounts[1],
