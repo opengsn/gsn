@@ -14,10 +14,6 @@ export class TokenPaymasterInteractor {
   private readonly PermitInterfaceEIP2612Token: Contract<PermitInterfaceEIP2612Instance>
   private readonly PermitERC20UniswapV3Paymaster: Contract<PermitERC20UniswapV3PaymasterInstance>
 
-  // daiPermittableToken!: PermitInterfaceDAIInstance
-  // eip2612PermittableToken!: PermitInterfaceEIP2612Instance
-  // permitPaymasterInstance!: PermitERC20UniswapV3PaymasterInstance
-
   constructor (provider: Web3ProviderBaseInterface) {
     this.provider = provider
     this.PermitInterfaceDAIToken = TruffleContract({

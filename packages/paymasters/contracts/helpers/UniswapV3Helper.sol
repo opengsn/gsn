@@ -7,7 +7,7 @@ import "@uniswap/v3-periphery/contracts/interfaces/IPeripheryPayments.sol";
 
 library UniswapV3Helper {
     event UniswapReverted(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin);
-    // turn ERC-20 tokens into native unwrapped ETH at market price
+    // turn ERC-20 tokens into wrapped ETH at market price
     function swapToWeth(
         address token,
         address weth,
