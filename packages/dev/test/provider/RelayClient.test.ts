@@ -313,6 +313,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should skip timed-out server', async function () {
+      await evmMineMany(10)
       let server: Server | undefined
       try {
         const pingResponse = await axios.get('http://localhost:8090/getaddr').then(res => res.data)
