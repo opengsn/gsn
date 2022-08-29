@@ -927,7 +927,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const networkHistoryFees = await this.getFeeHistory(toHex(blockCount), 'pending', [rewardPercentile])
     const baseFeePerGas = networkHistoryFees.baseFeePerGas[0]
     const priorityFeePerGas = averageBN(networkHistoryFees.reward.map(rewards => rewards[0]).map(toBN)).toString()
-    let gasPriceOverFee = parseInt(gasPrice) / (parseInt(baseFeePerGas) + parseInt(priorityFeePerGas))
+    const gasPriceOverFee = parseInt(gasPrice) / (parseInt(baseFeePerGas) + parseInt(priorityFeePerGas))
     if (gasPriceOverFee > 10 || gasPriceOverFee < 0.1) {
       this.logger.warn('Order of magnitude difference between getGasPrice and getFeeHistory. Clients will have issues.')
     }
