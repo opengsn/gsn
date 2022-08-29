@@ -34,7 +34,7 @@ import { Transaction } from '@ethereumjs/tx'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 
-import { deployHub } from '../TestUtils'
+import { deployHub, revert, snapshot } from '../TestUtils'
 
 import { toHex } from 'web3-utils'
 import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contracts'
@@ -387,10 +387,12 @@ contract('ContractInteractor', function (accounts) {
     })
 
     it('should send the transaction to the blockchain directly', async function () {
+      const id = (await snapshot()).result
       const txHash = await contractInteractor.broadcastTransactionWithProvider(sampleTransactionData)
       assert.equal(txHash, sampleTransactionHash)
       assert.equal(provider.methodsCount.size, 1)
       assert.equal(provider.methodsCount.get('eth_sendRawTransaction'), 1)
+      await revert(id)
     })
 
     it('should send the transaction to all alternate providers', async function () {

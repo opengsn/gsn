@@ -60,7 +60,7 @@ function sanitizeJsonRpcResponse (response?: JsonRpcResponse): JsonRpcResponse |
   return clone
 }
 
-function initializeAlternateProviders (alternateEthereumNodeUrls: string[]): Web3ProviderBaseInterface[] {
+function initializeAlternateProviders (alternateEthereumNodeUrls: string[] = []): Web3ProviderBaseInterface[] {
   const alternateProviders: Web3ProviderBaseInterface[] = []
   for (const url of alternateEthereumNodeUrls) {
     alternateProviders.push(
