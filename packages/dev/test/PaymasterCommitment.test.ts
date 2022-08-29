@@ -75,6 +75,7 @@ async function makeRequest (
   const contractInteractor = new ContractInteractor({
     environment: defaultEnvironment,
     provider: web3.eth.currentProvider as HttpProvider,
+    alternateProviders: [],
     logger: createServerLogger('error', '', ''),
     deployment,
     maxPageSize: Number.MAX_SAFE_INTEGER

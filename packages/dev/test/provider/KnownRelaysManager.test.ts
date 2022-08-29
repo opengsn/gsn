@@ -96,6 +96,7 @@ contract('KnownRelaysManager', function (
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
+        alternateProviders: [],
         maxPageSize,
         logger,
         deployment: { relayHubAddress: relayHub.address }
@@ -232,6 +233,7 @@ contract('KnownRelaysManager 2', function (accounts) {
     contractInteractor = new ContractInteractor({
       environment: defaultEnvironment,
       provider: web3.currentProvider as HttpProvider,
+      alternateProviders: [],
       maxPageSize,
       logger
     })
@@ -272,6 +274,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
+        alternateProviders: [],
         logger,
         maxPageSize,
         deployment

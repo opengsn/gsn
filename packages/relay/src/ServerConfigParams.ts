@@ -63,6 +63,12 @@ export interface ServerConfigParams {
   ethereumNodeUrl: string
 
   /**
+   * Alternative URLs of the Ethereum RPC Node that are used to send transactions to the blockchain.
+   * All transactions will be sent to all RPC endpoints to ensure downtime and censorship protections against nodes.
+   */
+  alternateEthereumNodeUrls: string[]
+
+  /**
    * The name of the directory used to store the database and private keys.
    */
   workdir: string
@@ -333,6 +339,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   loggerUserId: '',
   url: 'http://localhost:8090',
   ethereumNodeUrl: '',
+  alternateEthereumNodeUrls: [],
   port: 8090,
   workdir: '',
   refreshStateTimeoutBlocks: 5,
@@ -363,6 +370,7 @@ const ConfigParamsTypes = {
   gasPriceOracleUrl: 'string',
   gasPriceOraclePath: 'string',
   ethereumNodeUrl: 'string',
+  alternateEthereumNodeUrls: 'list',
   workdir: 'string',
   checkInterval: 'number',
   devMode: 'boolean',
@@ -519,6 +527,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   const contractInteractor: ContractInteractor = new ContractInteractor({
     maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
     provider: web3provider,
+    alternateProviders: [],
     logger,
     deployment: {
       relayHubAddress: config.relayHubAddress

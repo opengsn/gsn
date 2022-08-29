@@ -147,6 +147,7 @@ contract('RegistrationManager', function (accounts) {
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider: serverWeb3provider,
+        alternateProviders: [],
         logger,
         maxPageSize,
         deployment: {
@@ -178,6 +179,7 @@ contract('RegistrationManager', function (accounts) {
       const newContractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider: serverWeb3provider,
+        alternateProviders: [],
         logger,
         maxPageSize,
         deployment: {

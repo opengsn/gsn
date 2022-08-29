@@ -70,6 +70,7 @@ import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
   provider: Web3ProviderBaseInterface
+  alternateProviders: Web3ProviderBaseInterface[]
   logger: LoggerInterface
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
@@ -135,6 +136,7 @@ export class ContractInteractor {
 
   readonly web3: Web3
   private readonly provider: Web3ProviderBaseInterface
+  private readonly alternateProviders: Web3ProviderBaseInterface[] = []
   private deployment: GSNContractsDeployment
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
@@ -155,6 +157,7 @@ export class ContractInteractor {
       maxPageSize,
       maxPageCount,
       provider,
+      alternateProviders,
       versionManager,
       logger,
       environment,
@@ -167,6 +170,7 @@ export class ContractInteractor {
     this.web3 = new Web3(provider as any)
     this.deployment = deployment
     this.provider = provider
+    this.alternateProviders = alternateProviders
     this.lastBlockNumber = 0
     this.environment = environment
     this.IPaymasterContract = TruffleContract({
@@ -1082,13 +1086,38 @@ calculateTransactionMaxPossibleGas: result: ${result}
    * broadcasting of a transaction without waiting for it to be mined.
    * This method sends the RPC call directly
    * @param signedTransaction - the raw signed transaction to broadcast
+   * @returns transactionHash - the first transaction hash returned by any provider;
+   * @returns settledResults - the array of all promises' results;
    */
-  async broadcastTransaction (signedTransaction: PrefixedHexString): Promise<PrefixedHexString> {
+  async broadcastTransaction (
+    signedTransaction: PrefixedHexString
+  ): Promise<{ transactionHash: PrefixedHexString, settledResults: Array<PromiseSettledResult<string>> }> {
+    const promises: Array<Promise<PrefixedHexString>> = []
+    for (const provider of [this.provider, ...this.alternateProviders]) {
+      promises.push(this.broadcastTransactionWithProvider(signedTransaction, provider))
+    }
+    const settledResults = await Promise.allSettled(promises)
+    const transactionHash = (settledResults.find(it => it.status === 'fulfilled') as PromiseFulfilledResult<PrefixedHexString>)?.value
+    if (transactionHash == null) {
+      const message = `All RPC providers failed to broadcast transaction with results: ${JSON.stringify(settledResults)}`
+      this.logger.error(message)
+      throw new Error(message)
+    }
+    return {
+      transactionHash,
+      settledResults
+    }
+  }
+
+  async broadcastTransactionWithProvider (
+    signedTransaction: PrefixedHexString,
+    provider: Web3ProviderBaseInterface = this.provider
+  ): Promise<PrefixedHexString> {
     return await new Promise((resolve, reject) => {
-      if (this.provider == null) {
+      if (provider == null) {
         throw new Error('provider is not set')
       }
-      this.provider.send({
+      provider.send({
         jsonrpc: '2.0',
         method: 'eth_sendRawTransaction',
         params: [

@@ -12,6 +12,7 @@ import {
   Environment,
   EnvironmentsKeys,
   VersionsManager,
+  Web3ProviderBaseInterface,
   gsnRequiredVersion,
   gsnRuntimeVersion
 } from '@opengsn/common'
@@ -59,23 +60,35 @@ function sanitizeJsonRpcResponse (response?: JsonRpcResponse): JsonRpcResponse |
   return clone
 }
 
+function initializeAlternateProviders (alternateEthereumNodeUrls: string[]): Web3ProviderBaseInterface[] {
+  const alternateProviders: Web3ProviderBaseInterface[] = []
+  for (const url of alternateEthereumNodeUrls) {
+    alternateProviders.push(
+      new Web3.providers.HttpProvider(url)
+    )
+  }
+  return alternateProviders
+}
+
 async function run (): Promise<void> {
   let config: ServerConfigParams
   let environment: Environment
   let web3provider
+  let alternateProviders: Web3ProviderBaseInterface[]
   let runPenalizer: boolean
   let reputationManagerConfig: Partial<ReputationManagerConfiguration>
   let runPaymasterReputations: boolean
   console.log('Starting GSN Relay Server process...\n')
   try {
     console.log('Parsing server config...\n')
-    const conf = await parseServerConfig(process.argv.slice(2), process.env)
+    const conf: ServerConfigParams = await parseServerConfig(process.argv.slice(2), process.env)
     if (conf.ethereumNodeUrl == null) {
       error('missing ethereumNodeUrl')
     }
     const loggingProvider: LoggingProviderMode = conf.loggingProvider ?? LoggingProviderMode.NONE
     conf.environmentName = conf.environmentName ?? EnvironmentsKeys.ganacheLocal
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
+    alternateProviders = initializeAlternateProviders(conf.alternateEthereumNodeUrls)
     if (loggingProvider !== LoggingProviderMode.NONE) {
       const orig = web3provider
       web3provider = {
@@ -153,6 +166,7 @@ async function run (): Promise<void> {
   console.log('Creating interactor...\n')
   const contractInteractor = new ContractInteractor({
     provider: web3provider,
+    alternateProviders,
     logger,
     environment,
     maxPageSize: config.pastEventsQueryMaxPageSize,

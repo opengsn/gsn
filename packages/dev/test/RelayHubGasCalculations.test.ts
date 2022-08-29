@@ -160,6 +160,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     contractInteractor = new ContractInteractor({
       environment: defaultEnvironment,
       provider: web3.currentProvider as HttpProvider,
+      alternateProviders: [],
       logger,
       maxPageSize,
       deployment

@@ -153,7 +153,8 @@ export class CommandsLogic {
     this.httpClient = new HttpClient(new HttpWrapper(), logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const environment = defaultEnvironment
-    this.contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+    const alternateProviders: any[] = []
+    this.contractInteractor = new ContractInteractor({ provider, alternateProviders, logger, deployment, maxPageSize, environment })
     this.deployment = deployment
     this.web3 = new Web3(provider)
   }
@@ -518,7 +519,7 @@ export class CommandsLogic {
       console.log(`signed withdrawal hex tx: ${signedTx.rawTx}`)
       if (options.broadcast) {
         console.log('broadcasting tx')
-        const txHash = await this.contractInteractor.broadcastTransaction(signedTx.rawTx)
+        const txHash = await this.contractInteractor.broadcastTransactionWithProvider(signedTx.rawTx)
         transactions.push(txHash)
       }
       return {

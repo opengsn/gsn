@@ -40,6 +40,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
         environment: defaultEnvironment,
         maxPageSize,
         provider,
+        alternateProviders: [],
         logger,
         deployment
       })

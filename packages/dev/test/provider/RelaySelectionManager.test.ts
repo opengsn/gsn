@@ -89,6 +89,7 @@ contract('RelaySelectionManager', function (accounts) {
       contractInteractor = await new ContractInteractor({
         environment: defaultEnvironment,
         provider: web3.currentProvider as HttpProvider,
+        alternateProviders: [],
         maxPageSize,
         logger
       }).init()

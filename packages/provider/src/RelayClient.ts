@@ -570,6 +570,7 @@ export class RelayClient {
     const contractInteractor = overrideDependencies?.contractInteractor ??
       await new ContractInteractor({
         provider,
+        alternateProviders: [],
         versionManager,
         logger: this.logger,
         maxPageSize: this.config.pastEventsQueryMaxPageSize,

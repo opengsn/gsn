@@ -134,7 +134,7 @@ data                     | ${transaction.data}
 
   async broadcastTransaction (signedTx: string, verifiedTxId: string, nonce: number): Promise<SignedTransactionDetails> {
     try {
-      const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
+      const { transactionHash } = await this.contractInteractor.broadcastTransaction(signedTx)
       if (transactionHash.toLowerCase() !== verifiedTxId.toLowerCase()) {
         throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${verifiedTxId}`)
       }

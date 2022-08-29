@@ -33,6 +33,7 @@ context('GasPriceFetcher', function () {
       environment: defaultEnvironment,
       maxPageSize: Number.MAX_SAFE_INTEGER,
       provider: web3.currentProvider as HttpProvider,
+      alternateProviders: [],
       logger
     })
 
