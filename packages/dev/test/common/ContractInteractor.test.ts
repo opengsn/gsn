@@ -396,6 +396,7 @@ contract('ContractInteractor', function (accounts) {
     })
 
     it('should send the transaction to all alternate providers', async function () {
+      const provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
       const alternateProviders = [
         new ProfilingProvider(
           new Web3.providers.HttpProvider('http://localhost:80/')
