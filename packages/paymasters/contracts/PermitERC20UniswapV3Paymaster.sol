@@ -244,25 +244,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         uint256 amountSwapped = 0;
         if (balance < depositAmount) {
             for (uint256 i = 0; i < tokens.length && balance + amountSwapped < depositAmount; i++) {
-                IERC20 tokenIn = tokens[i];
-                uint256 tokenBalance = tokenIn.balanceOf(address(this));
-                if (tokenBalance > 0) {
-                    TokenSwapData memory tokenSwapData = tokensSwapData[tokenIn];
-                    uint256 quote = uint256(tokenSwapData.priceFeed.latestAnswer());
-                    uint256 amountOutMin = addSlippage(_tokenToWei(tokenBalance, tokenSwapData.priceDivisor, quote), tokenSwapData.slippage);
-                    if (amountOutMin < minSwapAmount) {
-                        continue;
-                    }
-                    uint256 amountOut = UniswapV3Helper.swapToToken(
-                        address(tokenIn),
-                        address(weth),
-                        tokenBalance,
-                        amountOutMin,
-                        tokenSwapData.uniswapPoolFee,
-                        uniswap
-                    );
-                    amountSwapped += amountOut;
-                }
+                amountSwapped += _maybeSwapTokenToWeth(tokens[i]);
             }
             if (amountSwapped > 0) {
                 UniswapV3Helper.unwrapWeth(uniswap, amountSwapped);
@@ -271,6 +253,27 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         if (balance + amountSwapped > 0) {
             relayHub.depositFor{value : balance + amountSwapped}(address(this));
         }
+    }
+
+    function _maybeSwapTokenToWeth(IERC20 tokenIn) private returns (uint256) {
+        uint256 tokenBalance = tokenIn.balanceOf(address(this));
+        if (tokenBalance > 0) {
+            TokenSwapData memory tokenSwapData = tokensSwapData[tokenIn];
+            uint256 quote = uint256(tokenSwapData.priceFeed.latestAnswer());
+            uint256 amountOutMin = addSlippage(_tokenToWei(tokenBalance, tokenSwapData.priceDivisor, quote), tokenSwapData.slippage);
+            if (amountOutMin < minSwapAmount) {
+                return 0;
+            }
+            return UniswapV3Helper.swapToToken(
+                address(tokenIn),
+                address(weth),
+                tokenBalance,
+                amountOutMin,
+                tokenSwapData.uniswapPoolFee,
+                uniswap
+            );
+        }
+        return 0;
     }
 
     function _withdrawToOwnerIfNeeded() private {
