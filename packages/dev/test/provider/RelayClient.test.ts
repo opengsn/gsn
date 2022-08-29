@@ -56,7 +56,16 @@ import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
 
 import { BadHttpClient } from '../dummies/BadHttpClient'
 import { BadRelayedTransactionValidator } from '../dummies/BadRelayedTransactionValidator'
-import { configureGSN, deployHub, emptyBalance, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
+import {
+  configureGSN,
+  deployHub,
+  emptyBalance,
+  evmMineMany,
+  revert,
+  snapshot,
+  startRelay,
+  stopRelay
+} from '../TestUtils'
 
 import { GsnEvent } from '@opengsn/provider/dist/GsnEvents'
 import bodyParser from 'body-parser'
