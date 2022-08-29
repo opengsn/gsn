@@ -205,7 +205,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         provider: web3.currentProvider as HttpProvider
       })
       await tokenPaymasterProvider.init()
-      const promise = tokenPaymasterProvider.useToken(owner)
+      const promise = tokenPaymasterProvider.setToken(owner)
       await expect(promise).to.be.eventually.rejectedWith(`token ${owner} not supported`)
     })
     it('should be able to change used token', async function () {
@@ -223,7 +223,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         provider: web3.currentProvider as HttpProvider
       })
       await tokenPaymasterProvider.init()
-      await tokenPaymasterProvider.useToken(DAI_CONTRACT_ADDRESS)
+      await tokenPaymasterProvider.setToken(DAI_CONTRACT_ADDRESS)
       assert.equal(tokenPaymasterProvider.config.tokenAddress, DAI_CONTRACT_ADDRESS)
       assert.equal(tokenPaymasterProvider.permitSignature, PERMIT_SIGNATURE_DAI)
     })

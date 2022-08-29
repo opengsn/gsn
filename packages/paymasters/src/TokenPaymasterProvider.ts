@@ -60,9 +60,9 @@ export class TokenPaymasterProvider extends RelayProvider {
     await super.init(true)
     this.relayClient.dependencies.asyncPaymasterData = this._buildPaymasterData.bind(this)
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    this.paymaster = await this.tokenPaymasterInteractor._createPermitERC20UniswapV3Paymaster(this.relayClient.config.tokenPaymasterAddress!)
+    this.paymaster = await this.tokenPaymasterInteractor._createPermitERC20UniswapV3Paymaster(this.relayClient.config.tokenPaymasterAddress)
     if (this.config.tokenAddress != null) {
-      await this.useToken(this.config.tokenAddress)
+      await this.setToken(this.config.tokenAddress)
     }
     return this
   }
@@ -104,13 +104,13 @@ export class TokenPaymasterProvider extends RelayProvider {
     return '0x' + removeHexPrefix(this.config.tokenAddress) + removeHexPrefix(permitMethod)
   }
 
-  async useToken (tokenAddress: Address): Promise<void> {
+  async setToken (tokenAddress: Address): Promise<void> {
     const isSupported = await this.isTokenSupported(tokenAddress)
     if (!isSupported) {
       throw new Error(`token ${tokenAddress} not supported`)
     }
     this.config.tokenAddress = toChecksumAddress(tokenAddress)
-    if (this.config.tokenPaymasterDomainSeparators == null || this.config.tokenPaymasterDomainSeparators[this.config.tokenAddress] == null) {
+    if (this.config.tokenPaymasterDomainSeparators[this.config.tokenAddress] == null) {
       throw new Error(`Domain separator not found for token ${tokenAddress}`)
     }
     const permitSigHash = (await this.paymaster.getTokenSwapData(tokenAddress)).permitMethodSignature
