@@ -78,12 +78,12 @@ export class TokenPaymasterProvider extends RelayProvider {
     const allowance = await this.token.allowance(relayRequest.request.from, relayRequest.relayData.paymaster)
     let permitMethod = ''
     if (allowance.eqn(0)) {
-      const domainSeparator: EIP712Domain = this.config.tokenPaymasterDomainSeparators[this.token.address]
+      const domainSeparator: EIP712Domain = this.config.tokenPaymasterDomainSeparators[this.config.tokenAddress]
       if (this.permitSignature === PERMIT_SIGNATURE_DAI) {
         permitMethod = await signAndEncodeDaiPermit(
           relayRequest.request.from,
           relayRequest.relayData.paymaster,
-          this.token.address,
+          this.config.tokenAddress,
           constants.MAX_UINT256.toString(),
           this.web3,
           domainSeparator
@@ -92,7 +92,7 @@ export class TokenPaymasterProvider extends RelayProvider {
         permitMethod = await signAndEncodeEIP2612Permit(
           relayRequest.request.from,
           relayRequest.relayData.paymaster,
-          this.token.address,
+          this.config.tokenAddress,
           constants.MAX_UINT256.toString(),
           constants.MAX_UINT256.toString(),
           this.web3,
@@ -101,7 +101,7 @@ export class TokenPaymasterProvider extends RelayProvider {
         )
       }
     }
-    return '0x' + removeHexPrefix(this.token.address) + removeHexPrefix(permitMethod)
+    return '0x' + removeHexPrefix(this.config.tokenAddress) + removeHexPrefix(permitMethod)
   }
 
   async useToken (tokenAddress: Address): Promise<void> {
