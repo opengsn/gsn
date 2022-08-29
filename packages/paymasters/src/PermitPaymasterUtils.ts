@@ -18,8 +18,8 @@ export const PERMIT_SIGNATURE_DAI = 'permit(address,address,uint256,uint256,bool
 export const PERMIT_SIGNATURE_EIP2612 = 'permit(address,address,uint256,uint256,uint8,bytes32,bytes32)'
 export const PERMIT_CALLDATA_MAX_LEN = 280 // address + address + uint256 + uint256 + bool? + uint8 + bytes32 + bytes32 == at most 8 * 32 == 256
 export const MAX_PAYMASTERDATA_LENGTH = PERMIT_CALLDATA_MAX_LEN + 20 // optional permit calldata plus token address
-export const PERMIT_SIGHASH_DAI = bufferToHex(keccakFromString(PERMIT_SIGNATURE_DAI).slice(0, 4))
-export const PERMIT_SIGHASH_EIP2612 = bufferToHex(keccakFromString(PERMIT_SIGNATURE_EIP2612).slice(0, 4))
+export const PERMIT_SELECTOR_DAI = bufferToHex(keccakFromString(PERMIT_SIGNATURE_DAI).slice(0, 4))
+export const PERMIT_SELECTOR_EIP2612 = bufferToHex(keccakFromString(PERMIT_SIGNATURE_EIP2612).slice(0, 4))
 
 interface Types extends MessageTypes{
   EIP712Domain: MessageTypeProperty[]

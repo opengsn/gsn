@@ -33,7 +33,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         uint24 uniswapPoolFee;
         // between 0 to 1000, with 2 decimals, that is, 10 = 1%
         uint8 slippage;
-        bytes4 permitMethodSignature;
+        bytes4 permitMethodSelector;
         uint256 priceDivisor;
         uint256 validFromBlockNumber;
     }
@@ -121,7 +121,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             token.approve(address(uniswap), type(uint256).max);
             data.priceDivisor = 10 ** uint256(_priceFeeds[i].decimals() + IERC20Metadata(address(token)).decimals());
             data.priceFeed = _priceFeeds[i];
-            data.permitMethodSignature = bytes4(keccak256(bytes(_permitMethodSignatures[i])));
+            data.permitMethodSelector = bytes4(keccak256(bytes(_permitMethodSignatures[i])));
             data.uniswapPoolFee = _poolFees[i];
             require(_slippages[i] <= 1000, "slippage above 100%");
             data.slippage = _slippages[i];
@@ -193,7 +193,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         if (paymasterData.length != 20) {
             require(paymasterData.length >= 24, "must contain \"permit\" and token");
             require(
-                tokenSwapData.permitMethodSignature == GsnUtils.getMethodSig(paymasterData[20:]),
+                tokenSwapData.permitMethodSelector == GsnUtils.getMethodSig(paymasterData[20:]),
                 "wrong \"permit\" method sig");
             // execute permit method for this token
             {

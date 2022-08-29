@@ -11,8 +11,8 @@ import {
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 import {
   MAX_PAYMASTERDATA_LENGTH,
-  PERMIT_SIGHASH_DAI,
-  PERMIT_SIGHASH_EIP2612,
+  PERMIT_SELECTOR_DAI,
+  PERMIT_SELECTOR_EIP2612,
   PERMIT_SIGNATURE_DAI,
   PERMIT_SIGNATURE_EIP2612,
   signAndEncodeDaiPermit,
@@ -113,15 +113,15 @@ export class TokenPaymasterProvider extends RelayProvider {
     if (this.config.tokenPaymasterDomainSeparators[this.config.tokenAddress] == null) {
       throw new Error(`Domain separator not found for token ${tokenAddress}`)
     }
-    const permitSigHash = (await this.paymaster.getTokenSwapData(tokenAddress)).permitMethodSignature
-    if (permitSigHash === PERMIT_SIGHASH_DAI) {
+    const { permitMethodSelector } = await this.paymaster.getTokenSwapData(tokenAddress)
+    if (permitMethodSelector === PERMIT_SELECTOR_DAI) {
       this.permitSignature = PERMIT_SIGNATURE_DAI
       this.token = await this.tokenPaymasterInteractor._createPermitInterfaceDAIToken(tokenAddress)
-    } else if (permitSigHash === PERMIT_SIGHASH_EIP2612) {
+    } else if (permitMethodSelector === PERMIT_SELECTOR_EIP2612) {
       this.permitSignature = PERMIT_SIGNATURE_EIP2612
       this.token = await this.tokenPaymasterInteractor._createPermitInterfaceEIP2612Token(tokenAddress)
     } else {
-      throw new Error(`Unknown permit signature hash ${permitSigHash}`)
+      throw new Error(`Unknown permit signature hash ${permitMethodSelector}`)
     }
   }
 

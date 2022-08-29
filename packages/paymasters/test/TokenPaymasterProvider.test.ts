@@ -2,8 +2,8 @@ import { TokenPaymasterConfig, TokenPaymasterProvider } from '../src/TokenPaymas
 import { HttpProvider } from 'web3-core'
 import {
   GasAndEthConfig,
-  PERMIT_SIGHASH_DAI,
-  PERMIT_SIGHASH_EIP2612,
+  PERMIT_SELECTOR_DAI,
+  PERMIT_SELECTOR_EIP2612,
   PERMIT_SIGNATURE_DAI,
   PERMIT_SIGNATURE_EIP2612, UniswapConfig
 } from '../src/PermitPaymasterUtils'
@@ -281,7 +281,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         await tokenPaymasterProvider.init()
         const paymasterData = await tokenPaymasterProvider._buildPaymasterData(relayRequest)
         assert.equal(paymasterData.slice(0, 42), DAI_CONTRACT_ADDRESS)
-        assert.equal(paymasterData.slice(42, 50), removeHexPrefix(PERMIT_SIGHASH_DAI))
+        assert.equal(paymasterData.slice(42, 50), removeHexPrefix(PERMIT_SELECTOR_DAI))
       })
       it('should build paymaster data for usdc', async function () {
         await skipWithoutFork(this)
@@ -299,7 +299,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         await tokenPaymasterProvider.init()
         const paymasterData = await tokenPaymasterProvider._buildPaymasterData(relayRequest)
         assert.equal(paymasterData.slice(0, 42), USDC_CONTRACT_ADDRESS)
-        assert.equal(paymasterData.slice(42, 50), removeHexPrefix(PERMIT_SIGHASH_EIP2612))
+        assert.equal(paymasterData.slice(42, 50), removeHexPrefix(PERMIT_SELECTOR_EIP2612))
       })
       it('should build paymaster data for uni', async function () {
         await skipWithoutFork(this)
@@ -317,7 +317,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         await tokenPaymasterProvider.init()
         const paymasterData = await tokenPaymasterProvider._buildPaymasterData(relayRequest)
         assert.equal(paymasterData.slice(0, 42), UNI_CONTRACT_ADDRESS)
-        assert.equal(paymasterData.slice(42, 50), removeHexPrefix(PERMIT_SIGHASH_EIP2612))
+        assert.equal(paymasterData.slice(42, 50), removeHexPrefix(PERMIT_SELECTOR_EIP2612))
       })
     })
   })
