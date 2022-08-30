@@ -1,4 +1,3 @@
-import BN from 'bn.js'
 import { RelayClient, RelayProvider, GSNUnresolvedConstructorInput } from '@opengsn/provider'
 import { PrefixedHexString, toChecksumAddress } from 'ethereumjs-util'
 import { Address, removeHexPrefix, Web3ProviderBaseInterface } from '@opengsn/common/dist'
