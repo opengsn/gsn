@@ -1,5 +1,17 @@
 <img src="./logo.svg">
 
+<div>
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/typescript/typescript-original.svg" width="40" height="40"/>&nbsp;
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/solidity/solidity-original.svg" width="40" height="40"/>&nbsp;
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/docker/docker-original-wordmark.svg" width="40" height="40"/>&nbsp;
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/nodejs/nodejs-plain-wordmark.svg" width="40" height="40"/>&nbsp;
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/webpack/webpack-original-wordmark.svg" width="40" height="40"/>&nbsp;
+</div>
+
+[![<ORG_NAME>](https://circleci.com/gh/opengsn/gsn.svg?style=shield)](<LINK>)
+![GitHub package.json version (subfolder of monorepo)](https://img.shields.io/github/package-json/v/opengsn/gsn?filename=packages%2Fprovider%2Fpackage.json)
+
+
 # The Ethereum Gas Stations Network
 
 [![Join our Discord server!](https://invidget.switchblade.xyz/b5Jk9kWcPG)](http://discord.gg/b5Jk9kWcPG)
