@@ -156,20 +156,20 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     view
     returns (uint256 tokenCharge, uint256 ethCharge) {
         ethCharge = relayHub.calculateCharge(gasUsed, relayData);
-        tokenCharge = addPaymasterFee(_weiToToken(ethCharge, priceQuote));
+        tokenCharge = addPaymasterFee(weiToToken(ethCharge, priceQuote));
     }
 
     function toActualQuote(uint256 quote, uint256 divisor) public pure returns (uint256) {
-        // converting oracle token to eth answer, to token to wei (*1e18), packing divisor (/divisor) to it
-        // multiplying by 1e17 to avoid loss of precision by dividing by divisor
+        // converting oracle token-to-eth answer, to token to wei (*1e18), packing divisor (/divisor) to it
+        // multiplying by 1e36 to avoid loss of precision by dividing by divisor
         return 1e36 * 1e18 * quote / divisor;
     }
 
-    function _tokenToWei(uint256 amount, uint256 quote) public pure returns (uint256) {
+    function tokenToWei(uint256 amount, uint256 quote) public pure returns (uint256) {
         return amount * quote / 1e36;
     }
 
-    function _weiToToken(uint256 amount, uint256 quote) public pure returns (uint256) {
+    function weiToToken(uint256 amount, uint256 quote) public pure returns (uint256) {
         return amount * 1e36 / quote;
     }
 
@@ -266,7 +266,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         if (tokenBalance > 0) {
             TokenSwapData memory tokenSwapData = tokensSwapData[tokenIn];
             uint256 quote = toActualQuote(uint256(tokenSwapData.priceFeed.latestAnswer()), tokenSwapData.priceDivisor);
-            uint256 amountOutMin = addSlippage(_tokenToWei(tokenBalance, quote), tokenSwapData.slippage);
+            uint256 amountOutMin = addSlippage(tokenToWei(tokenBalance, quote), tokenSwapData.slippage);
             if (amountOutMin < minSwapAmount) {
                 return 0;
             }
