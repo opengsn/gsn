@@ -1,9 +1,9 @@
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-interface PermitInterfaceDAI is IERC20 {
+interface PermitInterfaceDAI is IERC20Metadata {
     function nonces(address holder) external view returns (uint256 nonce);
 
     // --- Approve by signature ---
