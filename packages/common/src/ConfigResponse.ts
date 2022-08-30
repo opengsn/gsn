@@ -4,6 +4,7 @@ import {
   NpmLogLevel
 } from './types/Aliases'
 import { Environment } from './Environments'
+import { EIP712Domain } from './EIP712/TypedRequestData'
 
 export interface LoggerConfiguration {
   logLevel: NpmLogLevel
@@ -104,6 +105,16 @@ export interface GSNConfig {
    * The address of the Payamster contract to be used.
    */
   paymasterAddress?: Address
+
+  /**
+  * The address of the token paymaster contract used by TokenPaymasterProvider
+  */
+  tokenPaymasterAddress: Address
+
+  /**
+  * Fields required by TokenPaymasterProvider for the supported tokens
+  */
+  tokenPaymasterDomainSeparators: Record<Address, EIP712Domain>
 
   /**
    * If set to 'true' the Relay will not perform an ERC-165 interfaces check on the GSN contracts.

@@ -73,7 +73,8 @@ export const GsnDomainSeparatorType = {
   version: '3'
 }
 
-export function getDomainSeparator (name: string, verifier: Address, chainId: number): Record<string, unknown> {
+
+export function getDomainSeparator (name: string, verifier: Address, chainId: number): EIP712Domain {
   return {
     name,
     version: GsnDomainSeparatorType.version,
@@ -86,7 +87,7 @@ export function getDomainSeparatorHash (name: string, verifier: Address, chainId
   return bufferToHex(
     TypedDataUtils.hashStruct(
       'EIP712Domain',
-      getDomainSeparator(name, verifier, chainId),
+      getDomainSeparator(name, verifier, chainId) as Record<string, unknown>,
       { EIP712Domain: EIP712DomainType },
       SignTypedDataVersion.V4)
   )

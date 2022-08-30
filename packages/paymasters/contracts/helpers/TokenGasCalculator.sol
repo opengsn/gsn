@@ -6,12 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@opengsn/contracts/src/RelayHub.sol";
 import "@opengsn/contracts/src/BasePaymaster.sol";
+import "./AllEvents.sol";
 
 /**
  * Calculate the postRelayedCall gas usage for a TokenPaymaster.
  *
  */
-contract TokenGasCalculator is RelayHub {
+contract TokenGasCalculator is RelayHub, AllEvents {
 
     //(The Paymaster calls back calculateCharge, depositFor in the relayHub,
     //so the calculator has to implement them just like a real RelayHub
@@ -43,9 +44,10 @@ contract TokenGasCalculator is RelayHub {
      */
     function calculatePostGas(
         BasePaymaster paymaster,
-        bytes memory ctx1
+        bytes memory ctx1,
+        bytes memory paymasterData
     ) public returns (uint256 gasUsedByPost) {
-        GsnTypes.RelayData memory relayData = GsnTypes.RelayData(1, 1, 0, address(0), address(0), address(0), "", 0);
+        GsnTypes.RelayData memory relayData = GsnTypes.RelayData(1, 1, 0, address(0), address(0), address(0), paymasterData, 0);
 
         //with precharge
         uint256 gas0 = gasleft();

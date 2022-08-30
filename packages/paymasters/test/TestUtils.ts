@@ -59,15 +59,16 @@ export function mergeRelayRequest (req: RelayRequest, overrideData: Partial<Rela
 export async function calculatePostGas (
   token: any,
   paymaster: any,
+  paymasterData: string,
   account: Address,
   context: PrefixedHexString
 ): Promise<BN> {
   const calc = await deployTestHub(true) as TokenGasCalculatorInstance
-  await paymaster.setRelayHub(calc.address)
+  await paymaster.setRelayHub(calc.address, { from: account })
   await token.transfer(paymaster.address, toWei('1', 'ether'), { from: account })
   // TODO: I cannot explain what causes the transaction to revert in a view mode, but this happens consistently;
   //   switching to use the emitted event instead
-  const res = await calc.calculatePostGas(paymaster.address, context)
+  const res = await calc.calculatePostGas(paymaster.address, context, paymasterData, { gas: 3e5 })
   const event: GasUsed = res.logs.find(it => it.event === 'GasUsed') as unknown as GasUsed
   return event.args.gasUsedByPost
 }
