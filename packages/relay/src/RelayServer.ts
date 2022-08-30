@@ -521,10 +521,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
 
     this.chainId = this.contractInteractor.chainId
     this.networkId = this.contractInteractor.getNetworkId()
-    if (this.config.devMode && (this.chainId < 1000 || this.networkId < 1000)) {
-      this.logger.error('Don\'t use real network\'s chainId & networkId while in devMode.')
-      process.exit(-1)
-    }
 
     this.logger.info(`Current network info:
 chainId                 | ${this.chainId}

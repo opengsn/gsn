@@ -35,7 +35,9 @@ contract TestHub is RelayHub, AllEvents {
     )
     external
     returns (bytes memory context, bool revertOnRecipientRevert) {
-        return IPaymaster(relayRequest.relayData.paymaster).preRelayedCall(relayRequest, signature, approvalData, maxPossibleGas);
+        IPaymaster paymaster = IPaymaster(relayRequest.relayData.paymaster);
+        IPaymaster.GasAndDataLimits memory limits = paymaster.getGasAndDataLimits();
+        return paymaster.preRelayedCall{gas: limits.preRelayedCallGasLimit}(relayRequest, signature, approvalData, maxPossibleGas);
     }
 
     function callPostRC(
@@ -45,6 +47,7 @@ contract TestHub is RelayHub, AllEvents {
         GsnTypes.RelayData calldata relayData
     )
     external {
-        paymaster.postRelayedCall(context, true, gasUseWithoutPost, relayData);
+        IPaymaster.GasAndDataLimits memory limits = paymaster.getGasAndDataLimits();
+        paymaster.postRelayedCall{gas: limits.postRelayedCallGasLimit}(context, true, gasUseWithoutPost, relayData);
     }
 }
