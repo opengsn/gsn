@@ -151,22 +151,28 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     function _calculateCharge(
         GsnTypes.RelayData calldata relayData,
         uint256 gasUsed,
-        uint256 priceQuote,
-        uint256 priceDivisor
+        uint256 priceQuote
     ) internal
     view
     returns (uint256 tokenCharge, uint256 ethCharge) {
         ethCharge = relayHub.calculateCharge(gasUsed, relayData);
-        tokenCharge = addPaymasterFee(_weiToToken(ethCharge, priceDivisor, priceQuote));
+        tokenCharge = addPaymasterFee(_weiToToken(ethCharge, priceQuote));
     }
 
-    function _tokenToWei(uint256 amount, uint256 divisor, uint256 quote) internal pure returns(uint256) {
-        return 1e18 * amount * quote / divisor;
+    function toActualQuote(uint256 quote, uint256 divisor) public pure returns (uint256) {
+        // converting oracle token to eth answer, to token to wei (*1e18), packing divisor (/divisor) to it
+        // multiplying by 1e17 to avoid loss of precision by dividing by divisor
+        return 1e36 * 1e18 * quote / divisor;
     }
 
-    function _weiToToken(uint256 amount, uint256 divisor, uint256 quote) internal pure returns (uint256) {
-        return amount * divisor / quote / 1e18;
+    function _tokenToWei(uint256 amount, uint256 quote) public pure returns (uint256) {
+        return amount * quote / 1e36;
     }
+
+    function _weiToToken(uint256 amount, uint256 quote) public pure returns (uint256) {
+        return amount * 1e36 / quote;
+    }
+
     // solhint-disable-next-line no-empty-blocks
     function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {}
 
@@ -203,9 +209,9 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
             }
         }
 
-        uint256 priceQuote = uint256(tokenSwapData.priceFeed.latestAnswer());
+        uint256 priceQuote = toActualQuote(uint256(tokenSwapData.priceFeed.latestAnswer()),tokenSwapData.priceDivisor);
 
-        (uint256 tokenPreCharge,) = _calculateCharge(relayRequest.relayData, maxPossibleGas, priceQuote, tokenSwapData.priceDivisor);
+        (uint256 tokenPreCharge,) = _calculateCharge(relayRequest.relayData, maxPossibleGas, priceQuote);
         address payer = relayRequest.request.from;
         token.safeTransferFrom(payer, address(this), tokenPreCharge);
         return (abi.encode(token, payer, priceQuote, tokenPreCharge), false);
@@ -221,7 +227,7 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
     override
     {
         (IERC20 token, address payer, uint256 priceQuote, uint256 tokenPreCharge) = abi.decode(context, (IERC20, address, uint256, uint256));
-        (uint256 tokenActualCharge, uint256 ethActualCharge) = _calculateCharge(relayData, gasUseWithoutPost + gasUsedByPost, priceQuote, tokensSwapData[token].priceDivisor);
+        (uint256 tokenActualCharge, uint256 ethActualCharge) = _calculateCharge(relayData, gasUseWithoutPost + gasUsedByPost, priceQuote);
         require(tokenActualCharge <= tokenPreCharge, "actual charge higher");
         token.safeTransfer(payer, tokenPreCharge - tokenActualCharge);
 
@@ -259,8 +265,8 @@ contract PermitERC20UniswapV3Paymaster is BasePaymaster, ERC2771Recipient {
         uint256 tokenBalance = tokenIn.balanceOf(address(this));
         if (tokenBalance > 0) {
             TokenSwapData memory tokenSwapData = tokensSwapData[tokenIn];
-            uint256 quote = uint256(tokenSwapData.priceFeed.latestAnswer());
-            uint256 amountOutMin = addSlippage(_tokenToWei(tokenBalance, tokenSwapData.priceDivisor, quote), tokenSwapData.slippage);
+            uint256 quote = toActualQuote(uint256(tokenSwapData.priceFeed.latestAnswer()), tokenSwapData.priceDivisor);
+            uint256 amountOutMin = addSlippage(_tokenToWei(tokenBalance, quote), tokenSwapData.slippage);
             if (amountOutMin < minSwapAmount) {
                 return 0;
             }
