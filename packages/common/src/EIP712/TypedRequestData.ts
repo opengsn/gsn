@@ -73,7 +73,6 @@ export const GsnDomainSeparatorType = {
   version: '3'
 }
 
-
 export function getDomainSeparator (name: string, verifier: Address, chainId: number): EIP712Domain {
   return {
     name,
