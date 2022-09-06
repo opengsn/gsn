@@ -328,13 +328,13 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         }
       })
 
-      describe('with privateMode set to true', function () {
+      describe('in private mode with "url" set to empty string', function () {
         const whitelistedPaymaster = '0xdeadface0000'
         const notWhitelistedPaymaster = '0xdeadfaceaaaa'
         const notWhitelistedRecipient = '0xdeadfacebbbb'
 
         beforeEach(function () {
-          env.relayServer.config.privateMode = true
+          env.relayServer.config.url = ''
           env.relayServer.config.whitelistedPaymasters = [whitelistedPaymaster]
           // recipient address is checked for whitelist second so it does not matter for the test
           env.relayServer.config.whitelistedRecipients = [whitelistedPaymaster]

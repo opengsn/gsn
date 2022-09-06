@@ -210,7 +210,7 @@ export class RelayServer extends EventEmitter {
     if (this._isBlacklistedRecipient(relayRequest.request.to)) {
       throw new Error(`Recipient ${relayRequest.request.to} is blacklisted!`)
     }
-    if (this.config.privateMode) {
+    if (this.config.url.length === 0) {
       if (!this._isWhitelistedPaymaster(relayRequest.relayData.paymaster)) {
         throw new Error(`Paymaster ${relayRequest.relayData.paymaster} is not whitelisted!`)
       }

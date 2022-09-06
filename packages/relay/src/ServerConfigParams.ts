@@ -123,21 +123,15 @@ export interface ServerConfigParams {
    */
   blacklistedRecipients: Address[]
   /**
-   * Only the Paymasters in this array will be served. Can only be set together with 'privateMode: true'.
+   * Only the Paymasters in this array will be served. Can only be set together with 'url' set to empty string.
    */
   whitelistedPaymasters: Address[]
 
   /**
-   * Only the Recipients in this array will be served. Can only be set together with 'privateMode: true'.
+   * Only the Recipients in this array will be served. Can only be set together with 'url' set to empty string.
    * Empty whitelist means the whitelist will not be applied.
    */
   whitelistedRecipients: Address[]
-
-  /**
-   * If set to 'true', the Relay Server will not advertise its public URL on-chain.
-   * It may also serve only whitelisted Recipients and/or Paymasters.
-   */
-  privateMode: boolean
 
   /**
    * The 'gasPrice'/'maxPriorityFeePerGas' reported by the network will be multiplied by this value.
@@ -374,8 +368,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   pastEventsQueryMaxPageCount: 20,
   recentActionAvoidRepeatDistanceBlocks: 10,
-  skipErc165Check: false,
-  privateMode: false
+  skipErc165Check: false
 }
 
 const ConfigParamsTypes = {
@@ -444,8 +437,7 @@ const ConfigParamsTypes = {
   dbPruneTxAfterSeconds: 'number',
   environmentName: 'string',
   recentActionAvoidRepeatDistanceBlocks: 'number',
-  skipErc165Check: 'boolean',
-  privateMode: 'boolean'
+  skipErc165Check: 'boolean'
 } as any
 
 // helper function: throw and never return..
@@ -575,7 +567,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
 }
 
 export function validatePrivateModeParams (config: ServerConfigParams): void {
-  if (!config.privateMode && (config.whitelistedRecipients.length !== 0 || config.whitelistedPaymasters.length !== 0)) {
+  if (config.url.length !== 0 && (config.whitelistedRecipients.length !== 0 || config.whitelistedPaymasters.length !== 0)) {
     throw new Error('Cannot whitelist recipients or paymasters on a public Relay Server')
   }
 }

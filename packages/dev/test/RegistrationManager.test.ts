@@ -535,14 +535,6 @@ contract('RegistrationManager', function (accounts) {
         assert.equal(allStoredTransactions[1].serverAction, ServerAction.ADD_WORKER)
         assert.equal(allStoredTransactions[2].serverAction, ServerAction.REGISTER_SERVER)
       })
-
-      describe('with privateMode set to true', function () {
-        it('should register with empty relay URL', async function () {
-          newServer.config.privateMode = true
-          const receipts = await newServer.registrationManager.attemptRegistration(0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
-          await assertRelayAdded(receipts, newServer, true, true)
-        })
-      })
     })
 
     describe('RelayHub/StakeManager misconfiguration', function () {

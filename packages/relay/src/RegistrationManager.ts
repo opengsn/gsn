@@ -397,13 +397,7 @@ export class RegistrationManager {
       transactions = transactions.concat(txHash)
       skipGasEstimationForRegisterRelay = true
     }
-    let registeredUrl: string
-    if (this.config.privateMode) {
-      registeredUrl = ''
-    } else {
-      registeredUrl = this.config.url
-    }
-    const registerMethod = await this.contractInteractor.getRegisterRelayMethod(this.hubAddress, registeredUrl)
+    const registerMethod = await this.contractInteractor.getRegisterRelayMethod(this.hubAddress, this.config.url)
     let gasLimit: number | undefined
     if (skipGasEstimationForRegisterRelay) {
       gasLimit = this.config.defaultGasLimit
