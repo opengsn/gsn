@@ -543,8 +543,10 @@ export class ContractInteractor {
             reject(new Error(revertMsg))
           } else if (errorAsBoolean(err)) {
             reject(err)
+          } else if (res?.result == null) {
+            reject(new Error('RPC call returned no error and no result'))
           } else {
-            resolve(res?.result ?? 'RPC call returned no error and no result')
+            resolve(res.result)
           }
         })
       })
