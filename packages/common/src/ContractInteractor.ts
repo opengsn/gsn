@@ -540,8 +540,8 @@ export class ContractInteractor {
         }
         this.logger.debug(`Sending in view mode: \n${JSON.stringify(rpcPayload)}\n encoded data: \n${JSON.stringify(relayCallABIData)}`)
         // @ts-ignore
-        this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string, error: any }) => {
-          if (res.error != null) {
+        this.web3.currentProvider.send(rpcPayload, (err: Object | undefined, res: { result: string, error: any } | undefined) => {
+          if (res?.error != null) {
             err = res.error
           }
           const revertMsg = this._decodeRevertFromResponse(err, res)
@@ -549,6 +549,8 @@ export class ContractInteractor {
             reject(new Error(revertMsg))
           } else if (errorAsBoolean(err)) {
             reject(err)
+          } else if (res?.result == null) {
+            reject(new Error('RPC call returned no error and no result'))
           } else {
             resolve(res.result)
           }
@@ -592,7 +594,7 @@ export class ContractInteractor {
    */
   // decode revert from rpc response.
   //
-  _decodeRevertFromResponse (err?: { message?: string, data?: any }, res?: { error?: any, result?: string }): string | null {
+  _decodeRevertFromResponse (err?: { message?: string, data?: any } | undefined, res?: { error?: any, result?: string } | undefined): string | null {
     let matchGanache = err?.data?.message?.toString().match(/: revert(?:ed)? (.*)/)
     if (matchGanache == null) {
       matchGanache = res?.error?.message?.toString().match(/: revert(?:ed)? (.*)/)
