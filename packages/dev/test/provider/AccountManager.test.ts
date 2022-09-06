@@ -19,6 +19,7 @@ chai.use(sinonChai)
 contract('AccountManager', function (accounts) {
   const address = '0x982a8CbE734cb8c29A6a7E02a3B0e4512148F6F9'
   const privateKey = '0xd353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c'
+  const privateKeyAllZero = '0x0000000000000000000000000000000000000000000000000000000000000000'
   let accountManager: AccountManager
   before(function () {
     accountManager = new AccountManager(web3.currentProvider as HttpProvider, defaultEnvironment.chainId, config)
@@ -41,6 +42,10 @@ contract('AccountManager', function (accounts) {
       const invalidPrivateKey = privateKey.replace('a', '')
       await expect(() => {
         accountManager.addAccount(invalidPrivateKey)
+      }).to.throw('Expected private key to be an Uint8Array with length 32')
+
+      await expect(() => {
+        accountManager.addAccount(privateKeyAllZero)
       }).to.throw('Private key does not satisfy the curve requirements')
     })
   })
