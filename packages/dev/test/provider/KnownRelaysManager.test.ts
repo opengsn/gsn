@@ -14,7 +14,7 @@ import {
   registerForwarderForGsn,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
-import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
   PenalizerInstance,
   RelayHubInstance,
@@ -105,7 +105,7 @@ contract('KnownRelaysManager', function (
       const forwarderInstance = await Forwarder.new()
       const forwarderAddress = forwarderInstance.address
       testRecipient = await TestRecipient.new(forwarderAddress)
-      await registerForwarderForGsn(forwarderInstance)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
       paymaster = await TestPaymasterConfigurableMisbehavior.new()
       await paymaster.setTrustedForwarder(forwarderAddress)
@@ -146,13 +146,13 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerRelayWorkersAdded2], {
         from: activeRelayWorkersAdded
       })
-      await relayHub.relayCall(10e6, txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', {
+      await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', {
         from: workerTransactionRelayed,
         gas,
         gasPrice: txTransactionRelayed.relayRequest.relayData.maxFeePerGas
       })
       await paymaster.setReturnInvalidErrorCode(true)
-      await relayHub.relayCall(10e6, txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', {
+      await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', {
         from: workerPaymasterRejected,
         gas,
         gasPrice: txPaymasterRejected.relayRequest.relayData.maxFeePerGas

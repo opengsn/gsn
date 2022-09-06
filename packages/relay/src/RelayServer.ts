@@ -282,6 +282,7 @@ export class RelayServer extends EventEmitter {
     acceptanceBudget = this.config.maxAcceptanceBudget
 
     const relayCallAbiInput: RelayCallABI = {
+      domainSeparatorName: req.metadata.domainSeparatorName,
       maxAcceptanceBudget: acceptanceBudget.toString(),
       relayRequest: req.relayRequest,
       signature: req.metadata.signature,
@@ -358,6 +359,7 @@ export class RelayServer extends EventEmitter {
   async validateViewCallSucceeds (req: RelayTransactionRequest, maxAcceptanceBudget: number, maxPossibleGas: number): Promise<void> {
     this.logger.debug(`validateViewCallSucceeds: ${JSON.stringify(arguments)}`)
     const method = this.relayHubContract.contract.methods.relayCall(
+      req.metadata.domainSeparatorName,
       maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
     try {
@@ -421,7 +423,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
     const method = this.relayHubContract.contract.methods.relayCall(
-      acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
+      req.metadata.domainSeparatorName, acceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     const details: SendTransactionDetails =
       {
         signer: this.workerAddress,

@@ -25,6 +25,7 @@ import {
 
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { cleanValue } from './utils/chaiHelper'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const { assert } = chai.use(chaiAsPromised)
 
@@ -83,7 +84,7 @@ contract('RelayHub Configuration',
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
       // Register hub's RelayRequest with forwarder, if not already done.
-      await registerForwarderForGsn(forwarderInstance)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
       await relayHub.depositFor(paymaster.address, {
         value: ether('1'),
@@ -123,6 +124,7 @@ contract('RelayHub Configuration',
 
       }
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         chainId,
         forwarder,
         relayRequest
@@ -214,7 +216,7 @@ contract('RelayHub Configuration',
         await setNextBlockTimestamp(deprecationTime)
 
         await expectRevert(
-          relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
+          relayHub.relayCall(defaultGsnConfig.domainSeparatorName, maxAcceptanceBudget, relayRequest, signature, apporovalData, {
             from: relayWorker,
             gasPrice,
             gas: externalGasLimit
@@ -223,7 +225,7 @@ contract('RelayHub Configuration',
       })
 
       it('should not revert before deprecationBlock set', async function () {
-        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
+        const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, maxAcceptanceBudget, relayRequest, signature, apporovalData, {
           from: relayWorker,
           gasPrice,
           gas: externalGasLimit
@@ -234,7 +236,7 @@ contract('RelayHub Configuration',
       it('should not revert before deprecationBlock passed', async function () {
         const newDeprecationTime = toNumber((await web3.eth.getBlock('latest')).timestamp) + deprecationTimeInSeconds
         await relayHub.deprecateHub(newDeprecationTime)
-        const res = await relayHub.relayCall(maxAcceptanceBudget, relayRequest, signature, apporovalData, {
+        const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, maxAcceptanceBudget, relayRequest, signature, apporovalData, {
           from: relayWorker,
           gasPrice,
           gas: externalGasLimit
