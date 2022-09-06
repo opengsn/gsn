@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.packages.json",
   "include": [
     "./src/**/*.ts",
+    "./src/**/*.json",
     "./test/**/*.ts",
     "./build/contracts/*.json",
     "./types/truffle-contracts/index.d.ts",

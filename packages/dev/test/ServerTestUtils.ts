@@ -29,7 +29,12 @@ async function resolveAllReceipts (transactionHashes: PrefixedHexString[]): Prom
   return await Promise.all(transactionHashes.map((transactionHash) => web3.eth.getTransactionReceipt(transactionHash)))
 }
 
-export async function assertRelayAdded (transactionHashes: PrefixedHexString[], server: RelayServer, checkWorkers = true): Promise<void> {
+export async function assertRelayAdded (
+  transactionHashes: PrefixedHexString[],
+  server: RelayServer,
+  checkWorkers = true,
+  checkPrivate = false
+): Promise<void> {
   const receipts = await resolveAllReceipts(transactionHashes)
   const registeredReceipt = receipts.find(r => {
     const decodedLogs = abiDecoder.decodeLogs(r.logs).map(server.registrationManager._parseEvent)
@@ -45,8 +50,12 @@ export async function assertRelayAdded (transactionHashes: PrefixedHexString[], 
   assert.isNotNull(registeredLog)
   assert.equal(registeredLog.name, 'RelayServerRegistered')
   assert.equal(registeredLog.args.relayManager.toLowerCase(), server.managerAddress.toLowerCase())
-  assert.equal(packRelayUrlForRegistrar(registeredLog.args.relayUrl), server.config.url)
-
+  if (checkPrivate) {
+    assert.notEqual(server.config.url.length, 0, 'cannot check private mode without URL in configuration')
+    assert.equal(packRelayUrlForRegistrar(registeredLog.args.relayUrl), '')
+  } else {
+    assert.equal(packRelayUrlForRegistrar(registeredLog.args.relayUrl), server.config.url)
+  }
   if (checkWorkers) {
     const workersAddedReceipt = receipts.find(r => {
       const decodedLogs = abiDecoder.decodeLogs(r.logs).map(server.registrationManager._parseEvent)

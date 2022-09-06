@@ -27,6 +27,7 @@ import { encodeRevertReason } from '../TestUtils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
 
 import { toBN } from 'web3-utils'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const HashZero = constants.ZERO_BYTES32
 const { assert } = chai.use(chaiAsPromised)
@@ -65,12 +66,12 @@ contract('Utils', function (accounts) {
       const paymasterData = '0x'
       const clientId = '0'
 
-      const res1 = await forwarderInstance.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
+      const res1 = await forwarderInstance.registerDomainSeparator(defaultGsnConfig.domainSeparatorName, GsnDomainSeparatorType.version)
       console.log(res1.logs[0])
       const { domainSeparator } = (res1.logs[0].args as DomainRegistered['args'])
 
       // sanity check: our locally-calculated domain-separator is the same as on-chain registered domain-separator
-      assert.equal(domainSeparator, getDomainSeparatorHash(forwarder, chainId))
+      assert.equal(domainSeparator, getDomainSeparatorHash(defaultGsnConfig.domainSeparatorName, forwarder, chainId))
 
       const res = await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
@@ -101,6 +102,7 @@ contract('Utils', function (accounts) {
         }
       }
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         chainId,
         forwarder,
         relayRequest
@@ -113,6 +115,7 @@ contract('Utils', function (accounts) {
       const { typeHash, suffixData } = await testUtil.splitRequest(relayRequest)
       const getEncoded = await forwarderInstance._getEncoded(relayRequest.request, typeHash, suffixData)
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         chainId,
         forwarder,
         relayRequest
@@ -125,7 +128,7 @@ contract('Utils', function (accounts) {
       assert.equal(GsnRequestType.typeName, await testUtil.libRelayRequestName())
       assert.equal(GsnRequestType.typeSuffix, await testUtil.libRelayRequestSuffix())
 
-      const res1 = await forwarderInstance.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
+      const res1 = await forwarderInstance.registerDomainSeparator(defaultGsnConfig.domainSeparatorName, GsnDomainSeparatorType.version)
       console.log(res1.logs[0])
       const { domainSeparator } = (res1.logs[0].args as DomainRegistered['args'])
       assert.equal(domainSeparator, await testUtil.libDomainSeparator(forwarder))
@@ -141,11 +144,12 @@ contract('Utils', function (accounts) {
     })
 
     it('should use same domainSeparator on-chain and off-chain', async () => {
-      assert.equal(getDomainSeparatorHash(forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
+      assert.equal(getDomainSeparatorHash(defaultGsnConfig.domainSeparatorName, forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
     })
 
     it('should generate a valid EIP-712 compatible signature', async function () {
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         chainId,
         forwarder,
         relayRequest
@@ -171,6 +175,7 @@ contract('Utils', function (accounts) {
         relayRequest.request.data = await recipient.contract.methods.testRevert().encodeABI()
         const sig = await getEip712Signature(
           web3, new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest
@@ -188,6 +193,7 @@ contract('Utils', function (accounts) {
 
         const sig = await getEip712Signature(
           web3, new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest

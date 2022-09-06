@@ -131,20 +131,28 @@ export class RelayClient {
     }
   }
 
-  async init (): Promise<this> {
+  async init (useTokenPaymaster = false): Promise<this> {
     if (this.initialized) {
       throw new Error('init() already called')
     }
-    this.initializingPromise = this._initInternal()
+    this.initializingPromise = this._initInternal(useTokenPaymaster)
     await this.initializingPromise
     this.initialized = true
     return this
   }
 
-  async _initInternal (): Promise<void> {
+  async _initInternal (useTokenPaymaster = false): Promise<void> {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
-    this.dependencies = await this._resolveDependencies(this.rawConstructorInput)
+    if (useTokenPaymaster && this.config.tokenPaymasterAddress !== '') {
+      this.logger.debug(`Using token paymaster ${this.config.tokenPaymasterAddress}`)
+      this.config.paymasterAddress = this.config.tokenPaymasterAddress
+    }
+    this.dependencies = await this._resolveDependencies({
+      config: this.config,
+      provider: this.rawConstructorInput.provider,
+      overrideDependencies: this.rawConstructorInput.overrideDependencies
+    })
     if (!this.config.skipErc165Check) {
       await this.dependencies.contractInteractor._validateERC165InterfacesClient()
     }
@@ -459,7 +467,7 @@ export class RelayClient {
     relayInfo: RelayInfo
   ): Promise<RelayTransactionRequest> {
     this.emit(new GsnSignRequestEvent())
-    const signature = await this.dependencies.accountManager.sign(relayRequest)
+    const signature = await this.dependencies.accountManager.sign(this.config.domainSeparatorName, relayRequest)
     const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
 
     if (toBuffer(relayRequest.relayData.paymasterData).length >
@@ -476,6 +484,7 @@ export class RelayClient {
     const relayMaxNonce = relayLastKnownNonce + this.config.maxRelayNonceGap
     const relayHubAddress = this.dependencies.contractInteractor.getDeployment().relayHubAddress ?? ''
     const metadata: RelayMetadata = {
+      domainSeparatorName: this.config.domainSeparatorName,
       maxAcceptanceBudget: relayInfo.pingResponse.maxAcceptanceBudget,
       relayHubAddress,
       signature,
@@ -580,6 +589,7 @@ export class RelayClient {
         maxPageSize: this.config.pastEventsQueryMaxPageSize,
         maxPageCount: this.config.pastEventsQueryMaxPageCount,
         environment: this.config.environment,
+        domainSeparatorName: this.config.domainSeparatorName,
         deployment: { paymasterAddress: config?.paymasterAddress }
       }).init()
     const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, contractInteractor.chainId, this.config)
@@ -634,6 +644,7 @@ export class RelayClient {
     this.fillRelayInfo(relayRequest, dryRunRelayInfo)
     // note that here 'maxAcceptanceBudget' is set to the entire transaction 'maxViewableGasLimit'
     const relayCallABI: RelayCallABI = {
+      domainSeparatorName: this.config.domainSeparatorName,
       relayRequest,
       signature: '0x',
       approvalData: '0x',

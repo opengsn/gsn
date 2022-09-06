@@ -4,12 +4,12 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@opengsn/contracts/src/test/TestToken.sol";
 
-import "../interfaces/IUniswap.sol";
+import "../interfaces/IUniswapV3.sol";
 
 // naive, no-calculation swapper.
 //- the exchange rate is fixed at construction
 //- mints new tokens at will...
-contract TestUniswap is IUniswap {
+contract TestUniswap is IUniswapV3 {
     IERC20 public token;
     uint256 public rateMult;
     uint256 public rateDiv;
@@ -57,4 +57,11 @@ contract TestUniswap is IUniswap {
     function getTokenToEthOutputPrice(uint256 ethBought) public override view returns (uint256 out) {
         return ethBought * rateMult / rateDiv;
     }
+
+    function exactInputSingle(ExactInputSingleParams calldata) external override payable returns (uint256 amountOut) {
+        revert("No swap for you");
+    }
+
+    // solhint-disable-next-line no-empty-blocks
+    function unwrapWETH9(uint256, address) external payable {}
 }
