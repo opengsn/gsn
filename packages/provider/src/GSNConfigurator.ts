@@ -55,7 +55,8 @@ export const defaultGsnConfig: GSNConfig = {
   tokenPaymasterAddress: '',
   tokenPaymasterDomainSeparators: {},
   waitForSuccessSliceSize: 3,
-  waitForSuccessPingGrace: 3000
+  waitForSuccessPingGrace: 3000,
+  domainSeparatorName: 'GSN Relayed Transaction'
 }
 
 export interface GSNDependencies {

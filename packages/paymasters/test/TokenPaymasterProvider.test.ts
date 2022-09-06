@@ -54,6 +54,7 @@ import {
 import { providers, ContractFactory } from 'ethers'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { TokenPaymasterEthersWrapper } from '../src/WrapContract'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
 const PermitInterfaceEIP2612 = artifacts.require('PermitInterfaceEIP2612')
@@ -337,7 +338,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       const penalizer: PenalizerInstance = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
       forwarderInstance = await Forwarder.new()
-      await registerForwarderForGsn(forwarderInstance)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
       await sampleRecipient.setForwarder(forwarderInstance.address)
 
       await permitPaymaster.setTrustedForwarder(forwarderInstance.address, { from: owner })
