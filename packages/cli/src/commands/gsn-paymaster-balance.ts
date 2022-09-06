@@ -20,6 +20,7 @@ const commander = gsnCommander(['h', 'n'])
   const logger = createCommandsLogger(commander.loglevel)
 
   const logic = new CommandsLogic(nodeURL, logger, { relayHubAddress: hub })
+  await logic.init();
   const balance = await logic.getPaymasterBalance(paymaster)
   console.log(`Account ${paymaster} has a GSN balance of ${Web3.utils.fromWei(balance)} ETH`)
 })().catch(
