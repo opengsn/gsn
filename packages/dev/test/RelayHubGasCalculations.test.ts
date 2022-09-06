@@ -39,6 +39,7 @@ import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
 
 import * as process from 'process'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const Forwarder = artifacts.require('Forwarder')
 const StakeManager = artifacts.require('StakeManager')
@@ -101,7 +102,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),
@@ -145,6 +146,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
     }
     const dataToSign = new TypedRequestData(
+      defaultGsnConfig.domainSeparatorName,
       chainId,
       forwarder,
       relayRequest
@@ -158,6 +160,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     const logger = createClientLogger({ logLevel: 'error' })
     const deployment: GSNContractsDeployment = { paymasterAddress: paymaster.address }
     contractInteractor = new ContractInteractor({
+      domainSeparatorName: defaultGsnConfig.domainSeparatorName,
       environment: defaultEnvironment,
       provider: web3.currentProvider as HttpProvider,
       logger,
@@ -214,7 +217,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       }, { from: relayHub.address })) - 21000
 
       const externalGasLimit = 5e6
-      const tx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+      const tx = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: externalGasLimit.toString(),
         gasPrice
@@ -244,6 +247,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       relayRequestMisbehaving.relayData.paymaster = misbehavingPaymaster.address
       relayRequestMisbehaving.request.nonce = senderNonce
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         chainId,
         forwarder,
         relayRequestMisbehaving
@@ -254,7 +258,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       )
       const viewRelayCallResponse =
         await relayHub.contract.methods
-          .relayCall(10e6, relayRequestMisbehaving, signature, '0x')
+          .relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequestMisbehaving, signature, '0x')
           .call({
             from: relayRequestMisbehaving.relayData.relayWorker,
             gas: externalGasLimit,
@@ -264,7 +268,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       assert.equal(viewRelayCallResponse[2], RelayCallStatusCodes.RejectedByPreRelayed.toString())
       assert.equal(viewRelayCallResponse[3], null) // no revert string on out-of-gas
 
-      const res = await relayHub.relayCall(10e6, relayRequestMisbehaving, signature, '0x', {
+      const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequestMisbehaving, signature, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice: gasPrice
@@ -362,6 +366,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             maxApprovalDataLength: 0
           })
           const dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest
@@ -370,13 +375,14 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             web3,
             dataToSign
           )
-          const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+          const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
             from: relayWorker,
             gas: externalGasLimit,
             gasPrice: gasPrice
           })
 
           const encodedData = contractInteractor.encodeABI({
+            domainSeparatorName: defaultGsnConfig.domainSeparatorName,
             maxAcceptanceBudget: 10e6.toString(),
             relayRequest,
             signature,
@@ -451,6 +457,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             }
           }
           const dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest
@@ -459,7 +466,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             web3,
             dataToSign
           )
-          const relayCall = relayHub.contract.methods.relayCall(10e6, relayRequest, signature, approvalData)
+          const relayCall = relayHub.contract.methods.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, approvalData)
           const receipt = await relayCall.send({
             from: relayWorker,
             gas: externalGasLimit,
@@ -540,6 +547,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     maxApprovalDataLength: 0
                   })
                   const dataToSign = new TypedRequestData(
+                    defaultGsnConfig.domainSeparatorName,
                     chainId,
                     forwarder,
                     relayRequest
@@ -548,7 +556,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     web3,
                     dataToSign
                   )
-                  const res = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+                  const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
                     from: relayWorker,
                     gas: externalGasLimit,
                     gasPrice: gasPrice
@@ -568,6 +576,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   // how much gas we actually spent on this tx
                   const workerWeiGasUsed = beforeBalances.relayWorkers.sub(afterBalances.relayWorkers)
                   const encodedData = contractInteractor.encodeABI({
+                    domainSeparatorName: defaultGsnConfig.domainSeparatorName,
                     maxAcceptanceBudget: 10e6.toString(),
                     relayRequest,
                     signature,

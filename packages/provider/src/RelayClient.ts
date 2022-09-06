@@ -462,7 +462,7 @@ export class RelayClient {
     relayInfo: RelayInfo
   ): Promise<RelayTransactionRequest> {
     this.emit(new GsnSignRequestEvent())
-    const signature = await this.dependencies.accountManager.sign(relayRequest)
+    const signature = await this.dependencies.accountManager.sign(this.config.domainSeparatorName, relayRequest)
     const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
 
     if (toBuffer(relayRequest.relayData.paymasterData).length >
@@ -479,6 +479,7 @@ export class RelayClient {
     const relayMaxNonce = relayLastKnownNonce + this.config.maxRelayNonceGap
     const relayHubAddress = this.dependencies.contractInteractor.getDeployment().relayHubAddress ?? ''
     const metadata: RelayMetadata = {
+      domainSeparatorName: this.config.domainSeparatorName,
       maxAcceptanceBudget: relayInfo.pingResponse.maxAcceptanceBudget,
       relayHubAddress,
       signature,
@@ -583,6 +584,7 @@ export class RelayClient {
         maxPageSize: this.config.pastEventsQueryMaxPageSize,
         maxPageCount: this.config.pastEventsQueryMaxPageCount,
         environment: this.config.environment,
+        domainSeparatorName: this.config.domainSeparatorName,
         deployment: { paymasterAddress: config?.paymasterAddress }
       }).init()
     const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, contractInteractor.chainId, this.config)
@@ -635,6 +637,7 @@ export class RelayClient {
     this.fillRelayInfo(relayRequest, dryRunRelayInfo)
     // note that here 'maxAcceptanceBudget' is set to the entire transaction 'maxViewableGasLimit'
     const relayCallABI: RelayCallABI = {
+      domainSeparatorName: this.config.domainSeparatorName,
       relayRequest,
       signature: '0x',
       approvalData: '0x',

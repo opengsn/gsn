@@ -1,4 +1,4 @@
-import { RelayProvider, GSNConfig } from '@opengsn/provider'
+import { RelayProvider, GSNConfig, defaultGsnConfig } from '@opengsn/provider'
 import {
   Address,
   RelayRequest,
@@ -132,7 +132,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
     relayHub = await deployHub(stakeManager.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')
     await paymaster.setRelayHub(relayHub.address)
     await forwarder.registerRequestType(GsnRequestType.typeName, GsnRequestType.typeSuffix)
-    await forwarder.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
+    await forwarder.registerDomainSeparator(defaultGsnConfig.domainSeparatorName, GsnDomainSeparatorType.version)
     await paymaster.setTrustedForwarder(forwarder.address)
 
     paymasterData = web3.eth.abi.encodeParameter('address', uniswap.address)
@@ -161,6 +161,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
     signature = await getEip712Signature(
       web3,
       new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         defaultEnvironment.chainId,
         forwarder.address,
         relayRequest
@@ -193,6 +194,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
         const signatureX = await getEip712Signature(
           web3,
           new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             defaultEnvironment.chainId,
             forwarder.address,
             relayRequestX
@@ -225,13 +227,14 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
           const wrongSignature = await getEip712Signature(
             web3,
             new TypedRequestData(
+              defaultGsnConfig.domainSeparatorName,
               222,
               forwarder.address,
               relayRequest
             )
           )
           const gas = 5000000
-          const relayCall: any = await relayHub.relayCall.call(10e6, relayRequest, wrongSignature, '0x', {
+          const relayCall: any = await relayHub.relayCall.call(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, wrongSignature, '0x', {
             from: relayWorker,
             gas
           })

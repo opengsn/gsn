@@ -264,10 +264,13 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         bytes retData;
         address relayManager;
         bytes32 relayRequestId;
+        uint256 tmpInitialGas;
+        bytes relayCallStatus;
     }
 
     /// @inheritdoc IRelayHub
     function relayCall(
+        string calldata domainSeparatorName,
         uint256 maxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
@@ -303,6 +306,8 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         console.log("relayCall relayRequest.relayData.forwarder", relayRequest.relayData.forwarder);
         console.log("relayCall relayRequest.relayData.clientId", relayRequest.relayData.clientId);
 
+        console.log("relayCall domainSeparatorName");
+        console.logString(domainSeparatorName);
         console.log("relayCall signature");
         console.logBytes(signature);
         console.log("relayCall approvalData");
@@ -332,7 +337,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         (vars.gasAndDataLimits, vars.maxPossibleGas) =
             verifyGasAndDataLimits(maxAcceptanceBudget, relayRequest, vars.initialGasLeft);
 
-        RelayHubValidator.verifyTransactionPacking(relayRequest,signature,approvalData);
+        RelayHubValidator.verifyTransactionPacking(domainSeparatorName,relayRequest,signature,approvalData);
 
     {
 
@@ -350,19 +355,18 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         TGO = config.gasOverhead + config.postOverhead :: extra that will be added to the charge to cover hidden costs
         GWP = GWP1 + TGO :: transaction "gas used without postRelayCall"
         */
-        uint256 _tmpInitialGas = relayRequest.relayData.transactionCalldataGasUsed + vars.initialGasLeft + vars.innerGasLimit + config.gasOverhead + config.postOverhead;
+        vars.tmpInitialGas = relayRequest.relayData.transactionCalldataGasUsed + vars.initialGasLeft + vars.innerGasLimit + config.gasOverhead + config.postOverhead;
         // Calls to the recipient are performed atomically inside an inner transaction which may revert in case of
         // errors in the recipient. In either case (revert or regular execution) the return data encodes the
         // RelayCallStatus value.
-        (bool success, bytes memory relayCallStatus) = address(this).call{gas:vars.innerGasLimit}(
-            abi.encodeWithSelector(RelayHub.innerRelayCall.selector, relayRequest, signature, approvalData, vars.gasAndDataLimits,
-            _tmpInitialGas - aggregateGasleft(), /* totalInitialGas */
+        (vars.success, vars.relayCallStatus) = address(this).call{gas:vars.innerGasLimit}(
+            abi.encodeWithSelector(RelayHub.innerRelayCall.selector, domainSeparatorName, relayRequest, signature, approvalData, vars.gasAndDataLimits,
+            vars.tmpInitialGas - aggregateGasleft(), /* totalInitialGas */
             vars.maxPossibleGas
             )
         );
-        vars.success = success;
         vars.innerGasUsed = vars.gasBeforeInner-aggregateGasleft();
-        (vars.status, vars.relayedCallReturnValue) = abi.decode(relayCallStatus, (RelayCallStatus, bytes));
+        (vars.status, vars.relayedCallReturnValue) = abi.decode(vars.relayCallStatus, (RelayCallStatus, bytes));
         if ( vars.relayedCallReturnValue.length>0 ) {
             emit TransactionResult(vars.status, vars.relayedCallReturnValue);
         }
@@ -441,6 +445,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
      * It wraps the execution of the `RelayRequest` in a revertable frame context.
      */
     function innerRelayCall(
+        string calldata domainSeparatorName,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData,
@@ -489,7 +494,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
         {
             bool forwarderSuccess;
-            (forwarderSuccess, vars.relayedCallSuccess, vars.relayedCallReturnValue) = GsnEip712Library.execute(relayRequest, signature);
+            (forwarderSuccess, vars.relayedCallSuccess, vars.relayedCallReturnValue) = GsnEip712Library.execute(domainSeparatorName, relayRequest, signature);
             if ( !forwarderSuccess ) {
                 revertWithStatus(RelayCallStatus.RejectedByForwarder, vars.relayedCallReturnValue);
             }
