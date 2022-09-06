@@ -476,3 +476,13 @@ export async function waitForSuccess<T> (
     }
   })
 }
+
+export function validateRelayUrl (relayUrl: string): boolean {
+  let url
+  try {
+    url = new URL(relayUrl)
+  } catch (error) {
+    return false
+  }
+  return url.protocol === 'http:' || url.protocol === 'https:'
+}

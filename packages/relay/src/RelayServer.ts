@@ -17,6 +17,7 @@ import {
   PingResponse,
   ReadinessInfo,
   RelayCallABI,
+  RelayRequest,
   RelayTransactionRequest,
   StatsResponse,
   TransactionRejectedByPaymaster,
@@ -190,12 +191,8 @@ export class RelayServer extends EventEmitter {
         `Wrong worker address: ${req.relayRequest.relayData.relayWorker}\n`)
     }
 
-    this.validateGasFees(req)
-
-    if (this._isBlacklistedPaymaster(req.relayRequest.relayData.paymaster)) {
-      throw new Error(`Paymaster ${req.relayRequest.relayData.paymaster} is blacklisted!`)
-    }
-
+    this.validateGasFees(req.relayRequest)
+    this.validateWhitelistsAndBlacklists(req.relayRequest)
     // validate the validUntil is not too close
     const secondsNow = Math.round(Date.now() / 1000)
     const expiredInSeconds = parseInt(req.relayRequest.request.validUntilTime) - secondsNow
@@ -206,9 +203,26 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  validateGasFees (req: RelayTransactionRequest): void {
-    const requestPriorityFee = parseInt(req.relayRequest.relayData.maxPriorityFeePerGas)
-    const requestMaxFee = parseInt(req.relayRequest.relayData.maxFeePerGas)
+  validateWhitelistsAndBlacklists (relayRequest: RelayRequest): void {
+    if (this._isBlacklistedPaymaster(relayRequest.relayData.paymaster)) {
+      throw new Error(`Paymaster ${relayRequest.relayData.paymaster} is blacklisted!`)
+    }
+    if (this._isBlacklistedRecipient(relayRequest.request.to)) {
+      throw new Error(`Recipient ${relayRequest.request.to} is blacklisted!`)
+    }
+    if (this.config.url.length === 0) {
+      if (!this._isWhitelistedPaymaster(relayRequest.relayData.paymaster)) {
+        throw new Error(`Paymaster ${relayRequest.relayData.paymaster} is not whitelisted!`)
+      }
+      if (!this._isWhitelistedRecipient(relayRequest.request.to)) {
+        throw new Error(`Recipient ${relayRequest.request.to} is not whitelisted!`)
+      }
+    }
+  }
+
+  validateGasFees (relayRequest: RelayRequest): void {
+    const requestPriorityFee = parseInt(relayRequest.relayData.maxPriorityFeePerGas)
+    const requestMaxFee = parseInt(relayRequest.relayData.maxFeePerGas)
     if (this.minMaxPriorityFeePerGas > requestPriorityFee) {
       throw new Error(
         `priorityFee given ${requestPriorityFee} too low. Minimum maxPriorityFee server accepts: ${this.minMaxPriorityFeePerGas}`)
@@ -851,6 +865,20 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   _isBlacklistedPaymaster (paymaster: string): boolean {
     return this.config.blacklistedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
+  }
+
+  _isBlacklistedRecipient (recipient: string): boolean {
+    return this.config.blacklistedRecipients.map(it => it.toLowerCase()).includes(recipient.toLowerCase())
+  }
+
+  _isWhitelistedPaymaster (paymaster: string): boolean {
+    return this.config.whitelistedPaymasters.length === 0 ||
+      this.config.whitelistedPaymasters.map(it => it.toLowerCase()).includes(paymaster.toLowerCase())
+  }
+
+  _isWhitelistedRecipient (recipient: string): boolean {
+    return this.config.whitelistedRecipients.length === 0 ||
+      this.config.whitelistedRecipients.map(it => it.toLowerCase()).includes(recipient.toLowerCase())
   }
 
   isReady (): boolean {

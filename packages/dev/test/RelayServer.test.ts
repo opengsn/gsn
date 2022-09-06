@@ -84,9 +84,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     })
   })
 
-  describe.skip('#_worker()', function () {
-  })
-
   describe('#isReady after exception', () => {
     let relayServer: RelayServer
     beforeEach(async () => {
@@ -329,6 +326,39 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           assert.include(e.message,
             `Paymaster ${blacklistedPaymaster} is blacklisted!`)
         }
+      })
+
+      describe('in private mode with "url" set to empty string', function () {
+        const whitelistedPaymaster = '0xdeadface0000'
+        const notWhitelistedPaymaster = '0xdeadfaceaaaa'
+        const notWhitelistedRecipient = '0xdeadfacebbbb'
+
+        beforeEach(function () {
+          env.relayServer.config.url = ''
+          env.relayServer.config.whitelistedPaymasters = [whitelistedPaymaster]
+          // recipient address is checked for whitelist second so it does not matter for the test
+          env.relayServer.config.whitelistedRecipients = [whitelistedPaymaster]
+        })
+
+        it('should fail to relay in private mode with Recipient not in a whitelist', async function () {
+          const req = await env.createRelayHttpRequest()
+          req.relayRequest.relayData.paymaster = whitelistedPaymaster
+          req.relayRequest.request.to = notWhitelistedRecipient
+          expect(() => env.relayServer.validateInput(req)).to.throw(`Recipient ${notWhitelistedRecipient} is not whitelisted!`)
+        })
+
+        it('should fail to relay in private mode with Paymaster not in a whitelist', async function () {
+          const req = await env.createRelayHttpRequest()
+          req.relayRequest.relayData.paymaster = notWhitelistedPaymaster
+          expect(() => env.relayServer.validateInput(req)).to.throw(`Paymaster ${notWhitelistedPaymaster} is not whitelisted!`)
+        })
+
+        it('should validate request in private mode with empty Paymaster and Recipient whitelists', async function () {
+          const req = await env.createRelayHttpRequest()
+          env.relayServer.config.whitelistedPaymasters = []
+          env.relayServer.config.whitelistedRecipients = []
+          env.relayServer.validateInput(req)
+        })
       })
     })
 
