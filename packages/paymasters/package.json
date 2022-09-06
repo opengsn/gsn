@@ -11,7 +11,7 @@
     "lint-fix": "eslint -f unix . --fix",
     "lint:sol": "solhint -f unix \"contracts/**/*.sol\" --max-warnings 0",
     "test": "yarn tsc && yarn truffle-test-compile-all",
-    "test-fork": "truffle test test/PermitERC20UniswapV3Paymaster.test.ts --compile-all --network npmtest",
+    "test-fork": "truffle test test/PermitERC20UniswapV3Paymaster.test.ts test/TokenPaymasterProvider.test.ts --compile-all --network npmtest",
     "test-only": "truffle test --network npmtest",
     "truffle-test-compile-all": "truffle test --compile-all --network npmtest",
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
@@ -44,13 +44,20 @@
     "web3-utils": "^1.7.4"
   },
   "devDependencies": {
+    "@ethersproject/abstract-signer": "^5.6.2",
+    "@ethersproject/experimental": "^5.6.3",
+    "@ethersproject/providers": "^5.6.5",
     "@opengsn/cli": "^3.0.0-beta.1",
     "@openzeppelin/test-helpers": "^0.5.15",
     "@types/ethereumjs-util": "^6.1.0",
     "@types/web3": "1.2.2",
+    "@types/chai-as-promised": "^7.1.3",
     "bn.js": "^5.2.1",
-    "solhint": "^3.3.2",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "ethers": "^5.6.5",
     "ts-node": "8.6.2",
+    "solhint": "^3.3.2",
     "web3-core": "^1.7.4"
   }
 }
