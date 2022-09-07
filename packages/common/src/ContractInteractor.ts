@@ -229,8 +229,7 @@ export class ContractInteractor {
     if (block.baseFeePerGas != null) {
       this.logger.info('Network supports Type 2 Transactions (EIP-1559). Checking RPC node \'eth_feeHistory\' method')
       try {
-        // hard-coded default values as these are not used but compared to 'gasPrice' and logged
-        const { baseFeePerGas, priorityFeePerGas } = await this.getGasFees(5, 50)
+        const { baseFeePerGas, priorityFeePerGas } = await this.getGasFees(constants.getGasFeesBlocks, constants.getGasFeesPercentile)
         const gasPrice = await this.getGasPrice()
         const gasPriceOverFee = parseInt(gasPrice) / (parseInt(baseFeePerGas) + parseInt(priorityFeePerGas))
         if (gasPriceOverFee > 10 || gasPriceOverFee < 0.1) {
