@@ -149,7 +149,6 @@ export class ContractInteractor {
   private rawTxOptions?: TxOptions
   chainId!: number
   private networkId?: number
-  private networkType?: string
   private paymasterVersion?: SemVerString
   readonly environment: Environment
   transactionType: TransactionType = TransactionType.LEGACY
@@ -252,9 +251,7 @@ export class ContractInteractor {
   async _initializeNetworkParams (): Promise<void> {
     this.chainId = await this.web3.eth.getChainId()
     this.networkId = await this.web3.eth.net.getId()
-    this.networkType = await this.web3.eth.net.getNetworkType()
-    // networkType === 'private' means we're on ganache, and ethereumjs-tx.Transaction doesn't support that chain type
-    this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, this.networkType)
+    this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, 'private')
   }
 
   async _resolveDeployment (): Promise<void> {
@@ -691,7 +688,6 @@ export class ContractInteractor {
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
   async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: Array<string[] | string | undefined>, options: PastEventOptions): Promise<EventData[]> {
-    const delay = this.getNetworkType() === 'private' ? 0 : 300
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
@@ -750,7 +746,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
                 this.logger.error('Too many attempts. throwing ')
                 throw e
               }
-              await sleep(delay)
+              await sleep(300)
             }
           }
         }
@@ -795,7 +791,6 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
   async getBlockNumber (): Promise<number> {
     let blockNumber = -1
     let attempts = 0
-    const delay = this.getNetworkType() === 'private' ? 0 : 1000
     while (blockNumber < this.lastBlockNumber && attempts <= 10) {
       try {
         blockNumber = await this.web3.eth.getBlockNumber()
@@ -805,7 +800,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
       if (blockNumber >= this.lastBlockNumber) {
         break
       }
-      await sleep(delay)
+      await sleep(1000)
       attempts++
     }
     if (blockNumber < this.lastBlockNumber) {
@@ -970,13 +965,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
       throw new Error('_init not called')
     }
     return this.networkId
-  }
-
-  getNetworkType (): string {
-    if (this.networkType == null) {
-      throw new Error('_init not called')
-    }
-    return this.networkType
   }
 
   async isContractDeployed (address: Address): Promise<boolean> {
