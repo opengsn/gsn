@@ -86,7 +86,7 @@ export class RelayServer extends EventEmitter {
   transactionType = TransactionType.LEGACY
 
   reputationManager!: ReputationManager
-  registrationManager!: RegistrationManager
+  registrationManager: RegistrationManager
   chainId!: number
   networkId!: number
   relayHubContract!: IRelayHubInstance
@@ -119,6 +119,16 @@ export class RelayServer extends EventEmitter {
       }
       this.reputationManager = dependencies.reputationManager
     }
+    this.registrationManager = new RegistrationManager(
+      this.contractInteractor,
+      this.transactionManager,
+      this.txStoreManager,
+      this,
+      this.logger,
+      this.config,
+      this.managerAddress,
+      this.workerAddress
+    )
     const now = Date.now()
     this.readinessInfo = {
       runningSince: now,
@@ -494,7 +504,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     if (latestBlock.baseFeePerGas != null) {
       this.transactionType = TransactionType.TYPE_TWO
     }
-    await this.transactionManager._init(this.transactionType)
+    await this.transactionManager.init(this.transactionType)
     await this._initTrustedPaymasters(this.config.trustedPaymasters)
     if (!this.config.skipErc165Check) {
       await this.contractInteractor._validateERC165InterfacesRelay()
@@ -507,16 +517,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.fatal(`No RelayHub deployed at address ${relayHubAddress}.`)
     }
 
-    this.registrationManager = new RegistrationManager(
-      this.contractInteractor,
-      this.transactionManager,
-      this.txStoreManager,
-      this,
-      this.logger,
-      this.config,
-      this.managerAddress,
-      this.workerAddress
-    )
     const transactionHashes = await this.registrationManager.init(this.lastScannedBlock, latestBlock)
 
     this.chainId = this.contractInteractor.chainId
@@ -744,7 +744,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _worker (block: BlockTransactionString): Promise<PrefixedHexString[]> {
-    if (!this.initialized || this.registrationManager.balanceRequired == null) {
+    if (!this.initialized) {
       throw new Error('Please run init() first')
     }
     if (block.number <= this.lastScannedBlock) {

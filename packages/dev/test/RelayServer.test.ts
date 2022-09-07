@@ -75,7 +75,16 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.notEqual(relayServerToInit.chainId, chainId)
       assert.notEqual(relayServerToInit.networkId, networkId)
       assert.equal(relayServerToInit.isReady(), false)
+      const initTrustedPaymastersSpy = sinon.spy(relayServerToInit, '_initTrustedPaymasters')
+      const registrationManagerSpy = sinon.spy(relayServerToInit.registrationManager, 'init')
+      const transactionManagerSpy = sinon.spy(relayServerToInit.transactionManager, 'init')
       await relayServerToInit.init()
+      sinon.assert.callOrder(
+        transactionManagerSpy,
+        initTrustedPaymastersSpy,
+        registrationManagerSpy
+      )
+      sinon.restore()
       assert.equal(relayServerToInit.isReady(), false, 'relay should not be ready yet')
       assert.equal(relayServerToInit.chainId, chainId)
       assert.equal(relayServerToInit.networkId, networkId)
