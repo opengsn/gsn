@@ -164,4 +164,4 @@ include any support for meta-transactions and requires at least a single call to
 
 ## Live demo
 
-Mint and send tokens without requiring ETH for gas. Works on Ropsten and Kovan testnets.
+Make a transaction and capture the flag on-chain without paying for gas. [Try it now!](https://ctf-react.opengsn.org/)
