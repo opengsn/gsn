@@ -161,19 +161,6 @@ context('#ServerConfigParams', () => {
         assert.include(e.message, 'managerTargetBalance must be at least managerMinBalance')
       }
     })
-    it('should throw if minHubWithdrawalBalance > withdrawToOwnerOnBalance', function () {
-      const config: ServerConfigParams = {
-        ...serverDefaultConfiguration,
-        withdrawToOwnerOnBalance: 1e18,
-        minHubWithdrawalBalance: 2e18
-      }
-      try {
-        validateBalanceParams(config)
-        assert.fail()
-      } catch (e: any) {
-        assert.include(e.message, 'withdrawToOwnerOnBalance must be at least minHubWithdrawalBalance')
-      }
-    })
     it('should throw if managerTargetBalance + workerTargetBalance > withdrawToOwnerOnBalance', function () {
       const config: ServerConfigParams = {
         ...serverDefaultConfiguration,
@@ -196,7 +183,6 @@ context('#ServerConfigParams', () => {
         ...serverDefaultConfiguration,
         managerTargetBalance: 1e18,
         workerTargetBalance: 1e18,
-        minHubWithdrawalBalance: 1e18,
         workerMinBalance: 0.5e18,
         managerMinBalance: 0.5e18
       }

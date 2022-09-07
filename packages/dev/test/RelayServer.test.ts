@@ -148,7 +148,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal(env.relayServer.readinessInfo.currentStateTimestamp - env.relayServer.readinessInfo.runningSince,
         env.relayServer.readinessInfo.totalReadyTime + env.relayServer.readinessInfo.totalNotReadyTime)
 
-      console.log(env.relayServer.readinessInfo)
       const statsResponse = env.relayServer.statsHandler()
       assert.equal(statsResponse.runningSince, env.relayServer.readinessInfo.runningSince)
       assert.equal(statsResponse.currentStateTimestamp, env.relayServer.readinessInfo.currentStateTimestamp)
@@ -157,7 +156,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.isTrue(statsResponse.totalNotReadyTime >= time)
       assert.isTrue(statsResponse.totalReadyTime < time)
       assert.equal(statsResponse.totalReadinessChanges, 0)
-      console.log(statsResponse)
     })
 
     it('should keep readiness info when setting to ready', async function () {
@@ -169,7 +167,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       // Only one interval, and it's from first uptime until last state change
       assert.equal(env.relayServer.readinessInfo.totalReadinessChanges, 1)
 
-      console.log(env.relayServer.readinessInfo)
       const statsResponse = env.relayServer.statsHandler()
       assert.equal(statsResponse.runningSince, env.relayServer.readinessInfo.runningSince)
       assert.equal(statsResponse.currentStateTimestamp, env.relayServer.readinessInfo.currentStateTimestamp)
@@ -178,7 +175,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.isTrue(statsResponse.totalReadyTime >= time)
       assert.isTrue(statsResponse.totalNotReadyTime < time)
       assert.equal(statsResponse.totalReadinessChanges, 1)
-      console.log(statsResponse)
     })
 
     it('should keep readiness info when setting new readiness states', async function () {
@@ -198,13 +194,11 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal(env.relayServer.readinessInfo.currentStateTimestamp - env.relayServer.readinessInfo.runningSince,
         env.relayServer.readinessInfo.totalReadyTime + env.relayServer.readinessInfo.totalNotReadyTime)
 
-      console.log(env.relayServer.readinessInfo)
       const statsResponse = env.relayServer.statsHandler()
       assert.equal(statsResponse.totalReadinessChanges, 4)
       assert.isTrue(statsResponse.totalUptime >= 5 * time)
       assert.equal(statsResponse.totalReadyTime, time * 2)
       assert.isTrue(statsResponse.totalNotReadyTime >= 3 * time)
-      console.log(statsResponse)
     })
   })
 
@@ -537,7 +531,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
   describe('#createRelayTransaction()', function () {
     beforeEach(async function () {
-      await env.relayServer.txStoreManager.clearAll()
+      await env.clearServerStorage()
     })
 
     async function fixTxDetails (details: Partial<GsnTransactionDetails>, type: number): Promise<void> {
@@ -730,10 +724,8 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     // web3 estimate seems to add '1 gas' somewhere
     const txCost = toBN((defaultEnvironment.mintxgascost + 1) * parseInt(gasPrice))
 
-    // TODO: not needed, worker is not funded at this point!
-    beforeEach('deplete worker balance', async function () {
+    async function depleteWorker (): Promise<void> {
       relayServer = env.relayServer
-      beforeDescribeId = (await snapshot()).result
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.workerAddress,
@@ -749,6 +741,13 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.lt(toBN(relayServer.config.workerMinBalance)),
         'worker balance should be lower than min balance')
+    }
+
+    // TODO: not needed, worker is not funded at this point!
+    beforeEach('deplete worker balance', async function () {
+      beforeDescribeId = (await snapshot()).result
+      await env.newServerInstance({ recentActionAvoidRepeatDistanceBlocks: 0 })
+      await depleteWorker()
     })
 
     afterEach(async function () {
@@ -757,13 +756,14 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
     beforeEach(async function () {
       id = (await snapshot()).result
-      await relayServer.transactionManager.txStoreManager.clearAll()
+      await env.clearServerStorage()
     })
 
     afterEach(async function () {
       await revert(id)
       relayServer.transactionManager._initNonces()
-      await relayServer.transactionManager.txStoreManager.clearAll()
+      await env.clearServerStorage()
+      sinon.restore()
     })
 
     it('should not replenish when all balances are sufficient', async function () {
@@ -837,7 +837,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         `workerBalanceAfter (${workerBalanceAfter.toString()}) != workerBalanceBefore (${workerBalanceBefore.toString()}) + refill (${refill.toString()}`)
     })
 
-    it('should emit \'funding needed\' when both eth and hub balances are too low', async function () {
+    it('should log error when both eth and hub balances are too low', async function () {
       await relayServer.transactionManager.sendTransaction({
         signer: relayServer.managerAddress,
         serverAction: ServerAction.VALUE_TRANSFER,
@@ -855,12 +855,70 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const refill = toBN(relayServer.config.workerTargetBalance).sub(workerBalanceBefore)
       assert.isTrue(managerHubBalanceBefore.lt(refill), 'manager hub balance should be insufficient to replenish worker')
       assert.isTrue(managerEthBalance.lt(refill), 'manager eth balance should be insufficient to replenish worker')
-      let fundingNeededEmitted = false
-      relayServer.on('fundingNeeded', () => {
-        fundingNeededEmitted = true
-      })
+      const spy = sinon.spy(env.relayServer.logger, 'error')
       await relayServer.replenishServer(workerIndex, 0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
-      assert.isTrue(fundingNeededEmitted, 'fundingNeeded not emitted')
+      sinon.assert.calledWith(spy, `== replenishServer: can't replenish: balance too low ${managerEthBalance.toString()} refill=${refill.toString()}`)
+    })
+
+    it('should withdraw hub balance if manager balance is above min but isn\'t enough to replenish worker', async function () {
+      const desiredBalance = toBN(relayServer.config.workerTargetBalance).muln(0.8)
+      let managerHubBalance = await env.relayHub.balanceOf(relayServer.managerAddress)
+      const block = await env.web3.eth.getBlock('latest')
+      await env.relayServer._withdrawHubDeposit(managerHubBalance, block.number, block.hash, toNumber(block.timestamp))
+      let managerEthBalance = await env.relayServer.getManagerBalance()
+      await relayServer.transactionManager.sendTransaction({
+        signer: relayServer.managerAddress,
+        serverAction: ServerAction.VALUE_TRANSFER,
+        destination: accounts[0],
+        maxFeePerGas: gasPrice,
+        maxPriorityFeePerGas: gasPrice,
+        creationBlockNumber: 0,
+        creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        creationBlockTimestamp: 0,
+        value: toHex(managerEthBalance.sub(txCost))
+      })
+      await env.web3.eth.sendTransaction({
+        from: accounts[0],
+        to: relayServer.managerAddress,
+        value: desiredBalance
+      })
+      await env.relayHub.depositFor(env.relayServer.managerAddress, { value: desiredBalance })
+      await env.clearServerStorage()
+      managerEthBalance = await relayServer.getManagerBalance()
+      managerHubBalance = await env.relayHub.balanceOf(relayServer.managerAddress)
+      assert.equal(managerEthBalance.sub(toBN(1e9.toString())).toString(), desiredBalance.toString())
+      assert.equal(managerHubBalance.toString(), desiredBalance.toString())
+
+      // When worker has at least min balance, do not do anything
+      await env.web3.eth.sendTransaction({
+        from: accounts[0],
+        to: relayServer.workerAddress,
+        value: relayServer.config.workerMinBalance
+      })
+      const blockNumber = await env.web3.eth.getBlockNumber()
+      const txHashes = await relayServer.replenishServer(workerIndex, blockNumber, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
+      assert.equal(txHashes.length, 0)
+      managerEthBalance = await relayServer.getManagerBalance()
+      managerHubBalance = await env.relayHub.balanceOf(relayServer.managerAddress)
+      assert.equal(managerEthBalance.sub(toBN(1e9.toString())).toString(), desiredBalance.toString())
+      assert.equal(managerHubBalance.toString(), desiredBalance.toString())
+      const workerBalance = await relayServer.getWorkerBalance(workerIndex)
+      assert.equal(workerBalance.sub(toBN(1e9.toString())).toString(), env.relayServer.config.workerMinBalance.toString())
+
+      // When worker has less than min balance, replenish it
+      await depleteWorker()
+      const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
+      const refill = toBN(relayServer.config.workerTargetBalance).sub(workerBalanceBefore)
+      assert.isTrue(managerHubBalance.gt(toBN(relayServer.config.managerMinBalance)), 'manager balance should be at least min balance')
+      assert.isTrue(managerHubBalance.lt(refill), 'manager hub balance should be insufficient to replenish worker')
+      assert.isTrue(managerEthBalance.lt(refill), 'manager eth balance should be insufficient to replenish worker')
+      await relayServer.replenishServer(workerIndex, blockNumber, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
+      const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
+      managerHubBalance = await env.relayHub.balanceOf(relayServer.managerAddress)
+      assert.equal(managerHubBalance.toString(), '0')
+      assert.isTrue(workerBalanceAfter.eq(workerBalanceBefore.add(refill)),
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        `workerBalanceAfter (${workerBalanceAfter.toString()}) != workerBalanceBefore (${workerBalanceBefore.toString()}) + refill (${refill.toString()}`)
     })
   })
 
