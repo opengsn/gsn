@@ -1,6 +1,7 @@
 import { expectRevert } from '@openzeppelin/test-helpers'
 
 import { RelayRequest } from '@opengsn/common'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const TestRelayHubValidator = artifacts.require('TestRelayHubValidator')
 
@@ -56,7 +57,9 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
           forwarder
         }
       }
-      const verifyTransactionPacking = await validator.contract.methods.dummyRelayCall(0,
+      const verifyTransactionPacking = await validator.contract.methods.dummyRelayCall(
+        defaultGsnConfig.domainSeparatorName,
+        0,
         relayRequest,
         appended.signature ?? '0x',
         appended.approvalData ?? '0x')
@@ -95,7 +98,9 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
         forwarder
       }
     }
-    await expectRevert(validator.dummyRelayCall(0,
+    await expectRevert(validator.dummyRelayCall(
+      defaultGsnConfig.domainSeparatorName,
+      0,
       relayRequest,
       '0x' + '11'.repeat(66),
       '0x'), 'invalid signature length')

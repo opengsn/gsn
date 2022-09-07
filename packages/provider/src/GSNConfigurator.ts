@@ -54,8 +54,11 @@ export const defaultGsnConfig: GSNConfig = {
   clientDefaultConfigUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
   useClientDefaultConfigUrl: true,
   performDryRunViewRelayCall: true,
+  tokenPaymasterAddress: '',
+  tokenPaymasterDomainSeparators: {},
   waitForSuccessSliceSize: 3,
-  waitForSuccessPingGrace: 3000
+  waitForSuccessPingGrace: 3000,
+  domainSeparatorName: 'GSN Relayed Transaction'
 }
 
 export interface GSNDependencies {

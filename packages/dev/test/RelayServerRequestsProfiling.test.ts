@@ -8,7 +8,7 @@ import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
-  const callsPerStateRefresh = 18
+  const callsPerStateRefresh = 17
   const callsPerBlock = 0
   const callsPerTransaction = 12
 

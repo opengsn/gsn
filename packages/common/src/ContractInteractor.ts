@@ -77,9 +77,11 @@ export interface ConstructorParams {
   maxPageSize: number
   maxPageCount?: number
   environment: Environment
+  domainSeparatorName?: string
 }
 
 export interface RelayCallABI {
+  domainSeparatorName: string
   signature: PrefixedHexString
   relayRequest: RelayRequest
   approvalData: PrefixedHexString
@@ -88,6 +90,7 @@ export interface RelayCallABI {
 
 export function asRelayCallAbi (r: RelayTransactionRequest): RelayCallABI {
   return {
+    domainSeparatorName: r.metadata.domainSeparatorName,
     relayRequest: r.relayRequest,
     signature: r.metadata.signature,
     approvalData: r.metadata.approvalData,
@@ -149,6 +152,7 @@ export class ContractInteractor {
   private paymasterVersion?: SemVerString
   readonly environment: Environment
   transactionType: TransactionType = TransactionType.LEGACY
+  readonly domainSeparatorName: string
 
   constructor (
     {
@@ -158,6 +162,7 @@ export class ContractInteractor {
       versionManager,
       logger,
       environment,
+      domainSeparatorName,
       deployment = {}
     }: ConstructorParams) {
     this.maxPageSize = maxPageSize
@@ -169,6 +174,7 @@ export class ContractInteractor {
     this.provider = provider
     this.lastBlockNumber = 0
     this.environment = environment
+    this.domainSeparatorName = domainSeparatorName ?? ''
     this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
       abi: paymasterAbi
@@ -223,6 +229,13 @@ export class ContractInteractor {
     if (block.baseFeePerGas != null) {
       this.logger.info('Network supports Type 2 Transactions (EIP-1559). Checking RPC node \'eth_feeHistory\' method')
       try {
+        // hard-coded default values as these are not used but compared to 'gasPrice' and logged
+        const { baseFeePerGas, priorityFeePerGas } = await this.getGasFees(5, 50)
+        const gasPrice = await this.getGasPrice()
+        const gasPriceOverFee = parseInt(gasPrice) / (parseInt(baseFeePerGas) + parseInt(priorityFeePerGas))
+        if (gasPriceOverFee > 10 || gasPriceOverFee < 0.1) {
+          this.logger.warn(`Order of magnitude difference between getGasPrice (${gasPrice}) and getFeeHistory (${baseFeePerGas} & ${priorityFeePerGas}). Clients will have issues.`)
+        }
         await this.getFeeHistory('0x1', 'latest', [0.5])
         this.transactionType = TransactionType.TYPE_TWO
         this.logger.debug('RPC node supports \'eth_feeHistory\'. Initializing to Type 2 Transactions.')
@@ -533,8 +546,8 @@ export class ContractInteractor {
         }
         this.logger.debug(`Sending in view mode: \n${JSON.stringify(rpcPayload)}\n encoded data: \n${JSON.stringify(relayCallABIData)}`)
         // @ts-ignore
-        this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string, error: any }) => {
-          if (res.error != null) {
+        this.web3.currentProvider.send(rpcPayload, (err: Object | undefined, res: { result: string, error: any } | undefined) => {
+          if (res?.error != null) {
             err = res.error
           }
           const revertMsg = this._decodeRevertFromResponse(err, res)
@@ -542,6 +555,8 @@ export class ContractInteractor {
             reject(new Error(revertMsg))
           } else if (errorAsBoolean(err)) {
             reject(err)
+          } else if (res?.result == null) {
+            reject(new Error('RPC call returned no error and no result'))
           } else {
             resolve(res.result)
           }
@@ -585,7 +600,7 @@ export class ContractInteractor {
    */
   // decode revert from rpc response.
   //
-  _decodeRevertFromResponse (err?: { message?: string, data?: any }, res?: { error?: any, result?: string }): string | null {
+  _decodeRevertFromResponse (err?: { message?: string, data?: any } | undefined, res?: { error?: any, result?: string } | undefined): string | null {
     let matchGanache = err?.data?.message?.toString().match(/: revert(?:ed)? (.*)/)
     if (matchGanache == null) {
       matchGanache = res?.error?.message?.toString().match(/: revert(?:ed)? (.*)/)
@@ -610,7 +625,7 @@ export class ContractInteractor {
   encodeABI (
     _: RelayCallABI
   ): PrefixedHexString {
-    return this.relayCallMethod(_.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData).encodeABI()
+    return this.relayCallMethod(_.domainSeparatorName, _.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData).encodeABI()
   }
 
   async getPastEventsForHub (extraTopics: Array<string[] | string | undefined>, options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
@@ -860,6 +875,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   /**
+   * Only used by the RelayClient.
    * @param relayRequestOriginal request input of the 'relayCall' method with some fields not yet initialized
    * @param variableFieldSizes configurable sizes of 'relayCall' parameters with variable size types
    * @return {PrefixedHexString} top boundary estimation of how much gas sending this data will consume
@@ -881,6 +897,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const signature = '0x' + 'ff'.repeat(65)
     const approvalData = '0x' + 'ff'.repeat(variableFieldSizes.maxApprovalDataLength)
     const encodedData = this.encodeABI({
+      domainSeparatorName: this.domainSeparatorName,
       relayRequest,
       signature,
       approvalData,
@@ -920,17 +937,13 @@ calculateTransactionMaxPossibleGas: result: ${result}
     blockCount: number,
     rewardPercentile: number
   ): Promise<{ baseFeePerGas: string, priorityFeePerGas: string }> {
-    const gasPrice = await this.getGasPrice()
     if (this.transactionType === TransactionType.LEGACY) {
+      const gasPrice = await this.getGasPrice()
       return { baseFeePerGas: gasPrice, priorityFeePerGas: gasPrice }
     }
     const networkHistoryFees = await this.getFeeHistory(toHex(blockCount), 'pending', [rewardPercentile])
     const baseFeePerGas = networkHistoryFees.baseFeePerGas[0]
     const priorityFeePerGas = averageBN(networkHistoryFees.reward.map(rewards => rewards[0]).map(toBN)).toString()
-    const gasPriceOverFee = parseInt(gasPrice) / (parseInt(baseFeePerGas) + parseInt(priorityFeePerGas))
-    if (gasPriceOverFee > 10 || gasPriceOverFee < 0.1) {
-      this.logger.warn('Order of magnitude difference between getGasPrice and getFeeHistory. Clients will have issues.')
-    }
     return { baseFeePerGas, priorityFeePerGas }
   }
 

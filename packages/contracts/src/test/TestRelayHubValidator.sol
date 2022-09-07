@@ -8,12 +8,13 @@ contract TestRelayHubValidator {
 
     //for testing purposes, we must be called from a method with same param signature as RelayCall
     function dummyRelayCall(
+        string calldata domainSeparatorName,
         uint256, //paymasterMaxAcceptanceBudget,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData
-    ) external pure {
-        RelayHubValidator.verifyTransactionPacking(relayRequest, signature, approvalData);
+    ) external {
+        RelayHubValidator.verifyTransactionPacking(domainSeparatorName, relayRequest, signature, approvalData);
     }
 
     // helper method for verifyTransactionPacking

@@ -21,6 +21,7 @@ import {
 
 import { TransactionRelayed } from '@opengsn/contracts/types/truffle-contracts/RelayHub'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const TestToken = artifacts.require('TestToken')
 const Forwarder = artifacts.require('Forwarder')
@@ -74,7 +75,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
 
     // TODO: extract repetitive test code to test utils
     before('prepare the relay request and relay worker', async function () {
-      await registerForwarderForGsn(forwarder)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarder)
       testRecipient = await TestRecipient.new(forwarder.address)
       const paymaster = await TestPaymasterEverythingAccepted.new()
       await paymaster.setTrustedForwarder(forwarder.address)
@@ -117,6 +118,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
         }
       }
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         defaultEnvironment.chainId,
         forwarder.address,
         relayRequest
@@ -128,7 +130,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
     })
 
     it('should use aggregateGasleft results when calculating charge', async function () {
-      const res = await arbRelayHub.relayCall(10e6, relayRequest, signature, '0x', {
+      const res = await arbRelayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
         from: relayWorker,
         gas: 10000000,
         gasPrice: 1e8.toString()

@@ -34,6 +34,7 @@ import {
 import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
 
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -96,7 +97,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     encodedCallArgs.paymaster = paymaster.address
@@ -160,7 +161,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               clientId
             }
           }
-        encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
+        encodedCall = relayHub.contract.methods.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
 
         legacyTx = new Transaction({
           nonce: relayCallArgs.nonce,
@@ -627,6 +628,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             }
           }
           const dataToSign = new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest
@@ -640,7 +642,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             value: ether('1')
           })
           const externalGasLimit = gasLimit.add(new BN(1e6))
-          const relayCallTx = await relayHub.relayCall(10e6, relayRequest, signature, '0x', {
+          const relayCallTx = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
             from: relayWorker,
             gas: externalGasLimit,
             gasPrice
@@ -740,7 +742,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             clientId
           }
         }
-      const encodedCall = relayHub.contract.methods.relayCall(10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
+      const encodedCall = relayHub.contract.methods.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, '0xabcdef123456', '0x').encodeABI()
 
       const transaction = Transaction.fromTxData({
         nonce: relayCallArgs.nonce,

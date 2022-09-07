@@ -487,3 +487,13 @@ export function averageBN (array: BN[]): BN {
   const sum = array.reduce((a, v) => a.add(v))
   return sum.divn(array.length)
 }
+
+export function validateRelayUrl (relayUrl: string): boolean {
+  let url
+  try {
+    url = new URL(relayUrl)
+  } catch (error) {
+    return false
+  }
+  return url.protocol === 'http:' || url.protocol === 'https:'
+}

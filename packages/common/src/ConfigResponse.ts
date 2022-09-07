@@ -4,6 +4,7 @@ import {
   NpmLogLevel
 } from './types/Aliases'
 import { Environment } from './Environments'
+import { EIP712Domain } from './EIP712/TypedRequestData'
 
 export interface LoggerConfiguration {
   logLevel: NpmLogLevel
@@ -116,6 +117,16 @@ export interface GSNConfig {
   paymasterAddress?: Address
 
   /**
+  * The address of the token paymaster contract used by TokenPaymasterProvider
+  */
+  tokenPaymasterAddress: Address
+
+  /**
+  * Fields required by TokenPaymasterProvider for the supported tokens
+  */
+  tokenPaymasterDomainSeparators: Record<Address, EIP712Domain>
+
+  /**
    * If set to 'true' the Relay will not perform an ERC-165 interfaces check on the GSN contracts.
    */
   skipErc165Check: boolean
@@ -179,4 +190,11 @@ export interface GSNConfig {
    * The number of milliseconds to wait after the first Relay Server responds to the ping before picking a winner.
    */
   waitForSuccessPingGrace: number
+
+  /**
+   * The name of the EIP-712 Domain Separator field. Note that this is usually the name of the requiest the
+   * users will see in MetaMask or other wallets.
+   * Note: The domain type must be first registered on-chain by calling 'Forwarder::registerDomainSeparator'.
+   */
+  domainSeparatorName: string
 }

@@ -127,6 +127,8 @@ contract('PenalizationFlow', function (accounts) {
       // let the relay run its 'intervalHandler'
       await evmMineMany(5)
       await sleep(1000)
+      await evmMineMany(5)
+      await sleep(1000)
 
       penalizationEvents = await env.stakeManager.contract.getPastEvents('StakePenalized', { fromBlock: 1 })
       assert.equal(penalizationEvents.length, 1)
