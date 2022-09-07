@@ -19,8 +19,6 @@ export const constants = {
   weekInSec,
   yearInSec,
   oneEther,
-  getGasFeesBlocks: 5,
-  getGasFeesPercentile: 50,
   ZERO_ADDRESS: '0x0000000000000000000000000000000000000000',
   // OpenZeppelin's ERC-20 implementation bans transfer to zero address
   BURN_ADDRESS: '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF',

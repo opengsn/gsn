@@ -7,7 +7,6 @@ import {
   LoggerInterface,
   PingFilter,
   RelayFilter,
-  constants,
   defaultEnvironment,
   gsnRequiredVersion,
   gsnRuntimeVersion
@@ -34,8 +33,8 @@ export const defaultGsnConfig: GSNConfig = {
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   pastEventsQueryMaxPageCount: 20,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
-  getGasFeesBlocks: constants.getGasFeesBlocks,
-  getGasFeesPercentile: constants.getGasFeesPercentile,
+  getGasFeesBlocks: 5,
+  getGasFeesPercentile: 50,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
   minMaxPriorityFeePerGas: 1e9,

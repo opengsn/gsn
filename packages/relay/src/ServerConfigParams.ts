@@ -372,8 +372,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   defaultGasLimit: 500000,
   maxMaxFeePerGas: 500e9.toString(),
   defaultPriorityFee: 1e9.toString(),
-  getGasFeesBlocks: constants.getGasFeesBlocks,
-  getGasFeesPercentile: constants.getGasFeesPercentile,
+  getGasFeesBlocks: 5,
+  getGasFeesPercentile: 50,
 
   requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
   runPaymasterReputations: true,
