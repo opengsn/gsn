@@ -285,7 +285,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           assert.fail()
         } catch (e: any) {
           assert.include(e.message,
-            'Current network does not support EIP-1559 transactions.')
+            'Current network (1337) does not support EIP-1559 transactions.')
         }
       })
 
