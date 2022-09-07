@@ -993,6 +993,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should use preferred relay if one is set', async () => {
+      await evmMineMany(10)
       relayClient = new RelayClient({
         provider: underlyingProvider,
         config: {
