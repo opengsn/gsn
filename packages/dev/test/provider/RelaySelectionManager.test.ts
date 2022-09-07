@@ -59,6 +59,8 @@ contract('RelaySelectionManager', function (accounts) {
     relayWorkerAddress: '',
     relayManagerAddress: '',
     relayHubAddress,
+    minMaxFeePerGas: '',
+    maxMaxFeePerGas: '',
     minMaxPriorityFeePerGas: '1',
     maxAcceptanceBudget: 1e10.toString(),
     ready: true,
@@ -126,7 +128,7 @@ contract('RelaySelectionManager', function (accounts) {
     })
 
     describe('with preferred relay URL', function () {
-      const preferredRelayUrl = 'preferredRelayUrl'
+      const preferredRelayUrl = 'http://preferredRelayUrl.test'
       const relayManager = accounts[1]
       let relaySelectionManager: RelaySelectionManager
       let stubWaitForSuccess: SinonStub
@@ -166,6 +168,8 @@ contract('RelaySelectionManager', function (accounts) {
           relayWorkerAddress: relayManager,
           relayManagerAddress: relayManager,
           relayHubAddress: relayHub.address,
+          minMaxFeePerGas: '0',
+          maxMaxFeePerGas: '0',
           minMaxPriorityFeePerGas: '1',
           ownerAddress: accounts[0],
           maxAcceptanceBudget: 1e10.toString(),

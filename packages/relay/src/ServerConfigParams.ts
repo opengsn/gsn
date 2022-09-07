@@ -125,6 +125,21 @@ export interface ServerConfigParams {
   blacklistedPaymasters: Address[]
 
   /**
+   * The Recipients in this array will not be served.
+   */
+  blacklistedRecipients: Address[]
+  /**
+   * Only the Paymasters in this array will be served. Can only be set together with 'url' set to empty string.
+   */
+  whitelistedPaymasters: Address[]
+
+  /**
+   * Only the Recipients in this array will be served. Can only be set together with 'url' set to empty string.
+   * Empty whitelist means the whitelist will not be applied.
+   */
+  whitelistedRecipients: Address[]
+
+  /**
    * The 'gasPrice'/'maxPriorityFeePerGas' reported by the network will be multiplied by this value.
    */
   gasPriceFactor: number
@@ -236,7 +251,17 @@ export interface ServerConfigParams {
   /**
    * The absolute maximum gas fee the Relay is willing to pay.
    */
-  maxFeePerGas: string
+  maxMaxFeePerGas: string
+
+  /**
+   * The number of past blocks to query in 'eth_getGasFees' RPC request.
+   */
+  getGasFeesBlocks: number
+
+  /**
+   * The miner reward "percentile" to query in 'eth_getGasFees' RPC request.
+   */
+  getGasFeesPercentile: number
 
   /**
    * In case the RPC node reports 'maxPriorityFeePerGas' to be 0, override it with this value.
@@ -319,6 +344,9 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   relayHubAddress: constants.ZERO_ADDRESS,
   trustedPaymasters: [],
   blacklistedPaymasters: [],
+  blacklistedRecipients: [],
+  whitelistedPaymasters: [],
+  whitelistedRecipients: [],
   gasPriceFactor: 1,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
@@ -349,8 +377,10 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   dbAutoCompactionInterval: 604800000, // Week in ms: 1000*60*60*24*7
   retryGasPriceFactor: 1.2,
   defaultGasLimit: 500000,
-  maxFeePerGas: 500e9.toString(),
+  maxMaxFeePerGas: 500e9.toString(),
   defaultPriorityFee: 1e9.toString(),
+  getGasFeesBlocks: 5,
+  getGasFeesPercentile: 50,
 
   requestMinValidSeconds: 43200, // roughly 12 hours, quarter of client's default of 172800 seconds (2 days)
   runPaymasterReputations: true,
@@ -399,6 +429,9 @@ const ConfigParamsTypes = {
 
   trustedPaymasters: 'list',
   blacklistedPaymasters: 'list',
+  blacklistedRecipients: 'list',
+  whitelistedPaymasters: 'list',
+  whitelistedRecipients: 'list',
 
   runPenalizer: 'boolean',
 
@@ -416,7 +449,9 @@ const ConfigParamsTypes = {
   pendingTransactionTimeoutSeconds: 'number',
   minAlertedDelayMS: 'number',
   maxAlertedDelayMS: 'number',
-  maxFeePerGas: 'string',
+  maxMaxFeePerGas: 'string',
+  getGasFeesBlocks: 'number',
+  getGasFeesPercentile: 'number',
   defaultPriorityFee: 'string',
   pastEventsQueryMaxPageSize: 'number',
   pastEventsQueryMaxPageCount: 'number',
@@ -546,10 +581,17 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   if (config.ownerAddress == null || config.ownerAddress === constants.ZERO_ADDRESS) error('missing param: ownerAddress')
   if (config.managerStakeTokenAddress == null || config.managerStakeTokenAddress === constants.ZERO_ADDRESS) error('missing param: managerStakeTokenAddress')
   const finalConfig = { ...serverDefaultConfiguration, ...config }
+  validatePrivateModeParams(finalConfig)
   validateBalanceParams(finalConfig)
   return {
     config: finalConfig,
     environment
+  }
+}
+
+export function validatePrivateModeParams (config: ServerConfigParams): void {
+  if (config.url.length !== 0 && (config.whitelistedRecipients.length !== 0 || config.whitelistedPaymasters.length !== 0)) {
+    throw new Error('Cannot whitelist recipients or paymasters on a public Relay Server')
   }
 }
 

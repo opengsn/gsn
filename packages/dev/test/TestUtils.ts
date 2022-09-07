@@ -69,7 +69,10 @@ export async function startRelay (
   args.push('--logLevel', 'debug')
   args.push('--relayHubAddress', relayHubAddress)
   args.push('--managerStakeTokenAddress', testToken.address)
-  const configFile = path.resolve(__dirname, './server-config.json')
+  let configFile = path.resolve(__dirname, './server-config.json')
+  if (!fs.existsSync(configFile)) {
+    configFile = path.resolve(__dirname, '../../../dev/test/server-config.json')
+  }
   args.push('--config', configFile)
   args.push('--ownerAddress', options.relayOwner)
   if (options.loggingProvider) {
@@ -103,10 +106,13 @@ export async function startRelay (
   if (options.refreshStateTimeoutBlocks) {
     args.push('--refreshStateTimeoutBlocks', options.refreshStateTimeoutBlocks)
   }
-  if (options.maxFeePerGas) {
-    args.push('--maxFeePerGas', options.maxFeePerGas)
+  if (options.maxMaxFeePerGas) {
+    args.push('--maxMaxFeePerGas', options.maxMaxFeePerGas)
   }
-  const runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
+  let runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
+  if (!fs.existsSync(runServerPath)) {
+    runServerPath = path.resolve(__dirname, '../../../relay/dist/runServer.js')
+  }
   const proc: ChildProcessWithoutNullStreams = childProcess.spawn('./node_modules/.bin/ts-node',
     [runServerPath, ...args])
 

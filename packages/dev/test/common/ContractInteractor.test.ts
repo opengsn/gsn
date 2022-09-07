@@ -41,6 +41,7 @@ import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contra
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 
 import { ether } from '@openzeppelin/test-helpers'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -198,6 +199,7 @@ contract('ContractInteractor', function (accounts) {
         }
       }
       encodedData = {
+        domainSeparatorName: defaultGsnConfig.domainSeparatorName,
         maxAcceptanceBudget: '200000',
         relayRequest,
         signature: '0xdeadbeef',
@@ -269,6 +271,7 @@ contract('ContractInteractor', function (accounts) {
       }
       const blockGasLimit = await contractInteractor._getBlockGasLimit()
       const encodedData: RelayCallABI = {
+        domainSeparatorName: defaultGsnConfig.domainSeparatorName,
         maxAcceptanceBudget: '200000',
         relayRequest,
         signature: '0xdeadbeef',

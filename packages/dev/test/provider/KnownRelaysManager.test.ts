@@ -14,7 +14,7 @@ import {
   registerForwarderForGsn,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
-import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
   PenalizerInstance,
   RelayHubInstance,
@@ -22,7 +22,7 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { configureGSN, deployHub, startRelay, stopRelay } from '../TestUtils'
+import { configureGSN, deployHub, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
@@ -106,7 +106,7 @@ contract('KnownRelaysManager', function (
       const forwarderInstance = await Forwarder.new()
       const forwarderAddress = forwarderInstance.address
       testRecipient = await TestRecipient.new(forwarderAddress)
-      await registerForwarderForGsn(forwarderInstance)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
       paymaster = await TestPaymasterConfigurableMisbehavior.new()
       await paymaster.setTrustedForwarder(forwarderAddress)
@@ -137,29 +137,30 @@ contract('KnownRelaysManager', function (
       await relayHub.addRelayWorkers([workerPaymasterRejected], {
         from: activePaymasterRejected
       })
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('aaa'), { from: activeTransactionRelayed })
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('bbb'), { from: activePaymasterRejected })
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('ccc'), { from: activeRelayWorkersAdded })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('http://aaa.test'), { from: activeTransactionRelayed })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('http://bbb.test'), { from: activePaymasterRejected })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('http://ccc.test'), { from: activeRelayWorkersAdded })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('http://ccc.test'), { from: activeRelayWorkersAdded })
 
       /** events that are supposed to be visible to the manager */
-      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('ddd'), { from: activeRelayServerRegistered })
+      await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('http://ddd.test'), { from: activeRelayServerRegistered })
       await relayHub.addRelayWorkers([workerRelayWorkersAdded2], {
         from: activeRelayWorkersAdded
       })
-      await relayHub.relayCall(10e6, txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', {
+      await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, txTransactionRelayed.relayRequest, txTransactionRelayed.signature, '0x', {
         from: workerTransactionRelayed,
         gas,
         gasPrice: txTransactionRelayed.relayRequest.relayData.maxFeePerGas
       })
       await paymaster.setReturnInvalidErrorCode(true)
-      await relayHub.relayCall(10e6, txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', {
+      await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, txPaymasterRejected.relayRequest, txPaymasterRejected.signature, '0x', {
         from: workerPaymasterRejected,
         gas,
         gasPrice: txPaymasterRejected.relayRequest.relayData.maxFeePerGas
       })
     })
 
-    it('should contain all relay managers from chain',
+    it('should contain all relay managers from chain with valid relay URL',
       async function () {
         const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
         const infos = await knownRelaysManager.getRelayInfoForManagers()
@@ -171,23 +172,49 @@ contract('KnownRelaysManager', function (
         assert.equal(actual[3], activeRelayServerRegistered)
       })
 
+    it('should not contain relay managers from chain with valid relay URL',
+      async function () {
+        const id = (await snapshot()).result
+        const relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
+        const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
+        let infos = await knownRelaysManager.getRelayInfoForManagers()
+        const actual = infos.map(info => info.relayManager)
+        assert.equal(actual.length, 4)
+        // creating garbage registrations and breaking accounts' roles in other tests - only testing if URL valid here
+        await stake(testToken, stakeManager, relayHub, workerRelayWorkersAdded, owner)
+        await stake(testToken, stakeManager, relayHub, workerTransactionRelayed, owner)
+        await stake(testToken, stakeManager, relayHub, workerNotActive, owner)
+        await relayHub.addRelayWorkers([activeRelayWorkersAdded], { from: workerRelayWorkersAdded })
+        await relayHub.addRelayWorkers([activeRelayServerRegistered], { from: workerTransactionRelayed })
+        await relayHub.addRelayWorkers([activePaymasterRejected], { from: workerNotActive })
+        await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: workerRelayWorkersAdded })
+        await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('invalid'), { from: workerTransactionRelayed })
+        await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('https://www.example.com'), { from: workerNotActive })
+        infos = await knownRelaysManager.getRelayInfoForManagers()
+        assert.equal(infos.length, 5)
+        assert.equal(infos[4].relayManager, workerNotActive)
+        assert.equal(infos[4].relayUrl, 'https://www.example.com')
+        // undo all garbage registrations
+        await revert(id)
+      })
+
     describe('#getRelaysShuffledForTransaction()', function () {
       it('should separate relays that have recent failures into a third class', async function () {
         const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, Object.assign({}, config, { preferredRelays: ['http://localhost:8090'] }))
         await knownRelaysManager.refresh()
         assert.equal(knownRelaysManager.allRelayers.length, 4)
-        knownRelaysManager.saveRelayFailure(100, activeTransactionRelayed, 'aaa')
-        knownRelaysManager.saveRelayFailure(100, activePaymasterRejected, 'bbb')
-        knownRelaysManager.saveRelayFailure(100, activeRelayWorkersAdded, 'ccc')
+        knownRelaysManager.saveRelayFailure(100, activeTransactionRelayed, 'http://aaa.test')
+        knownRelaysManager.saveRelayFailure(100, activePaymasterRejected, 'http://bbb.test')
+        knownRelaysManager.saveRelayFailure(100, activeRelayWorkersAdded, 'http://ccc.test')
         const shuffled = await knownRelaysManager.getRelaysShuffledForTransaction()
         assert.equal(shuffled[0].length, 1)
         assert.equal(shuffled[0][0].relayUrl, 'http://localhost:8090', 'wrong preffered relay URL')
         assert.equal(shuffled[1].length, 1)
-        assert.equal(shuffled[1][0].relayUrl, 'ddd', 'wrong good relay url')
+        assert.equal(shuffled[1][0].relayUrl, 'http://ddd.test', 'wrong good relay url')
         assert.equal(shuffled[2].length, 3)
-        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'aaa'), 'wrong bad relay url')
-        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'bbb'), 'wrong bad relay url')
-        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'ccc'), 'wrong bad relay url')
+        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'http://aaa.test'), 'wrong bad relay url')
+        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'http://bbb.test'), 'wrong bad relay url')
+        assert.isDefined(shuffled[2].find(it => it.relayUrl === 'http://ccc.test'), 'wrong bad relay url')
       })
 
       describe('#_refreshFailures()', function () {
@@ -285,10 +312,10 @@ contract('KnownRelaysManager 2', function (accounts) {
       await stake(testToken, stakeManager, relayHub, accounts[2], accounts[0])
       await stake(testToken, stakeManager, relayHub, accounts[3], accounts[0])
       await stake(testToken, stakeManager, relayHub, accounts[4], accounts[0])
-      await register(relayHub, accounts[1], accounts[6], 'stakeAndAuthorization1')
-      await register(relayHub, accounts[2], accounts[7], 'stakeAndAuthorization2')
-      await register(relayHub, accounts[3], accounts[8], 'stakeUnlocked')
-      await register(relayHub, accounts[4], accounts[9], 'hubUnauthorized')
+      await register(relayHub, accounts[1], accounts[6], 'http://stakeAndAuthorization1.test')
+      await register(relayHub, accounts[2], accounts[7], 'http://stakeAndAuthorization2.test')
+      await register(relayHub, accounts[3], accounts[8], 'http://stakeUnlocked.test')
+      await register(relayHub, accounts[4], accounts[9], 'http://hubUnauthorized.test')
 
       await stakeManager.unlockStake(accounts[3])
       await stakeManager.unauthorizeHubByOwner(accounts[4], relayHub.address)
@@ -307,8 +334,8 @@ contract('KnownRelaysManager 2', function (accounts) {
       assert.deepEqual(activeRelays.map((r: any) => r.relayUrl),
         [
           'http://localhost:8090',
-          'stakeAndAuthorization1',
-          'stakeAndAuthorization2'
+          'http://stakeAndAuthorization1.test',
+          'http://stakeAndAuthorization2.test'
         ])
     })
 
@@ -320,7 +347,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       await knownRelaysManagerWithFilter.refresh()
       const relays = knownRelaysManagerWithFilter.allRelayers
       assert.equal(relays.length, 1)
-      assert.equal(relays[0].relayUrl, 'stakeAndAuthorization2')
+      assert.equal(relays[0].relayUrl, 'http://stakeAndAuthorization2.test')
     })
 
     it('should use DefaultRelayFilter to remove unsuitable relays when none was provided', async function () {

@@ -31,6 +31,7 @@ import {
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { deployHub, encodeRevertReason } from './TestUtils'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const TestToken = artifacts.require('TestToken')
 const StakeManager = artifacts.require('StakeManager')
@@ -73,6 +74,7 @@ async function makeRequest (
     relayHubAddress: relayHubInstance.address
   }
   const contractInteractor = new ContractInteractor({
+    domainSeparatorName: defaultGsnConfig.domainSeparatorName,
     environment: defaultEnvironment,
     provider: web3.eth.currentProvider as HttpProvider,
     alternateProviders: [],
@@ -89,6 +91,7 @@ async function makeRequest (
   const sig = await getEip712Signature(
     web3,
     new TypedRequestData(
+      defaultGsnConfig.domainSeparatorName,
       chainId,
       filledRequest.relayData.forwarder,
       filledRequest
@@ -148,7 +151,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     const testUtil = await TestUtil.new()
     chainId = (await testUtil.libGetChainID()).toNumber()
 
-    await registerForwarderForGsn(forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     target = recipientContract.address
     relayHub = relayHubInstance.address
@@ -225,7 +228,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
+      const res = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -251,7 +254,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       // @ts-ignore
       const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit))
       await expectRevert(
-        relayHubInstance.relayCall(10e6, r.req, r.sig, hugeApprovalData, {
+        relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, hugeApprovalData, {
           from: relayWorker,
           gas: externalGasLimit,
           gasPrice
@@ -272,8 +275,8 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 998)
-      const relayCallParams: [number, RelayRequest, string, string, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData]
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1094)
+      const relayCallParams: [string, number, RelayRequest, string, string, Truffle.TransactionDetails?] = [defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, hugeApprovalData]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       // @ts-ignore
       assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
@@ -300,8 +303,8 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       const gasAndDataLimits = await paymasterContract.getGasAndDataLimits()
       // @ts-ignore
-      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 998)
-      const relayCallParams: [number, RelayRequest, string, string, Truffle.TransactionDetails?] = [10e6, r.req, r.sig, hugeApprovalData]
+      const hugeApprovalData = '0x' + 'ef'.repeat(parseInt(gasAndDataLimits.calldataSizeLimit) - 1094)
+      const relayCallParams: [string, number, RelayRequest, string, string, Truffle.TransactionDetails?] = [defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, hugeApprovalData]
       const method = relayHubInstance.contract.methods.relayCall(...relayCallParams)
       // @ts-ignore
       assert.equal(gasAndDataLimits.calldataSizeLimit, toBuffer(method.encodeABI()).length.toString(),
@@ -338,14 +341,14 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
       // @ts-ignore
       const maxAcceptanceBudget = parseInt(gasLimits.acceptanceBudget)
       // fail if a bit lower
-      expectRevert(relayHubInstance.relayCall(maxAcceptanceBudget - 1, r.req, r.sig, '0x', {
+      expectRevert(relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, maxAcceptanceBudget - 1, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
       }), 'acceptance budget too high')
 
       // but succeed if the value is OK
-      const res = await relayHubInstance.relayCall(maxAcceptanceBudget, r.req, r.sig, '0x', {
+      const res = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, maxAcceptanceBudget, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -367,7 +370,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
         }
       }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
+      const res = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -398,7 +401,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      expectRevert(relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
+      expectRevert(relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -416,7 +419,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
+      const res = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -439,7 +442,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
+      const res = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -467,7 +470,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
+      const res = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -486,7 +489,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
+      const res = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice
@@ -511,7 +514,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
 
       }, sharedRelayRequestData, chainId, forwarderInstance, relayHubInstance)
 
-      const res = await relayHubInstance.relayCall(10e6, r.req, r.sig, '0x', {
+      const res = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, r.req, r.sig, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
         gasPrice

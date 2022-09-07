@@ -40,7 +40,7 @@ import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { configureServer, ServerConfigParams, serverDefaultConfiguration } from '@opengsn/relay/dist/ServerConfigParams'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
-import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 
 import { deployHub } from './TestUtils'
 
@@ -129,7 +129,7 @@ export class ServerTestEnvironment {
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
     this.paymaster = await TestPaymasterEverythingAccepted.new()
-    await registerForwarderForGsn(this.forwarder)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, this.forwarder)
 
     await this.paymaster.setTrustedForwarder(this.forwarder.address)
     await this.paymaster.setRelayHub(this.relayHub.address)

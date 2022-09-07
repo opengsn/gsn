@@ -14,6 +14,6 @@ contract TestRelayWorkerContract {
         bytes memory signature)
     public
     {
-        hub.relayCall(maxAcceptanceBudget, relayRequest, signature, "");
+        hub.relayCall("GSN Relayed Transaction", maxAcceptanceBudget, relayRequest, signature, "");
     }
 }
