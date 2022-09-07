@@ -152,6 +152,8 @@ export class RelayServer extends EventEmitter {
       relayHubAddress: this.relayHubContract?.address ?? '',
       ownerAddress: this.config.ownerAddress,
       minMaxPriorityFeePerGas: this.getMinMaxPriorityFeePerGas().toString(),
+      maxMaxFeePerGas: this.config.maxMaxFeePerGas,
+      minMaxFeePerGas: this.minMaxFeePerGas.toString(),
       maxAcceptanceBudget: this._getPaymasterMaxAcceptanceBudget(paymaster),
       chainId: this.chainId.toString(),
       networkId: this.networkId.toString(),
@@ -231,9 +233,9 @@ export class RelayServer extends EventEmitter {
       throw new Error(
         `maxFeePerGas given ${requestMaxFee} too low. Minimum maxFeePerGas server accepts: ${this.minMaxFeePerGas}`)
     }
-    if (parseInt(this.config.maxFeePerGas) < requestMaxFee) {
+    if (parseInt(this.config.maxMaxFeePerGas) < requestMaxFee) {
       throw new Error(
-        `maxFee given ${requestMaxFee} too high : ${this.config.maxFeePerGas}`)
+        `maxFee given ${requestMaxFee} too high : ${this.config.maxMaxFeePerGas}`)
     }
     if (requestMaxFee < requestPriorityFee) {
       throw new Error(
@@ -665,24 +667,29 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _refreshGasFees (): Promise<void> {
-    const { baseFeePerGas, priorityFeePerGas } = await this.contractInteractor.getGasFees()
+    const { baseFeePerGas, priorityFeePerGas } = await this.contractInteractor.getGasFees(this.config.getGasFeesBlocks, this.config.getGasFeesPercentile)
 
     // server will not accept Relay Requests with MaxFeePerGas lower than BaseFeePerGas of a recent block
     this.minMaxFeePerGas = parseInt(baseFeePerGas)
 
-    const minMaxPriorityFeePerGas = parseInt(priorityFeePerGas)
-    this.minMaxPriorityFeePerGas = Math.floor(minMaxPriorityFeePerGas * this.config.gasPriceFactor)
+    this.minMaxPriorityFeePerGas = Math.floor(parseInt(priorityFeePerGas) * this.config.gasPriceFactor)
     if (this.minMaxPriorityFeePerGas === 0 && parseInt(this.config.defaultPriorityFee) > 0) {
       this.logger.debug(`Priority fee received from node is 0. Setting priority fee to ${this.config.defaultPriorityFee}`)
       this.minMaxPriorityFeePerGas = parseInt(this.config.defaultPriorityFee)
     }
 
-    if (this.minMaxPriorityFeePerGas > parseInt(this.config.maxFeePerGas)) {
-      throw new Error(`network maxPriorityFeePerGas ${this.minMaxPriorityFeePerGas} is higher than config.maxFeePerGas ${this.config.maxFeePerGas}`)
+    if (this.minMaxPriorityFeePerGas > parseInt(this.config.maxMaxFeePerGas)) {
+      throw new Error(`network maxPriorityFeePerGas ${this.minMaxPriorityFeePerGas} is higher than config.maxMaxFeePerGas ${this.config.maxMaxFeePerGas}`)
     }
 
-    if (this.minMaxFeePerGas > parseInt(this.config.maxFeePerGas)) {
-      throw new Error(`network minMaxFeePerGas ${this.minMaxFeePerGas} is higher than config.maxFeePerGas ${this.config.maxFeePerGas}`)
+    if (this.minMaxFeePerGas > parseInt(this.config.maxMaxFeePerGas)) {
+      throw new Error(`network minMaxFeePerGas ${this.minMaxFeePerGas} is higher than config.maxMaxFeePerGas ${this.config.maxMaxFeePerGas}`)
+    }
+
+    const currentNetworkFeePerGas = parseInt(baseFeePerGas) + parseInt(priorityFeePerGas)
+    const shareOfMaximum = currentNetworkFeePerGas / parseInt(this.config.maxMaxFeePerGas)
+    if (shareOfMaximum > 0.7) {
+      this.logger.warn(`WARNING! Current network's reasonable fee per gas ${currentNetworkFeePerGas} is dangerously close to the config.maxMaxFeePerGas ${this.config.maxMaxFeePerGas}`)
     }
   }
 
