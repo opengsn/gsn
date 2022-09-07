@@ -188,6 +188,7 @@ contract('RelayClient', function (accounts) {
     await testToken.approve(stakeManager.address, stake, { from: accounts[1] })
 
     relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
+      maxMaxFeePerGas: Number.MAX_SAFE_INTEGER.toString(),
       initialReputation: 100,
       stake: 1e18.toString(),
       relayOwner: accounts[1],
@@ -345,6 +346,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should skip timed-out server', async function () {
+      await evmMineMany(10)
       let server: Server | undefined
       try {
         const pingResponse = await axios.get('http://localhost:8090/getaddr').then(res => res.data)
@@ -655,6 +657,8 @@ contract('RelayClient', function (accounts) {
         relayWorkerAddress: relayWorkerAddress,
         relayManagerAddress: relayManager,
         relayHubAddress: relayManager,
+        minMaxFeePerGas: '',
+        maxMaxFeePerGas: '',
         minMaxPriorityFeePerGas: '',
         maxAcceptanceBudget: 1e10.toString(),
         ready: true,
@@ -989,6 +993,7 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should use preferred relay if one is set', async () => {
+      await evmMineMany(10)
       relayClient = new RelayClient({
         provider: underlyingProvider,
         config: {

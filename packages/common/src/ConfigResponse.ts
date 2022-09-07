@@ -81,6 +81,16 @@ export interface GSNConfig {
   gasPriceFactorPercent: number
 
   /**
+   * The number of past blocks to query in 'eth_getGasFees' RPC request.
+   */
+  getGasFeesBlocks: number
+
+  /**
+   * The miner reward "percentile" to query in 'eth_getGasFees' RPC request.
+   */
+  getGasFeesPercentile: number
+
+  /**
    * The URL to access to get the gas price from.
    * This is done instead of reading the 'gasPrice'/'maxPriorityFeePerGas' from the RPC node.
    */

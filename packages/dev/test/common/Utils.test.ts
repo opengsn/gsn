@@ -264,8 +264,8 @@ contract('Utils', function (accounts) {
     })
 
     it('should select at random if multiple responses resolve', async () => {
-      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['', ''], 100, () => 0).then(r => r.winner), 1)
-      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['', ''], 100, () => 0.6).then(r => r.winner), 2)
+      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['a', 'b'], 100, () => 0).then(r => r.winner), 1)
+      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['a', 'b'], 100, () => 0.6).then(r => r.winner), 2)
     })
 
     it('should reject with first error if all fail', async () => {
@@ -278,7 +278,7 @@ contract('Utils', function (accounts) {
       const now = Date.now()
       await waitForSuccess(
         [Promise.reject(Error('err1')), after(50), after(20)],
-        ['', '', ''],
+        ['a', 'b', 'c'],
         2000)
 
       assert.closeTo(Date.now() - now, 50, 200, 'should not wait entire 2000 grace time if all are completed')
@@ -287,7 +287,7 @@ contract('Utils', function (accounts) {
     it('should ignore rejection if at least one response is successful', async () => {
       const res = await waitForSuccess(
         [Promise.reject(Error('err1')), after(50), after(1000)],
-        ['', '', ''],
+        ['a', 'b', 'c'],
         200)
       assert.equal(res.winner, 50)
     })
@@ -295,17 +295,26 @@ contract('Utils', function (accounts) {
     it('should wait after first response', async () => {
       const res1 = await waitForSuccess(
         [after(1), after(50), after(1000)],
-        ['', '', ''],
+        ['a', 'b', 'c'],
         200, () => 0
       )
       assert.equal(res1.winner, 1)
 
       const res2 = await waitForSuccess(
         [after(1), after(50), after(1000)],
-        ['', '', ''],
+        ['a', 'b', 'c'],
         200, () => 0.9
       )
       assert.equal(res2.winner, 50)
+    })
+
+    it('should throw if input has duplicate keys', async function () {
+      await expect(
+        waitForSuccess(
+          [after(1), after(50), after(1000)],
+          ['a', 'b', 'a'],
+          200, () => 0.9)
+      ).to.be.eventually.rejectedWith('waitForSuccess: duplicate relay URL keys, aborting')
     })
   })
 })
