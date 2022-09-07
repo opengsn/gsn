@@ -81,6 +81,16 @@ export interface GSNConfig {
   gasPriceFactorPercent: number
 
   /**
+   * The number of past blocks to query in 'eth_getGasFees' RPC request.
+   */
+  getGasFeesBlocks: number
+
+  /**
+   * The miner reward "percentile" to query in 'eth_getGasFees' RPC request.
+   */
+  getGasFeesPercentile: number
+
+  /**
    * The URL to access to get the gas price from.
    * This is done instead of reading the 'gasPrice'/'maxPriorityFeePerGas' from the RPC node.
    */
@@ -180,4 +190,11 @@ export interface GSNConfig {
    * The number of milliseconds to wait after the first Relay Server responds to the ping before picking a winner.
    */
   waitForSuccessPingGrace: number
+
+  /**
+   * The name of the EIP-712 Domain Separator field. Note that this is usually the name of the requiest the
+   * users will see in MetaMask or other wallets.
+   * Note: The domain type must be first registered on-chain by calling 'Forwarder::registerDomainSeparator'.
+   */
+  domainSeparatorName: string
 }

@@ -84,9 +84,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     })
   })
 
-  describe.skip('#_worker()', function () {
-  })
-
   describe('#isReady after exception', () => {
     let relayServer: RelayServer
     beforeEach(async () => {
@@ -267,7 +264,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
 
       it('should fail to relay with high maxPriorityFeePerGas', async function () {
-        const wrongFee = parseInt(env.relayServer.config.maxFeePerGas) + 1
+        const wrongFee = parseInt(env.relayServer.config.maxMaxFeePerGas) + 1
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.maxFeePerGas = wrongFee.toString()
         try {
@@ -276,7 +273,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         } catch (e: any) {
           assert.include(e.message,
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            `maxFee given ${wrongFee} too high : ${env.relayServer.config.maxFeePerGas}`)
+            `maxFee given ${wrongFee} too high : ${env.relayServer.config.maxMaxFeePerGas}`)
         }
       })
 
@@ -288,8 +285,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           assert.fail()
         } catch (e: any) {
           assert.include(e.message,
-            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            `Network ${env.relayServer.contractInteractor.getNetworkType()} doesn't support eip1559`)
+            'Current network (1337) does not support EIP-1559 transactions.')
         }
       })
 
@@ -329,6 +325,39 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           assert.include(e.message,
             `Paymaster ${blacklistedPaymaster} is blacklisted!`)
         }
+      })
+
+      describe('in private mode with "url" set to empty string', function () {
+        const whitelistedPaymaster = '0xdeadface0000'
+        const notWhitelistedPaymaster = '0xdeadfaceaaaa'
+        const notWhitelistedRecipient = '0xdeadfacebbbb'
+
+        beforeEach(function () {
+          env.relayServer.config.url = ''
+          env.relayServer.config.whitelistedPaymasters = [whitelistedPaymaster]
+          // recipient address is checked for whitelist second so it does not matter for the test
+          env.relayServer.config.whitelistedRecipients = [whitelistedPaymaster]
+        })
+
+        it('should fail to relay in private mode with Recipient not in a whitelist', async function () {
+          const req = await env.createRelayHttpRequest()
+          req.relayRequest.relayData.paymaster = whitelistedPaymaster
+          req.relayRequest.request.to = notWhitelistedRecipient
+          expect(() => env.relayServer.validateInput(req)).to.throw(`Recipient ${notWhitelistedRecipient} is not whitelisted!`)
+        })
+
+        it('should fail to relay in private mode with Paymaster not in a whitelist', async function () {
+          const req = await env.createRelayHttpRequest()
+          req.relayRequest.relayData.paymaster = notWhitelistedPaymaster
+          expect(() => env.relayServer.validateInput(req)).to.throw(`Paymaster ${notWhitelistedPaymaster} is not whitelisted!`)
+        })
+
+        it('should validate request in private mode with empty Paymaster and Recipient whitelists', async function () {
+          const req = await env.createRelayHttpRequest()
+          env.relayServer.config.whitelistedPaymasters = []
+          env.relayServer.config.whitelistedRecipients = []
+          env.relayServer.validateInput(req)
+        })
       })
     })
 
@@ -384,7 +413,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       it('should set min gas price to network average * gas price factor', async function () {
         env.relayServer.minMaxPriorityFeePerGas = 0
         await env.relayServer._refreshGasFees()
-        const priorityFee = parseInt((await env.relayServer.contractInteractor.getGasFees()).priorityFeePerGas)
+        const priorityFee = parseInt((await env.relayServer.contractInteractor.getGasFees(5, 50)).priorityFeePerGas)
         assert.equal(env.relayServer.minMaxPriorityFeePerGas, env.relayServer.config.gasPriceFactor * priorityFee)
       })
       it('should fix zero minMaxPriorityFeePerGas only if config.defaultPriorityFee is greater than zero', async function () {
@@ -409,17 +438,17 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
       it('should throw when min gas price is higher than max', async function () {
         await env.relayServer._refreshGasFees()
-        const originalMaxPrice = env.relayServer.config.maxFeePerGas
-        env.relayServer.config.maxFeePerGas = (env.relayServer.minMaxPriorityFeePerGas - 1).toString()
+        const originalMaxPrice = env.relayServer.config.maxMaxFeePerGas
+        env.relayServer.config.maxMaxFeePerGas = (env.relayServer.minMaxPriorityFeePerGas - 1).toString()
         try {
           await env.relayServer._refreshGasFees()
           assert.fail()
         } catch (e: any) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           assert.include(e.message,
-            `network maxPriorityFeePerGas ${env.relayServer.minMaxPriorityFeePerGas} is higher than config.maxFeePerGas ${env.relayServer.config.maxFeePerGas}`)
+            `network maxPriorityFeePerGas ${env.relayServer.minMaxPriorityFeePerGas} is higher than config.maxMaxFeePerGas ${env.relayServer.config.maxMaxFeePerGas}`)
         } finally {
-          env.relayServer.config.maxFeePerGas = originalMaxPrice
+          env.relayServer.config.maxMaxFeePerGas = originalMaxPrice
         }
       })
     })
@@ -542,7 +571,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
     async function fixTxDetails (details: Partial<GsnTransactionDetails>, type: number): Promise<void> {
       if (type === TransactionType.TYPE_TWO) {
-        const { baseFeePerGas, priorityFeePerGas } = await env.relayServer.contractInteractor.getGasFees()
+        const { baseFeePerGas, priorityFeePerGas } = await env.relayServer.contractInteractor.getGasFees(5, 50)
         details.maxFeePerGas = toHex(parseInt(baseFeePerGas) + parseInt(priorityFeePerGas))
         details.maxPriorityFeePerGas = toHex(priorityFeePerGas)
         assert.isTrue(details.maxFeePerGas > details.maxPriorityFeePerGas)

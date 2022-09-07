@@ -68,6 +68,8 @@ contract('PenalizationFlow', function (accounts) {
         relayManagerAddress,
         relayHubAddress: env.relayHub.address,
         minMaxPriorityFeePerGas: '0',
+        minMaxFeePerGas: '0',
+        maxMaxFeePerGas: Number.MAX_SAFE_INTEGER.toString(),
         maxAcceptanceBudget: '999999999',
         ready: true,
         version: gsnRuntimeVersion
@@ -123,6 +125,8 @@ contract('PenalizationFlow', function (accounts) {
       assert.equal(auditResult?.commitTxHash?.length, 66)
 
       // let the relay run its 'intervalHandler'
+      await evmMineMany(5)
+      await sleep(1000)
       await evmMineMany(5)
       await sleep(1000)
 

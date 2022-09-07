@@ -245,6 +245,20 @@ context('#ServerConfigParams', () => {
         await expectRevert(resolveServerConfig(config, provider), 'missing param: ownerAddress')
       })
 
+      it('should fail on whitelisting paymaster or recipient addresses for public relay', async () => {
+        const fullConfig: Partial<ServerConfigParams> = {
+          relayHubAddress: hub.address,
+          url: 'fake.url.com',
+          workdir: '/path/to/somewhere/',
+          ownerAddress: constants.BURN_ADDRESS,
+          managerStakeTokenAddress: constants.BURN_ADDRESS
+        }
+        let config: Partial<ServerConfigParams> = { whitelistedPaymasters: ['something'], ...fullConfig }
+        await expectRevert(resolveServerConfig(config, provider), 'Cannot whitelist recipients or paymasters on a public Relay Server')
+        config = { whitelistedRecipients: ['something'], ...fullConfig }
+        await expectRevert(resolveServerConfig(config, provider), 'Cannot whitelist recipients or paymasters on a public Relay Server')
+      })
+
       it('should fail on zero owner address', async () => {
         const config = {
           relayHubAddress: hub.address,

@@ -135,6 +135,7 @@ export class RelayedTransactionValidator {
 
   _validateTransactionContent (request: RelayTransactionRequest, transaction: TypedTransaction): boolean {
     const relayRequestAbiEncode = this.contractInteractor.encodeABI({
+      domainSeparatorName: request.metadata.domainSeparatorName,
       relayRequest: request.relayRequest,
       signature: request.metadata.signature,
       approvalData: request.metadata.approvalData,

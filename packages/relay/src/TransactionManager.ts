@@ -313,10 +313,10 @@ data                     | ${transaction.data}
     }
     // TODO: use BN for ETH values
     // Sanity check to ensure we are not burning all our balance in gas fees
-    if (newMaxFee > parseInt(this.config.maxFeePerGas)) {
+    if (newMaxFee > parseInt(this.config.maxMaxFeePerGas)) {
       isMaxGasPriceReached = true
-      this.logger.warn(`Adjusting newMaxFee ${newMaxFee} to maxFeePerGas ${this.config.maxFeePerGas}`)
-      newMaxFee = parseInt(this.config.maxFeePerGas)
+      this.logger.warn(`Adjusting newMaxFee ${newMaxFee} to maxFeePerGas ${this.config.maxMaxFeePerGas}`)
+      newMaxFee = parseInt(this.config.maxMaxFeePerGas)
     }
     if (newMaxPriorityFee > newMaxFee) {
       this.logger.warn(`Adjusting newMaxPriorityFee ${newMaxPriorityFee} to newMaxFee ${newMaxFee}`)
@@ -412,7 +412,10 @@ data                     | ${transaction.data}
     }
 
     // Calculate new gas price as a % increase over the previous one, with a minimum value
-    const gasFees = await this.contractInteractor.getGasFees()
+    const gasFees = await this.contractInteractor.getGasFees(
+      this.config.getGasFeesBlocks,
+      this.config.getGasFeesPercentile
+    )
     const {
       newMaxFee,
       newMaxPriorityFee,
@@ -427,7 +430,7 @@ data                     | ${transaction.data}
         this.logger.debug(`Replaced transaction: nonce: ${transaction.nonce} sender: ${signer} | ${transaction.txId} => ${boostedTransactionDetails.transactionHash}`)
       } else { // The tx is ok, just rebroadcast it
         try {
-          await this.resendTransaction(transaction, currentBlock, transaction.maxFeePerGas, transaction.maxPriorityFeePerGas, transaction.maxFeePerGas > parseInt(this.config.maxFeePerGas))
+          await this.resendTransaction(transaction, currentBlock, transaction.maxFeePerGas, transaction.maxPriorityFeePerGas, transaction.maxFeePerGas > parseInt(this.config.maxMaxFeePerGas))
         } catch (e: any) {
           this.logger.error(`Rebroadcasting existing transaction: ${(e as Error).message}`)
         }

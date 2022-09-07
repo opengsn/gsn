@@ -121,12 +121,16 @@ export class AccountManager {
     return this._signWithControlledKey(this.findPrivateKey(from), typedMessage)
   }
 
-  async sign (relayRequest: RelayRequest): Promise<PrefixedHexString> {
+  async sign (
+    domainSeparatorName: string,
+    relayRequest: RelayRequest
+  ): Promise<PrefixedHexString> {
     let signature
     const forwarder = relayRequest.relayData.forwarder
 
     const cloneRequest = { ...relayRequest }
     const signedData = new TypedRequestData(
+      domainSeparatorName,
       this.chainId,
       forwarder,
       cloneRequest

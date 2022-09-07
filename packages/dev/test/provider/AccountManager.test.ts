@@ -10,6 +10,7 @@ import { AccountManager } from '@opengsn/provider/dist/AccountManager'
 import { RelayRequest, TypedRequestData, defaultEnvironment, isSameAddress } from '@opengsn/common'
 
 import { configureGSN } from '../TestUtils'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -97,11 +98,12 @@ contract('AccountManager', function (accounts) {
     it('should use internally controlled keypair for signing if available', async function () {
       relayRequest.request.from = address
       const signedData = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         defaultEnvironment.chainId,
         constants.ZERO_ADDRESS,
         relayRequestWithoutExtraData(relayRequest)
       )
-      const signature = await accountManager.sign(relayRequest)
+      const signature = await accountManager.sign(defaultGsnConfig.domainSeparatorName, relayRequest)
       const rec = recoverTypedSignature({
         data: signedData,
         signature,
@@ -114,11 +116,12 @@ contract('AccountManager', function (accounts) {
     it('should ask provider to sign if key is not controlled', async function () {
       relayRequest.request.from = accounts[0]
       const signedData = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         defaultEnvironment.chainId,
         constants.ZERO_ADDRESS,
         relayRequestWithoutExtraData(relayRequest)
       )
-      const signature = await accountManager.sign(relayRequest)
+      const signature = await accountManager.sign(defaultGsnConfig.domainSeparatorName, relayRequest)
       const rec = recoverTypedSignature({
         data: signedData,
         signature,
@@ -130,7 +133,7 @@ contract('AccountManager', function (accounts) {
     })
     it('should throw if web3 fails to sign with requested address', async function () {
       relayRequest.request.from = '0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee'
-      const promise = accountManager.sign(relayRequest)
+      const promise = accountManager.sign(defaultGsnConfig.domainSeparatorName, relayRequest)
       await expect(promise).to.be.eventually.rejectedWith('Failed to sign relayed transaction for 0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee')
     })
   })
