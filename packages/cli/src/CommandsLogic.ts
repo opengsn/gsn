@@ -39,6 +39,7 @@ import WrappedEthToken from './compiled/WrappedEthToken.json'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -585,7 +586,7 @@ export class CommandsLogic {
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, fInstance, deployOptions.skipConfirmation)
     }
-    await registerForwarderForGsn(fInstance, console, options)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, fInstance, console, options)
 
     let stakingTokenAddress = deployOptions.stakingTokenAddress
 

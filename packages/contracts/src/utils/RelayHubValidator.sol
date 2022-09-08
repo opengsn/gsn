@@ -13,6 +13,7 @@ library RelayHubValidator {
 
     /// @notice Validate that encoded `relayCall` is properly packed without any extra bytes
     function verifyTransactionPacking(
+        string calldata domainSeparatorName,
         GsnTypes.RelayRequest calldata relayRequest,
         bytes calldata signature,
         bytes calldata approvalData
@@ -26,7 +27,8 @@ library RelayHubValidator {
         // relayData 8 members
         // ForwardRequest: 7 members
         // total 21 32-byte words if all dynamic params are zero-length.
-        uint256 expectedMsgDataLen = 4 + 21 * 32 +
+        uint256 expectedMsgDataLen = 4 + 22 * 32 +
+            dynamicParamSize(bytes(domainSeparatorName)) +
             dynamicParamSize(signature) +
             dynamicParamSize(approvalData) +
             dynamicParamSize(relayRequest.request.data) +

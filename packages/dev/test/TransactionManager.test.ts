@@ -37,16 +37,16 @@ contract('TransactionManager', function (accounts) {
       assert.isFalse(newFees.isMaxGasPriceReached)
     })
     it('should return new gas fees when new maxFee above maxFeePerGas', async function () {
-      const maxFeePerGas = parseInt(transactionManager.config.maxFeePerGas) - 1
+      const maxFeePerGas = parseInt(transactionManager.config.maxMaxFeePerGas) - 1
       const maxPriorityFeePerGas = 1e9
       const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
-      assert.equal(newFees.newMaxFee.toString(), transactionManager.config.maxFeePerGas)
+      assert.equal(newFees.newMaxFee.toString(), transactionManager.config.maxMaxFeePerGas)
       assert.equal(newFees.newMaxPriorityFee, maxPriorityFeePerGas * transactionManager.config.retryGasPriceFactor)
       assert.isTrue(newFees.isMaxGasPriceReached)
     })
     it('should return new gas fees when new maxPriorityFee above maxFee', async function () {
       const maxFeePerGas = 1e9
-      const maxPriorityFeePerGas = parseInt(transactionManager.config.maxFeePerGas) - 1
+      const maxPriorityFeePerGas = parseInt(transactionManager.config.maxMaxFeePerGas) - 1
       assert.isTrue(maxFeePerGas < maxPriorityFeePerGas)
       const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
       assert.equal(newFees.newMaxFee, maxFeePerGas * transactionManager.config.retryGasPriceFactor)

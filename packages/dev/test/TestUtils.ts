@@ -106,8 +106,8 @@ export async function startRelay (
   if (options.refreshStateTimeoutBlocks) {
     args.push('--refreshStateTimeoutBlocks', options.refreshStateTimeoutBlocks)
   }
-  if (options.maxFeePerGas) {
-    args.push('--maxFeePerGas', options.maxFeePerGas)
+  if (options.maxMaxFeePerGas) {
+    args.push('--maxMaxFeePerGas', options.maxMaxFeePerGas)
   }
   let runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
   if (!fs.existsSync(runServerPath)) {

@@ -35,7 +35,7 @@ contract TestUtil {
     )
     external
     view {
-        GsnEip712Library.verify(relayRequest, signature);
+        GsnEip712Library.verify("GSN Relayed Transaction", relayRequest, signature);
     }
 
     function callForwarderVerifyAndCall(
@@ -48,7 +48,7 @@ contract TestUtil {
         bytes memory ret
     ) {
         bool forwarderSuccess;
-        (forwarderSuccess, success, ret) = GsnEip712Library.execute(relayRequest, signature);
+        (forwarderSuccess, success, ret) = GsnEip712Library.execute("GSN Relayed Transaction", relayRequest, signature);
         if (!forwarderSuccess) {
             GsnUtils.revertWithData(ret);
         }
@@ -71,7 +71,7 @@ contract TestUtil {
     }
 
     function libDomainSeparator(address forwarder) public view returns (bytes32) {
-        return GsnEip712Library.domainSeparator(forwarder);
+        return GsnEip712Library.domainSeparator("GSN Relayed Transaction", forwarder);
     }
 
     function libGetChainID() public view returns (uint256) {
