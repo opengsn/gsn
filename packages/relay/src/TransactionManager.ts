@@ -1,6 +1,7 @@
 // @ts-ignore
 import EthVal from 'ethval'
 import chalk from 'chalk'
+import { EventEmitter } from 'events'
 import { Mutex } from 'async-mutex'
 import { FeeMarketEIP1559Transaction, Transaction, TxOptions, TypedTransaction } from '@ethereumjs/tx'
 import { PrefixedHexString } from 'ethereumjs-util'
@@ -50,7 +51,7 @@ export interface SendTransactionDetails {
   creationBlockTimestamp: number
 }
 
-export class TransactionManager {
+export class TransactionManager extends EventEmitter {
   nonceMutex = new Mutex()
   managerKeyManager: KeyManager
   workersKeyManager: KeyManager
@@ -64,6 +65,7 @@ export class TransactionManager {
   rawTxOptions!: TxOptions
 
   constructor (dependencies: ServerDependencies, config: ServerConfigParams) {
+    super()
     this.contractInteractor = dependencies.contractInteractor
     this.txStoreManager = dependencies.txStoreManager
     this.workersKeyManager = dependencies.workersKeyManager
@@ -132,12 +134,13 @@ data                     | ${transaction.data}
     }
   }
 
-  async broadcastTransaction (signedTx: string, verifiedTxId: string, nonce: number): Promise<SignedTransactionDetails> {
+  async broadcastTransaction (signedTx: string, verifiedTxId: string, nonce: number, signer: string): Promise<SignedTransactionDetails> {
     try {
       const transactionHash = await this.contractInteractor.broadcastTransaction(signedTx)
       if (transactionHash.toLowerCase() !== verifiedTxId.toLowerCase()) {
         throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${verifiedTxId}`)
       }
+      this.emit('TransactionBroadcast')
       return {
         transactionHash,
         signedTx,
@@ -226,7 +229,7 @@ data                     | ${transaction.data}
     } finally {
       releaseMutex()
     }
-    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId, storedTx.nonce)
+    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId, storedTx.nonce, storedTx.from)
   }
 
   async updateTransactionWithMinedBlock (tx: StoredTransaction, minedBlock: ShortBlockInfo): Promise<void> {
@@ -296,7 +299,7 @@ data                     | ${transaction.data}
     const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
     this.logger.debug(`Current account nonce for ${tx.from} is ${currentNonce}`)
 
-    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId, storedTx.nonce)
+    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId, storedTx.nonce, storedTx.from)
   }
 
   _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number, minMaxPriorityFee: number, minMaxFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {

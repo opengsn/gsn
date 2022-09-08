@@ -74,6 +74,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const networkId = await env.web3.eth.net.getId()
       assert.notEqual(relayServerToInit.chainId, chainId)
       assert.notEqual(relayServerToInit.networkId, networkId)
+      assert.isTrue(relayServerToInit.shouldRefreshBalances)
       assert.equal(relayServerToInit.isReady(), false)
       const initTrustedPaymastersSpy = sinon.spy(relayServerToInit, '_initTrustedPaymasters')
       const registrationManagerSpy = sinon.spy(relayServerToInit.registrationManager, 'init')
@@ -93,7 +94,76 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     })
   })
 
-  describe.skip('#_worker()', function () {
+  describe('#_worker()', function () {
+    it('should return immediately if shouldn\'t refresh state', async function () {
+      await env.newServerInstance({})
+      await evmMineMany(1)
+      const latestBlock = (await env.web3.eth.getBlock('latest'))
+      const serverSpy = sinon.spy(env.relayServer)
+      await env.relayServer._worker(latestBlock)
+      sinon.assert.callOrder(
+        serverSpy._shouldRefreshState
+      )
+      sinon.assert.notCalled(
+        serverSpy.withdrawToOwnerIfNeeded
+      )
+      sinon.restore()
+    })
+    it('should call all maintenance functions to refresh state', async function () {
+      await env.newServerInstance({})
+      await evmMineMany(env.relayServer.config.refreshStateTimeoutBlocks + 1)
+      const latestBlock = (await env.web3.eth.getBlock('latest'))
+      const serverSpy = sinon.spy(env.relayServer)
+      await env.relayServer._worker(latestBlock)
+      sinon.assert.callOrder(
+        serverSpy._shouldRefreshState,
+        serverSpy.withdrawToOwnerIfNeeded,
+        serverSpy._refreshGasFees,
+        serverSpy._refreshAndCheckBalances,
+        serverSpy._handleChanges
+      )
+      sinon.restore()
+    })
+    it('should call all maintenance functions if not ready', async function () {
+      await env.newServerInstance({})
+      await evmMineMany(1)
+      const latestBlock = (await env.web3.eth.getBlock('latest'))
+      const serverSpy = sinon.spy(env.relayServer)
+      env.relayServer.setReadyState(false)
+      await env.relayServer._worker(latestBlock)
+      sinon.assert.callOrder(
+        serverSpy._shouldRefreshState,
+        serverSpy.withdrawToOwnerIfNeeded,
+        serverSpy._refreshGasFees,
+        serverSpy._refreshAndCheckBalances,
+        serverSpy._handleChanges
+      )
+      sinon.restore()
+    })
+  })
+
+  describe('#_handleChanges()', function () {
+    it('should call all maintenance functions on happy flow', async function () {
+      await env.newServerInstance()
+      await evmMineMany(1)
+      const latestBlock = (await env.web3.eth.getBlock('latest'))
+      const serverSpy = sinon.spy(env.relayServer)
+      const registrationSpy = sinon.spy(env.relayServer.registrationManager)
+      const tmSpy = sinon.spy(env.relayServer.transactionManager)
+      await env.relayServer._handleChanges(latestBlock)
+      sinon.assert.callOrder(
+        serverSpy.getAllHubEventsSinceLastScan,
+        registrationSpy.handlePastEvents,
+        tmSpy.fillMinedBlockDetailsForTransactions,
+        tmSpy.removeArchivedTransactions,
+        serverSpy._boostStuckPendingTransactions,
+        registrationSpy.isRegistered,
+        serverSpy.handlePastHubEvents,
+        serverSpy.replenishServer,
+        serverSpy._refreshAndCheckBalances
+      )
+      sinon.restore()
+    })
   })
 
   describe('#isReady after exception', () => {
@@ -366,6 +436,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
             creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
             creationBlockTimestamp: 0
           })
+          await env.relayServer._refreshAndCheckBalances()
         })
 
         it('should not throw with relayMaxNonce above current nonce', async function () {
@@ -380,6 +451,74 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
             assert.include(e.message, 'Unacceptable relayMaxNonce:')
           }
         })
+      })
+    })
+
+    describe('#_refreshAndCheckBalances()', function () {
+      beforeEach(async function () {
+        await env.newServerInstance()
+      })
+      it('should not refresh balances or change readiness if balances are high', async function () {
+        assert.isFalse(env.relayServer.shouldRefreshBalances)
+        const managerBalance = await env.relayServer.getManagerBalance()
+        const workerBalance = await env.relayServer.getWorkerBalance(0)
+        assert.isTrue(managerBalance.gte(toBN(env.relayServer.config.managerMinBalance)))
+        assert.isTrue(workerBalance.gte(toBN(env.relayServer.config.workerMinBalance)))
+
+        assert.isTrue(env.relayServer.isReady())
+        await env.relayServer._refreshAndCheckBalances()
+        assert.isTrue(env.relayServer.isReady())
+        assert.isFalse(env.relayServer.shouldRefreshBalances)
+
+        env.relayServer.setReadyState(false)
+        assert.isFalse(env.relayServer.isReady())
+        await env.relayServer._refreshAndCheckBalances()
+        assert.isFalse(env.relayServer.isReady())
+        assert.isFalse(env.relayServer.shouldRefreshBalances)
+      })
+      it('should refresh and set readiness to false if manager balance is lower than half the min', async function () {
+        assert.isTrue(env.relayServer.isReady())
+        env.relayServer.shouldRefreshBalances = true
+        const workerBalance = await env.relayServer.getWorkerBalance(0)
+        assert.isTrue(workerBalance.gte(toBN(env.relayServer.config.workerMinBalance)))
+        sinon.stub(env.relayServer.registrationManager.balanceRequired, 'currentValue').get(() => toBN(0)).set(() => {})
+        await env.relayServer._refreshAndCheckBalances()
+        assert.isFalse(env.relayServer.isReady())
+        assert.isTrue(env.relayServer.shouldRefreshBalances)
+        sinon.restore()
+      })
+      it('should refresh and set readiness to false if worker balance is lower than half the min', async function () {
+        assert.isTrue(env.relayServer.isReady())
+        env.relayServer.shouldRefreshBalances = true
+        const managerBalance = await env.relayServer.getManagerBalance()
+        assert.isTrue(managerBalance.gte(toBN(env.relayServer.config.managerMinBalance)))
+        sinon.stub(env.relayServer.workerBalanceRequired, 'currentValue').get(() => toBN(0)).set(() => {})
+        await env.relayServer._refreshAndCheckBalances()
+        assert.isFalse(env.relayServer.isReady())
+        assert.isTrue(env.relayServer.shouldRefreshBalances)
+        sinon.restore()
+      })
+      it('should refresh balances but not change readiness if manager balance is higher than half the min but lower than min', async function () {
+        assert.isTrue(env.relayServer.isReady())
+        env.relayServer.shouldRefreshBalances = true
+        const workerBalance = await env.relayServer.getWorkerBalance(0)
+        assert.isTrue(workerBalance.gte(toBN(env.relayServer.config.workerMinBalance)))
+        sinon.stub(env.relayServer.registrationManager.balanceRequired, 'currentValue').get(() => toBN(env.relayServer.config.managerMinBalance).divn(2).addn(1e6)).set(() => {})
+        await env.relayServer._refreshAndCheckBalances()
+        assert.isTrue(env.relayServer.isReady(), 'isReady wrong')
+        assert.isTrue(env.relayServer.shouldRefreshBalances, 'shouldRefreshBalances wrong')
+        sinon.restore()
+      })
+      it('should refresh balances but not change readiness if worker balance is higher than half the min but lower than min', async function () {
+        assert.isTrue(env.relayServer.isReady())
+        env.relayServer.shouldRefreshBalances = true
+        const managerBalance = await env.relayServer.getManagerBalance()
+        assert.isTrue(managerBalance.gte(toBN(env.relayServer.config.managerMinBalance)))
+        sinon.stub(env.relayServer.workerBalanceRequired, 'currentValue').get(() => toBN(env.relayServer.config.workerMinBalance).divn(2).addn(1e6)).set(() => {})
+        await env.relayServer._refreshAndCheckBalances()
+        assert.isTrue(env.relayServer.isReady(), 'isReady wrong')
+        assert.isTrue(env.relayServer.shouldRefreshBalances, 'shouldRefreshBalances wrong')
+        sinon.restore()
       })
     })
 
@@ -747,6 +886,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         creationBlockTimestamp: 0,
         value: toHex(workerBalanceBefore.sub(txCost))
       })
+      await relayServer._refreshAndCheckBalances()
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.isTrue(workerBalanceAfter.lt(toBN(relayServer.config.workerMinBalance)),
         'worker balance should be lower than min balance')
@@ -783,6 +923,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       })
       await env.web3.eth.sendTransaction(
         { from: accounts[0], to: relayServer.workerAddress, value: relayServer.config.workerTargetBalance })
+      await relayServer._refreshAndCheckBalances()
       const currentBlockNumber = await env.web3.eth.getBlockNumber()
       const receipts = await relayServer.replenishServer(workerIndex, 0, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
       assert.deepEqual(receipts, [])
@@ -807,6 +948,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       assert.equal((await relayServer.getManagerBalance()).toString(), '1000000000')
       await env.web3.eth.sendTransaction(
         { from: accounts[0], to: relayServer.managerAddress, value: relayServer.config.managerTargetBalance - 1e10 })
+      await relayServer._refreshAndCheckBalances()
       const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
       const managerEthBalanceBefore = await relayServer.getManagerBalance()
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
@@ -833,6 +975,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         to: relayServer.managerAddress,
         value: 1e18
       })
+      await relayServer._refreshAndCheckBalances()
       const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
       const managerEthBalance = await relayServer.getManagerBalance()
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
@@ -858,6 +1001,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         maxPriorityFeePerGas: gasPrice,
         value: toHex((await relayServer.getManagerBalance()).sub(txCost))
       })
+      await relayServer._refreshAndCheckBalances()
       const managerHubBalanceBefore = await env.relayHub.balanceOf(relayServer.managerAddress)
       const managerEthBalance = await relayServer.getManagerBalance()
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
@@ -904,6 +1048,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         to: relayServer.workerAddress,
         value: relayServer.config.workerMinBalance
       })
+      await relayServer._refreshAndCheckBalances()
       const blockNumber = await env.web3.eth.getBlockNumber()
       const txHashes = await relayServer.replenishServer(workerIndex, blockNumber, '0x0000000000000000000000000000000000000000000000000000000000000000', 0)
       assert.equal(txHashes.length, 0)
@@ -968,6 +1113,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
     afterEach(async function () {
       await revert(id)
+      sinon.restore()
     })
 
     it('should re-register server if registrationRateSeconds passed from register tx regardless of other txs', async function () {
@@ -1019,10 +1165,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       await sleep(200)
       assert.isFalse(started, 'could not stop task correctly')
     })
-  })
-
-  // TODO add _worker flow tests, specifically not trying to boost if balance is too low
-  describe('_worker', function () {
   })
 
   describe('alerted state as griefing mitigation', function () {
