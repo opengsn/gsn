@@ -441,10 +441,16 @@ export async function waitForSuccess<T> (
   errorKeys: string[],
   graceTime: number,
   random = Math.random): Promise<WaitForSuccessResults<T>> {
-  return await new Promise((resolve) => {
-    if (promises.length !== errorKeys.length) {
-      throw new Error('Invalid errorKeys length')
+  if (promises.length !== errorKeys.length) {
+    throw new Error('Invalid errorKeys length')
+  }
+  for (let i = 0; i < errorKeys.length; i++) {
+    const indexOfKey = errorKeys.indexOf(errorKeys[i])
+    if (indexOfKey !== i) {
+      throw new Error('waitForSuccess: duplicate relay URL keys, aborting')
     }
+  }
+  return await new Promise((resolve) => {
     const ret: WaitForSuccessResults<T> = {
       errors: new Map<string, Error>(),
       results: []
@@ -475,4 +481,19 @@ export async function waitForSuccess<T> (
         })
     }
   })
+}
+
+export function averageBN (array: BN[]): BN {
+  const sum = array.reduce((a, v) => a.add(v))
+  return sum.divn(array.length)
+}
+
+export function validateRelayUrl (relayUrl: string): boolean {
+  let url
+  try {
+    url = new URL(relayUrl)
+  } catch (error) {
+    return false
+  }
+  return url.protocol === 'http:' || url.protocol === 'https:'
 }

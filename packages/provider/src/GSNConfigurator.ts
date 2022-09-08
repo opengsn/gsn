@@ -33,6 +33,8 @@ export const defaultGsnConfig: GSNConfig = {
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   pastEventsQueryMaxPageCount: 20,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
+  getGasFeesBlocks: 5,
+  getGasFeesPercentile: 50,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
   minMaxPriorityFeePerGas: 1e9,
@@ -52,8 +54,11 @@ export const defaultGsnConfig: GSNConfig = {
   clientDefaultConfigUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
   useClientDefaultConfigUrl: true,
   performDryRunViewRelayCall: true,
+  tokenPaymasterAddress: '',
+  tokenPaymasterDomainSeparators: {},
   waitForSuccessSliceSize: 3,
-  waitForSuccessPingGrace: 3000
+  waitForSuccessPingGrace: 3000,
+  domainSeparatorName: 'GSN Relayed Transaction'
 }
 
 export interface GSNDependencies {

@@ -104,8 +104,8 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     })
   }
 
-  async init (): Promise<this> {
-    await this.relayClient.init()
+  async init (useTokenPaymaster = false): Promise<this> {
+    await this.relayClient.init(useTokenPaymaster)
     this.config = this.relayClient.config
     this.logger.info(`Created new RelayProvider ver.${gsnRuntimeVersion}`)
     return this
@@ -244,7 +244,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     if (tx != null) {
       // must return exactly what was requested...
       tx.hash = relayRequestID
-      tx.actualTransactionHash = tx.hash
+      tx.actualTransactionHash = txHash
     }
     this.asCallback(Promise.resolve(tx), payload, callback)
   }

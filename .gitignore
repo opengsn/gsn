@@ -9,6 +9,7 @@ node_modules
 /webtools/openeth-webtools.pack.js
 /.eslintcache
 /packages/common/src/interfaces/
+/packages/paymasters/src/interfaces/
 /ganache.pid
 /dist/
 cache
