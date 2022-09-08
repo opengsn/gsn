@@ -536,6 +536,7 @@ contract('RegistrationManager', function (accounts) {
         assert.equal(allStoredTransactions[2].serverAction, ServerAction.REGISTER_SERVER)
       })
     })
+
     describe('RelayHub/StakeManager misconfiguration', function () {
       const errorMessage1 = 'Relay manager is staked on StakeManager but not on RelayHub.'
       const errorMessage2 = 'Minimum stake/minimum unstake delay/stake token misconfigured?'

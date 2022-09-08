@@ -5,6 +5,7 @@ import {
   RegistrarRelayInfo,
   RelayFailureInfo,
   RelayFilter,
+  validateRelayUrl,
   isSameAddress,
   shuffle
 } from '@opengsn/common'
@@ -48,9 +49,13 @@ export class KnownRelaysManager {
   }
 
   async getRelayInfoForManagers (): Promise<RegistrarRelayInfo[]> {
-    const relayInfos = await this.contractInteractor.getRegisteredRelays()
-
+    let relayInfos: RegistrarRelayInfo[] = await this.contractInteractor.getRegisteredRelays()
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
+    const queriedRelaysSize = relayInfos.length
+    relayInfos = relayInfos.filter(it => validateRelayUrl(it.relayUrl))
+    if (relayInfos.length < queriedRelaysSize) {
+      this.logger.info(`fetchRelaysAdded: filtered out ${queriedRelaysSize - relayInfos.length} relays without a public URL or a public URL that is not valid`)
+    }
 
     const blacklistFilteredRelayInfos = relayInfos.filter((info: RegistrarRelayInfo) => {
       const isHostBlacklisted = this.config.blacklistedRelays.find(relay => info.relayUrl.toLowerCase().includes(relay.toLowerCase())) != null

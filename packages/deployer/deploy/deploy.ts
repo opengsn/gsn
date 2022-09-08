@@ -1,6 +1,8 @@
 import { DeploymentsExtension } from 'hardhat-deploy/types'
 
 import { constants, GsnDomainSeparatorType, GsnRequestType } from '@opengsn/common'
+import { defaultGsnConfig } from '@opengsn/provider'
+
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
 import { formatEther, parseEther } from 'ethers/lib/utils'
@@ -60,7 +62,7 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
   if (deployedForwarder.newlyDeployed) {
     const options = { from: deployer, log: true }
     await deployments.execute('Forwarder', options, 'registerRequestType', GsnRequestType.typeName, GsnRequestType.typeSuffix)
-    await deployments.execute('Forwarder', options, 'registerDomainSeparator', GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
+    await deployments.execute('Forwarder', options, 'registerDomainSeparator', defaultGsnConfig.domainSeparatorName, GsnDomainSeparatorType.version)
   }
 
   const penalizer = await deploy(deployments, 'Penalizer', {

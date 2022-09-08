@@ -131,10 +131,19 @@ export class RelaySelectionManager {
   }
 
   async _waitForSuccess (relays: RelayInfoUrl[], relayHub: Address, paymaster?: Address): Promise<WaitForSuccessResults<PartialRelayInfo>> {
-    const promises = relays.map(async (relay: RelayInfoUrl) => {
+    // go through a Map to remove duplicates
+    const asMap = new Map<string, RelayInfoUrl>()
+    relays.forEach(it => {
+      asMap.set(it.relayUrl, it)
+    })
+    const asArray = Array.from(asMap.values())
+    if (asArray.length !== relays.length) {
+      this.logger.info(`waitForSuccess: Removed ${relays.length - asArray.length} duplicate Relay Server URLs from `)
+    }
+    const promises = asArray.map(async (relay: RelayInfoUrl) => {
       return await this._getRelayAddressPing(relay, relayHub, paymaster)
     })
-    const errorKeys = relays.map(it => { return it.relayUrl })
+    const errorKeys = asArray.map(it => { return it.relayUrl })
     return await waitForSuccess(promises, errorKeys, this.config.waitForSuccessPingGrace)
   }
 

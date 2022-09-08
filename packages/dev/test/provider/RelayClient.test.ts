@@ -15,6 +15,7 @@ import { toBN, toHex } from 'web3-utils'
 
 import {
   RelayHubInstance,
+  ForwarderInstance,
   PenalizerInstance,
   TestTokenInstance,
   StakeManagerInstance,
@@ -56,7 +57,16 @@ import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
 
 import { BadHttpClient } from '../dummies/BadHttpClient'
 import { BadRelayedTransactionValidator } from '../dummies/BadRelayedTransactionValidator'
-import { configureGSN, deployHub, emptyBalance, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
+import {
+  configureGSN,
+  deployHub,
+  emptyBalance,
+  evmMineMany,
+  revert,
+  snapshot,
+  startRelay,
+  stopRelay
+} from '../TestUtils'
 
 import { GsnEvent } from '@opengsn/provider/dist/GsnEvents'
 import bodyParser from 'body-parser'
@@ -115,6 +125,7 @@ contract('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let relayRegistrar: RelayRegistrarInstance
+  let forwarderInstance: ForwarderInstance
   let stakeManager: StakeManagerInstance
   let penalizer: PenalizerInstance
   let testRecipient: TestRecipientInstance
@@ -162,12 +173,12 @@ contract('RelayClient', function (accounts) {
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
-    const forwarderInstance = await Forwarder.new()
+    forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
     testRecipient = await TestRecipient.new(forwarderAddress)
     testRecipientWithoutFallback = await TestRecipientWithoutFallback.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setTrustedForwarder(forwarderAddress)
     await paymaster.setRelayHub(relayHub.address)
@@ -177,6 +188,7 @@ contract('RelayClient', function (accounts) {
     await testToken.approve(stakeManager.address, stake, { from: accounts[1] })
 
     relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
+      maxMaxFeePerGas: Number.MAX_SAFE_INTEGER.toString(),
       initialReputation: 100,
       stake: 1e18.toString(),
       relayOwner: accounts[1],
@@ -203,12 +215,14 @@ contract('RelayClient', function (accounts) {
       data,
       paymasterData: '0x',
       clientId: '1',
-      maxFeePerGas: '0',
-      maxPriorityFeePerGas: '0'
+      maxFeePerGas: '50000000000',
+      maxPriorityFeePerGas: '50000000000'
     }
   })
 
   beforeEach(async function () {
+    // TODO: solve base fee fluctuation without mining empty blocks
+    await evmMineMany(10)
     const { maxFeePerGas, maxPriorityFeePerGas } = await relayClient.calculateGasFees()
     options = { ...options, maxFeePerGas, maxPriorityFeePerGas }
   })
@@ -311,7 +325,28 @@ contract('RelayClient', function (accounts) {
       assert.equal(destination, relayHub.address.toString().toLowerCase())
     })
 
+    it('should use alternative ERC-712 domain separator', async function () {
+      const newDomainSeparatorName = 'This is not the old domain separator name'
+      await registerForwarderForGsn(newDomainSeparatorName, forwarderInstance)
+      const newConfig = Object.assign({}, gsnConfig, { domainSeparatorName: newDomainSeparatorName })
+      const relayClient = new RelayClient({
+        provider: underlyingProvider,
+        config: newConfig
+      })
+      await relayClient.init()
+      const relayingResult = await relayClient.relayTransaction(Object.assign({}, options, {
+        maxFeePerGas: '50000000000',
+        maxPriorityFeePerGas: '50000000000'
+      }))
+      assert.isNotNull(relayingResult.transaction, 'missing transaction')
+      const validTransactionHash: string = `0x${relayingResult.transaction!.hash().toString('hex')}`
+      const res = await web3.eth.getTransactionReceipt(validTransactionHash)
+      const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256,uint256,uint256)') ?? ''
+      assert.ok(res.logs.find(log => log.topics.includes(topic)), 'log not found')
+    })
+
     it('should skip timed-out server', async function () {
+      await evmMineMany(10)
       let server: Server | undefined
       try {
         const pingResponse = await axios.get('http://localhost:8090/getaddr').then(res => res.data)
@@ -396,8 +431,22 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore
       const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
       const mockRelays: RegistrarRelayInfo[] = [
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp },
-        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp }
+        {
+          relayUrl: localhostOne,
+          relayManager: '0x'.padEnd(42, '1'),
+          firstSeenBlockNumber,
+          lastSeenBlockNumber,
+          firstSeenTimestamp,
+          lastSeenTimestamp
+        },
+        {
+          relayUrl: localhost127One,
+          relayManager: '0x'.padEnd(42, '2'),
+          firstSeenBlockNumber,
+          lastSeenBlockNumber,
+          firstSeenTimestamp,
+          lastSeenTimestamp
+        }
       ]
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
@@ -422,8 +471,22 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore
       const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
       const mockRelays = [
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp },
-        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp }
+        {
+          relayUrl: localhostOne,
+          relayManager: '0x'.padEnd(42, '1'),
+          firstSeenBlockNumber,
+          lastSeenBlockNumber,
+          firstSeenTimestamp,
+          lastSeenTimestamp
+        },
+        {
+          relayUrl: localhost127One,
+          relayManager: '0x'.padEnd(42, '2'),
+          firstSeenBlockNumber,
+          lastSeenBlockNumber,
+          firstSeenTimestamp,
+          lastSeenTimestamp
+        }
       ]
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
@@ -462,8 +525,22 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore
       const getRelayInfoForManagers = sinon.stub(relayClient.dependencies.knownRelaysManager, 'getRelayInfoForManagers')
       const mockRelays = [
-        { relayUrl: localhostOne, relayManager: '0x'.padEnd(42, '1'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp },
-        { relayUrl: localhost127One, relayManager: '0x'.padEnd(42, '2'), firstSeenBlockNumber, lastSeenBlockNumber, firstSeenTimestamp, lastSeenTimestamp }
+        {
+          relayUrl: localhostOne,
+          relayManager: '0x'.padEnd(42, '1'),
+          firstSeenBlockNumber,
+          lastSeenBlockNumber,
+          firstSeenTimestamp,
+          lastSeenTimestamp
+        },
+        {
+          relayUrl: localhost127One,
+          relayManager: '0x'.padEnd(42, '2'),
+          firstSeenBlockNumber,
+          lastSeenBlockNumber,
+          firstSeenTimestamp,
+          lastSeenTimestamp
+        }
       ]
 
       getRelayInfoForManagers.returns(Promise.resolve(mockRelays))
@@ -580,6 +657,8 @@ contract('RelayClient', function (accounts) {
         relayWorkerAddress: relayWorkerAddress,
         relayManagerAddress: relayManager,
         relayHubAddress: relayManager,
+        minMaxFeePerGas: '',
+        maxMaxFeePerGas: '',
         minMaxPriorityFeePerGas: '',
         maxAcceptanceBudget: 1e10.toString(),
         ready: true,
@@ -716,7 +795,7 @@ contract('RelayClient', function (accounts) {
       }).init()
       const transactionValidator = new RelayedTransactionValidator(contractInteractor, logger, defaultGsnConfig)
 
-      const data = '0xb1a62e720000deadbeef' // relayCall method
+      const data = '0x6ca862e20000deadbeef' // relayCall method
       const wrongData = '0xdeadbeef' // relayCall method
       const txOptions = getRawTxOptions(1337, 0)
       // prepare transactions
@@ -751,6 +830,7 @@ contract('RelayClient', function (accounts) {
       const relayTransactionRequest: RelayTransactionRequest = {
         relayRequest,
         metadata: {
+          domainSeparatorName: defaultGsnConfig.domainSeparatorName,
           relayMaxNonce: 4,
           relayLastKnownNonce: 1,
           signature: '',
@@ -760,9 +840,21 @@ contract('RelayClient', function (accounts) {
         }
       }
 
-      const allTransactionsRight = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, { 1: tx1Right, 2: tx2Right, 3: tx3Right })
-      const oneWrongTransaction = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, { 1: tx1Right, 2: tx2Wrong, 3: tx3Right })
-      const transactionFromOutsideRange = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, { 1: tx1Right, 2: tx2Right, 9: tx9Right })
+      const allTransactionsRight = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, {
+        1: tx1Right,
+        2: tx2Right,
+        3: tx3Right
+      })
+      const oneWrongTransaction = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, {
+        1: tx1Right,
+        2: tx2Wrong,
+        3: tx3Right
+      })
+      const transactionFromOutsideRange = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, {
+        1: tx1Right,
+        2: tx2Right,
+        9: tx9Right
+      })
 
       // TODO: once logic is implemented, also fix the test
       const placeholderAllGasRight = {
@@ -891,13 +983,17 @@ contract('RelayClient', function (accounts) {
     })
 
     it('should succeed to relay, but report ping error', async () => {
-      const relayingResult = await relayClient.relayTransaction(options)
+      const relayingResult = await relayClient.relayTransaction(Object.assign({}, options, {
+        maxFeePerGas: '50000000000',
+        maxPriorityFeePerGas: '50000000000'
+      }))
       assert.match(relayingResult.pingErrors.get(cheapRelayerUrl)?.message as string, /ECONNREFUSED/,
         `relayResult: ${_dumpRelayingResult(relayingResult)}`)
       assert.exists(relayingResult.transaction)
     })
 
     it('should use preferred relay if one is set', async () => {
+      await evmMineMany(10)
       relayClient = new RelayClient({
         provider: underlyingProvider,
         config: {

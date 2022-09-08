@@ -1,12 +1,10 @@
 // @ts-ignore
 import Wallet from 'ethereumjs-wallet'
-// @ts-ignore
-import HDKey, { EthereumHDKey } from 'ethereumjs-wallet/hdkey'
+import EthereumHDKey from 'ethereumjs-wallet/dist/hdkey'
 
 import fs from 'fs'
 import ow from 'ow'
-import { toHex } from 'web3-utils'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { TypedTransaction } from '@ethereumjs/tx'
 
 export const KEYSTORE_FILENAME = 'keystore'
@@ -15,6 +13,7 @@ export interface SignedTransaction {
   rawTx: PrefixedHexString
   signedEthJsTx: TypedTransaction
 }
+
 export class KeyManager {
   private readonly hdkey: EthereumHDKey
   private _privateKeys: Record<PrefixedHexString, Buffer> = {}
@@ -32,32 +31,27 @@ export class KeyManager {
     }
 
     if (workdir != null) {
-      // @ts-ignore
-      try {
-        if (!fs.existsSync(workdir)) {
-          fs.mkdirSync(workdir, { recursive: true })
-        }
-        let genseed
-        const keyStorePath = workdir + '/' + KEYSTORE_FILENAME
-        if (fs.existsSync(keyStorePath)) {
-          genseed = JSON.parse(fs.readFileSync(keyStorePath).toString()).seed
-        } else {
-          genseed = Wallet.generate().getPrivateKey().toString('hex')
-          fs.writeFileSync(keyStorePath, JSON.stringify({ seed: genseed }), { flag: 'w' })
-        }
-        this.hdkey = HDKey.fromMasterSeed(genseed)
-      } catch (e: any) {
-        // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-        if (!e.message.includes('file already exists')) {
-          throw e
-        }
+      if (!fs.existsSync(workdir)) {
+        fs.mkdirSync(workdir, { recursive: true })
       }
+      let genseed
+      const keyStorePath = workdir + '/' + KEYSTORE_FILENAME
+      if (fs.existsSync(keyStorePath)) {
+        genseed = JSON.parse(fs.readFileSync(keyStorePath).toString()).seed
+      } else {
+        genseed = Wallet.generate().getPrivateKey().toString('hex')
+        fs.writeFileSync(keyStorePath, JSON.stringify({ seed: genseed }), { flag: 'w' })
+      }
+      this.hdkey = EthereumHDKey.fromMasterSeed(genseed)
     } else {
       // no workdir: working in-memory
+      let seedBuffer: Buffer
       if (seed == null) {
-        seed = Wallet.generate().getPrivateKey().toString('hex')
+        seedBuffer = Wallet.generate().getPrivateKey()
+      } else {
+        seedBuffer = Buffer.from(seed)
       }
-      this.hdkey = HDKey.fromMasterSeed(seed)
+      this.hdkey = EthereumHDKey.fromMasterSeed(seedBuffer)
     }
 
     this.generateKeys(count)
@@ -68,8 +62,8 @@ export class KeyManager {
     this.nonces = {}
     for (let index = 0; index < count; index++) {
       const w = this.hdkey.deriveChild(index).getWallet()
-      const address = toHex(w.getAddress())
-      this._privateKeys[address] = w.privKey
+      const address = bufferToHex(w.getAddress())
+      this._privateKeys[address] = w.getPrivateKey()
       this.nonces[index] = 0
     }
   }

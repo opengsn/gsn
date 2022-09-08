@@ -27,6 +27,7 @@ import { encodeRevertReason } from '../TestUtils'
 import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
 
 import { toBN } from 'web3-utils'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const HashZero = constants.ZERO_BYTES32
 const { assert } = chai.use(chaiAsPromised)
@@ -65,12 +66,12 @@ contract('Utils', function (accounts) {
       const paymasterData = '0x'
       const clientId = '0'
 
-      const res1 = await forwarderInstance.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
+      const res1 = await forwarderInstance.registerDomainSeparator(defaultGsnConfig.domainSeparatorName, GsnDomainSeparatorType.version)
       console.log(res1.logs[0])
       const { domainSeparator } = (res1.logs[0].args as DomainRegistered['args'])
 
       // sanity check: our locally-calculated domain-separator is the same as on-chain registered domain-separator
-      assert.equal(domainSeparator, getDomainSeparatorHash(forwarder, chainId))
+      assert.equal(domainSeparator, getDomainSeparatorHash(defaultGsnConfig.domainSeparatorName, forwarder, chainId))
 
       const res = await forwarderInstance.registerRequestType(
         GsnRequestType.typeName,
@@ -101,6 +102,7 @@ contract('Utils', function (accounts) {
         }
       }
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         chainId,
         forwarder,
         relayRequest
@@ -113,6 +115,7 @@ contract('Utils', function (accounts) {
       const { typeHash, suffixData } = await testUtil.splitRequest(relayRequest)
       const getEncoded = await forwarderInstance._getEncoded(relayRequest.request, typeHash, suffixData)
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         chainId,
         forwarder,
         relayRequest
@@ -125,7 +128,7 @@ contract('Utils', function (accounts) {
       assert.equal(GsnRequestType.typeName, await testUtil.libRelayRequestName())
       assert.equal(GsnRequestType.typeSuffix, await testUtil.libRelayRequestSuffix())
 
-      const res1 = await forwarderInstance.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version)
+      const res1 = await forwarderInstance.registerDomainSeparator(defaultGsnConfig.domainSeparatorName, GsnDomainSeparatorType.version)
       console.log(res1.logs[0])
       const { domainSeparator } = (res1.logs[0].args as DomainRegistered['args'])
       assert.equal(domainSeparator, await testUtil.libDomainSeparator(forwarder))
@@ -141,11 +144,12 @@ contract('Utils', function (accounts) {
     })
 
     it('should use same domainSeparator on-chain and off-chain', async () => {
-      assert.equal(getDomainSeparatorHash(forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
+      assert.equal(getDomainSeparatorHash(defaultGsnConfig.domainSeparatorName, forwarder, chainId), await testUtil.libDomainSeparator(forwarder))
     })
 
     it('should generate a valid EIP-712 compatible signature', async function () {
       const dataToSign = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         chainId,
         forwarder,
         relayRequest
@@ -171,6 +175,7 @@ contract('Utils', function (accounts) {
         relayRequest.request.data = await recipient.contract.methods.testRevert().encodeABI()
         const sig = await getEip712Signature(
           web3, new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest
@@ -188,6 +193,7 @@ contract('Utils', function (accounts) {
 
         const sig = await getEip712Signature(
           web3, new TypedRequestData(
+            defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
             relayRequest
@@ -258,8 +264,8 @@ contract('Utils', function (accounts) {
     })
 
     it('should select at random if multiple responses resolve', async () => {
-      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['', ''], 100, () => 0).then(r => r.winner), 1)
-      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['', ''], 100, () => 0.6).then(r => r.winner), 2)
+      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['a', 'b'], 100, () => 0).then(r => r.winner), 1)
+      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['a', 'b'], 100, () => 0.6).then(r => r.winner), 2)
     })
 
     it('should reject with first error if all fail', async () => {
@@ -272,7 +278,7 @@ contract('Utils', function (accounts) {
       const now = Date.now()
       await waitForSuccess(
         [Promise.reject(Error('err1')), after(50), after(20)],
-        ['', '', ''],
+        ['a', 'b', 'c'],
         2000)
 
       assert.closeTo(Date.now() - now, 50, 200, 'should not wait entire 2000 grace time if all are completed')
@@ -281,7 +287,7 @@ contract('Utils', function (accounts) {
     it('should ignore rejection if at least one response is successful', async () => {
       const res = await waitForSuccess(
         [Promise.reject(Error('err1')), after(50), after(1000)],
-        ['', '', ''],
+        ['a', 'b', 'c'],
         200)
       assert.equal(res.winner, 50)
     })
@@ -289,17 +295,26 @@ contract('Utils', function (accounts) {
     it('should wait after first response', async () => {
       const res1 = await waitForSuccess(
         [after(1), after(50), after(1000)],
-        ['', '', ''],
+        ['a', 'b', 'c'],
         200, () => 0
       )
       assert.equal(res1.winner, 1)
 
       const res2 = await waitForSuccess(
         [after(1), after(50), after(1000)],
-        ['', '', ''],
+        ['a', 'b', 'c'],
         200, () => 0.9
       )
       assert.equal(res2.winner, 50)
+    })
+
+    it('should throw if input has duplicate keys', async function () {
+      await expect(
+        waitForSuccess(
+          [after(1), after(50), after(1000)],
+          ['a', 'b', 'a'],
+          200, () => 0.9)
+      ).to.be.eventually.rejectedWith('waitForSuccess: duplicate relay URL keys, aborting')
     })
   })
 })

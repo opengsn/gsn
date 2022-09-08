@@ -4,7 +4,7 @@ import { Contract } from 'web3-eth-contract'
 import { LoggerInterface } from '../LoggerInterface'
 
 // register a forwarder for use with GSN: the request-type and domain separator we're using.
-export async function registerForwarderForGsn (forwarderTruffleOrWeb3: IForwarderInstance | Contract, logger?: LoggerInterface, sendOptions: any = undefined): Promise<void> {
+export async function registerForwarderForGsn (domainSeparatorName: string, forwarderTruffleOrWeb3: IForwarderInstance | Contract, logger?: LoggerInterface, sendOptions: any = undefined): Promise<void> {
   let options
   let forwarder: Contract
   if ((forwarderTruffleOrWeb3 as any).contract != null) {
@@ -33,6 +33,6 @@ export async function registerForwarderForGsn (forwarderTruffleOrWeb3: IForwarde
     GsnRequestType.typeSuffix
   ).send(options))
 
-  logger?.info(`Registering domain separator ${GsnDomainSeparatorType.name} with version: ${GsnDomainSeparatorType.version}`)
-  await logTx(forwarder.methods.registerDomainSeparator(GsnDomainSeparatorType.name, GsnDomainSeparatorType.version).send(options))
+  logger?.info(`Registering domain separator ${domainSeparatorName} with version: ${GsnDomainSeparatorType.version}`)
+  await logTx(forwarder.methods.registerDomainSeparator(domainSeparatorName, GsnDomainSeparatorType.version).send(options))
 }

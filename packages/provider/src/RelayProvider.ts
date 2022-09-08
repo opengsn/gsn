@@ -244,7 +244,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     if (tx != null) {
       // must return exactly what was requested...
       tx.hash = relayRequestID
-      tx.actualTransactionHash = tx.hash
+      tx.actualTransactionHash = txHash
     }
     this.asCallback(Promise.resolve(tx), payload, callback)
   }

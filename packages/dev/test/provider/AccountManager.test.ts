@@ -10,6 +10,7 @@ import { AccountManager } from '@opengsn/provider/dist/AccountManager'
 import { RelayRequest, TypedRequestData, defaultEnvironment, isSameAddress } from '@opengsn/common'
 
 import { configureGSN } from '../TestUtils'
+import { defaultGsnConfig } from '@opengsn/provider'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -18,6 +19,7 @@ chai.use(sinonChai)
 contract('AccountManager', function (accounts) {
   const address = '0x982a8CbE734cb8c29A6a7E02a3B0e4512148F6F9'
   const privateKey = '0xd353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c'
+  const privateKeyAllZero = '0x0000000000000000000000000000000000000000000000000000000000000000'
   let accountManager: AccountManager
   before(function () {
     accountManager = new AccountManager(web3.currentProvider as HttpProvider, defaultEnvironment.chainId, config)
@@ -40,6 +42,10 @@ contract('AccountManager', function (accounts) {
       const invalidPrivateKey = privateKey.replace('a', '')
       await expect(() => {
         accountManager.addAccount(invalidPrivateKey)
+      }).to.throw('Expected private key to be an Uint8Array with length 32')
+
+      await expect(() => {
+        accountManager.addAccount(privateKeyAllZero)
       }).to.throw('Private key does not satisfy the curve requirements')
     })
   })
@@ -92,11 +98,12 @@ contract('AccountManager', function (accounts) {
     it('should use internally controlled keypair for signing if available', async function () {
       relayRequest.request.from = address
       const signedData = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         defaultEnvironment.chainId,
         constants.ZERO_ADDRESS,
         relayRequestWithoutExtraData(relayRequest)
       )
-      const signature = await accountManager.sign(relayRequest)
+      const signature = await accountManager.sign(defaultGsnConfig.domainSeparatorName, relayRequest)
       const rec = recoverTypedSignature({
         data: signedData,
         signature,
@@ -109,11 +116,12 @@ contract('AccountManager', function (accounts) {
     it('should ask provider to sign if key is not controlled', async function () {
       relayRequest.request.from = accounts[0]
       const signedData = new TypedRequestData(
+        defaultGsnConfig.domainSeparatorName,
         defaultEnvironment.chainId,
         constants.ZERO_ADDRESS,
         relayRequestWithoutExtraData(relayRequest)
       )
-      const signature = await accountManager.sign(relayRequest)
+      const signature = await accountManager.sign(defaultGsnConfig.domainSeparatorName, relayRequest)
       const rec = recoverTypedSignature({
         data: signedData,
         signature,
@@ -125,7 +133,7 @@ contract('AccountManager', function (accounts) {
     })
     it('should throw if web3 fails to sign with requested address', async function () {
       relayRequest.request.from = '0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee'
-      const promise = accountManager.sign(relayRequest)
+      const promise = accountManager.sign(defaultGsnConfig.domainSeparatorName, relayRequest)
       await expect(promise).to.be.eventually.rejectedWith('Failed to sign relayed transaction for 0x4cfb3f70bf6a80397c2e634e5bdd85bc0bb189ee')
     })
   })
