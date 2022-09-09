@@ -99,7 +99,7 @@ contract('runServer', function (accounts) {
         url: 'asd',
         relayOwner: accounts[0],
         // @ts-ignore
-        ethereumNodeUrl: web3.currentProvider.host,
+        ethereumNodeUrls: [web3.currentProvider.host],
         gasPriceFactor: 1,
         initialReputation: 100,
         workerTargetBalance: ether('5'),

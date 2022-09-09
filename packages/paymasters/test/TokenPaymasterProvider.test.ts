@@ -367,7 +367,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         initialReputation: 100,
         stake: stake.toString(),
         relayOwner: owner,
-        ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
+        ethereumNodeUrls: [(web3.currentProvider as HttpProvider).host]
       })
     })
     afterEach(async function () {

@@ -497,6 +497,12 @@ function explicitType ([key, val]: [string, any]): any {
       }
       break
     }
+    case 'list': {
+      try {
+        val = JSON.parse(val.replace(/'/g, '"'))
+      } catch (e) {}
+      return [key, val]
+    }
     default:
       return [key, val]
   }

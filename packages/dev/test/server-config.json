@@ -3,7 +3,7 @@
   "port":  8090,
   "relayHubAddress": "",
   "gasPriceFactor": 1.1,
-  "ethereumNodeUrl": "http://localhost:8545",
+  "ethereumNodeUrls": ["http://localhost:8545"],
   "workdir": "",
   "devMode": "true"
 }

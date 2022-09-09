@@ -192,7 +192,7 @@ contract('RelayClient', function (accounts) {
       initialReputation: 100,
       stake: 1e18.toString(),
       relayOwner: accounts[1],
-      ethereumNodeUrl: underlyingProvider.host
+      ethereumNodeUrls: [underlyingProvider.host]
     })
 
     const loggerConfiguration: LoggerConfiguration = { logLevel: 'debug' }

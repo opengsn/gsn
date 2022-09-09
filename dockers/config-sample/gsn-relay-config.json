@@ -3,5 +3,5 @@
   "managerStakeTokenAddress": "<erc20 token address for staking>",
   "ownerAddress": "<address of owner account>",
   "gasPriceFactor": 1,
-  "ethereumNodeUrl": "https://<network>.infura.io/v3/<INFURA-ID>"
+  "ethereumNodeUrls": ["https://<network>.infura.io/v3/<INFURA-ID>"]
 }

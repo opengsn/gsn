@@ -85,7 +85,7 @@ options.forEach(params => {
           url: 'asd',
           relayOwner: accounts[0],
           // @ts-ignore
-          ethereumNodeUrl: web3.currentProvider.host,
+          ethereumNodeUrls: [web3.currentProvider.host],
           gasPriceFactor,
           initialReputation: 100,
           workerTargetBalance: ether('5'),

@@ -159,7 +159,7 @@ export async function printRelayInfo (hre: HardhatRuntimeEnvironment): Promise<v
     managerStakeTokenAddress: stakingTokenAddress,
     gasPriceFactor: 1,
     maxFeePerGas: 1e12,
-    ethereumNodeUrl: network.url
+    ethereumNodeUrls: [network.url]
   }, null, 2)))
   console.log(chalk.white('Relayer register:'))
   console.log(chalk.grey(`gsn relayer-register -m $SECRET --network ${network.url} --relayUrl https://${hre.hardhatArguments.network}.v3.opengsn.org/v3 --token ${stakingTokenAddress} --stake ${stakingTokenValue} --wrap`))

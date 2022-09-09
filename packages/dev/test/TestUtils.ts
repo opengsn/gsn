@@ -85,8 +85,8 @@ export async function startRelay (
     args.push('--dbPruneTxAfterSeconds', options.dbPruneTxAfterSeconds)
   }
 
-  if (options.ethereumNodeUrl) {
-    args.push('--ethereumNodeUrl', options.ethereumNodeUrl)
+  if (options.ethereumNodeUrls) {
+    args.push('--ethereumNodeUrls', JSON.stringify(options.ethereumNodeUrls).replace(/"/g, '\''))
   }
   if (options.gasPriceFactor) {
     args.push('--gasPriceFactor', options.gasPriceFactor)

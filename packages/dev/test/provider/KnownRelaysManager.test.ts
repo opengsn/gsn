@@ -293,7 +293,7 @@ contract('KnownRelaysManager 2', function (accounts) {
         dbPruneTxAfterBlocks: 1,
         relayOwner: accounts[1],
         relaylog: process.env.relaylog,
-        ethereumNodeUrl: (web3.currentProvider as HttpProvider).host
+        ethereumNodeUrls: [(web3.currentProvider as HttpProvider).host]
       })
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = new ContractInteractor({
