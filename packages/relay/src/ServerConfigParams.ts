@@ -59,14 +59,15 @@ export interface ServerConfigParams {
 
   /**
    * The URL of the Ethereum RPC Node that is used to interact with the blockchain.
-   */
-  ethereumNodeUrl: string
-
-  /**
-   * Alternative URLs of the Ethereum RPC Node that are used to send transactions to the blockchain.
+   * Alternative URLs of the Ethereum RPC Node can be provided and be used to send transactions to the blockchain.
    * All transactions will be sent to all RPC endpoints to ensure downtime and censorship protections against nodes.
    */
-  alternateEthereumNodeUrls: string[]
+  ethereumNodeUrls: string[]
+
+  /**
+   * The HTTP timeout for HTTP requests for the {@link ethereumNodeUrls}.
+   */
+  ethereumNodeUrlHttpTimeoutMs: number
 
   /**
    * The name of the directory used to store the database and private keys.
@@ -360,8 +361,8 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   etherscanApiKey: '',
   loggerUserId: '',
   url: 'http://localhost:8090',
-  ethereumNodeUrl: '',
-  alternateEthereumNodeUrls: [],
+  ethereumNodeUrls: [],
+  ethereumNodeUrlHttpTimeoutMs: 20000,
   port: 8090,
   workdir: '',
   refreshStateTimeoutBlocks: 5,
@@ -393,8 +394,8 @@ const ConfigParamsTypes = {
   gasPriceFactor: 'number',
   gasPriceOracleUrl: 'string',
   gasPriceOraclePath: 'string',
-  ethereumNodeUrl: 'string',
-  alternateEthereumNodeUrls: 'list',
+  ethereumNodeUrls: 'list',
+  ethereumNodeUrlHttpTimeoutMs: 'number',
   workdir: 'string',
   checkInterval: 'number',
   devMode: 'boolean',
@@ -554,8 +555,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
   const contractInteractor: ContractInteractor = new ContractInteractor({
     maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
-    provider: web3provider,
-    alternateProviders: [],
+    providers: [web3provider],
     logger,
     deployment: {
       relayHubAddress: config.relayHubAddress

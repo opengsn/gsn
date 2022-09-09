@@ -50,8 +50,7 @@ contract('ReputationManager', function () {
     const maxPageSize = Number.MAX_SAFE_INTEGER
     contractInteractor = new ContractInteractor({
       environment: defaultEnvironment,
-      provider: web3.currentProvider as HttpProvider,
-      alternateProviders: [],
+      providers: [web3.currentProvider as HttpProvider],
       maxPageSize,
       logger
     })

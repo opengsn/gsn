@@ -26,11 +26,10 @@ const commander = gsnCommander(['n', 'h'])
 
   const deployment: GSNContractsDeployment = { relayHubAddress }
   const logger = createCommandsLogger(commander.loglevel)
-  const provider = new Web3.providers.HttpProvider(host)
+  const providers = [new Web3.providers.HttpProvider(host)]
   const maxPageSize = Number.MAX_SAFE_INTEGER
   const environment = defaultEnvironment
-  const alternateProviders: any[] = []
-  const contractInteractor = new ContractInteractor({ provider, alternateProviders, logger, deployment, maxPageSize, environment })
+  const contractInteractor = new ContractInteractor({ providers, logger, deployment, maxPageSize, environment })
   await contractInteractor.init()
   const timeout = 1000
   const httpClient = new HttpClient(new HttpWrapper({ timeout }), logger)

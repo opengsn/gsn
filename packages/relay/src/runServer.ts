@@ -60,21 +60,10 @@ function sanitizeJsonRpcResponse (response?: JsonRpcResponse): JsonRpcResponse |
   return clone
 }
 
-function initializeAlternateProviders (alternateEthereumNodeUrls: string[] = []): Web3ProviderBaseInterface[] {
-  const alternateProviders: Web3ProviderBaseInterface[] = []
-  for (const url of alternateEthereumNodeUrls) {
-    alternateProviders.push(
-      new Web3.providers.HttpProvider(url)
-    )
-  }
-  return alternateProviders
-}
-
 async function run (): Promise<void> {
   let config: ServerConfigParams
   let environment: Environment
-  let web3provider
-  let alternateProviders: Web3ProviderBaseInterface[]
+  const web3providers: Web3ProviderBaseInterface[] = []
   let runPenalizer: boolean
   let reputationManagerConfig: Partial<ReputationManagerConfiguration>
   let runPaymasterReputations: boolean
@@ -82,24 +71,29 @@ async function run (): Promise<void> {
   try {
     console.log('Parsing server config...\n')
     const conf: ServerConfigParams = await parseServerConfig(process.argv.slice(2), process.env)
-    if (conf.ethereumNodeUrl == null) {
-      error('missing ethereumNodeUrl')
+    if (conf.ethereumNodeUrls.length === 0) {
+      error('missing ethereumNodeUrls')
     }
     const loggingProvider: LoggingProviderMode = conf.loggingProvider ?? LoggingProviderMode.NONE
     conf.environmentName = conf.environmentName ?? EnvironmentsKeys.ganacheLocal
-    web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
-    alternateProviders = initializeAlternateProviders(conf.alternateEthereumNodeUrls)
+    for (const ethereumNodeUrl of conf.ethereumNodeUrls) {
+      const provider = new Web3.providers.HttpProvider(ethereumNodeUrl, {
+        timeout: conf.ethereumNodeUrlHttpTimeoutMs
+      })
+      web3providers.push(provider)
+    }
     if (loggingProvider !== LoggingProviderMode.NONE) {
-      const orig = web3provider
-      web3provider = {
+      const orig = web3providers[0]
+      web3providers[0] = {
         // @ts-ignore
         send (r, cb) {
           const startTimestamp = Date.now()
           switch (loggingProvider) {
             case LoggingProviderMode.DURATION: {
+              const params: any[] = r?.params ?? []
               let blockRange = ''
-              if (r?.params[0]?.fromBlock != null) {
-                blockRange = `(${r?.params[0]?.fromBlock as string} - ${r?.params[0]?.toBlock as string})`
+              if (params?.[0]?.fromBlock != null) {
+                blockRange = `(${params?.[0]?.fromBlock as string} - ${params?.[0]?.toBlock as string})`
               }
               console.log('>>> ', r.method, blockRange)
               break
@@ -132,7 +126,7 @@ async function run (): Promise<void> {
       }
     }
     console.log('Resolving server config ...\n');
-    ({ config, environment } = await resolveServerConfig(conf, web3provider))
+    ({ config, environment } = await resolveServerConfig(conf, web3providers[0]))
     runPenalizer = config.runPenalizer
     console.log('Resolving reputation manager config...\n')
     reputationManagerConfig = resolveReputationManagerConfig(conf)
@@ -160,13 +154,15 @@ async function run (): Promise<void> {
   console.log('Creating managers...\n')
   const managerKeyManager = new KeyManager(1, `${workdir}/manager`)
   const workersKeyManager = new KeyManager(1, `${workdir}/workers/${config.relayHubAddress}`)
-  const txStoreManager = new TxStoreManager({ workdir, autoCompactionInterval: config.dbAutoCompactionInterval }, logger)
+  const txStoreManager = new TxStoreManager({
+    workdir,
+    autoCompactionInterval: config.dbAutoCompactionInterval
+  }, logger)
   console.log(chalk.redBright('Relay worker key manager created. This address is staked and meant only for internal (gsn) usage.' +
     ' Using this address for any other purpose may result in loss of funds.'))
   console.log('Creating interactor...\n')
   const contractInteractor = new ContractInteractor({
-    provider: web3provider,
-    alternateProviders,
+    providers: web3providers,
     logger,
     environment,
     maxPageSize: config.pastEventsQueryMaxPageSize,

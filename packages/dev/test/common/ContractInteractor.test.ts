@@ -98,8 +98,7 @@ contract('ContractInteractor', function (accounts) {
       const contractInteractor = new ContractInteractor(
         {
           environment,
-          provider: web3.currentProvider as HttpProvider,
-          alternateProviders: [],
+          providers: [web3.currentProvider as HttpProvider],
           logger,
           maxPageSize,
           deployment: { paymasterAddress: pm.address }
@@ -116,8 +115,7 @@ contract('ContractInteractor', function (accounts) {
       const contractInteractor = new ContractInteractor(
         {
           environment,
-          provider: web3.currentProvider as HttpProvider,
-          alternateProviders: [],
+          providers: [web3.currentProvider as HttpProvider],
           logger,
           maxPageSize,
           deployment: { paymasterAddress: pm.address }
@@ -139,8 +137,7 @@ contract('ContractInteractor', function (accounts) {
       const contractInteractor = new ContractInteractor(
         {
           environment,
-          provider: web3.currentProvider as HttpProvider,
-          alternateProviders: [],
+          providers: [web3.currentProvider as HttpProvider],
           logger,
           maxPageSize,
           deployment: { paymasterAddress: pm.address }
@@ -152,8 +149,7 @@ contract('ContractInteractor', function (accounts) {
       const contractInteractor = new ContractInteractor(
         {
           environment,
-          provider: web3.currentProvider as HttpProvider,
-          alternateProviders: [],
+          providers: [web3.currentProvider as HttpProvider],
           logger,
           maxPageSize,
           deployment: { paymasterAddress: pm.address }
@@ -211,8 +207,7 @@ contract('ContractInteractor', function (accounts) {
       const contractInteractor = new ContractInteractor(
         {
           environment,
-          provider: web3.currentProvider as HttpProvider,
-          alternateProviders: [],
+          providers: [web3.currentProvider as HttpProvider],
           versionManager,
           logger,
           maxPageSize,
@@ -239,8 +234,7 @@ contract('ContractInteractor', function (accounts) {
       await pm.setTrustedForwarder(forwarder.address)
       const contractInteractor = new ContractInteractor({
         environment,
-        provider: web3.currentProvider as HttpProvider,
-        alternateProviders: [],
+        providers: [web3.currentProvider as HttpProvider],
         versionManager,
         logger,
         maxPageSize: Number.MAX_SAFE_INTEGER,
@@ -290,8 +284,7 @@ contract('ContractInteractor', function (accounts) {
       const contractInteractor = new ContractInteractor(
         {
           environment,
-          provider: web3.currentProvider as HttpProvider,
-          alternateProviders: [],
+          providers: [web3.currentProvider as HttpProvider],
           versionManager,
           logger,
           maxPageSize,
@@ -317,8 +310,7 @@ contract('ContractInteractor', function (accounts) {
       const contractInteractor = new ContractInteractor(
         {
           environment,
-          provider: web3.currentProvider as HttpProvider,
-          alternateProviders: [],
+          providers: [web3.currentProvider as HttpProvider],
           versionManager,
           logger,
           maxPageSize,
@@ -344,8 +336,7 @@ contract('ContractInteractor', function (accounts) {
         const contractInteractor = new ContractInteractor(
           {
             environment,
-            provider: web3.currentProvider as HttpProvider,
-            alternateProviders: [],
+            providers: [web3.currentProvider as HttpProvider],
             logger,
             maxPageSize,
             deployment: { paymasterAddress: pm.address }
@@ -369,8 +360,7 @@ contract('ContractInteractor', function (accounts) {
 
     before(async function () {
       contractInteractor = new ContractInteractor({
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         logger,
         maxPageSize,
         environment
@@ -400,13 +390,12 @@ contract('ContractInteractor', function (accounts) {
 
     it('should send the transaction to all alternate providers', async function () {
       const provider = new ProfilingProvider(web3.currentProvider as HttpProvider)
-      const alternateProviders = [
+      const alternateProvider =
         new ProfilingProvider(
           new Web3.providers.HttpProvider('http://localhost:80/')
-        )]
+        )
       const contractInteractor = new ContractInteractor({
-        provider,
-        alternateProviders,
+        providers: [provider, alternateProvider],
         logger,
         maxPageSize,
         environment
@@ -417,8 +406,8 @@ contract('ContractInteractor', function (accounts) {
       assert.equal(transactionHash, sampleTransactionHash)
       assert.equal(provider.methodsCount.size, 1)
       assert.equal(provider.methodsCount.get('eth_sendRawTransaction'), 1)
-      assert.equal(alternateProviders[0].methodsCount.size, 1)
-      assert.equal(alternateProviders[0].methodsCount.get('eth_sendRawTransaction'), 1)
+      assert.equal(alternateProvider.methodsCount.size, 1)
+      assert.equal(alternateProvider.methodsCount.get('eth_sendRawTransaction'), 1)
     })
   })
 
@@ -428,8 +417,7 @@ contract('ContractInteractor', function (accounts) {
         paymasterAddress: pm.address
       }
       const contractInteractor = new ContractInteractor({
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         logger,
         deployment,
         maxPageSize,
@@ -448,8 +436,7 @@ contract('ContractInteractor', function (accounts) {
         paymasterAddress: constants.ZERO_ADDRESS
       }
       const contractInteractor = new ContractInteractor({
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         logger,
         deployment,
         maxPageSize,
@@ -464,8 +451,7 @@ contract('ContractInteractor', function (accounts) {
         paymasterAddress: sm.address
       }
       const contractInteractor = new ContractInteractor({
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         logger,
         deployment,
         maxPageSize,
@@ -481,8 +467,7 @@ contract('ContractInteractor', function (accounts) {
       }
       const versionManager = new VersionsManager('1.0.0', '1.0.0-old-client')
       const contractInteractor = new ContractInteractor({
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         logger,
         versionManager,
         deployment,
@@ -497,8 +482,7 @@ contract('ContractInteractor', function (accounts) {
       it('should fail verification of ERC-165 interfaces if no contract instance is initialized', async function () {
         const deployment = {}
         const contractInteractor = new ContractInteractor({
-          provider,
-          alternateProviders: [],
+          providers: [provider],
           logger,
           deployment,
           maxPageSize,
@@ -524,8 +508,7 @@ contract('ContractInteractor', function (accounts) {
           stakeManagerAddress: sm.address
         }
         let contractInteractor = new ContractInteractor({
-          provider,
-          alternateProviders: [],
+          providers: [provider],
           logger,
           deployment,
           maxPageSize,
@@ -538,8 +521,7 @@ contract('ContractInteractor', function (accounts) {
         // incorrect contract at address
         deployment.relayRegistrarAddress = sm.address
         contractInteractor = new ContractInteractor({
-          provider,
-          alternateProviders: [],
+          providers: [provider],
           logger,
           deployment,
           maxPageSize,
@@ -553,8 +535,7 @@ contract('ContractInteractor', function (accounts) {
         const rr = await RelayRegistrar.new(constants.yearInSec)
         deployment.relayRegistrarAddress = rr.address
         contractInteractor = new ContractInteractor({
-          provider,
-          alternateProviders: [],
+          providers: [provider],
           logger,
           deployment,
           maxPageSize,
@@ -568,8 +549,7 @@ contract('ContractInteractor', function (accounts) {
 
   describe('#splitRange', () => {
     const contractInteractor = new ContractInteractor({
-      provider,
-      alternateProviders: [],
+      providers: [provider],
       logger,
       maxPageSize,
       environment
@@ -611,8 +591,7 @@ contract('ContractInteractor', function (accounts) {
       await testDecimalsToken.mint('123456789123456789123', { from: accounts[1] })
       const deployment: GSNContractsDeployment = { managerStakeTokenAddress: testDecimalsToken.address }
       contractInteractor = new ContractInteractor({
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         logger,
         deployment,
         maxPageSize,
@@ -663,8 +642,7 @@ contract('ContractInteractor', function (accounts) {
     before(async function () {
       const deployment: GSNContractsDeployment = { paymasterAddress: pm.address }
       contractInteractor = new ContractInteractor({
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         logger,
         deployment,
         maxPageSize,
@@ -690,8 +668,7 @@ contract('ContractInteractor', function (accounts) {
     before(async function () {
       const deployment: GSNContractsDeployment = { paymasterAddress: pm.address }
       contractInteractor = new ContractInteractor({
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         logger,
         deployment,
         maxPageSize,
@@ -749,8 +726,7 @@ contract('ContractInteractor', function (accounts) {
 
     before(async function () {
       contractInteractor = new ContractInteractor({
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         logger,
         maxPageSize,
         environment
@@ -800,8 +776,7 @@ contract('ContractInteractor', function (accounts) {
       contractInteractor = new ContractInteractor(
         {
           environment,
-          provider: web3.currentProvider as HttpProvider,
-          alternateProviders: [],
+          providers: [web3.currentProvider as HttpProvider],
           logger,
           maxPageSize,
           deployment: { paymasterAddress: pm.address }

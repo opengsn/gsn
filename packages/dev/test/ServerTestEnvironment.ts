@@ -145,8 +145,7 @@ export class ServerTestEnvironment {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       this.contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: this.provider,
-        alternateProviders: [],
+        providers: [this.provider],
         logger,
         maxPageSize,
         deployment: {

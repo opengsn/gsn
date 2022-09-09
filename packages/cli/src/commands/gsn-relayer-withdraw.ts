@@ -16,7 +16,7 @@ const commander = gsnCommander(['g'])
 
 (async () => {
   const config = getServerConfig(commander.serverConfig)
-  const host = config.ethereumNodeUrl
+  const host = config.ethereumNodeUrls[0]
   const logger = createCommandsLogger(commander.loglevel)
   const logic = await new CommandsLogic(host, logger, { relayHubAddress: config.relayHubAddress }).init()
   const keystorePath = getKeystorePath(commander.keystorePath)

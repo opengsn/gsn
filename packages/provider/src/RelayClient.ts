@@ -583,8 +583,7 @@ export class RelayClient {
     const versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion)
     const contractInteractor = overrideDependencies?.contractInteractor ??
       await new ContractInteractor({
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         versionManager,
         logger: this.logger,
         maxPageSize: this.config.pastEventsQueryMaxPageSize,

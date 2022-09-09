@@ -39,8 +39,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
       const contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         maxPageSize,
-        provider,
-        alternateProviders: [],
+        providers: [provider],
         logger,
         deployment
       })

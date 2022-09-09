@@ -32,8 +32,7 @@ context('GasPriceFetcher', function () {
     contractInteractor = new ContractInteractor({
       environment: defaultEnvironment,
       maxPageSize: Number.MAX_SAFE_INTEGER,
-      provider: web3.currentProvider as HttpProvider,
-      alternateProviders: [],
+      providers: [web3.currentProvider as HttpProvider],
       logger
     })
 

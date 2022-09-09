@@ -146,8 +146,7 @@ contract('RegistrationManager', function (accounts) {
       serverWeb3provider = new Web3.providers.HttpProvider((web3.currentProvider as HttpProvider).host)
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: serverWeb3provider,
-        alternateProviders: [],
+        providers: [serverWeb3provider],
         logger,
         maxPageSize,
         deployment: {
@@ -178,8 +177,7 @@ contract('RegistrationManager', function (accounts) {
       const relayHubInstance = await deployHub(env.stakeManager.address, env.penalizer.address, constants.ZERO_ADDRESS, env.testToken.address, '1')
       const newContractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: serverWeb3provider,
-        alternateProviders: [],
+        providers: [serverWeb3provider],
         logger,
         maxPageSize,
         deployment: {

@@ -23,7 +23,7 @@ contract('RelayServerRequestsProfiling', function (accounts) {
     const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = new ContractInteractor({
-        environment: defaultEnvironment, maxPageSize, provider, logger, deployment, alternateProviders: []
+        environment: defaultEnvironment, maxPageSize, providers: [provider], logger, deployment
       })
       await contractInteractor.init()
       return contractInteractor

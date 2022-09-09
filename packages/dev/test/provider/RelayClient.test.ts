@@ -686,8 +686,7 @@ contract('RelayClient', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const badContractInteractor = new BadContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
-        alternateProviders: [],
+        providers: [web3.currentProvider as HttpProvider],
         logger,
         maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress }
@@ -747,8 +746,7 @@ contract('RelayClient', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = await new ContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
-        alternateProviders: [],
+        providers: [web3.currentProvider as HttpProvider],
         logger,
         maxPageSize,
         deployment: { paymasterAddress: paymaster.address }
@@ -790,8 +788,7 @@ contract('RelayClient', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = await new ContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
-        alternateProviders: [],
+        providers: [web3.currentProvider as HttpProvider],
         logger,
         maxPageSize,
         deployment: { paymasterAddress: paymaster.address }
@@ -955,8 +952,7 @@ contract('RelayClient', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const badContractInteractor = new BadContractInteractor({
         environment: defaultEnvironment,
-        provider: underlyingProvider,
-        alternateProviders: [],
+        providers: [underlyingProvider],
         logger,
         maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress }

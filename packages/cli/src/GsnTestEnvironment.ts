@@ -175,8 +175,7 @@ class GsnTestEnvironmentClass {
     const environment = defaultEnvironment
     const contractInteractor = new ContractInteractor(
       {
-        provider: new Web3.providers.HttpProvider(host),
-        alternateProviders: [],
+        providers: [new Web3.providers.HttpProvider(host)],
         logger,
         maxPageSize,
         environment,
@@ -233,8 +232,7 @@ class GsnTestEnvironmentClass {
     const deployment = loadDeployment(workdir)
     const contractInteractor = new ContractInteractor(
       {
-        provider: new Web3.providers.HttpProvider(url),
-        alternateProviders: [],
+        providers: [new Web3.providers.HttpProvider(url)],
         logger: console,
         maxPageSize: Number.MAX_SAFE_INTEGER,
         environment: defaultEnvironment,

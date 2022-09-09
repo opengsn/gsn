@@ -95,8 +95,7 @@ contract('KnownRelaysManager', function (
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
-        alternateProviders: [],
+        providers: [web3.currentProvider as HttpProvider],
         maxPageSize,
         logger,
         deployment: { relayHubAddress: relayHub.address }
@@ -259,8 +258,7 @@ contract('KnownRelaysManager 2', function (accounts) {
     const maxPageSize = Number.MAX_SAFE_INTEGER
     contractInteractor = new ContractInteractor({
       environment: defaultEnvironment,
-      provider: web3.currentProvider as HttpProvider,
-      alternateProviders: [],
+      providers: [web3.currentProvider as HttpProvider],
       maxPageSize,
       logger
     })
@@ -300,8 +298,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
-        alternateProviders: [],
+        providers: [web3.currentProvider as HttpProvider],
         logger,
         maxPageSize,
         deployment

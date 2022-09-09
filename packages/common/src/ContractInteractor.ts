@@ -70,8 +70,7 @@ import { constants, erc165Interfaces, RelayCallStatusCodes } from './Constants'
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
-  provider: Web3ProviderBaseInterface
-  alternateProviders: Web3ProviderBaseInterface[]
+  providers: Web3ProviderBaseInterface[]
   logger: LoggerInterface
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
@@ -139,8 +138,7 @@ export class ContractInteractor {
   private readonly relayCallMethod: any
 
   readonly web3: Web3
-  private readonly provider: Web3ProviderBaseInterface
-  private readonly alternateProviders: Web3ProviderBaseInterface[] = []
+  private readonly providers: Web3ProviderBaseInterface[] = []
   private deployment: GSNContractsDeployment
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
@@ -160,8 +158,7 @@ export class ContractInteractor {
     {
       maxPageSize,
       maxPageCount,
-      provider,
-      alternateProviders,
+      providers,
       versionManager,
       logger,
       environment,
@@ -172,10 +169,9 @@ export class ContractInteractor {
     this.maxPageCount = maxPageCount ?? Number.MAX_SAFE_INTEGER
     this.logger = logger
     this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
-    this.web3 = new Web3(provider as any)
+    this.web3 = new Web3(providers[0] as any)
     this.deployment = deployment
-    this.provider = provider
-    this.alternateProviders = alternateProviders
+    this.providers = providers
     this.lastBlockNumber = 0
     this.environment = environment
     this.domainSeparatorName = domainSeparatorName ?? ''
@@ -211,14 +207,14 @@ export class ContractInteractor {
       contractName: 'IERC20Token',
       abi: iErc20TokenAbi
     })
-    this.IStakeManager.setProvider(this.provider, undefined)
-    this.IRelayHubContract.setProvider(this.provider, undefined)
-    this.IPaymasterContract.setProvider(this.provider, undefined)
-    this.IForwarderContract.setProvider(this.provider, undefined)
-    this.IPenalizer.setProvider(this.provider, undefined)
-    this.IERC2771Recipient.setProvider(this.provider, undefined)
-    this.IRelayRegistrar.setProvider(this.provider, undefined)
-    this.IERC20Token.setProvider(this.provider, undefined)
+    this.IStakeManager.setProvider(this.providers[0], undefined)
+    this.IRelayHubContract.setProvider(this.providers[0], undefined)
+    this.IPaymasterContract.setProvider(this.providers[0], undefined)
+    this.IForwarderContract.setProvider(this.providers[0], undefined)
+    this.IPenalizer.setProvider(this.providers[0], undefined)
+    this.IERC2771Recipient.setProvider(this.providers[0], undefined)
+    this.IRelayRegistrar.setProvider(this.providers[0], undefined)
+    this.IERC20Token.setProvider(this.providers[0], undefined)
 
     this.relayCallMethod = this.IRelayHubContract.createContract('').methods.relayCall
   }
@@ -1095,7 +1091,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     signedTransaction: PrefixedHexString
   ): Promise<{ transactionHash: PrefixedHexString, settledResults: Array<PromiseSettledResult<string>> }> {
     const promises: Array<Promise<PrefixedHexString>> = []
-    for (const provider of [this.provider, ...this.alternateProviders]) {
+    for (const provider of this.providers) {
       promises.push(this.broadcastTransactionWithProvider(signedTransaction, provider))
     }
     const settledResults = await Promise.allSettled(promises)
@@ -1113,7 +1109,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   async broadcastTransactionWithProvider (
     signedTransaction: PrefixedHexString,
-    provider: Web3ProviderBaseInterface = this.provider
+    provider: Web3ProviderBaseInterface = this.providers[0]
   ): Promise<PrefixedHexString> {
     return await new Promise((resolve, reject) => {
       if (provider == null) {

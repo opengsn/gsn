@@ -76,8 +76,7 @@ async function makeRequest (
   const contractInteractor = new ContractInteractor({
     domainSeparatorName: defaultGsnConfig.domainSeparatorName,
     environment: defaultEnvironment,
-    provider: web3.eth.currentProvider as HttpProvider,
-    alternateProviders: [],
+    providers: [web3.eth.currentProvider as HttpProvider],
     logger: createServerLogger('error', '', ''),
     deployment,
     maxPageSize: Number.MAX_SAFE_INTEGER

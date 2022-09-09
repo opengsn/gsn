@@ -162,8 +162,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     contractInteractor = new ContractInteractor({
       domainSeparatorName: defaultGsnConfig.domainSeparatorName,
       environment: defaultEnvironment,
-      provider: web3.currentProvider as HttpProvider,
-      alternateProviders: [],
+      providers: [web3.currentProvider as HttpProvider],
       logger,
       maxPageSize,
       deployment

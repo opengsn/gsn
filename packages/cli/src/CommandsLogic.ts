@@ -154,8 +154,7 @@ export class CommandsLogic {
     this.httpClient = new HttpClient(new HttpWrapper(), logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const environment = defaultEnvironment
-    const alternateProviders: any[] = []
-    this.contractInteractor = new ContractInteractor({ provider, alternateProviders, logger, deployment, maxPageSize, environment })
+    this.contractInteractor = new ContractInteractor({ providers: [provider], logger, deployment, maxPageSize, environment })
     this.deployment = deployment
     this.web3 = new Web3(provider)
   }
