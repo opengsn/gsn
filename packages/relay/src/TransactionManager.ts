@@ -80,11 +80,11 @@ export class TransactionManager {
     this.nonces[this.workersKeyManager.getAddress(0)] = 0
   }
 
-  async _init (transactionType: TransactionType): Promise<void> {
+  async init (transactionType: TransactionType): Promise<void> {
     this.transactionType = transactionType
     this.rawTxOptions = this.contractInteractor.getRawTxOptions()
     if (this.rawTxOptions == null) {
-      throw new Error('_init failed for TransactionManager, was ContractInteractor properly initialized?')
+      throw new Error('init failed for TransactionManager, was ContractInteractor properly initialized?')
     }
   }
 

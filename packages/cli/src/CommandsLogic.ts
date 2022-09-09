@@ -587,7 +587,7 @@ export class CommandsLogic {
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, fInstance, deployOptions.skipConfirmation)
     }
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, fInstance, options)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, fInstance, console, options)
 
     let stakingTokenAddress = deployOptions.stakingTokenAddress
 

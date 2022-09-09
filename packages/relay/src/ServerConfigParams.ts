@@ -208,11 +208,6 @@ export interface ServerConfigParams {
   managerStakeTokenAddress: string
 
   /**
-   * If the balance of the Relay Manager on the RelayHub is below this value it will not be pulled to fund transactions.
-   */
-  minHubWithdrawalBalance: number
-
-  /**
    * If the balance of the Relay Manager on the RelayHub is above this value it will be sent to the owner.
    */
   withdrawToOwnerOnBalance?: number
@@ -355,7 +350,6 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   managerMinBalance: 0.1e18, // 0.1 eth
   managerStakeTokenAddress: constants.ZERO_ADDRESS,
   managerTargetBalance: 0.3e18,
-  minHubWithdrawalBalance: 0.1e18,
   checkInterval: 10000,
   devMode: false,
   loggingProvider: LoggingProviderMode.NONE,
@@ -422,7 +416,6 @@ const ConfigParamsTypes = {
   managerMinStake: 'string',
   managerStakeTokenAddress: 'string',
   managerTargetBalance: 'number',
-  minHubWithdrawalBalance: 'number',
   withdrawToOwnerOnBalance: 'number',
   defaultGasLimit: 'number',
   requestMinValidSeconds: 'number',
@@ -600,7 +593,6 @@ export function validateBalanceParams (config: ServerConfigParams): void {
   const managerTargetBalance = toBN(config.managerTargetBalance)
   const managerMinBalance = toBN(config.managerMinBalance)
   const workerMinBalance = toBN(config.workerMinBalance)
-  const minHubWithdrawalBalance = toBN(config.minHubWithdrawalBalance)
   if (managerTargetBalance.lt(managerMinBalance)) {
     throw new Error('managerTargetBalance must be at least managerMinBalance')
   }
@@ -611,9 +603,6 @@ export function validateBalanceParams (config: ServerConfigParams): void {
     return
   }
   const withdrawToOwnerOnBalance = toBN(config.withdrawToOwnerOnBalance)
-  if (minHubWithdrawalBalance.gt(withdrawToOwnerOnBalance)) {
-    throw new Error('withdrawToOwnerOnBalance must be at least minHubWithdrawalBalance')
-  }
   if (managerTargetBalance.add(workerTargetBalance).gte(withdrawToOwnerOnBalance)) {
     throw new Error('withdrawToOwnerOnBalance must be larger than managerTargetBalance + workerTargetBalance')
   }

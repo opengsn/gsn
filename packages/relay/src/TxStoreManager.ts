@@ -121,8 +121,8 @@ export class TxStoreManager {
       return true
     }
     const recentlyMinedTxs = storedMatchingTxs.filter(it => {
-      const minedBlockNumber = it.minedBlock?.number ?? 0
-      return currentBlock - minedBlockNumber <= recencyBlockCount
+      const minedBlockNumber = it.minedBlock?.number
+      return minedBlockNumber != null && currentBlock - minedBlockNumber <= recencyBlockCount
     })
     if (recentlyMinedTxs.length !== 0) {
       this.logger.info(`Found ${recentlyMinedTxs.length} recently mined transactions that match a query: ${JSON.stringify(recentlyMinedTxs)}`)

@@ -40,8 +40,8 @@ import { BlockTransactionString } from 'web3-eth'
 const mintxgascost = defaultEnvironment.mintxgascost
 
 export class RegistrationManager {
-  balanceRequired?: AmountRequired
-  stakeRequired?: AmountRequired
+  balanceRequired!: AmountRequired
+  stakeRequired!: AmountRequired
   _isSetOwnerCalled = false
   _isOwnerSetOnStakeManager = false
   _isHubAuthorized = false
@@ -136,7 +136,7 @@ export class RegistrationManager {
     currentBlock: BlockTransactionString,
     currentBlockTimestamp: number,
     forceRegistration: boolean): Promise<PrefixedHexString[]> {
-    if (!this.isInitialized || this.balanceRequired == null) {
+    if (!this.isInitialized) {
       throw new Error('RegistrationManager not initialized')
     }
     const topics = [address2topic(this.managerAddress)]
@@ -285,18 +285,12 @@ export class RegistrationManager {
   }
 
   async refreshBalance (): Promise<void> {
-    if (this.balanceRequired == null) {
-      throw new Error('not initialized')
-    }
     const currentBalance = await this.contractInteractor.getBalance(this.managerAddress)
     this.balanceRequired.currentValue = toBN(currentBalance)
   }
 
   async refreshStake (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
     const transactionHashes: string[] = []
-    if (this.stakeRequired == null) {
-      throw new Error('not initialized')
-    }
     const stakeInfo = await this.contractInteractor.getStakeInfo(this.managerAddress)
     const stakedOnHubStatus = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
     if (stakedOnHubStatus.isStaked) {
@@ -366,9 +360,6 @@ export class RegistrationManager {
     currentBlockHash: string,
     currentBlockTimestamp: number
   ): Promise<PrefixedHexString[]> {
-    if (this.balanceRequired == null || this.stakeRequired == null) {
-      throw new Error('not initialized')
-    }
     const stakeOnHubStatus = await this.contractInteractor.isRelayManagerStakedOnHub(this.managerAddress)
     if (!stakeOnHubStatus.isStaked && this.ownerAddress != null) {
       this.logger.error('Relay manager is staked on StakeManager but not on RelayHub.')
@@ -530,9 +521,6 @@ export class RegistrationManager {
   }
 
   async isRegistered (): Promise<boolean> {
-    if (this.stakeRequired == null) {
-      throw new Error('not initialized')
-    }
     const isRegistrationCorrect = await this._isRegistrationCorrect()
     return this.stakeRequired.isSatisfied &&
       this.isStakeLocked &&
@@ -541,9 +529,6 @@ export class RegistrationManager {
   }
 
   printNotRegisteredMessage (): void {
-    if (this.balanceRequired == null || this.stakeRequired == null) {
-      throw new Error('not initialized')
-    }
     if (this._isRegistrationCorrect()) {
       return
     }

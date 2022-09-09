@@ -9,16 +9,6 @@
       "**ts-node**"
     ]
   },
-  "version": "2.2.2",
-  "description": "Open Gas Stations Network",
-  "name": "@opengsn/gsn",
-  "engines": {
-    "node": ">=11.0.0"
-  },
-  "repository": {
-    "url": "https://github.com/opengsn/gsn",
-    "type": "git"
-  },
   "contributors": [
     {
       "name": "Dror Tirosh",
@@ -37,9 +27,6 @@
       "email": "forshtat1@gmail.com"
     }
   ],
-  "bin": {
-    "gsn": "dist/src/cli/commands/gsn.js"
-  },
   "scripts": {
     "test": "yarn preprocess && yarn lerna-run-test-with-hardhat",
     "hardhat-fork-mainnet":  "CHAINID=1 hardhat node --port 8544 --fork https://mainnet.infura.io/v3/f40be2b1a3914db682491dc62a19ad43 --fork-block-number 15404620",

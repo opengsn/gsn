@@ -87,7 +87,7 @@ export class RelayServer extends EventEmitter {
   transactionType = TransactionType.LEGACY
 
   reputationManager!: ReputationManager
-  registrationManager!: RegistrationManager
+  registrationManager: RegistrationManager
   chainId!: number
   networkId!: number
   relayHubContract!: IRelayHubInstance
@@ -120,6 +120,16 @@ export class RelayServer extends EventEmitter {
       }
       this.reputationManager = dependencies.reputationManager
     }
+    this.registrationManager = new RegistrationManager(
+      this.contractInteractor,
+      this.transactionManager,
+      this.txStoreManager,
+      this,
+      this.logger,
+      this.config,
+      this.managerAddress,
+      this.workerAddress
+    )
     const now = Date.now()
     this.readinessInfo = {
       runningSince: now,
@@ -512,7 +522,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     if (latestBlock.baseFeePerGas != null) {
       this.transactionType = TransactionType.TYPE_TWO
     }
-    await this.transactionManager._init(this.transactionType)
+    await this.transactionManager.init(this.transactionType)
     await this._initTrustedPaymasters(this.config.trustedPaymasters)
     if (!this.config.skipErc165Check) {
       await this.contractInteractor._validateERC165InterfacesRelay()
@@ -525,16 +535,6 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.fatal(`No RelayHub deployed at address ${relayHubAddress}.`)
     }
 
-    this.registrationManager = new RegistrationManager(
-      this.contractInteractor,
-      this.transactionManager,
-      this.txStoreManager,
-      this,
-      this.logger,
-      this.config,
-      this.managerAddress,
-      this.workerAddress
-    )
     const transactionHashes = await this.registrationManager.init(this.lastScannedBlock, latestBlock)
 
     this.chainId = this.contractInteractor.chainId
@@ -555,6 +555,48 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return transactionHashes
   }
 
+  async _replenishWorker (
+    workerReplenishAmount: BN,
+    currentBlockNumber: number,
+    currentBlockHash: string,
+    currentBlockTimestamp: number
+  ): Promise<PrefixedHexString> {
+    this.logger.debug('Replenishing worker balance by manager eth balance')
+    const details: SendTransactionDetails = {
+      signer: this.managerAddress,
+      serverAction: ServerAction.VALUE_TRANSFER,
+      destination: this.workerAddress,
+      value: toHex(workerReplenishAmount),
+      creationBlockNumber: currentBlockNumber,
+      creationBlockHash: currentBlockHash,
+      creationBlockTimestamp: currentBlockTimestamp
+    }
+    const { transactionHash } = await this.transactionManager.sendTransaction(details)
+    return transactionHash
+  }
+
+  async _withdrawHubDeposit (
+    managerHubBalance: BN,
+    currentBlockNumber: number,
+    currentBlockHash: string,
+    currentBlockTimestamp: number
+  ): Promise<PrefixedHexString> {
+    this.logger.info(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
+    // Refill manager eth balance from hub balance
+    const method = this.relayHubContract?.contract.methods.withdraw(this.managerAddress, toHex(managerHubBalance))
+    const details: SendTransactionDetails = {
+      signer: this.managerAddress,
+      serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
+      destination: this.relayHubContract.address,
+      creationBlockNumber: currentBlockNumber,
+      creationBlockHash: currentBlockHash,
+      creationBlockTimestamp: currentBlockTimestamp,
+      method
+    }
+    const { transactionHash } = await this.transactionManager.sendTransaction(details)
+    return transactionHash
+  }
+
   async replenishServer (
     workerIndex: number,
     currentBlockNumber: number,
@@ -562,56 +604,44 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     currentBlockTimestamp: number
   ): Promise<PrefixedHexString[]> {
     const transactionHashes: PrefixedHexString[] = []
+    // refresh balances
     let managerEthBalance = await this.getManagerBalance()
     const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
     this.workerBalanceRequired.currentValue = await this.getWorkerBalance(workerIndex)
-    if (managerEthBalance.gte(toBN(this.config.managerTargetBalance.toString())) && this.workerBalanceRequired.isSatisfied) {
+
+    const isWithdrawalPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.DEPOSIT_WITHDRAWAL, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
+    const isReplenishPendingForWorker = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.VALUE_TRANSFER, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks, this.workerAddress)
+    const mustReplenishWorker = !this.workerBalanceRequired.isSatisfied && !isReplenishPendingForWorker
+    const mustReplenishManager = toBN(this.config.managerMinBalance).gt(managerEthBalance) && !isWithdrawalPending
+
+    if (!mustReplenishManager && !mustReplenishWorker) {
       // all filled, nothing to do
       return transactionHashes
     }
-    const mustWithdrawHubDeposit = managerEthBalance.lt(toBN(this.config.managerTargetBalance.toString())) && managerHubBalance.gte(
-      toBN(this.config.minHubWithdrawalBalance))
-    const isWithdrawalPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.DEPOSIT_WITHDRAWAL, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
-    if (mustWithdrawHubDeposit && !isWithdrawalPending) {
-      this.logger.info(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
-      // Refill manager eth balance from hub balance
-      const method = this.relayHubContract?.contract.methods.withdraw(this.managerAddress, toHex(managerHubBalance))
-      const details: SendTransactionDetails = {
-        signer: this.managerAddress,
-        serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
-        destination: this.relayHubContract.address,
-        creationBlockNumber: currentBlockNumber,
-        creationBlockHash: currentBlockHash,
-        creationBlockTimestamp: currentBlockTimestamp,
-        method
-      }
-      const { transactionHash } = await this.transactionManager.sendTransaction(details)
+
+    const workerReplenishAmount = toBN(this.config.workerTargetBalance.toString()).sub(this.workerBalanceRequired.currentValue)
+    const managerReplenishAmount = toBN(this.config.managerTargetBalance.toString()).sub(managerEthBalance)
+    const canReplenishManager = managerHubBalance.gte(managerReplenishAmount)
+    const cantReplenishWorkerFromBalance = managerEthBalance.sub(toBN(this.config.managerMinBalance)).lt(workerReplenishAmount)
+    const canReplenishWorkerFromHubAndBalance = managerHubBalance.add(managerEthBalance).sub(toBN(this.config.managerMinBalance)).gte(workerReplenishAmount)
+    const mustWithdrawHubDeposit =
+      (mustReplenishManager && canReplenishManager) ||
+      (mustReplenishWorker && cantReplenishWorkerFromBalance && canReplenishWorkerFromHubAndBalance)
+
+    if (mustWithdrawHubDeposit) {
+      const transactionHash = await this._withdrawHubDeposit(managerHubBalance, currentBlockNumber, currentBlockHash, currentBlockTimestamp)
       transactionHashes.push(transactionHash)
     }
     managerEthBalance = await this.getManagerBalance()
-    const mustReplenishWorker = !this.workerBalanceRequired.isSatisfied
-    const isReplenishPendingForWorker = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.VALUE_TRANSFER, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks, this.workerAddress)
-    if (mustReplenishWorker && !isReplenishPendingForWorker) {
-      const refill = toBN(this.config.workerTargetBalance.toString()).sub(this.workerBalanceRequired.currentValue)
+    if (mustReplenishWorker) {
       this.logger.debug(
-        `== replenishServer: mgr balance=${managerEthBalance.toString()}  manager hub balance=${managerHubBalance.toString()}
-          \n${this.workerBalanceRequired.description}\n refill=${refill.toString()}`)
-      if (refill.lt(managerEthBalance.sub(toBN(this.config.managerMinBalance)))) {
-        this.logger.debug('Replenishing worker balance by manager eth balance')
-        const details: SendTransactionDetails = {
-          signer: this.managerAddress,
-          serverAction: ServerAction.VALUE_TRANSFER,
-          destination: this.workerAddress,
-          value: toHex(refill),
-          creationBlockNumber: currentBlockNumber,
-          creationBlockHash: currentBlockHash,
-          creationBlockTimestamp: currentBlockTimestamp
-        }
-        const { transactionHash } = await this.transactionManager.sendTransaction(details)
+        `== replenishServer: manager eth balance=${managerEthBalance.toString()}  manager hub balance=${managerHubBalance.toString()}
+          \n${this.workerBalanceRequired.description}\n refill=${workerReplenishAmount.toString()}`)
+      if (workerReplenishAmount.lt(managerEthBalance.sub(toBN(this.config.managerMinBalance)))) {
+        const transactionHash = await this._replenishWorker(workerReplenishAmount, currentBlockNumber, currentBlockHash, currentBlockTimestamp)
         transactionHashes.push(transactionHash)
       } else {
-        const message = `== replenishServer: can't replenish: mgr balance too low ${managerEthBalance.toString()} refill=${refill.toString()}`
-        this.emit('fundingNeeded', message)
+        const message = `== replenishServer: can't replenish: balance too low ${managerEthBalance.toString()} refill=${workerReplenishAmount.toString()}`
         this.logger.error(message)
       }
     }
@@ -645,7 +675,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _worker (block: BlockTransactionString): Promise<PrefixedHexString[]> {
-    if (!this.initialized || this.registrationManager.balanceRequired == null) {
+    if (!this.initialized) {
       throw new Error('Please run init() first')
     }
     if (block.number <= this.lastScannedBlock) {
