@@ -134,7 +134,7 @@ async function getStakingInfo (hre: HardhatRuntimeEnvironment, env: Environment)
   const stakingTokenValue = env.deploymentConfiguration.minimumStakePerToken[stakingTokenAddress]
 
   if (stakingTokenAddress === 'test') {
-    stakingTokenAddress = await hre.deployments.get('WrappedEthToken').then(res => res.address)
+    stakingTokenAddress = await hre.deployments.get('TestWrappedNativeToken').then(res => res.address)
   }
   return { stakingTokenAddress, stakingTokenValue }
 }
@@ -196,7 +196,7 @@ async function getTokenUpdateStakeOrNull (hub: Contract, tokenAddr: string, conf
 
 async function applyStakingTokenConfiguration (hre: HardhatRuntimeEnvironment, env: Environment, hub: Contract): Promise<void> {
   const deployments = await hre.deployments.all()
-  const testStakingTokenAddress = deployments.WrappedEthToken?.address
+  const testStakingTokenAddress = deployments.TestWrappedNativeToken?.address
 
   const configChanges = await Promise.all(Object.entries(env.deploymentConfiguration?.minimumStakePerToken ?? [])
     .map(async ([tokenAddr, configMinimumStake]) =>

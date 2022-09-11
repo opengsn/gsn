@@ -44,14 +44,14 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
 
   let stakingTokenAddress = Object.keys(env.deploymentConfiguration.minimumStakePerToken ?? {})[0]
   if (stakingTokenAddress == null) {
-    fatal('must specify token address in minimumStakePerToken (or "test" to deploy WrappedEthToken')
+    fatal('must specify token address in minimumStakePerToken (or "test" to deploy TestWrappedNativeToken')
   }
 
   if (stakingTokenAddress === 'test') {
-    const WrappedEthToken = await deploy(deployments, 'WrappedEthToken', {
+    const TestWrappedNativeToken = await deploy(deployments, 'TestWrappedNativeToken', {
       from: deployer
     })
-    stakingTokenAddress = WrappedEthToken.address
+    stakingTokenAddress = TestWrappedNativeToken.address
   }
 
   const deployedForwarder = await deploy(deployments, 'Forwarder', {
