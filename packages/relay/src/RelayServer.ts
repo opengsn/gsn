@@ -692,8 +692,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     await this.withdrawToOwnerIfNeeded(block.number, block.hash, currentBlockTimestamp)
     this.lastRefreshBlock = block.number
     await this._refreshGasFees()
-    const managerBalanceNotReady = await this._refreshAndCheckBalances()
-    if (managerBalanceNotReady) {
+    const isManagerBalanceReady = await this._refreshAndCheckBalances()
+    if (!isManagerBalanceReady) {
       return []
     }
     return await this._handleChanges(block)
@@ -701,23 +701,29 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async _refreshAndCheckBalances (): Promise<boolean> {
     const minBalanceToNotReadyFactor = 2
-    let managerBalanceNotReady = false
-    let workerBalanceNotReady = false
+    let isManagerBalanceReady = true
+    let isWorkerBalanceReady = true
     if (this.shouldRefreshBalances) {
       await this.registrationManager.refreshBalance()
       this.workerBalanceRequired.currentValue = await this.getWorkerBalance(0)
 
-      managerBalanceNotReady = this.registrationManager.balanceRequired.currentValue.lt(toBN(this.config.managerMinBalance.toString()).divn(minBalanceToNotReadyFactor))
-      workerBalanceNotReady = this.workerBalanceRequired.currentValue.lt(toBN(this.config.workerMinBalance.toString()).divn(minBalanceToNotReadyFactor))
-      if (managerBalanceNotReady || workerBalanceNotReady) {
-        this.logger.debug(`${managerBalanceNotReady ? 'manager' : 'worker'} balance too low`)
+      isManagerBalanceReady = this.registrationManager.balanceRequired.currentValue.gte(toBN(this.config.managerMinBalance.toString()).divn(minBalanceToNotReadyFactor))
+      isWorkerBalanceReady = this.workerBalanceRequired.currentValue.gte(toBN(this.config.workerMinBalance.toString()).divn(minBalanceToNotReadyFactor))
+
+      if (!isManagerBalanceReady || !isWorkerBalanceReady) {
         this.setReadyState(false)
       }
-      const managerBalanceAwaitsReplenish = this.registrationManager.balanceRequired.currentValue.lt(toBN(this.config.managerMinBalance.toString()))
-      const workerBalanceAwaitsReplenish = this.workerBalanceRequired.currentValue.lt(toBN(this.config.workerMinBalance.toString()))
-      this.shouldRefreshBalances = managerBalanceAwaitsReplenish || workerBalanceAwaitsReplenish
+      if (!isWorkerBalanceReady) {
+        this.logger.debug('worker balance too low')
+      }
+      if (!isManagerBalanceReady) {
+        this.logger.debug('manager balance too low')
+      }
+      const shouldReplenishManager = this.registrationManager.balanceRequired.currentValue.lt(toBN(this.config.managerMinBalance.toString()))
+      const shouldReplenishWorker = this.workerBalanceRequired.currentValue.lt(toBN(this.config.workerMinBalance.toString()))
+      this.shouldRefreshBalances = shouldReplenishManager || shouldReplenishWorker
     }
-    return managerBalanceNotReady
+    return isManagerBalanceReady
   }
 
   async _refreshGasFees (): Promise<void> {
