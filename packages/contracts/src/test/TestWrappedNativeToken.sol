@@ -7,10 +7,10 @@ import "../interfaces/IERC20Token.sol";
 /**
  * @notice minimal "wrapped eth" implementation.
  */
-contract WrappedEthToken is ERC20, IERC20Token {
+contract TestWrappedNativeToken is ERC20, IERC20Token {
 
     // solhint-disable-next-line no-empty-blocks
-    constructor() ERC20("Wrapped Eth", "wEth") {
+    constructor() ERC20("Wrapped Native Token", "wnTok") {
     }
 
     receive() external payable {

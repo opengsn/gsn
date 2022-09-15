@@ -34,7 +34,7 @@ import RelayRegistrar from './compiled/RelayRegistrar.json'
 import Penalizer from './compiled/Penalizer.json'
 import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
-import WrappedEthToken from './compiled/WrappedEthToken.json'
+import TestWrappedNativeToken from './compiled/TestWrappedNativeToken.json'
 
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
@@ -592,7 +592,7 @@ export class CommandsLogic {
 
     let ttInstance: Contract | undefined
     if (deployOptions.deployTestToken ?? false) {
-      ttInstance = await this.getContractInstance(WrappedEthToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
+      ttInstance = await this.getContractInstance(TestWrappedNativeToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
       console.log('Setting minimum stake of 1 TestWeth on Hub')
       await rInstance.methods.setMinimumStakes([ttInstance.options.address], [1e18.toString()]).send({ ...options })
       stakingTokenAddress = ttInstance.options.address
