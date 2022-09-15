@@ -1,6 +1,7 @@
 // @ts-ignore
 import EthVal from 'ethval'
 import chalk from 'chalk'
+import { EventEmitter } from 'events'
 import { Mutex } from 'async-mutex'
 import { FeeMarketEIP1559Transaction, Transaction, TxOptions, TypedTransaction } from '@ethereumjs/tx'
 import { PrefixedHexString } from 'ethereumjs-util'
@@ -50,7 +51,7 @@ export interface SendTransactionDetails {
   creationBlockTimestamp: number
 }
 
-export class TransactionManager {
+export class TransactionManager extends EventEmitter {
   nonceMutex = new Mutex()
   managerKeyManager: KeyManager
   workersKeyManager: KeyManager
@@ -64,6 +65,7 @@ export class TransactionManager {
   rawTxOptions!: TxOptions
 
   constructor (dependencies: ServerDependencies, config: ServerConfigParams) {
+    super()
     this.contractInteractor = dependencies.contractInteractor
     this.txStoreManager = dependencies.txStoreManager
     this.workersKeyManager = dependencies.workersKeyManager
@@ -138,6 +140,7 @@ data                     | ${transaction.data}
       if (transactionHash.toLowerCase() !== verifiedTxId.toLowerCase()) {
         throw new Error(`txhash mismatch: from receipt: ${transactionHash} from txstore:${verifiedTxId}`)
       }
+      this.emit('TransactionBroadcast')
       return {
         transactionHash,
         signedTx,

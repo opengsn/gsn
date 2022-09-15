@@ -76,6 +76,7 @@ export class RelayServer extends EventEmitter {
   alerted = false
   alertedByTransactionBlockTimestamp: number = 0
   initialized: boolean = false
+  shouldRefreshBalances = true
   readonly contractInteractor: ContractInteractor
   readonly gasPriceFetcher: GasPriceFetcher
   private readonly versionManager: VersionsManager
@@ -523,6 +524,9 @@ returnValue        | ${viewRelayCallRet.returnValue}
       this.transactionType = TransactionType.TYPE_TWO
     }
     await this.transactionManager.init(this.transactionType)
+    this.transactionManager.on('TransactionBroadcast', () => {
+      this.shouldRefreshBalances = true
+    })
     await this._initTrustedPaymasters(this.config.trustedPaymasters)
     if (!this.config.skipErc165Check) {
       await this.contractInteractor._validateERC165InterfacesRelay()
@@ -604,10 +608,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     currentBlockTimestamp: number
   ): Promise<PrefixedHexString[]> {
     const transactionHashes: PrefixedHexString[] = []
-    // refresh balances
-    let managerEthBalance = await this.getManagerBalance()
+    // get balances
+    let managerEthBalance = this.registrationManager.balanceRequired.currentValue
     const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
-    this.workerBalanceRequired.currentValue = await this.getWorkerBalance(workerIndex)
 
     const isWithdrawalPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.DEPOSIT_WITHDRAWAL, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
     const isReplenishPendingForWorker = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.VALUE_TRANSFER, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks, this.workerAddress)
@@ -631,8 +634,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (mustWithdrawHubDeposit) {
       const transactionHash = await this._withdrawHubDeposit(managerHubBalance, currentBlockNumber, currentBlockHash, currentBlockTimestamp)
       transactionHashes.push(transactionHash)
+      await this.registrationManager.refreshBalance()
+      managerEthBalance = this.registrationManager.balanceRequired.currentValue
     }
-    managerEthBalance = await this.getManagerBalance()
     if (mustReplenishWorker) {
       this.logger.debug(
         `== replenishServer: manager eth balance=${managerEthBalance.toString()}  manager hub balance=${managerHubBalance.toString()}
@@ -688,12 +692,38 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     await this.withdrawToOwnerIfNeeded(block.number, block.hash, currentBlockTimestamp)
     this.lastRefreshBlock = block.number
     await this._refreshGasFees()
-    await this.registrationManager.refreshBalance()
-    if (!this.registrationManager.balanceRequired.isSatisfied) {
-      this.setReadyState(false)
+    const isManagerBalanceReady = await this._refreshAndCheckBalances()
+    if (!isManagerBalanceReady) {
       return []
     }
-    return await this._handleChanges(block, currentBlockTimestamp)
+    return await this._handleChanges(block)
+  }
+
+  async _refreshAndCheckBalances (): Promise<boolean> {
+    const minBalanceToNotReadyFactor = 2
+    let isManagerBalanceReady = true
+    let isWorkerBalanceReady = true
+    if (this.shouldRefreshBalances) {
+      await this.registrationManager.refreshBalance()
+      this.workerBalanceRequired.currentValue = await this.getWorkerBalance(0)
+
+      isManagerBalanceReady = this.registrationManager.balanceRequired.currentValue.gte(toBN(this.config.managerMinBalance.toString()).divn(minBalanceToNotReadyFactor))
+      isWorkerBalanceReady = this.workerBalanceRequired.currentValue.gte(toBN(this.config.workerMinBalance.toString()).divn(minBalanceToNotReadyFactor))
+
+      if (!isManagerBalanceReady || !isWorkerBalanceReady) {
+        this.setReadyState(false)
+      }
+      if (!isWorkerBalanceReady) {
+        this.logger.debug('worker balance too low')
+      }
+      if (!isManagerBalanceReady) {
+        this.logger.debug('manager balance too low')
+      }
+      const shouldReplenishManager = this.registrationManager.balanceRequired.currentValue.lt(toBN(this.config.managerMinBalance.toString()))
+      const shouldReplenishWorker = this.workerBalanceRequired.currentValue.lt(toBN(this.config.workerMinBalance.toString()))
+      this.shouldRefreshBalances = shouldReplenishManager || shouldReplenishWorker
+    }
+    return isManagerBalanceReady
   }
 
   async _refreshGasFees (): Promise<void> {
@@ -723,7 +753,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
   }
 
-  async _handleChanges (currentBlock: BlockTransactionString, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
+  async _handleChanges (currentBlock: BlockTransactionString): Promise<PrefixedHexString[]> {
+    const currentBlockTimestamp = toNumber(currentBlock.timestamp)
     let transactionHashes: PrefixedHexString[] = []
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
     const shouldRegisterAgain =
@@ -744,12 +775,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     await this.handlePastHubEvents(currentBlock, hubEventsSinceLastScan)
     const workerIndex = 0
     transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, currentBlock.number, currentBlock.hash, currentBlockTimestamp))
-    const workerBalance = await this.getWorkerBalance(workerIndex)
-    if (workerBalance.lt(toBN(this.config.workerMinBalance))) {
-      this.logger.debug('Worker balance too low')
-      this.setReadyState(false)
-      return transactionHashes
-    }
+    await this._refreshAndCheckBalances()
     this.setReadyState(true)
     if (this.alerted && this.alertedByTransactionBlockTimestamp + this.config.alertedDelaySeconds < currentBlockTimestamp) {
       this.logger.warn(`Relay exited alerted state. Alerted transaction timestamp: ${this.alertedByTransactionBlockTimestamp}. Current block timestamp: ${currentBlockTimestamp}`)

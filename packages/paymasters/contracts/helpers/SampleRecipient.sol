@@ -13,7 +13,12 @@ contract SampleRecipient is ERC2771Recipient {
     function setForwarder(address forwarder) public {
         _setTrustedForwarder(forwarder);
     }
+
     function something() public {
+        emit Sender( _msgSender(), msg.sender );
+    }
+
+    function nothing() public {
         emit Sender( _msgSender(), msg.sender );
     }
 }
