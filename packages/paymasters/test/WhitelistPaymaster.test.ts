@@ -59,7 +59,8 @@ contract('WhitelistPaymaster', ([from, another]) => {
 
   describe('with whitelisted sender', () => {
     before(async () => {
-      await pm.whitelistSender(from)
+      await pm.whitelistSender(from, true)
+      await pm.setConfiguration(true, false, false, true)
     })
     it('should allow whitelisted sender', async () => {
       await s.something()
@@ -70,13 +71,32 @@ contract('WhitelistPaymaster', ([from, another]) => {
   })
   describe('with whitelisted target', () => {
     before(async () => {
-      await pm.whitelistTarget(s1.address)
+      await pm.whitelistTarget(s1.address, true)
+      await pm.setConfiguration(false, true, false, true)
     })
     it('should allow whitelisted target', async () => {
       await s1.something()
     })
     it('should prevent non-whitelisted target', async () => {
       await expectRevert(s.something(), 'target not whitelisted')
+    })
+  })
+
+  describe('with whitelisted method', () => {
+    before(async () => {
+      const somethingEncoded = s.contract.methods.something().encodeABI()
+      const methodId = somethingEncoded.substr(0, 10)
+      await pm.whitelistMethod(s.address, methodId, true)
+      await pm.setConfiguration(false, false, true, true)
+    })
+    it('should allow whitelisted target and method', async () => {
+      await s.something()
+    })
+    it('should prevent non-whitelisted method', async () => {
+      await expectRevert(s.nothing(), 'method not whitelisted')
+    })
+    it('should prevent whitelisted method on wrong target', async () => {
+      await expectRevert(s1.something(), 'method not whitelisted')
     })
   })
 })
