@@ -49,13 +49,8 @@ export class KnownRelaysManager {
   }
 
   async getRelayInfoForManagers (): Promise<RegistrarRelayInfo[]> {
-    let relayInfos: RegistrarRelayInfo[] = await this.contractInteractor.getRegisteredRelays()
+    const relayInfos: RegistrarRelayInfo[] = await this.contractInteractor.getRegisteredRelays()
     this.logger.info(`fetchRelaysAdded: found ${relayInfos.length} relays`)
-    const queriedRelaysSize = relayInfos.length
-    relayInfos = relayInfos.filter(it => validateRelayUrl(it.relayUrl))
-    if (relayInfos.length < queriedRelaysSize) {
-      this.logger.info(`fetchRelaysAdded: filtered out ${queriedRelaysSize - relayInfos.length} relays without a public URL or a public URL that is not valid`)
-    }
 
     const blacklistFilteredRelayInfos = relayInfos.filter((info: RegistrarRelayInfo) => {
       const isHostBlacklisted = this.config.blacklistedRelays.find(relay => info.relayUrl.toLowerCase().includes(relay.toLowerCase())) != null
@@ -91,6 +86,13 @@ export class KnownRelaysManager {
     })
     sortedRelays[1] = shuffle(relaysWithoutFailures)
     sortedRelays[2] = shuffle(relaysWithFailures)
+    for (let i = 0; i < sortedRelays.length; i++) {
+      const queriedRelaysSize = sortedRelays[i].length
+      sortedRelays[i] = sortedRelays[i].filter(it => validateRelayUrl(it.relayUrl))
+      if (sortedRelays[i].length < queriedRelaysSize) {
+        this.logger.info(`getRelaysShuffledForTransaction (${i}): filtered out ${queriedRelaysSize - sortedRelays[i].length} relays without a public URL or a public URL that is not valid`)
+      }
+    }
     return sortedRelays
   }
 
