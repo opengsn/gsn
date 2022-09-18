@@ -30,23 +30,22 @@ task('export', 'Export all GSN-deployed networks')
     const exportNetworks = require(tmpExportFile)
     // export is an hash of arrays { 3: [ { chainId: 3, ... } ] }
     const networks = Object.keys(exportNetworks).reduce((set, chainId) => {
-      let globalChainInfo = globalChainList[chainId]
+      const globalChainInfo = globalChainList[chainId]
       if (globalChainInfo == null) {
-        if (chainId === '421612') {
-          // special case... nitro doesn't appear in the global list.
-          globalChainInfo = {
-            name: 'Arbitrum Nitro Devnet'
-          }
-        } else {
-          throw new Error(`Chain ${chainId} not found in ${chainListUrl}`)
-        }
+        throw new Error(`Chain ${chainId} not found in ${chainListUrl}`)
       }
-      const chainArray = exportNetworks[chainId].map((chain: any) => ({
-        title: globalChainInfo.name,
-        symbol: globalChainInfo.nativeCurrency?.symbol,
-        explorer: globalChainInfo.explorers?.[0].url,
-        ...chain
-      }))
+      const chainArray = exportNetworks[chainId].map((chain: any) => {
+        const ret = {
+          title: globalChainInfo.name,
+          symbol: globalChainInfo.nativeCurrency?.symbol,
+          explorer: globalChainInfo.explorers?.[0].url,
+          ...chain
+        }
+        for (const contract of Object.values(ret.contracts)) {
+          delete (contract as any).abi
+        }
+        return ret
+      })
       return {
         ...set,
         [chainId]: chainArray
