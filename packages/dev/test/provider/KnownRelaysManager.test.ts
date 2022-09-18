@@ -171,13 +171,17 @@ contract('KnownRelaysManager', function (
         assert.equal(actual[3], activeRelayServerRegistered)
       })
 
-    it('should not contain relay managers from chain with valid relay URL',
+    it('should not contain relay managers from chain with invalid relay URL',
       async function () {
         const id = (await snapshot()).result
         const relayRegistrar = await RelayRegistrar.at(await relayHub.getRelayRegistrar())
         const knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, config)
-        let infos = await knownRelaysManager.getRelayInfoForManagers()
-        const actual = infos.map(info => info.relayManager)
+        await knownRelaysManager.refresh()
+        let infos = await knownRelaysManager.getRelaysShuffledForTransaction()
+        assert.equal(infos[0].length, 0)
+        assert.equal(infos[1].length, 4)
+        assert.equal(infos[2].length, 0)
+        const actual = infos[1].map((info: any) => info.relayManager)
         assert.equal(actual.length, 4)
         // creating garbage registrations and breaking accounts' roles in other tests - only testing if URL valid here
         await stake(testToken, stakeManager, relayHub, workerRelayWorkersAdded, owner)
@@ -189,10 +193,12 @@ contract('KnownRelaysManager', function (
         await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar(''), { from: workerRelayWorkersAdded })
         await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('invalid'), { from: workerTransactionRelayed })
         await relayRegistrar.registerRelayServer(relayHub.address, splitRelayUrlForRegistrar('https://www.example.com'), { from: workerNotActive })
-        infos = await knownRelaysManager.getRelayInfoForManagers()
-        assert.equal(infos.length, 5)
-        assert.equal(infos[4].relayManager, workerNotActive)
-        assert.equal(infos[4].relayUrl, 'https://www.example.com')
+        await knownRelaysManager.refresh()
+        infos = await knownRelaysManager.getRelaysShuffledForTransaction()
+        assert.equal(infos[1].length, 5)
+        const exampleCom = infos[1].find(it => it.relayUrl === 'https://www.example.com')
+        assert.isNotNull(exampleCom)
+        assert.equal((exampleCom as any).relayManager, workerNotActive)
         // undo all garbage registrations
         await revert(id)
       })

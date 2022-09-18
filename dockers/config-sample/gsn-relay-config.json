@@ -1,4 +1,6 @@
 {
+  "url": "https://<your relay server public URL>",
+  "workdir":  "./app/data",
   "relayHubAddress": "<deployed relay hub>",
   "managerStakeTokenAddress": "<erc20 token address for staking>",
   "ownerAddress": "<address of owner account>",

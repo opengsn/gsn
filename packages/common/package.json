@@ -24,7 +24,6 @@
     "@metamask/eth-sig-util": "^4.0.1",
     "@types/bn.js": "^5.1.0",
     "@types/semver": "^7.3.4",
-    "@types/web3": "1.2.2",
     "axios": "^0.21.1",
     "bn.js": "^5.2.0",
     "bignumber.js": "^9.0.2",

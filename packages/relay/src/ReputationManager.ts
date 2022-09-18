@@ -26,7 +26,7 @@ export interface ReputationManagerConfiguration {
 }
 
 const defaultReputationConfig: ReputationManagerConfiguration = {
-  initialReputation: 3,
+  initialReputation: 6,
   maximumReputation: 100,
   throttleReputation: 5,
   throttleDelayMs: 60000,

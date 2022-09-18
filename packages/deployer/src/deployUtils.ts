@@ -161,7 +161,8 @@ export async function printRelayInfo (hre: HardhatRuntimeEnvironment): Promise<v
     maxFeePerGas: 1e12,
     ethereumNodeUrl: network.url
   }, null, 2)))
-  console.log(chalk.white('Relayer register:'))
+  console.log(chalk.white('Register your Relay Server:'))
+  console.log(chalk.grey('Go to https://relays.opengsn.org/ and register your relay server with the web app, or use the following CLI command:'))
   console.log(chalk.grey(`gsn relayer-register -m $SECRET --network ${network.url} --relayUrl https://${hre.hardhatArguments.network}.v3.opengsn.org/v3 --token ${stakingTokenAddress} --stake ${stakingTokenValue} --wrap`))
 }
 
