@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/dev",
-  "version": "3.0.0-beta.1",
+  "version": "3.0.0-beta.2",
   "license": "GPL-3.0-only",
   "main": "dist/src/index.js",
   "files": [
@@ -24,12 +24,12 @@
     "rm-dist": "rm -rf tsconfig.tsbuildinfo dist build"
   },
   "dependencies": {
-    "@opengsn/cli": "^3.0.0-beta.1",
-    "@opengsn/contracts": "^3.0.0-beta.1",
-    "@opengsn/provider": "^3.0.0-beta.1",
-    "@opengsn/relay": "^3.0.0-beta.1",
-    "@opengsn/common": "^3.0.0-beta.1",
-    "@opengsn/logger": "^3.0.0-beta.1"
+    "@opengsn/cli": "^3.0.0-beta.2",
+    "@opengsn/common": "^3.0.0-beta.2",
+    "@opengsn/contracts": "^3.0.0-beta.2",
+    "@opengsn/logger": "^3.0.0-beta.2",
+    "@opengsn/provider": "^3.0.0-beta.2",
+    "@opengsn/relay": "^3.0.0-beta.2"
   },
   "devDependencies": {
     "@ethereumjs/common": "^2.6.5",
