@@ -10,7 +10,7 @@ import "./ProxyFactory.sol";
 contract ProxyDeployingPaymaster is TokenPaymaster {
     using Address for address;
 
-    string public override versionPaymaster = "3.0.0-beta.0+opengsn.proxydeploying.ipaymaster";
+    string public override versionPaymaster = "3.0.0-beta.2+opengsn.proxydeploying.ipaymaster";
 
     ProxyFactory public proxyFactory;
 
