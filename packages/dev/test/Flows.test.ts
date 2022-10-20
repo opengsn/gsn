@@ -8,7 +8,7 @@ import { HttpProvider } from 'web3-core'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import {
   Address,
-  AsyncDataCallback,
+  ApprovalDataCallback,
   constants,
   defaultEnvironment,
   ether,
@@ -242,7 +242,7 @@ options.forEach(params => {
           TestRecipient.web3.setProvider(relayProvider)
         })
 
-        const setRecipientProvider = async function (asyncApprovalData: AsyncDataCallback): Promise<void> {
+        const setRecipientProvider = async function (asyncApprovalData: ApprovalDataCallback): Promise<void> {
           const relayProvider =
             await RelayProvider.newProvider({
               provider: web3.currentProvider as HttpProvider,

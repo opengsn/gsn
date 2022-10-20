@@ -6,7 +6,7 @@ import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
 
 import {
-  AsyncDataCallback,
+  ApprovalDataCallback,
   AuditResponse,
   ContractInteractor,
   GsnTransactionDetails,
@@ -14,6 +14,7 @@ import {
   HttpWrapper,
   LoggerInterface,
   ObjectMap,
+  PaymasterDataCallback,
   PingFilter,
   RelayCallABI,
   RelayInfo,
@@ -55,7 +56,7 @@ import { bridgeProvider } from './WrapContract'
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
 // approvalData is created after request is filled and signed.
-export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHexString> => {
+export const EmptyDataCallback: ApprovalDataCallback & PaymasterDataCallback = async (...args: any[]): Promise<PrefixedHexString> => {
   return '0x'
 }
 
@@ -348,7 +349,6 @@ export class RelayClient {
     let transaction: TypedTransaction
     let auditPromise: Promise<AuditResponse>
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
-    const relayRequestID = this._getRelayRequestID(httpRequest.relayRequest, httpRequest.metadata.signature)
     try {
       ({ signedTx, nonceGapFilled } =
         await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest))
@@ -383,7 +383,7 @@ export class RelayClient {
     this.emit(new GsnRelayerResponseEvent(true))
     await this._broadcastRawTx(transaction)
     return {
-      relayRequestID,
+      relayRequestID: httpRequest.metadata.relayRequestId,
       validUntilTime: httpRequest.relayRequest.request.validUntilTime,
       auditPromise,
       transaction
@@ -468,7 +468,8 @@ export class RelayClient {
   ): Promise<RelayTransactionRequest> {
     this.emit(new GsnSignRequestEvent())
     const signature = await this.dependencies.accountManager.sign(this.config.domainSeparatorName, relayRequest)
-    const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
+    const relayRequestId = this._getRelayRequestID(relayRequest, signature)
+    const approvalData = await this.dependencies.asyncApprovalData(relayRequest, relayRequestId)
 
     if (toBuffer(relayRequest.relayData.paymasterData).length >
       this.config.maxPaymasterDataLength) {
@@ -487,6 +488,7 @@ export class RelayClient {
       domainSeparatorName: this.config.domainSeparatorName,
       maxAcceptanceBudget: relayInfo.pingResponse.maxAcceptanceBudget,
       relayHubAddress,
+      relayRequestId,
       signature,
       approvalData,
       relayMaxNonce,
