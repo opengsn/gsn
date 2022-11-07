@@ -192,7 +192,7 @@ export interface GSNConfig {
   waitForSuccessPingGrace: number
 
   /**
-   * The name of the EIP-712 Domain Separator field. Note that this is usually the name of the requiest the
+   * The name of the EIP-712 Domain Separator field. Note that this is usually the name of the request the
    * users will see in MetaMask or other wallets.
    * Note: The domain type must be first registered on-chain by calling 'Forwarder::registerDomainSeparator'.
    */
