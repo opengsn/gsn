@@ -34,6 +34,6 @@ export function createVerifierApprovalDataCallback (
     }
     const signRelayRequestResponse = await httpWrapper.sendPromise(`${verifierUrl}/signRelayRequest`, approvalRequest)
     logger.info(`signRelayRequest response: ${JSON.stringify(signRelayRequestResponse)}`)
-    return signRelayRequestResponse
+    return signRelayRequestResponse.signature
   }
 }
