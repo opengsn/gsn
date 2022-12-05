@@ -1101,10 +1101,23 @@ contract('RelayClient', function (accounts) {
           verifierServerApiKey
         }
         const provider = relayClient.getUnderlyingProvider()
+        const sandbox = sinon.createSandbox()
+        sandbox
+          .stub(provider)
+          .send
+          .withArgs(sinon.match({ method: 'eth_chainId' }), sinon.match.any)
+          .yields(null, {
+            id: 0,
+            jsonrpc: '2.0',
+            result: '0x5'
+          })
         const resolvedConfig: GSNConfig = await relayClient._resolveConfiguration({
           provider,
           config
         })
+        sandbox.restore()
+        assert.equal(resolvedConfig.paymasterAddress?.length, 42)
+        resolvedConfig.paymasterAddress = undefined // no need to resolve deployment
         const resolvedDependencies = await relayClient._resolveDependencies({ provider, config: resolvedConfig })
         assert.equal(resolvedConfig.verifierServerApiKey, verifierServerApiKey)
         assert.equal(resolvedConfig.verifierServerUrl, DEFAULT_VERIFIER_SERVER_URL)
