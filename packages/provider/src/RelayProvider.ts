@@ -12,6 +12,7 @@ import {
   Address,
   GsnTransactionDetails,
   LoggerInterface,
+  SignTypedDataCallback,
   TransactionRejectedByPaymaster,
   TransactionRelayed,
   Web3ProviderBaseInterface,
@@ -51,6 +52,7 @@ const BLOCKS_FOR_LOOKUP = 5000
 export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   protected readonly origProvider: HttpProvider & ISendAsync
   private readonly origProviderSend: any
+  private asyncSignTypedData?: SignTypedDataCallback
   protected readonly web3: Web3
   protected readonly submittedRelayRequests = new Map<string, SubmittedRelayRequestInfo>()
   protected config!: GSNConfig
@@ -107,6 +109,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
   async init (useTokenPaymaster = false): Promise<this> {
     await this.relayClient.init(useTokenPaymaster)
     this.config = this.relayClient.config
+    this.asyncSignTypedData = this.relayClient.dependencies.asyncSignTypedData
     this.logger.info(`Created new RelayProvider ver.${gsnRuntimeVersion}`)
     return this
   }
@@ -507,9 +510,10 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
 
   _signTypedData (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
     const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
-    const from = payload.params?.[0]
+    const from = payload.params?.[0] as string
+    const typedData: TypedMessage<any> = payload.params?.[1]
     if (from != null && this.isEphemeralAccount(from)) {
-      const typedData: TypedMessage<any> = payload.params?.[1]
+      this.logger.debug(`Using ephemeral key for address ${from} to sign a Relay Request or a Typed Message`)
       const result = this.relayClient.dependencies.accountManager.signTypedData(typedData, from)
       const rpcResponse = {
         id,
@@ -519,6 +523,23 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       callback(null, rpcResponse)
       return
     }
+    if (this.asyncSignTypedData != null) {
+      this.logger.debug('Using override for asyncSignTypedData to sign a Relay Request or a Typed Message')
+      this.asyncSignTypedData(typedData, from)
+        .then(function (result) {
+          const rpcResponse = {
+            id,
+            result,
+            jsonrpc: '2.0'
+          }
+          callback(null, rpcResponse)
+        })
+        .catch(function (error) {
+          callback(error)
+        })
+      return
+    }
+    this.logger.debug('Using an RPC call to sign a Relay Request or a Typed Message')
     this.origProviderSend(payload, callback)
   }
 

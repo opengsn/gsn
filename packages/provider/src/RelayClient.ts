@@ -637,6 +637,7 @@ export class RelayClient {
     const relayFilter = overrideDependencies?.relayFilter ?? DefaultRelayFilter
     const asyncApprovalData = await this._resolveVerifierApprovalDataCallback(config, httpWrapper, chainId, overrideDependencies?.asyncApprovalData)
     const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
+    const asyncSignTypedData = overrideDependencies?.asyncSignTypedData
     const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
     const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, this.logger, this.config)
 
@@ -650,7 +651,8 @@ export class RelayClient {
       pingFilter,
       relayFilter,
       asyncApprovalData,
-      asyncPaymasterData
+      asyncPaymasterData,
+      asyncSignTypedData
     }
   }
 

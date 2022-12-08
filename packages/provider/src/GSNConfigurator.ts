@@ -8,6 +8,7 @@ import {
   PaymasterDataCallback,
   PingFilter,
   RelayFilter,
+  SignTypedDataCallback,
   defaultEnvironment,
   gsnRequiredVersion,
   gsnRuntimeVersion
@@ -73,4 +74,5 @@ export interface GSNDependencies {
   relayFilter: RelayFilter
   asyncApprovalData: ApprovalDataCallback
   asyncPaymasterData: PaymasterDataCallback
+  asyncSignTypedData?: SignTypedDataCallback
 }
