@@ -1,5 +1,3 @@
-import { expectRevert } from '@openzeppelin/test-helpers'
-
 import { RelayRequest } from '@opengsn/common'
 import { defaultGsnConfig } from '@opengsn/provider'
 
