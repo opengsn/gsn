@@ -504,12 +504,7 @@ export function calculateRequestLimits (
   contractInteractor: ContractInteractor,
   relayTransactionRequest: RelayTransactionRequest,
   gasAndDataLimits: PaymasterGasAndDataLimits
-): {
-  acceptanceBudget: number,
-  effectiveAcceptanceBudget: number,
-  transactionCalldataGasUsed: number,
-  maxPossibleGas: number
-} {
+): { acceptanceBudget: number, effectiveAcceptanceBudget: number, transactionCalldataGasUsed: number, maxPossibleGas: number } {
   const relayCallAbiInput: RelayCallABI = {
     domainSeparatorName: relayTransactionRequest.metadata.domainSeparatorName,
     maxAcceptanceBudget: '0xffffffff',
