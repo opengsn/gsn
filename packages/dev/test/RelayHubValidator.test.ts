@@ -75,34 +75,4 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
       }
     })
   })
-
-  it('should reject signature too long', async () => {
-    const relayRequest: RelayRequest = {
-      request: {
-        from: senderAddress,
-        to: target,
-        value: '0',
-        gas: '1',
-        nonce: '2',
-        data: '0x',
-        validUntilTime: '0'
-      },
-      relayData: {
-        maxFeePerGas: '0',
-        maxPriorityFeePerGas: '0',
-        relayWorker,
-        paymaster: paymaster,
-        paymasterData: '0x',
-        clientId: '3',
-        transactionCalldataGasUsed: '4',
-        forwarder
-      }
-    }
-    await expectRevert(validator.dummyRelayCall(
-      defaultGsnConfig.domainSeparatorName,
-      0,
-      relayRequest,
-      '0x' + '11'.repeat(66),
-      '0x'), 'invalid signature length')
-  })
 })

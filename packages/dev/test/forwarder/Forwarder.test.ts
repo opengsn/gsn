@@ -192,11 +192,12 @@ contract('Forwarder', ([from]) => {
         }, domainSeparator, typeHash, '0x', '0x'), 'FWD: nonce mismatch')
       })
       it('should fail on invalid signature', async () => {
-        await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x'), 'invalid signature length')
-        await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x123456'), 'invalid signature length')
-        await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x' + '1b'.repeat(65)), 'signature mismatch')
+        await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x'), 'ECDSA: invalid signature length')
+        await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x123456'), 'ECDSA: invalid signature length')
+        await expectRevert(fwd.verify(req, domainSeparator, typeHash, '0x', '0x' + '1b'.repeat(65)), 'FWD: signature mismatch')
       })
     })
+
     describe('#verify success', () => {
       const req: ForwardRequest = {
         to: addr(1),
