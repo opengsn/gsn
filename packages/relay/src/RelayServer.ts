@@ -340,7 +340,7 @@ export class RelayServer extends EventEmitter {
     await this.verifyPaymasterBalance(relayRequestLimits.maxPossibleCharge, relayRequestLimits.maxPossibleGas, paymaster)
   }
 
-  private verifyTransactionCalldataGasUsed (req: RelayTransactionRequest, transactionCalldataGasUsed: number) {
+  verifyTransactionCalldataGasUsed (req: RelayTransactionRequest, transactionCalldataGasUsed: number): void {
     const message =
       `Client signed transactionCalldataGasUsed: ${req.relayRequest.relayData.transactionCalldataGasUsed}` +
       `Server estimate of its transactionCalldata gas expenses: ${transactionCalldataGasUsed}`
@@ -350,7 +350,7 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  private verifyEffectiveAcceptanceBudget (
+  verifyEffectiveAcceptanceBudget (
     effectiveAcceptanceBudget: number,
     acceptanceBudget: number,
     paymaster: string
@@ -364,13 +364,13 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  verifyMaxPossibleGas (maxPossibleGasFactorReserve: number) {
+  verifyMaxPossibleGas (maxPossibleGasFactorReserve: number): void {
     if (maxPossibleGasFactorReserve > this.maxGasLimit) {
       throw new Error(`maxPossibleGas (${maxPossibleGasFactorReserve}) exceeds maxGasLimit (${this.maxGasLimit})`)
     }
   }
 
-  async verifyPaymasterBalance (maxPossibleCharge: BN, maxPossibleGasFactorReserve: number, paymaster: string) {
+  async verifyPaymasterBalance (maxPossibleCharge: BN, maxPossibleGasFactorReserve: number, paymaster: string): Promise<void> {
     const paymasterBalance = await this.relayHubContract.balanceOf(paymaster)
     this.logger.debug(`paymaster balance: ${paymasterBalance.toString()}, maxCharge: ${maxPossibleCharge.toString()}`)
     this.logger.debug(`Estimated max charge of relayed tx: ${maxPossibleCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGasFactorReserve}`)
