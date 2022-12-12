@@ -1,10 +1,13 @@
 import BN from 'bn.js'
 import Web3 from 'web3'
 import abi from 'web3-eth-abi'
-
+import chalk from 'chalk'
 import { AbiItem, fromWei, toWei, toBN } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
+import { TypedMessage } from '@metamask/eth-sig-util'
+import { encode, List } from 'rlp'
+
 import {
   Capability,
   FeeMarketEIP1559Transaction,
@@ -26,11 +29,10 @@ import {
 
 import { Address } from './types/Aliases'
 
-import chalk from 'chalk'
-import { encode, List } from 'rlp'
 import { RelayRequest } from './EIP712/RelayRequest'
 import { MessageTypes } from './EIP712/TypedRequestData'
-import { TypedMessage } from '@metamask/eth-sig-util'
+import { ContractInteractor, RelayCallABI } from './ContractInteractor'
+import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -496,4 +498,38 @@ export function validateRelayUrl (relayUrl: string): boolean {
     return false
   }
   return url.protocol === 'http:' || url.protocol === 'https:'
+}
+
+export function calculateRequestLimits (
+  contractInteractor: ContractInteractor,
+  relayTransactionRequest: RelayTransactionRequest,
+  gasAndDataLimits: PaymasterGasAndDataLimits
+): {
+  acceptanceBudget: number,
+  effectiveAcceptanceBudget: number,
+  transactionCalldataGasUsed: number,
+  maxPossibleGas: number
+} {
+  const relayCallAbiInput: RelayCallABI = {
+    domainSeparatorName: relayTransactionRequest.metadata.domainSeparatorName,
+    maxAcceptanceBudget: '0xffffffff',
+    relayRequest: relayTransactionRequest.relayRequest,
+    signature: relayTransactionRequest.metadata.signature,
+    approvalData: relayTransactionRequest.metadata.approvalData
+  }
+  const msgData = contractInteractor.encodeABI(relayCallAbiInput)
+  const transactionCalldataGasUsed = contractInteractor.calculateCalldataGasUsed(msgData)
+  const maxPossibleGas = contractInteractor.calculateTransactionMaxPossibleGas({
+    msgData,
+    gasAndDataLimits,
+    relayCallGasLimit: '1000000'
+  })
+  const acceptanceBudget = toNumber(gasAndDataLimits.acceptanceBudget)
+  const effectiveAcceptanceBudget = acceptanceBudget + transactionCalldataGasUsed + transactionCalldataGasUsed
+  return {
+    transactionCalldataGasUsed,
+    maxPossibleGas,
+    acceptanceBudget,
+    effectiveAcceptanceBudget
+  }
 }

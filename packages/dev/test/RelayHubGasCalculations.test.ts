@@ -390,7 +390,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           })
           // As there can be some discrepancy between estimation and actual cost (zeroes in signature, etc.)
           // we actually account for this difference this way
-          const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataCost(encodedData)
+          const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataGasUsed(encodedData)
           const calldataOverchargeGas =
             (parseInt(relayRequest.relayData.transactionCalldataGasUsed) - actualTransactionCalldataGasUsed)
           // This discrepancy should not be even close 100 gas in a transaction without paymaster, approval datas
@@ -472,7 +472,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             gas: externalGasLimit,
             gasPrice: gasPrice
           })
-          gassesUsed.push(receipt.gasUsed - contractInteractor.calculateCalldataCost(relayCall.encodeABI()))
+          gassesUsed.push(receipt.gasUsed - contractInteractor.calculateCalldataGasUsed(relayCall.encodeABI()))
           // console.log('relayCall encodeABI len', relayCall.encodeABI().length / 2)
           // console.log('gasUsed is', receipt.gasUsed)
           // console.log('calculateCalldataCost is', calculateCalldataCost(relayCall.encodeABI()))
@@ -583,7 +583,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     approvalData: '0x'
                   })
 
-                  const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataCost(encodedData)
+                  const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataGasUsed(encodedData)
                   const calldataOverchargeGas =
                     (parseInt(relayRequest.relayData.transactionCalldataGasUsed) - actualTransactionCalldataGasUsed)
                   const calldataOverchargeWei = gasPrice.muln(calldataOverchargeGas)

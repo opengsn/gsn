@@ -821,7 +821,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
 
   async estimateGasWithoutCalldata (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
     const originalGasEstimation = await this.estimateGas(gsnTransactionDetails)
-    const calldataGasCost = this.calculateCalldataCost(gsnTransactionDetails.data)
+    const calldataGasCost = this.calculateCalldataGasUsed(gsnTransactionDetails.data)
     const adjustedEstimation = originalGasEstimation - calldataGasCost
     this.logger.debug(
       `estimateGasWithoutCalldata: original estimation: ${originalGasEstimation}; calldata cost: ${calldataGasCost}; adjusted estimation: ${adjustedEstimation}`)
@@ -830,6 +830,22 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
         'your Environment configuration and Ethereum node you are connected to are not compatible')
     }
     return adjustedEstimation
+  }
+
+  async getGasAndDataLimitsFromPaymaster (paymaster: string): Promise<PaymasterGasAndDataLimits> {
+    try {
+      const paymasterContract = await this._createPaymaster(paymaster)
+      return await paymasterContract.getGasAndDataLimits()
+    } catch (e) {
+      const error = e as Error
+      let message = `unknown paymaster error: ${error.message}`
+      if (error.message.includes('Returned values aren\'t valid, did it run Out of Gas?')) {
+        message = `not a valid paymaster contract: ${paymaster}`
+      } else if (error.message.includes('no code at address')) {
+        message = `'non-existent paymaster contract: ${paymaster}`
+      }
+      throw new Error(message)
+    }
   }
 
   /**
@@ -847,7 +863,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
       toBN(this.environment.dataOnChainHandlingGasCostPerByte)
         .muln(msgDataLength)
         .toNumber()
-    const calldataCost = this.calculateCalldataCost(_.msgData)
+    const calldataCost = this.calculateCalldataGasUsed(_.msgData)
     const result = toNumber(this.relayHubConfiguration.gasOverhead) +
       msgDataGasCostInsideTransaction +
       calldataCost +
@@ -895,10 +911,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
       approvalData,
       maxAcceptanceBudget
     })
-    return `0x${this.calculateCalldataCost(encodedData).toString(16)}`
+    return `0x${this.calculateCalldataGasUsed(encodedData).toString(16)}`
   }
 
-  calculateCalldataCost (msgData: PrefixedHexString): number {
+  calculateCalldataGasUsed (msgData: PrefixedHexString): number {
     const { calldataZeroBytes, calldataNonzeroBytes } = calculateCalldataBytesZeroNonzero(msgData)
     return calldataZeroBytes * this.environment.gtxdatazero +
       calldataNonzeroBytes * this.environment.gtxdatanonzero
