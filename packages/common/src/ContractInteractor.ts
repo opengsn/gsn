@@ -88,6 +88,14 @@ export interface RelayCallABI {
   maxAcceptanceBudget: PrefixedHexString
 }
 
+export interface RelayRequestLimits {
+  paymasterAcceptanceBudget: number
+  effectiveAcceptanceBudget: number
+  maxPossibleCharge: BN
+  maxPossibleGas: number
+  transactionCalldataGasUsed: number
+}
+
 export function asRelayCallAbi (r: RelayTransactionRequest): RelayCallABI {
   return {
     domainSeparatorName: r.metadata.domainSeparatorName,
@@ -918,6 +926,65 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const { calldataZeroBytes, calldataNonzeroBytes } = calculateCalldataBytesZeroNonzero(msgData)
     return calldataZeroBytes * this.environment.gtxdatazero +
       calldataNonzeroBytes * this.environment.gtxdatanonzero
+  }
+
+  async calculatePaymasterGasAndDataLimits (
+    relayTransactionRequest: RelayTransactionRequest,
+    gasAndDataLimits: PaymasterGasAndDataLimits | undefined,
+    gasReserve: number,
+    gasFactor: number
+  ): Promise<RelayRequestLimits> {
+    if (gasAndDataLimits == null) {
+      gasAndDataLimits = await this.getGasAndDataLimitsFromPaymaster(relayTransactionRequest.relayRequest.relayData.paymaster)
+    }
+
+    const {
+      paymasterAcceptanceBudget,
+      effectiveAcceptanceBudget,
+      transactionCalldataGasUsed,
+      maxPossibleGas
+    } = this.calculateRequestLimits(relayTransactionRequest, gasAndDataLimits)
+
+    const maxPossibleGasFactorReserve = gasReserve + Math.floor(maxPossibleGas * gasFactor)
+    const maxPossibleCharge =
+      await this.relayHubInstance.calculateCharge(maxPossibleGasFactorReserve, relayTransactionRequest.relayRequest.relayData,
+        { gasPrice: relayTransactionRequest.relayRequest.relayData.maxFeePerGas })
+
+    return {
+      paymasterAcceptanceBudget,
+      effectiveAcceptanceBudget,
+      transactionCalldataGasUsed,
+      maxPossibleCharge,
+      maxPossibleGas: maxPossibleGasFactorReserve
+    }
+  }
+
+  calculateRequestLimits (
+    relayTransactionRequest: RelayTransactionRequest,
+    gasAndDataLimits: PaymasterGasAndDataLimits
+  ): { paymasterAcceptanceBudget: number, effectiveAcceptanceBudget: number, transactionCalldataGasUsed: number, maxPossibleGas: number } {
+    const relayCallAbiInput: RelayCallABI = {
+      domainSeparatorName: relayTransactionRequest.metadata.domainSeparatorName,
+      maxAcceptanceBudget: '0xffffffff',
+      relayRequest: relayTransactionRequest.relayRequest,
+      signature: relayTransactionRequest.metadata.signature,
+      approvalData: relayTransactionRequest.metadata.approvalData
+    }
+    const msgData = this.encodeABI(relayCallAbiInput)
+    const transactionCalldataGasUsed = this.calculateCalldataGasUsed(msgData)
+    const maxPossibleGas = this.calculateTransactionMaxPossibleGas({
+      msgData,
+      gasAndDataLimits,
+      relayCallGasLimit: relayTransactionRequest.relayRequest.request.gas
+    })
+    const paymasterAcceptanceBudget = gasAndDataLimits.acceptanceBudget.toNumber()
+    const effectiveAcceptanceBudget = paymasterAcceptanceBudget + transactionCalldataGasUsed + transactionCalldataGasUsed
+    return {
+      transactionCalldataGasUsed,
+      maxPossibleGas,
+      paymasterAcceptanceBudget,
+      effectiveAcceptanceBudget
+    }
   }
 
   // TODO: cache response for some time to optimize. It doesn't make sense to optimize these requests in calling code.

@@ -23,11 +23,10 @@ import {
   TransactionRelayed,
   TransactionType,
   VersionsManager,
-  calculateRequestLimits,
   gsnRequiredVersion,
   gsnRuntimeVersion,
   isSameAddress,
-  toNumber
+  toNumber, RelayRequestLimits
 } from '@opengsn/common'
 
 import { GasPriceFetcher } from './GasPriceFetcher'
@@ -62,14 +61,6 @@ const GAS_FACTOR = 1.1
  * A constant oversupply of gas to each 'relayCall' transaction.
  */
 const GAS_RESERVE = 100000
-
-export interface RelayRequestLimits {
-  paymasterAcceptanceBudget: number
-  effectiveAcceptanceBudget: number
-  maxPossibleCharge: BN
-  maxPossibleGas: number
-  transactionCalldataGasUsed: number
-}
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
@@ -294,37 +285,10 @@ export class RelayServer extends EventEmitter {
   }
 
   async calculateAndValidatePaymasterGasAndDataLimits (relayTransactionRequest: RelayTransactionRequest): Promise<number> {
-    const relayRequestLimits = await this.calculatePaymasterGasAndDataLimits(relayTransactionRequest)
+    const trustedPaymasterGasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(relayTransactionRequest.relayRequest.relayData.paymaster)
+    const relayRequestLimits = await this.contractInteractor.calculatePaymasterGasAndDataLimits(relayTransactionRequest, trustedPaymasterGasAndDataLimits, GAS_RESERVE, GAS_FACTOR)
     await this.validatePaymasterGasAndDataLimits(relayTransactionRequest, relayRequestLimits)
     return relayRequestLimits.maxPossibleGas
-  }
-
-  async calculatePaymasterGasAndDataLimits (relayTransactionRequest: RelayTransactionRequest): Promise<RelayRequestLimits> {
-    const paymaster = relayTransactionRequest.relayRequest.relayData.paymaster
-    let gasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(paymaster)
-    if (gasAndDataLimits == null) {
-      gasAndDataLimits = await this.contractInteractor.getGasAndDataLimitsFromPaymaster(relayTransactionRequest.relayRequest.relayData.paymaster)
-    }
-
-    const {
-      paymasterAcceptanceBudget,
-      effectiveAcceptanceBudget,
-      transactionCalldataGasUsed,
-      maxPossibleGas
-    } = calculateRequestLimits(this.contractInteractor, relayTransactionRequest, gasAndDataLimits)
-
-    const maxPossibleGasFactorReserve = GAS_RESERVE + Math.floor(maxPossibleGas * GAS_FACTOR)
-    const maxPossibleCharge =
-      await this.relayHubContract.calculateCharge(maxPossibleGasFactorReserve, relayTransactionRequest.relayRequest.relayData,
-        { gasPrice: relayTransactionRequest.relayRequest.relayData.maxFeePerGas })
-
-    return {
-      paymasterAcceptanceBudget,
-      effectiveAcceptanceBudget,
-      transactionCalldataGasUsed,
-      maxPossibleCharge,
-      maxPossibleGas: maxPossibleGasFactorReserve
-    }
   }
 
   async validatePaymasterGasAndDataLimits (

@@ -31,8 +31,6 @@ import { Address } from './types/Aliases'
 
 import { RelayRequest } from './EIP712/RelayRequest'
 import { MessageTypes } from './EIP712/TypedRequestData'
-import { ContractInteractor, RelayCallABI } from './ContractInteractor'
-import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -498,33 +496,4 @@ export function validateRelayUrl (relayUrl: string): boolean {
     return false
   }
   return url.protocol === 'http:' || url.protocol === 'https:'
-}
-
-export function calculateRequestLimits (
-  contractInteractor: ContractInteractor,
-  relayTransactionRequest: RelayTransactionRequest,
-  gasAndDataLimits: PaymasterGasAndDataLimits
-): { paymasterAcceptanceBudget: number, effectiveAcceptanceBudget: number, transactionCalldataGasUsed: number, maxPossibleGas: number } {
-  const relayCallAbiInput: RelayCallABI = {
-    domainSeparatorName: relayTransactionRequest.metadata.domainSeparatorName,
-    maxAcceptanceBudget: '0xffffffff',
-    relayRequest: relayTransactionRequest.relayRequest,
-    signature: relayTransactionRequest.metadata.signature,
-    approvalData: relayTransactionRequest.metadata.approvalData
-  }
-  const msgData = contractInteractor.encodeABI(relayCallAbiInput)
-  const transactionCalldataGasUsed = contractInteractor.calculateCalldataGasUsed(msgData)
-  const maxPossibleGas = contractInteractor.calculateTransactionMaxPossibleGas({
-    msgData,
-    gasAndDataLimits,
-    relayCallGasLimit: relayTransactionRequest.relayRequest.request.gas
-  })
-  const paymasterAcceptanceBudget = gasAndDataLimits.acceptanceBudget.toNumber()
-  const effectiveAcceptanceBudget = paymasterAcceptanceBudget + transactionCalldataGasUsed + transactionCalldataGasUsed
-  return {
-    transactionCalldataGasUsed,
-    maxPossibleGas,
-    paymasterAcceptanceBudget,
-    effectiveAcceptanceBudget
-  }
 }
