@@ -71,7 +71,7 @@ const config: HardhatUserConfig = {
 
     dev: getNetwork('http://localhost:8545'),
     rarb: getNetwork('https://rinkeby.arbitrum.io/rpc'),
-    garbn: getNetwork('https://goerli-rollup.arbitrum.io/rpc'),
+    garb: getNetwork('https://goerli-rollup.arbitrum.io/rpc'),
     aox: getNetwork('https://arbitrum.xdaichain.com/'),
 
     goerli: getInfuraNetwork('goerli'),
