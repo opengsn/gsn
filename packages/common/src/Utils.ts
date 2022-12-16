@@ -378,7 +378,7 @@ export function toNumber (numberish: number | string | BN | BigInt): number {
   }
 }
 
-export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString = '0x'): PrefixedHexString {
+export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString): PrefixedHexString {
   const web3 = new Web3()
   const types = ['address', 'uint256', 'bytes']
   const parameters = [relayRequest.request.from, relayRequest.request.nonce, signature]

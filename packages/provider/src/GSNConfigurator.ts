@@ -1,10 +1,11 @@
 import {
-  AsyncDataCallback,
+  ApprovalDataCallback,
   ContractInteractor,
   GSNConfig,
   HttpClient,
   LoggerConfiguration,
   LoggerInterface,
+  PaymasterDataCallback,
   PingFilter,
   RelayFilter,
   defaultEnvironment,
@@ -70,6 +71,6 @@ export interface GSNDependencies {
   transactionValidator: RelayedTransactionValidator
   pingFilter: PingFilter
   relayFilter: RelayFilter
-  asyncApprovalData: AsyncDataCallback
-  asyncPaymasterData: AsyncDataCallback
+  asyncApprovalData: ApprovalDataCallback
+  asyncPaymasterData: PaymasterDataCallback
 }
