@@ -8,6 +8,7 @@ export interface RelayMetadata {
   approvalData: PrefixedHexString
   relayHubAddress: Address
   relayLastKnownNonce: number
+  relayRequestId: PrefixedHexString
   relayMaxNonce: number
   signature: PrefixedHexString
   maxAcceptanceBudget: PrefixedHexString
@@ -47,6 +48,7 @@ export const RelayTransactionRequestShape = {
     approvalData: ow.string,
     relayHubAddress: ow.string,
     relayMaxNonce: ow.number,
+    relayRequestId: ow.string,
     signature: ow.string,
     maxAcceptanceBudget: ow.string
   }

@@ -833,6 +833,7 @@ contract('RelayClient', function (accounts) {
           domainSeparatorName: defaultGsnConfig.domainSeparatorName,
           relayMaxNonce: 4,
           relayLastKnownNonce: 1,
+          relayRequestId: '',
           signature: '',
           approvalData: '',
           relayHubAddress: '',
