@@ -561,21 +561,26 @@ export class RelayClient {
       this.logger.debug(`Reading default client config for chainId ${chainId.toString()}`)
       configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.clientDefaultConfigUrl)
     }
-    if (config.verifierServerApiKey != null && config.verifierServerApiKey.length !== 0) {
-      if (config.maxApprovalDataLength == null || config.maxApprovalDataLength === 0) {
-        this.logger.info('Verifier server API Key is set - setting maxApprovalDataLength')
-        config.maxApprovalDataLength = DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH
-      } else {
-        this.logger.warn('Verifier server API Key and "maxApprovalDataLength" are both set. Make sure they match!')
-      }
-      config.verifierServerUrl = config.verifierServerUrl ?? DEFAULT_VERIFIER_SERVER_URL
-      this.logger.info(`Verifier server API Key is set - setting verifierServerUrl to ${config.verifierServerUrl}`)
-    }
+    this._resolveVerifierConfig(config)
     return {
       ...defaultGsnConfig,
       ...configFromServer,
       ...removeNullValues(config)
     }
+  }
+
+  _resolveVerifierConfig (config: Partial<GSNConfig>): void {
+    if (config.verifierServerApiKey == null || config.verifierServerApiKey.length === 0) {
+      return
+    }
+    if (config.maxApprovalDataLength == null || config.maxApprovalDataLength === 0) {
+      this.logger.info('Verifier server API Key is set - setting maxApprovalDataLength')
+      config.maxApprovalDataLength = DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH
+    } else {
+      this.logger.warn('Verifier server API Key and "maxApprovalDataLength" are both set. Make sure they match!')
+    }
+    config.verifierServerUrl = config.verifierServerUrl ?? DEFAULT_VERIFIER_SERVER_URL
+    this.logger.info(`Verifier server API Key is set - setting verifierServerUrl to ${config.verifierServerUrl}`)
   }
 
   async _resolveConfigurationFromServer (chainId: number, clientDefaultConfigUrl: string): Promise<Partial<GSNConfig>> {
