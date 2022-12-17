@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import "./forwarder/Forwarder.sol";
+import "../forwarder/Forwarder.sol";
 
-contract GatewayForwarder is Forwarder {
+contract TestGatewayForwarder is Forwarder {
     address public trustedRelayHub;
 
     function setTrustedRelayHub(address _trustedRelayHub) external {

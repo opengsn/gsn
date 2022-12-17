@@ -121,8 +121,8 @@ export class RegistrationManager {
       this.printNotRegisteredMessage()
     }
     const minimumStakePerToken = await this.contractInteractor.getMinimumStakePerToken(this.config.managerStakeTokenAddress)
-    this.balanceRequired = new AmountRequired('Balance', toBN(this.config.managerMinBalance), this.logger, listener)
-    this.stakeRequired = new AmountRequired('Stake', minimumStakePerToken, this.logger, listener, tokenMetadata)
+    this.balanceRequired = new AmountRequired('Balance', toBN(this.config.managerMinBalance), constants.ZERO_ADDRESS, this.logger, listener)
+    this.stakeRequired = new AmountRequired('Stake', minimumStakePerToken, constants.ZERO_ADDRESS, this.logger, listener, tokenMetadata)
     await this.refreshBalance()
     const latestBlockTimestamp = toNumber(latestBlock.timestamp)
     transactionHashes = transactionHashes.concat(await this.refreshStake(latestBlock.number, latestBlock.hash, latestBlockTimestamp))
@@ -326,6 +326,7 @@ export class RegistrationManager {
     // a locked stake does not have the 'withdrawTime' field set
     this.isStakeLocked = stakeInfo.withdrawTime.toString() === '0'
     this.stakeRequired.currentValue = stake
+    this.stakeRequired.currentTokenAddress = stakeInfo.token
 
     // first time getting stake, setting owner
     if (this.ownerAddress == null) {
