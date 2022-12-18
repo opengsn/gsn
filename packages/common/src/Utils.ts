@@ -315,7 +315,11 @@ export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
   return c
 }
 
-export function formatTokenAmount (balance: BN, decimals: BN | number, tokenSymbol: string): string {
+export function formatTokenAmount (
+  balance: BN,
+  decimals: BN | number,
+  tokenAddress: Address,
+  tokenSymbol: string): string {
   let shiftedBalance: BN
   const tokenDecimals = toBN(decimals.toString())
   if (tokenDecimals.eqn(18)) {
@@ -327,7 +331,8 @@ export function formatTokenAmount (balance: BN, decimals: BN | number, tokenSymb
     const shift = tokenDecimals.subn(18)
     shiftedBalance = balance.div(toBN(10).pow(shift))
   }
-  return `${fromWei(shiftedBalance)} ${tokenSymbol}`
+  const shortTokenAddress = `${tokenAddress.substring(0, 6)}...${tokenAddress.substring(39)}`
+  return `${fromWei(shiftedBalance)} ${tokenSymbol} (${shortTokenAddress})`
 }
 
 export function splitRelayUrlForRegistrar (url: string, partsCount: number = 3): string[] {
@@ -373,7 +378,7 @@ export function toNumber (numberish: number | string | BN | BigInt): number {
   }
 }
 
-export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString = '0x'): PrefixedHexString {
+export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString): PrefixedHexString {
   const web3 = new Web3()
   const types = ['address', 'uint256', 'bytes']
   const parameters = [relayRequest.request.from, relayRequest.request.nonce, signature]

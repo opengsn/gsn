@@ -197,4 +197,16 @@ export interface GSNConfig {
    * Note: The domain type must be first registered on-chain by calling 'Forwarder::registerDomainSeparator'.
    */
   domainSeparatorName: string
+
+  /**
+   * If {@link verifierServerApiKey} is configured the GSN Client will make an Approval Request to this URL.
+   */
+  verifierServerUrl?: string
+
+  /**
+   * The API key to send as part of an Approval Request to the Verifier Server at {@link verifierServerUrl}.
+   * It is used to associate the GSN Client with the account that will be charged for the gas off-chain.
+   * Note: in some cases it may be important to keep this API Key secret and avoid exposing it to the browser.
+   */
+  verifierServerApiKey?: string
 }
