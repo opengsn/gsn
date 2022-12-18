@@ -6,7 +6,7 @@ import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
 
 import {
-  AsyncDataCallback,
+  ApprovalDataCallback,
   AuditResponse,
   ContractInteractor,
   GsnTransactionDetails,
@@ -14,6 +14,7 @@ import {
   HttpWrapper,
   LoggerInterface,
   ObjectMap,
+  PaymasterDataCallback,
   PingFilter,
   RelayCallABI,
   RelayInfo,
@@ -34,6 +35,11 @@ import {
 import { AccountKeypair, AccountManager } from './AccountManager'
 import { DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
+import {
+  DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH,
+  DEFAULT_VERIFIER_SERVER_URL,
+  createVerifierApprovalDataCallback
+} from './VerifierUtils'
 import { isTransactionValid, RelayedTransactionValidator } from './RelayedTransactionValidator'
 import { defaultGsnConfig, GSNConfig, GSNDependencies } from './GSNConfigurator'
 
@@ -55,7 +61,7 @@ import { bridgeProvider } from './WrapContract'
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
 // approvalData is created after request is filled and signed.
-export const EmptyDataCallback: AsyncDataCallback = async (): Promise<PrefixedHexString> => {
+export const EmptyDataCallback: ApprovalDataCallback & PaymasterDataCallback = async (...args: any[]): Promise<PrefixedHexString> => {
   return '0x'
 }
 
@@ -348,7 +354,6 @@ export class RelayClient {
     let transaction: TypedTransaction
     let auditPromise: Promise<AuditResponse>
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
-    const relayRequestID = this._getRelayRequestID(httpRequest.relayRequest, httpRequest.metadata.signature)
     try {
       ({ signedTx, nonceGapFilled } =
         await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest))
@@ -383,7 +388,7 @@ export class RelayClient {
     this.emit(new GsnRelayerResponseEvent(true))
     await this._broadcastRawTx(transaction)
     return {
-      relayRequestID,
+      relayRequestID: httpRequest.metadata.relayRequestId,
       validUntilTime: httpRequest.relayRequest.request.validUntilTime,
       auditPromise,
       transaction
@@ -468,7 +473,8 @@ export class RelayClient {
   ): Promise<RelayTransactionRequest> {
     this.emit(new GsnSignRequestEvent())
     const signature = await this.dependencies.accountManager.sign(this.config.domainSeparatorName, relayRequest)
-    const approvalData = await this.dependencies.asyncApprovalData(relayRequest)
+    const relayRequestId = this._getRelayRequestID(relayRequest, signature)
+    const approvalData = await this.dependencies.asyncApprovalData(relayRequest, relayRequestId)
 
     if (toBuffer(relayRequest.relayData.paymasterData).length >
       this.config.maxPaymasterDataLength) {
@@ -487,6 +493,7 @@ export class RelayClient {
       domainSeparatorName: this.config.domainSeparatorName,
       maxAcceptanceBudget: relayInfo.pingResponse.maxAcceptanceBudget,
       relayHubAddress,
+      relayRequestId,
       signature,
       approvalData,
       relayMaxNonce,
@@ -554,11 +561,26 @@ export class RelayClient {
       this.logger.debug(`Reading default client config for chainId ${chainId.toString()}`)
       configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.clientDefaultConfigUrl)
     }
+    this._resolveVerifierConfig(config)
     return {
       ...defaultGsnConfig,
       ...configFromServer,
       ...removeNullValues(config)
     }
+  }
+
+  _resolveVerifierConfig (config: Partial<GSNConfig>): void {
+    if (config.verifierServerApiKey == null || config.verifierServerApiKey.length === 0) {
+      return
+    }
+    if (config.maxApprovalDataLength == null || config.maxApprovalDataLength === 0) {
+      this.logger.info('Verifier server API Key is set - setting maxApprovalDataLength')
+      config.maxApprovalDataLength = DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH
+    } else {
+      this.logger.warn('Verifier server API Key and "maxApprovalDataLength" are both set. Make sure they match!')
+    }
+    config.verifierServerUrl = config.verifierServerUrl ?? DEFAULT_VERIFIER_SERVER_URL
+    this.logger.info(`Verifier server API Key is set - setting verifierServerUrl to ${config.verifierServerUrl}`)
   }
 
   async _resolveConfigurationFromServer (chainId: number, clientDefaultConfigUrl: string): Promise<Partial<GSNConfig>> {
@@ -577,9 +599,13 @@ export class RelayClient {
 
   async _resolveDependencies ({
     provider,
-    config = {},
+    config,
     overrideDependencies = {}
-  }: GSNUnresolvedConstructorInput): Promise<GSNDependencies> {
+  }: {
+    provider: Web3ProviderBaseInterface
+    config: GSNConfig
+    overrideDependencies?: Partial<GSNDependencies>
+  }): Promise<GSNDependencies> {
     const versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion)
     const contractInteractor = overrideDependencies?.contractInteractor ??
       await new ContractInteractor({
@@ -592,12 +618,15 @@ export class RelayClient {
         domainSeparatorName: this.config.domainSeparatorName,
         deployment: { paymasterAddress: config?.paymasterAddress }
       }).init()
-    const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, contractInteractor.chainId, this.config)
+    const chainId = contractInteractor.chainId
+    const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, chainId, this.config)
 
-    const httpClient = overrideDependencies?.httpClient ?? new HttpClient(new HttpWrapper(), this.logger)
+    // TODO: accept HttpWrapper as a dependency - calling 'new' here is breaking the init flow.
+    const httpWrapper = new HttpWrapper()
+    const httpClient = overrideDependencies?.httpClient ?? new HttpClient(httpWrapper, this.logger)
     const pingFilter = overrideDependencies?.pingFilter ?? GasPricePingFilter
     const relayFilter = overrideDependencies?.relayFilter ?? DefaultRelayFilter
-    const asyncApprovalData = overrideDependencies?.asyncApprovalData ?? EmptyDataCallback
+    const asyncApprovalData = await this._resolveVerifierApprovalDataCallback(config, httpWrapper, chainId, overrideDependencies?.asyncApprovalData)
     const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
     const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
     const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, this.logger, this.config)
@@ -614,6 +643,30 @@ export class RelayClient {
       asyncApprovalData,
       asyncPaymasterData
     }
+  }
+
+  async _resolveVerifierApprovalDataCallback (
+    config: GSNConfig,
+    httpWrapper: HttpWrapper,
+    chainId: number,
+    asyncApprovalData?: ApprovalDataCallback
+  ): Promise<ApprovalDataCallback> {
+    if (config.verifierServerApiKey == null || config.verifierServerApiKey.length === 0) {
+      return asyncApprovalData ?? EmptyDataCallback
+    }
+    if (asyncApprovalData != null) {
+      throw new Error('Passing both verifierServerApiKey and asyncApprovalData params is unsupported.')
+    }
+    if (config.verifierServerUrl == null) {
+      throw new Error('The "verifierServerUrl" is not initialized but "verifierServerApiKey" is set.')
+    }
+    return createVerifierApprovalDataCallback(
+      httpWrapper,
+      this.logger,
+      config.domainSeparatorName,
+      chainId,
+      config.verifierServerApiKey,
+      config.verifierServerUrl)
   }
 
   async _verifyDryRunSuccessful (relayRequest: RelayRequest): Promise<Error | undefined> {

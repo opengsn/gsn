@@ -4,7 +4,7 @@ import { GSNUnresolvedConstructorInput, RelayProvider, GSNConfig } from '@opengs
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { expectRevert } from '@openzeppelin/test-helpers'
 
-import { RelayRequest, AsyncDataCallback } from '@opengsn/common'
+import { RelayRequest, ApprovalDataCallback } from '@opengsn/common'
 
 import { bufferToHex, privateToAddress, PrefixedHexString } from 'ethereumjs-util'
 import { randomBytes } from 'crypto'
@@ -65,11 +65,11 @@ contract('VerifyingPaymaster', ([from]) => {
     let privkey: Buffer
     let signer: string
 
-    let mockApprovalFunc: AsyncDataCallback
+    let mockApprovalFunc: ApprovalDataCallback
 
     // simulated call to backend, to verify request
     async function mockGetApprovalData (relayRequest: RelayRequest): Promise<PrefixedHexString> {
-      return await mockApprovalFunc(relayRequest)
+      return await mockApprovalFunc(relayRequest, '')
     }
 
     before(async () => {

@@ -16,7 +16,12 @@ export type SemVerString = string
  */
 export type PingFilter = (pingResponse: PingResponse, gsnTransactionDetails: GsnTransactionDetails) => void
 
-export type AsyncDataCallback = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
+/**
+ * As the "PaymasterData" is included in the user-signed request, it cannot have access to the "relayRequestId" value.
+ */
+export type PaymasterDataCallback = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
+
+export type ApprovalDataCallback = (relayRequest: RelayRequest, relayRequestId: PrefixedHexString) => Promise<PrefixedHexString>
 
 export type RelayFilter = (registrarRelayInfo: RegistrarRelayInfo) => boolean
 
