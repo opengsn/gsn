@@ -1,10 +1,13 @@
 import BN from 'bn.js'
 import Web3 from 'web3'
 import abi from 'web3-eth-abi'
-
+import chalk from 'chalk'
 import { AbiItem, fromWei, toWei, toBN } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
+import { TypedMessage } from '@metamask/eth-sig-util'
+import { encode, List } from 'rlp'
+
 import {
   Capability,
   FeeMarketEIP1559Transaction,
@@ -26,11 +29,8 @@ import {
 
 import { Address } from './types/Aliases'
 
-import chalk from 'chalk'
-import { encode, List } from 'rlp'
 import { RelayRequest } from './EIP712/RelayRequest'
 import { MessageTypes } from './EIP712/TypedRequestData'
-import { TypedMessage } from '@metamask/eth-sig-util'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
