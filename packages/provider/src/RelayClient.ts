@@ -6,6 +6,7 @@ import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
 
 import {
+  Address,
   ApprovalDataCallback,
   AuditResponse,
   ContractInteractor,
@@ -561,7 +562,7 @@ export class RelayClient {
       this.logger.debug(`Reading default client config for chainId ${chainId.toString()}`)
       configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.clientDefaultConfigUrl)
     }
-    this._resolveVerifierConfig(config)
+    await this._resolveVerifierConfig(config, chainId)
     return {
       ...defaultGsnConfig,
       ...configFromServer,
@@ -569,7 +570,17 @@ export class RelayClient {
     }
   }
 
-  _resolveVerifierConfig (config: Partial<GSNConfig>): void {
+  async _resolveVerifyingPaymasterAddress (verifierUrl: string, chainId: number): Promise<Address> {
+    try {
+      const httpClient = new HttpClient(new HttpWrapper(), this.logger)
+      return await httpClient.getVerifyingPaymasterAddress(verifierUrl, chainId)
+    } catch (e) {
+      this.logger.error(`Could not fetch VerifyingPaymaster address: ${(e as Error).message}`)
+      return constants.ZERO_ADDRESS
+    }
+  }
+
+  async _resolveVerifierConfig (config: Partial<GSNConfig>, chainId: number): Promise<void> {
     if (config.verifierServerApiKey == null || config.verifierServerApiKey.length === 0) {
       return
     }
@@ -581,6 +592,9 @@ export class RelayClient {
     }
     config.verifierServerUrl = config.verifierServerUrl ?? DEFAULT_VERIFIER_SERVER_URL
     this.logger.info(`Verifier server API Key is set - setting verifierServerUrl to ${config.verifierServerUrl}`)
+    if (config.paymasterAddress == null) {
+      config.paymasterAddress = await this._resolveVerifyingPaymasterAddress(config.verifierServerUrl, chainId)
+    }
   }
 
   async _resolveConfigurationFromServer (chainId: number, clientDefaultConfigUrl: string): Promise<Partial<GSNConfig>> {

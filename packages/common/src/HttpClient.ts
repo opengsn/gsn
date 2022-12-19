@@ -7,7 +7,7 @@ import { HttpWrapper } from './HttpWrapper'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { AuditRequest, AuditResponse } from './types/AuditRequest'
 import { ConfigResponse } from './ConfigResponse'
-import { ObjectMap } from './types/Aliases'
+import { Address, ObjectMap } from './types/Aliases'
 
 export class HttpClient {
   private readonly httpWrapper: HttpWrapper
@@ -51,5 +51,11 @@ export class HttpClient {
     const configResponse: ConfigResponse = await this.httpWrapper.sendPromise(clientDefaultConfigUrl)
     this.logger.info(`Config response: ${JSON.stringify(configResponse)}`)
     return configResponse
+  }
+
+  async getVerifyingPaymasterAddress (verifierServerUrl: string, chainId: number): Promise<Address> {
+    const { paymasterAddress } = await this.httpWrapper.sendPromise(verifierServerUrl + `/getPaymasterAddress?chainId=${chainId}`)
+    this.logger.info(`VerifyingPaymaster address: ${JSON.stringify(paymasterAddress)}`)
+    return paymasterAddress
   }
 }
