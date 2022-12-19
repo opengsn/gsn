@@ -685,30 +685,6 @@ export class RelayClient {
       config.verifierServerUrl)
   }
 
-  async _resolveVerifierApprovalDataCallback (
-    config: GSNConfig,
-    httpWrapper: HttpWrapper,
-    chainId: number,
-    asyncApprovalData?: ApprovalDataCallback
-  ): Promise<ApprovalDataCallback> {
-    if (config.verifierServerApiKey == null || config.verifierServerApiKey.length === 0) {
-      return asyncApprovalData ?? EmptyDataCallback
-    }
-    if (asyncApprovalData != null) {
-      throw new Error('Passing both verifierServerApiKey and asyncApprovalData params is unsupported.')
-    }
-    if (config.verifierServerUrl == null) {
-      throw new Error('The "verifierServerUrl" is not initialized but "verifierServerApiKey" is set.')
-    }
-    return createVerifierApprovalDataCallback(
-      httpWrapper,
-      this.logger,
-      config.domainSeparatorName,
-      chainId,
-      config.verifierServerApiKey,
-      config.verifierServerUrl)
-  }
-
   async _verifyDryRunSuccessful (relayRequest: RelayRequest): Promise<Error | undefined> {
     // TODO: only 3 fields are needed, extract fields instead of building stub object
     const dryRunRelayInfo: RelayInfo = {
