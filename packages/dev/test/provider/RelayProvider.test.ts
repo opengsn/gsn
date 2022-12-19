@@ -638,24 +638,25 @@ contract('RelayProvider', function (accounts) {
 
         describe('eth_signTypedData', function () {
           // TODO: once ERC-712 is added to Web3.js update this test
-          it('should sign using ephemeral key', async function () {
-            interface Test712 extends MessageTypes {
-              TestValueType: MessageTypeProperty[]
-            }
+          interface Test712 extends MessageTypes {
+            TestValueType: MessageTypeProperty[]
+          }
 
-            const dataToSign: TypedMessage<Test712> = {
-              types: { EIP712Domain: EIP712DomainType, TestValueType: [{ name: 'testValue', type: 'string' }] },
-              primaryType: 'TestValueType',
-              domain: {
-                name: 'domainName',
-                version: 'domainVer',
-                chainId: 1337,
-                verifyingContract: account
-              },
-              message: {
-                testValue: 'hello 712'
-              }
+          const dataToSign: TypedMessage<Test712> = {
+            types: { EIP712Domain: EIP712DomainType, TestValueType: [{ name: 'testValue', type: 'string' }] },
+            primaryType: 'TestValueType',
+            domain: {
+              name: 'domainName',
+              version: 'domainVer',
+              chainId: 1337,
+              verifyingContract: account
+            },
+            message: {
+              testValue: 'hello 712'
             }
+          }
+          it('should sign using ephemeral key', async function () {
+            dataToSign.domain.verifyingContract = account
             const paramBlock = {
               method: 'eth_signTypedData',
               params: [account, dataToSign],
@@ -673,6 +674,38 @@ contract('RelayProvider', function (accounts) {
             })
             const res = await promisified
             assert.equal(res.result.length, 132)
+          })
+
+          it('should sign using custom signature callback', async function () {
+            dataToSign.domain.verifyingContract = account
+            const paramBlock = {
+              method: 'eth_signTypedData',
+              params: [account, dataToSign],
+              jsonrpc: '2.0',
+              id: Date.now()
+            }
+            const relayProvider = RelayProvider.newProvider({
+              provider: web3.currentProvider as HttpProvider,
+              config: { paymasterAddress: paymasterInstance.address },
+              overrideDependencies: {
+                asyncSignTypedData: async function (signedData: TypedMessage<any>, from: Address) {
+                  return await Promise.resolve(`Valid signature for address ${from}`)
+                }
+              }
+            })
+            await relayProvider.init()
+            const web3custom = new Web3(relayProvider)
+            const promisified = new Promise<any>((resolve, reject) => {
+              (web3custom.currentProvider as HttpProvider).send(paramBlock, (error?: Error | null, result?: JsonRpcResponse): void => {
+                if (error != null) {
+                  reject(error)
+                } else {
+                  resolve(result)
+                }
+              })
+            })
+            const res = await promisified
+            assert.equal(res.result, `Valid signature for address ${account}`)
           })
         })
       })

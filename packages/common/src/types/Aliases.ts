@@ -5,6 +5,7 @@ import { GsnTransactionDetails } from './GsnTransactionDetails'
 import { RegistrarRelayInfo } from './RelayInfo'
 import { HttpProvider, IpcProvider, WebsocketProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
+import { TypedMessage } from '@metamask/eth-sig-util'
 
 export type Address = string
 export type EventName = string
@@ -16,7 +17,14 @@ export type SemVerString = string
  */
 export type PingFilter = (pingResponse: PingResponse, gsnTransactionDetails: GsnTransactionDetails) => void
 
-export type AsyncDataCallback = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
+/**
+ * As the "PaymasterData" is included in the user-signed request, it cannot have access to the "relayRequestId" value.
+ */
+export type PaymasterDataCallback = (relayRequest: RelayRequest) => Promise<PrefixedHexString>
+
+export type ApprovalDataCallback = (relayRequest: RelayRequest, relayRequestId: PrefixedHexString) => Promise<PrefixedHexString>
+
+export type SignTypedDataCallback = (signedData: TypedMessage<any>, from: Address) => Promise<PrefixedHexString>
 
 export type RelayFilter = (registrarRelayInfo: RegistrarRelayInfo) => boolean
 

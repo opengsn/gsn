@@ -19,10 +19,10 @@ import {
 
 import {
   ForwarderInstance,
-  GatewayForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
+  TestGatewayForwarderInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestPaymasterStoreContextInstance,
@@ -40,7 +40,7 @@ const { expect, assert } = chai.use(chaiAsPromised)
 const StakeManager = artifacts.require('StakeManager')
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
-const GatewayForwarder = artifacts.require('GatewayForwarder')
+const TestGatewayForwarder = artifacts.require('TestGatewayForwarder')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 const TestToken = artifacts.require('TestToken')
 const TestRelayHub = artifacts.require('TestRelayHub')
@@ -947,14 +947,14 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
         context('with BatchGateway configured', function () {
           const batchGateway = other
 
-          let gatewayForwarder: GatewayForwarderInstance
+          let gatewayForwarder: TestGatewayForwarderInstance
           let relayHubInstance: RelayHubInstance
           let recipientContract: TestRecipientInstance
           let relayRequest: RelayRequest
 
           before(async function () {
             relayRequest = cloneRelayRequest(sharedRelayRequestData)
-            gatewayForwarder = await GatewayForwarder.new()
+            gatewayForwarder = await TestGatewayForwarder.new()
             await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, gatewayForwarder)
             relayHubInstance = await deployHub(stakeManager.address, penalizer.address, batchGateway, testToken.address, oneEther.toString())
             recipientContract = await TestRecipient.new(gatewayForwarder.address)

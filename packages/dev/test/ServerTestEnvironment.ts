@@ -256,7 +256,15 @@ export class ServerTestEnvironment {
     overrideDetails: Partial<GsnTransactionDetails> = {},
     overrideDeployment: GSNContractsDeployment = {}
   ): Promise<RelayTransactionRequest> {
-    const pingResponse = {
+    const pingResponse: PingResponse = {
+      maxAcceptanceBudget: '10000000',
+      maxMaxFeePerGas: '',
+      minMaxFeePerGas: '',
+      minMaxPriorityFeePerGas: '',
+      ownerAddress: '',
+      ready: false,
+      relayManagerAddress: '',
+      version: '',
       relayHubAddress: this.relayHub.address,
       relayWorkerAddress: this.relayServer.workerAddress
     }
@@ -269,7 +277,7 @@ export class ServerTestEnvironment {
       relayUrl: ''
     }
     const relayInfo: RelayInfo = {
-      pingResponse: pingResponse as PingResponse,
+      pingResponse,
       relayInfo: eventInfo
     }
     const gsnTransactionDetails: GsnTransactionDetails = {

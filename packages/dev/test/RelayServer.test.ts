@@ -603,7 +603,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         req.relayRequest.relayData.paymaster = accounts[1]
         try {
-          await env.relayServer.validatePaymasterGasAndDataLimits(req)
+          await env.relayServer.calculateAndValidatePaymasterGasAndDataLimits(req)
           assert.fail()
         } catch (e: any) {
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -616,7 +616,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const origMaxGas = env.relayServer.maxGasLimit
         env.relayServer.maxGasLimit = 1
         try {
-          await env.relayServer.validatePaymasterGasAndDataLimits(req)
+          await env.relayServer.calculateAndValidatePaymasterGasAndDataLimits(req)
           assert.fail()
         } catch (e: any) {
           assert.include(e.message, 'exceeds maxGasLimit')
@@ -630,7 +630,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         const req = await env.createRelayHttpRequest()
         try {
           await env.paymaster.withdrawAll(accounts[0])
-          await env.relayServer.validatePaymasterGasAndDataLimits(req)
+          await env.relayServer.calculateAndValidatePaymasterGasAndDataLimits(req)
           assert.fail()
         } catch (e: any) {
           assert.include(e.message, 'paymaster balance too low')
@@ -656,7 +656,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         it('should reject a transaction from paymaster returning above configured max exposure', async function () {
           await rejectingPaymaster.setGreedyAcceptanceBudget(true)
           try {
-            await env.relayServer.validatePaymasterGasAndDataLimits(req)
+            await env.relayServer.calculateAndValidatePaymasterGasAndDataLimits(req)
             assert.fail()
           } catch (e: any) {
             assert.include(e.message, 'paymaster acceptance budget + msg.data gas cost too high')
@@ -666,7 +666,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         it('should reject a request if a transactionCalldataGasUsed  is too low', async function () {
           req.relayRequest.relayData.transactionCalldataGasUsed = '500'
           try {
-            await env.relayServer.validatePaymasterGasAndDataLimits(req)
+            await env.relayServer.calculateAndValidatePaymasterGasAndDataLimits(req)
             assert.fail()
           } catch (e: any) {
             assert.include(e.message, 'Refusing to relay a transaction due to calldata cost. Client signed transactionCalldataGasUsed: 500')
@@ -677,7 +677,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           await rejectingPaymaster.setGreedyAcceptanceBudget(false)
           const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
           assert.equal(toNumber(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget)
-          await env.relayServer.validatePaymasterGasAndDataLimits(req)
+          await env.relayServer.calculateAndValidatePaymasterGasAndDataLimits(req)
         })
 
         it('should accept a transaction from trusted paymaster returning above configured max exposure', async function () {
@@ -687,7 +687,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
             await env.relayServer._initTrustedPaymasters([rejectingPaymaster.address])
             const gasLimits = await rejectingPaymaster.getGasAndDataLimits()
             assert.equal(toNumber(gasLimits.acceptanceBudget), paymasterExpectedAcceptanceBudget * 9)
-            await env.relayServer.validatePaymasterGasAndDataLimits(req)
+            await env.relayServer.calculateAndValidatePaymasterGasAndDataLimits(req)
           } finally {
             await env.relayServer._initTrustedPaymasters([])
           }
@@ -747,7 +747,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           serverSpy.validateInput,
           serverSpy.validateGasFees,
           serverSpy.validateMaxNonce,
-          serverSpy.validatePaymasterGasAndDataLimits,
+          serverSpy.calculateAndValidatePaymasterGasAndDataLimits,
           serverSpy.validateViewCallSucceeds,
           txMgrSpy.sendTransaction,
           serverSpy.replenishServer
@@ -777,7 +777,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           serverSpy.validateGasFees,
           serverSpy.validateMaxNonce,
           serverSpy.validatePaymasterReputation,
-          serverSpy.validatePaymasterGasAndDataLimits,
+          serverSpy.calculateAndValidatePaymasterGasAndDataLimits,
           serverSpy.validateViewCallSucceeds,
           repSpy.onRelayRequestAccepted,
           txMgrSpy.sendTransaction,

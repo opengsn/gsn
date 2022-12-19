@@ -34,7 +34,6 @@ library RelayHubValidator {
             dynamicParamSize(relayRequest.request.data) +
             dynamicParamSize(relayRequest.relayData.paymasterData);
         // zero-length signature is allowed in a batch relay transaction
-        require(signature.length <= 65, "invalid signature length");
         require(expectedMsgDataLen == msg.data.length, "extra msg.data bytes" );
     }
 

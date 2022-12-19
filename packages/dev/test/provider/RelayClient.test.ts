@@ -83,6 +83,10 @@ import {
   RelayedTransactionValidator,
   TransactionValidationResult
 } from '@opengsn/provider/dist/RelayedTransactionValidator'
+import {
+  DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH,
+  DEFAULT_VERIFIER_SERVER_URL
+} from '@opengsn/provider/dist/VerifierUtils'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
@@ -833,6 +837,7 @@ contract('RelayClient', function (accounts) {
           domainSeparatorName: defaultGsnConfig.domainSeparatorName,
           relayMaxNonce: 4,
           relayLastKnownNonce: 1,
+          relayRequestId: '',
           signature: '',
           approvalData: '',
           relayHubAddress: '',
@@ -1064,6 +1069,7 @@ contract('RelayClient', function (accounts) {
       sinon.assert.notCalled(spy)
       sinon.restore()
     })
+
     describe('_resolveConfigurationFromServer()', function () {
       let supportedNetworks: number[]
       let jsonConfig: ConfigResponse
@@ -1084,6 +1090,39 @@ contract('RelayClient', function (accounts) {
         assert.deepEqual(config, {})
         sinon.assert.calledWithMatch(spy, 'Could not fetch default configuration:')
         sinon.restore()
+      })
+    })
+
+    describe('using verifier server by only providing an API key', function () {
+      it('should resolve asyncApprovalData and verifyingServerUrl if passed with an API key', async function () {
+        sinon.stub(relayClient, '_resolveConfigurationFromServer').returns(Promise.resolve({}))
+        const verifierServerApiKey = 'HELLO-SERVER'
+        const config: Partial<GSNConfig> = {
+          verifierServerApiKey
+        }
+        const provider = relayClient.getUnderlyingProvider()
+        const sandbox = sinon.createSandbox()
+        sandbox
+          .stub(provider)
+          .send
+          .withArgs(sinon.match({ method: 'eth_chainId' }), sinon.match.any)
+          .yields(null, {
+            id: 0,
+            jsonrpc: '2.0',
+            result: '0x5'
+          })
+        const resolvedConfig: GSNConfig = await relayClient._resolveConfiguration({
+          provider,
+          config
+        })
+        sandbox.restore()
+        assert.equal(resolvedConfig.paymasterAddress?.length, 42)
+        resolvedConfig.paymasterAddress = undefined // no need to resolve deployment
+        const resolvedDependencies = await relayClient._resolveDependencies({ provider, config: resolvedConfig })
+        assert.equal(resolvedConfig.verifierServerApiKey, verifierServerApiKey)
+        assert.equal(resolvedConfig.verifierServerUrl, DEFAULT_VERIFIER_SERVER_URL)
+        assert.equal(resolvedConfig.maxApprovalDataLength, DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH)
+        assert.equal(resolvedDependencies.asyncApprovalData.name, 'defaultVerifierApprovalDataCallback')
       })
     })
   })
