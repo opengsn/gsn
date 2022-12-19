@@ -509,8 +509,10 @@ contract('ContractInteractor', function (accounts) {
   context('#formatTokenAmount()', function () {
     let contractInteractor: ContractInteractor
     let testDecimalsToken: TestDecimalsTokenInstance
+    let shortTokenAddress: string
     before(async function () {
       testDecimalsToken = await TestDecimalsToken.new()
+      shortTokenAddress = `${testDecimalsToken.address.substring(0, 6)}...${testDecimalsToken.address.substring(39)}`
       await testDecimalsToken.mint('123456789123456789123', { from: accounts[1] })
       const deployment: GSNContractsDeployment = { managerStakeTokenAddress: testDecimalsToken.address }
       contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
@@ -520,37 +522,37 @@ contract('ContractInteractor', function (accounts) {
     it('should display amount correctly with 24 decimals', async function () {
       await testDecimalsToken.setDecimals(24)
       const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
-      assert.equal(balanceFormatted, '0.000123456789123456 DEC')
+      assert.equal(balanceFormatted, `0.000123456789123456 DEC (${shortTokenAddress})`)
     })
 
     it('should display amount correctly with 18 decimals', async function () {
       await testDecimalsToken.setDecimals(18)
       const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
-      assert.equal(balanceFormatted, '123.456789123456789123 DEC')
+      assert.equal(balanceFormatted, `123.456789123456789123 DEC (${shortTokenAddress})`)
     })
 
     it('should display amount correctly with 18 decimals but 0 total balance', async function () {
       await testDecimalsToken.setDecimals(18)
       const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[3])
-      assert.equal(balanceFormatted, '0 DEC')
+      assert.equal(balanceFormatted, `0 DEC (${shortTokenAddress})`)
     })
 
     it('should display amount correctly with 6 decimals', async function () {
       await testDecimalsToken.setDecimals(6)
       const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
-      assert.equal(balanceFormatted, '123456789123456.789123 DEC')
+      assert.equal(balanceFormatted, `123456789123456.789123 DEC (${shortTokenAddress})`)
     })
 
     it('should display amount correctly with 2 decimals', async function () {
       await testDecimalsToken.setDecimals(2)
       const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
-      assert.equal(balanceFormatted, '1234567891234567891.23 DEC')
+      assert.equal(balanceFormatted, `1234567891234567891.23 DEC (${shortTokenAddress})`)
     })
 
     it('should display amount correctly with 0 decimals', async function () {
       await testDecimalsToken.setDecimals(0)
       const balanceFormatted = await contractInteractor.getTokenBalanceFormatted(accounts[1])
-      assert.equal(balanceFormatted, '123456789123456789123 DEC')
+      assert.equal(balanceFormatted, `123456789123456789123 DEC (${shortTokenAddress})`)
     })
   })
 

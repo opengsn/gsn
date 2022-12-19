@@ -23,6 +23,7 @@ import {
   TransactionRelayed,
   TransactionType,
   VersionsManager,
+  constants,
   gsnRequiredVersion,
   gsnRuntimeVersion,
   isSameAddress,
@@ -113,7 +114,7 @@ export class RelayServer extends EventEmitter {
     this.transactionManager = transactionManager
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
-    this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance), this.logger)
+    this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance), constants.ZERO_ADDRESS, this.logger)
     if (this.config.runPaymasterReputations) {
       if (dependencies.reputationManager == null) {
         throw new Error('ReputationManager is not initialized')

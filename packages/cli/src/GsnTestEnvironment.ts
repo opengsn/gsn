@@ -48,9 +48,7 @@ class GsnTestEnvironmentClass {
    * @param host:
    * @return
    */
-  async startGsn (host: string): Promise<TestEnvironment> {
-    await this.stopGsn()
-    let hardhatNode: ChildProcess | undefined
+  async deployGsn (host: string): Promise<GSNContractsDeployment> {
     const _host: string = getNetworkUrl(host)
     if (_host == null) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -73,10 +71,33 @@ class GsnTestEnvironmentClass {
       penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
       relayHubConfiguration: defaultEnvironment.relayHubConfiguration
     })
+    console.log('Deployed GSN', JSON.stringify(deploymentResult))
+
     if (deploymentResult.paymasterAddress != null) {
       const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
       console.log('Naive Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
     }
+
+    return deploymentResult
+  }
+
+  /**
+   *
+   * @param host:
+   * @return
+   */
+  async startGsn (host: string): Promise<TestEnvironment> {
+    await this.stopGsn()
+    const _host: string = getNetworkUrl(host)
+    if (_host == null) {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
+    }
+    const deploymentResult = await this.deployGsn(host)
+    const logger = createServerLogger('error', '', '')
+    const commandsLogic = new CommandsLogic(_host, logger, {})
+    await commandsLogic.init()
+    const from = await commandsLogic.findWealthyAccount()
 
     const port = await this._resolveAvailablePort()
     const relayUrl = 'http://127.0.0.1:' + port.toString()
@@ -122,8 +143,7 @@ class GsnTestEnvironmentClass {
       contractsDeployment: deploymentResult,
       relayProvider,
       relayUrl,
-      httpServer: this.httpServer,
-      hardhatNode
+      httpServer: this.httpServer
     }
   }
 

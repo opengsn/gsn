@@ -112,6 +112,7 @@ interface ManagerStakeStatus {
 }
 
 export interface ERC20TokenMetadata {
+  tokenAddress: Address
   tokenName: string
   tokenSymbol: string
   tokenDecimals: BN
@@ -456,8 +457,8 @@ export class ContractInteractor {
   }
 
   async formatTokenAmount (balance: BN): Promise<string> {
-    const { tokenSymbol, tokenDecimals } = await this.getErc20TokenMetadata()
-    return formatTokenAmount(balance, tokenDecimals, tokenSymbol)
+    const { tokenSymbol, tokenDecimals, tokenAddress } = await this.getErc20TokenMetadata()
+    return formatTokenAmount(balance, tokenDecimals, tokenAddress, tokenSymbol)
   }
 
   async getErc20TokenMetadata (): Promise<ERC20TokenMetadata> {
@@ -479,7 +480,8 @@ export class ContractInteractor {
     } catch (_) {
       tokenDecimals = toBN(0)
     }
-    return { tokenName, tokenSymbol, tokenDecimals }
+    const tokenAddress = this.erc20Token.address
+    return { tokenName, tokenSymbol, tokenAddress, tokenDecimals }
   }
 
   async isTrustedForwarder (recipientAddress: Address, forwarder: Address): Promise<boolean> {
