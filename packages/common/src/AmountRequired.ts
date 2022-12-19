@@ -1,11 +1,14 @@
 import BN from 'bn.js'
 import { toBN } from 'web3-utils'
 
-import { boolString, formatTokenAmount } from './Utils'
-import { LoggerInterface } from './LoggerInterface'
 import { ERC20TokenMetadata } from './ContractInteractor'
+import { LoggerInterface } from './LoggerInterface'
+import { boolString, formatTokenAmount, isSameAddress } from './Utils'
+import { constants } from './Constants'
+import { Address } from './types/Aliases'
 
-const ether = {
+const ether: ERC20TokenMetadata = {
+  tokenAddress: constants.ZERO_ADDRESS,
   tokenName: 'Ether',
   tokenSymbol: 'ETH',
   tokenDecimals: toBN(18)
@@ -16,10 +19,18 @@ export class AmountRequired {
   _name: string
   _currentValue = toBN(0)
   _requiredValue = toBN(0)
+  _currentTokenAddress = constants.ZERO_ADDRESS
   _listener?: () => void
   _tokenMetadata: ERC20TokenMetadata
 
-  constructor (name: string, requiredValue: BN, logger: LoggerInterface, listener?: () => void, tokenMetadata: ERC20TokenMetadata = ether) {
+  constructor (
+    name: string,
+    requiredValue: BN,
+    requiredTokenAddress: string,
+    logger: LoggerInterface,
+    listener?: () => void,
+    tokenMetadata: ERC20TokenMetadata = ether
+  ) {
     this.logger = logger
     this._name = name
     this._tokenMetadata = tokenMetadata
@@ -35,6 +46,19 @@ export class AmountRequired {
     const didChange = !this._currentValue.eq(newValue)
     const wasSatisfied = this.isSatisfied
     this._currentValue = newValue
+    if (didChange) {
+      this._onChange(wasSatisfied)
+    }
+  }
+
+  get currentTokenAddress (): Address {
+    return this._currentTokenAddress
+  }
+
+  set currentTokenAddress (newValue: Address) {
+    const didChange = !isSameAddress(this._currentTokenAddress, newValue)
+    const wasSatisfied = this.isSatisfied
+    this._currentTokenAddress = newValue
     if (didChange) {
       this._onChange(wasSatisfied)
     }
@@ -70,13 +94,15 @@ export class AmountRequired {
   }
 
   get isSatisfied (): boolean {
-    return this._currentValue.gte(this._requiredValue)
+    const correctTokenSatisfied = isSameAddress(this._tokenMetadata.tokenAddress, this._currentTokenAddress)
+    const valueSatisfied = this._currentValue.gte(this._requiredValue)
+    return correctTokenSatisfied && valueSatisfied
   }
 
   get description (): string {
     const status = boolString(this.isSatisfied)
-    const actual: string = formatTokenAmount(this._currentValue, this._tokenMetadata.tokenDecimals, this._tokenMetadata.tokenSymbol)
-    const required: string = formatTokenAmount(this._requiredValue, this._tokenMetadata.tokenDecimals, this._tokenMetadata.tokenSymbol)
+    const actual: string = formatTokenAmount(this._currentValue, this._tokenMetadata.tokenDecimals, this._tokenMetadata.tokenAddress, this._tokenMetadata.tokenSymbol)
+    const required: string = formatTokenAmount(this._requiredValue, this._tokenMetadata.tokenDecimals, this._tokenMetadata.tokenAddress, this._tokenMetadata.tokenSymbol)
     return `${this._name.padEnd(14)} | ${status.padEnd(14)} | actual: ${actual.padStart(16)} | required: ${required.padStart(16)}`
   }
 }

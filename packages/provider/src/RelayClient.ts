@@ -562,19 +562,7 @@ export class RelayClient {
       this.logger.debug(`Reading default client config for chainId ${chainId.toString()}`)
       configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.clientDefaultConfigUrl)
     }
-    if (config.verifierServerApiKey != null && config.verifierServerApiKey.length !== 0) {
-      if (config.maxApprovalDataLength == null || config.maxApprovalDataLength === 0) {
-        this.logger.info('Verifier server API Key is set - setting maxApprovalDataLength')
-        config.maxApprovalDataLength = DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH
-      } else {
-        this.logger.warn('Verifier server API Key and "maxApprovalDataLength" are both set. Make sure they match!')
-      }
-      config.verifierServerUrl = config.verifierServerUrl ?? DEFAULT_VERIFIER_SERVER_URL
-      this.logger.info(`Verifier server API Key is set - setting verifierServerUrl to ${config.verifierServerUrl}`)
-      if (config.paymasterAddress == null) {
-        config.paymasterAddress = await this._resolveVerifyingPaymasterAddress(config.verifierServerUrl, chainId)
-      }
-    }
+    await this._resolveVerifierConfig(config, chainId)
     return {
       ...defaultGsnConfig,
       ...configFromServer,
@@ -589,6 +577,23 @@ export class RelayClient {
     } catch (e) {
       this.logger.error(`Could not fetch VerifyingPaymaster address: ${(e as Error).message}`)
       return constants.ZERO_ADDRESS
+    }
+  }
+
+  async _resolveVerifierConfig (config: Partial<GSNConfig>, chainId: number): Promise<void> {
+    if (config.verifierServerApiKey == null || config.verifierServerApiKey.length === 0) {
+      return
+    }
+    if (config.maxApprovalDataLength == null || config.maxApprovalDataLength === 0) {
+      this.logger.info('Verifier server API Key is set - setting maxApprovalDataLength')
+      config.maxApprovalDataLength = DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH
+    } else {
+      this.logger.warn('Verifier server API Key and "maxApprovalDataLength" are both set. Make sure they match!')
+    }
+    config.verifierServerUrl = config.verifierServerUrl ?? DEFAULT_VERIFIER_SERVER_URL
+    this.logger.info(`Verifier server API Key is set - setting verifierServerUrl to ${config.verifierServerUrl}`)
+    if (config.paymasterAddress == null) {
+      config.paymasterAddress = await this._resolveVerifyingPaymasterAddress(config.verifierServerUrl, chainId)
     }
   }
 
@@ -654,6 +659,30 @@ export class RelayClient {
       asyncPaymasterData,
       asyncSignTypedData
     }
+  }
+
+  async _resolveVerifierApprovalDataCallback (
+    config: GSNConfig,
+    httpWrapper: HttpWrapper,
+    chainId: number,
+    asyncApprovalData?: ApprovalDataCallback
+  ): Promise<ApprovalDataCallback> {
+    if (config.verifierServerApiKey == null || config.verifierServerApiKey.length === 0) {
+      return asyncApprovalData ?? EmptyDataCallback
+    }
+    if (asyncApprovalData != null) {
+      throw new Error('Passing both verifierServerApiKey and asyncApprovalData params is unsupported.')
+    }
+    if (config.verifierServerUrl == null) {
+      throw new Error('The "verifierServerUrl" is not initialized but "verifierServerApiKey" is set.')
+    }
+    return createVerifierApprovalDataCallback(
+      httpWrapper,
+      this.logger,
+      config.domainSeparatorName,
+      chainId,
+      config.verifierServerApiKey,
+      config.verifierServerUrl)
   }
 
   async _resolveVerifierApprovalDataCallback (
