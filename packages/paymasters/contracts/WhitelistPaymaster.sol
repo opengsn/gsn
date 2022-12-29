@@ -18,7 +18,7 @@ contract WhitelistPaymaster is BasePaymaster {
     mapping(address => mapping(bytes4 => bool)) public methodWhitelist;
 
     function versionPaymaster() external view override virtual returns (string memory){
-        return "3.0.0-beta.2+opengsn.whitelist.ipaymaster";
+        return "3.0.0-beta.3+opengsn.whitelist.ipaymaster";
     }
 
     function whitelistSender(address sender, bool isAllowed) public onlyOwner {

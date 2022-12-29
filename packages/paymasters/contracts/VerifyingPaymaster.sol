@@ -78,7 +78,7 @@ contract VerifyingPaymaster is Ownable, BasePaymaster {
     }
 
     function versionPaymaster() external view override virtual returns (string memory){
-        return "3.0.0-beta.2+opengsn.vpm.ipaymaster";
+        return "3.0.0-beta.3+opengsn.vpm.ipaymaster";
     }
 
     function setSigner(address _signer) public onlyOwner {

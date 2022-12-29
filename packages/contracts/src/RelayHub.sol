@@ -42,7 +42,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
     /// @inheritdoc IRelayHub
     function versionHub() override virtual public pure returns (string memory){
-        return "3.0.0-beta.2+opengsn.hub.irelayhub";
+        return "3.0.0-beta.3+opengsn.hub.irelayhub";
     }
 
     IStakeManager internal immutable stakeManager;
