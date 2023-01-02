@@ -607,6 +607,13 @@ export class ContractInteractor {
     if (matchGanache == null) {
       matchGanache = res?.error?.message?.toString().match(/: revert(?:ed)? (.*)/)
     }
+    if (matchGanache == null) {
+      // Infura and Alchemy revert message format
+      matchGanache = err?.message?.toString().match(/ revert(?:ed):? (.*)/)
+    }
+    if (matchGanache == null) {
+      matchGanache = err?.message?.toString().match(/reverted:(.*)/)
+    }
     if (matchGanache != null) {
       // also cleaning up Hardhat Node's verbose revert errors
       return matchGanache[1].replace('with reason string ', '').replace(/^'|'$/g, '')
