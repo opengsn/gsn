@@ -70,6 +70,7 @@ const config: HardhatUserConfig = {
     },
 
     dev: getNetwork('http://localhost:8545'),
+    bsctestnet: getNetwork('https://bsc-testnet.public.blastapi.io'),
     rarb: getNetwork('https://rinkeby.arbitrum.io/rpc'),
     garb: getNetwork('https://goerli-rollup.arbitrum.io/rpc'),
     aox: getNetwork('https://arbitrum.xdaichain.com/'),
@@ -79,7 +80,7 @@ const config: HardhatUserConfig = {
     kovan: getInfuraNetwork('kovan'),
     fuji: getNetwork('https://api.avax-test.network/ext/bc/C/rpc'),
     mumbai: getNetwork('https://rpc-mumbai.maticvigil.com'),
-    kopt: getNetwork('https://kovan.optimism.io/'),
+    gopt: getNetwork('https://goerli.optimism.io/'),
 
     mainnet: getInfuraNetwork('mainnet')
   },

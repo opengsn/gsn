@@ -139,7 +139,7 @@ async function getStakingInfo (hre: HardhatRuntimeEnvironment, env: Environment)
   return { stakingTokenAddress, stakingTokenValue }
 }
 
-export async function printRelayInfo (hre: HardhatRuntimeEnvironment): Promise<void> {
+export async function printRelayInfo (hre: HardhatRuntimeEnvironment, isArbitrum: boolean = false): Promise<void> {
   const { getChainId } = hre
   console.log('Connected to URL: ', (hre.network.config as HttpNetworkConfig).url)
   const accounts = await ethers.provider.listAccounts()
@@ -150,7 +150,7 @@ export async function printRelayInfo (hre: HardhatRuntimeEnvironment): Promise<v
 
   const { stakingTokenAddress, stakingTokenValue } = await getStakingInfo(hre, env)
 
-  const hub = await hre.deployments.get('RelayHub')
+  const hub = await hre.deployments.get(isArbitrum ? 'ArbRelayHub' : 'RelayHub')
   const network = hre.network.config as HttpNetworkConfig
   console.log(chalk.white('Example for Relayer config JSON file:'))
   console.log(chalk.grey(JSON.stringify({
@@ -244,7 +244,7 @@ export async function applyDeploymentConfig (hre: HardhatRuntimeEnvironment): Pr
   const { deployments, env, deployer } = await getDeploymentEnv(hre)
 
   const contracts = await deployments.all()
-  const relayHub = contracts.RelayHub
+  const relayHub = contracts.RelayHub ?? contracts.ArbRelayHub
   const hub = new ethers.Contract(relayHub.address, relayHub.abi, ethers.provider.getSigner())
 
   await applyHubConfiguration(env, hub)
