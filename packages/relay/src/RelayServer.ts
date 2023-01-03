@@ -288,7 +288,7 @@ export class RelayServer extends EventEmitter {
   async calculateAndValidatePaymasterGasAndDataLimits (relayTransactionRequest: RelayTransactionRequest): Promise<number> {
     const trustedPaymasterGasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(relayTransactionRequest.relayRequest.relayData.paymaster)
     const managerBalance = await this.getManagerBalance()
-    const viewCallGasLimit = managerBalance.sub(toBN(relayTransactionRequest.relayRequest.relayData.maxFeePerGas))
+    const viewCallGasLimit = managerBalance.div(toBN(relayTransactionRequest.relayRequest.relayData.maxFeePerGas))
     const relayRequestLimits = await this.contractInteractor.calculatePaymasterGasAndDataLimits(
       relayTransactionRequest,
       trustedPaymasterGasAndDataLimits,
