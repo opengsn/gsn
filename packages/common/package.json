@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/common",
-  "version": "3.0.0-beta.2",
+  "version": "3.0.0-beta.3",
   "license": "Apache-2.0",
   "main": "dist/index.js",
   "scripts": {
@@ -21,7 +21,7 @@
     "@ethereumjs/common": "^2.6.5",
     "@ethereumjs/tx": "^3.2.0",
     "@metamask/eth-sig-util": "^4.0.1",
-    "@opengsn/contracts": "^3.0.0-beta.2",
+    "@opengsn/contracts": "^3.0.0-beta.3",
     "@types/bn.js": "^5.1.0",
     "@types/semver": "^7.3.4",
     "axios": "^0.21.1",

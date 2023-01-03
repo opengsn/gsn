@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/deployer",
-  "version": "3.0.0-beta.2",
+  "version": "3.0.0-beta.3",
   "private": true,
   "author": "Dror Tirosh",
   "license": "MIT",
@@ -18,8 +18,8 @@
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
     "@nomiclabs/hardhat-web3": "^2.0.0",
-    "@opengsn/common": "^3.0.0-beta.2",
-    "@opengsn/provider": "^3.0.0-beta.2",
+    "@opengsn/common": "^3.0.0-beta.3",
+    "@opengsn/provider": "^3.0.0-beta.3",
     "axios": "^0.27.2",
     "chai": "^4.3.6",
     "chalk": "^4.1.2",

@@ -39,7 +39,7 @@ services:
   gsn:
     container_name: gsn
     ports: [ '8080:80' ] #bypass https-portal
-    image: opengsn/jsrelay:3.0.0-beta.2
+    image: opengsn/jsrelay:3.0.0-beta.3
     restart: on-failure
 
     # /app/data - relay specific folder

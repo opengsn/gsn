@@ -16,7 +16,7 @@ import "./AcceptEverythingPaymaster.sol";
 contract HashcashPaymaster is AcceptEverythingPaymaster {
 
     function versionPaymaster() external view override virtual returns (string memory){
-        return "3.0.0-beta.2+opengsn.hashcash.ipaymaster";
+        return "3.0.0-beta.3+opengsn.hashcash.ipaymaster";
     }
 
     uint8 public difficulty;

@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/cli",
-  "version": "3.0.0-beta.2",
+  "version": "3.0.0-beta.3",
   "license": "GPL-3.0-only",
   "main": "dist/index.js",
   "bin": {
@@ -25,10 +25,10 @@
   },
   "dependencies": {
     "@ethereumjs/tx": "^3.2.0",
-    "@opengsn/common": "^3.0.0-beta.2",
-    "@opengsn/logger": "^3.0.0-beta.2",
-    "@opengsn/provider": "^3.0.0-beta.2",
-    "@opengsn/relay": "^3.0.0-beta.2",
+    "@opengsn/common": "^3.0.0-beta.3",
+    "@opengsn/logger": "^3.0.0-beta.3",
+    "@opengsn/provider": "^3.0.0-beta.3",
+    "@opengsn/relay": "^3.0.0-beta.3",
     "@truffle/hdwallet-provider": "^2.0.10",
     "@types/asciichart": "^1.5.4",
     "@types/clear": "^0.1.1",
