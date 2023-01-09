@@ -62,6 +62,7 @@ export function printSampleEnvironment (defaultDevAddress: string, chainId: numb
     paymasterDeposit: '0.1',
     isArbitrum: false,
     deployTestPaymaster: true,
+    deploySingleRecipientPaymaster: false,
     minimumStakePerToken: { test: '0.5' }
   }
   const sampleEnv = {
