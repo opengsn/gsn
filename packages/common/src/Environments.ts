@@ -8,6 +8,7 @@ export interface DeploymentConfiguration {
   readonly minimumStakePerToken: { [key: string]: string }
   readonly paymasterDeposit: string
   readonly deployTestPaymaster: boolean
+  readonly deploySingleRecipientPaymaster: boolean
   readonly isArbitrum?: boolean
 }
 

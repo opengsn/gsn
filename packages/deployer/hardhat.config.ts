@@ -45,6 +45,10 @@ if (!fs.existsSync(path.join(CONTRACTS_LINK, 'RelayHub.sol'))) {
   console.log('== creating symlink', chalk.yellow(CONTRACTS_LINK), 'for contracts')
   fs.symlinkSync('../contracts/solpp', CONTRACTS_LINK)
 }
+if (!fs.existsSync(path.join(CONTRACTS_LINK, 'paymasters/SingleRecipientPaymaster.sol'))) {
+  console.log('== creating symlink', chalk.yellow(CONTRACTS_LINK + '/paymasters'), 'for contracts')
+  fs.symlinkSync('../../paymasters/contracts', CONTRACTS_LINK + '/paymasters')
+}
 
 const config: HardhatUserConfig = {
   solidity: {

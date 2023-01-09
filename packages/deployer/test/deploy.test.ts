@@ -18,6 +18,7 @@ const defaultDeploymentConfiguration: DeploymentConfiguration = {
   paymasterDeposit: '0.1',
   isArbitrum: false,
   deployTestPaymaster: true,
+  deploySingleRecipientPaymaster: false,
   minimumStakePerToken: { test: '0.5' }
 }
 
