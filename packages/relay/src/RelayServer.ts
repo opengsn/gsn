@@ -785,12 +785,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const relayRegistrationMaxAge = await this.contractInteractor.getRelayRegistrationMaxAge()
     const relayInfo = await this.contractInteractor.getRelayInfo(this.managerAddress)
       .catch((e: Error) => {
-        if (e.message.includes('relayManager not found')) {
-          return { lastSeenTimestamp: 0 }
-        } else {
-          this.logger.error(`getRelayInfo failed ${e.message}`)
-          throw e
-        }
+        // TODO: remove dependency on revert to figure out relay state - not all RPC endpoints return it
+        this.logger.error(`getRelayInfo failed (but "relayManager not found" revert is expected here) ${e.message}`)
+        return { lastSeenTimestamp: 0 }
       })
     const latestRegisterTxBlockTimestamp = toNumber(relayInfo.lastSeenTimestamp)
     const isPendingRegistration = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
