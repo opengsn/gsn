@@ -937,11 +937,15 @@ calculateTransactionMaxPossibleGas: result: ${result}
       calldataNonzeroBytes * this.environment.gtxdatanonzero
   }
 
+  // note: when passing 'gasPrice' to a view call, the sender balance is checked to have sufficient balance
+  // we must set 'from' and 'gas' parameters as well to avoid failing a view call with 'insufficient gas'
   async calculatePaymasterGasAndDataLimits (
     relayTransactionRequest: RelayTransactionRequest,
     gasAndDataLimits: PaymasterGasAndDataLimits | undefined,
     gasReserve: number,
-    gasFactor: number
+    gasFactor: number,
+    viewCallFrom: Address,
+    viewCallGasLimit: BN
   ): Promise<RelayRequestLimits> {
     if (gasAndDataLimits == null) {
       gasAndDataLimits = await this.getGasAndDataLimitsFromPaymaster(relayTransactionRequest.relayRequest.relayData.paymaster)
@@ -957,7 +961,11 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const maxPossibleGasFactorReserve = gasReserve + Math.floor(maxPossibleGas * gasFactor)
     const maxPossibleCharge =
       await this.relayHubInstance.calculateCharge(maxPossibleGasFactorReserve, relayTransactionRequest.relayRequest.relayData,
-        { gasPrice: relayTransactionRequest.relayRequest.relayData.maxFeePerGas })
+        {
+          from: viewCallFrom,
+          gas: viewCallGasLimit,
+          gasPrice: relayTransactionRequest.relayRequest.relayData.maxFeePerGas
+        })
 
     return {
       paymasterAcceptanceBudget,
