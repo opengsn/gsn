@@ -15,12 +15,8 @@ contract SingleRecipientPaymaster is BasePaymaster {
 
     event TargetChanged(address oldTarget, address newTarget);
 
-    constructor(address _target) {
-        target=_target;
-    }
-
     function versionPaymaster() external view override virtual returns (string memory){
-        return "2.2.0+opengsn.recipient.ipaymaster";
+        return "3.0.0-beta.3+opengsn.recipient.ipaymaster";
     }
 
     function setTarget(address _target) external onlyOwner {

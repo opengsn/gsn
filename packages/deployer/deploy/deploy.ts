@@ -126,8 +126,8 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
   if (paymasterContractName != null) {
     deployedPm = await deploy(deployments, paymasterContractName, { from: deployer, log: true })
 
-    await setField(deployments, 'TestPaymasterEverythingAccepted', 'getRelayHub', 'setRelayHub', relayHub.address, deployer)
-    await setField(deployments, 'TestPaymasterEverythingAccepted', 'getTrustedForwarder', 'setTrustedForwarder', deployedForwarder.address, deployer)
+    await setField(deployments, paymasterContractName, 'getRelayHub', 'setRelayHub', relayHub.address, deployer)
+    await setField(deployments, paymasterContractName, 'getTrustedForwarder', 'setTrustedForwarder', deployedForwarder.address, deployer)
 
     const paymasterBalance = await deployments.read(hubContractName, 'balanceOf', deployedPm.address)
     console.log('current paymaster balance=', formatEther(paymasterBalance))
