@@ -75,7 +75,7 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
 
   const stakeManager = await deploy(deployments, 'StakeManager', {
     from: deployer,
-    args: [env.maxUnstakeDelay, env.abandonmentDelay, env.escheatmentDelay, constants.BURN_ADDRESS, env.relayHubConfiguration.devAddress]
+    args: [env.maxUnstakeDelay, env.abandonmentDelay, env.escheatmentDelay, env.stakeBurnAddress, env.relayHubConfiguration.devAddress]
   })
 
   const relayRegistrar = await deploy(deployments, 'RelayRegistrar', {

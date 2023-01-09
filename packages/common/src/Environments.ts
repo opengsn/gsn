@@ -17,6 +17,7 @@ export interface Environment {
   readonly penalizerConfiguration: PenalizerConfiguration
   readonly paymasterConfiguration: PaymasterConfiguration
   readonly deploymentConfiguration?: DeploymentConfiguration
+  readonly stakeBurnAddress: string
   readonly maxUnstakeDelay: number
   readonly abandonmentDelay: number
   readonly escheatmentDelay: number
