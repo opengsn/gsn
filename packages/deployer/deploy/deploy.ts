@@ -117,8 +117,14 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
   await applyDeploymentConfig(hre)
 
   let deployedPm: DeployResult
+  let paymasterContractName: string | undefined
   if (env.deploymentConfiguration.deployTestPaymaster) {
-    deployedPm = await deploy(deployments, 'TestPaymasterEverythingAccepted', { from: deployer, log: true })
+    paymasterContractName = 'TestPaymasterEverythingAccepted'
+  } else if (env.deploymentConfiguration.deploySingleRecipientPaymaster) {
+    paymasterContractName = 'SingleRecipientPaymaster'
+  }
+  if (paymasterContractName != null) {
+    deployedPm = await deploy(deployments, paymasterContractName, { from: deployer, log: true })
 
     await setField(deployments, 'TestPaymasterEverythingAccepted', 'getRelayHub', 'setRelayHub', relayHub.address, deployer)
     await setField(deployments, 'TestPaymasterEverythingAccepted', 'getTrustedForwarder', 'setTrustedForwarder', deployedForwarder.address, deployer)
