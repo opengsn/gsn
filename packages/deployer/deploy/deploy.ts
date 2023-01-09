@@ -143,5 +143,5 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
     }
   }
 
-  await printRelayInfo(hre)
+  await printRelayInfo(hre, env.deploymentConfiguration?.isArbitrum)
 }
