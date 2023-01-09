@@ -1,6 +1,7 @@
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { PaymasterConfiguration } from './types/PaymasterConfiguration'
 import { PenalizerConfiguration } from './types/PenalizerConfiguration'
+import { constants } from './Constants'
 
 export interface DeploymentConfiguration {
   readonly registrationMaxAge: number
@@ -83,6 +84,7 @@ const ethereumMainnet: Environment = {
   penalizerConfiguration: defaultPenalizerConfiguration,
   paymasterConfiguration: defaultPaymasterConfiguration,
   maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
+  stakeBurnAddress: constants.BURN_ADDRESS,
   abandonmentDelay: 31536000, // 1 year
   escheatmentDelay: 2629746, // 1 month
   mintxgascost: 21000,
@@ -99,6 +101,7 @@ const ganacheLocal: Environment = {
   penalizerConfiguration: defaultPenalizerConfiguration,
   paymasterConfiguration: defaultPaymasterConfiguration,
   maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
+  stakeBurnAddress: constants.BURN_ADDRESS,
   abandonmentDelay: 1000,
   escheatmentDelay: 500,
   mintxgascost: 21000,
@@ -125,6 +128,7 @@ const arbitrum: Environment = {
   penalizerConfiguration: defaultPenalizerConfiguration,
   paymasterConfiguration: defaultPaymasterConfiguration,
   maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
+  stakeBurnAddress: constants.BURN_ADDRESS,
   chainId: 421611,
   mintxgascost: 700000,
   gtxdatanonzero: 2024,
