@@ -785,7 +785,12 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const relayRegistrationMaxAge = await this.contractInteractor.getRelayRegistrationMaxAge()
     const relayInfo = await this.contractInteractor.getRelayInfo(this.managerAddress)
       .catch((e: Error) => {
-        if (e.message.includes('relayManager not found')) {
+        if (
+          e.message.includes('relayManager not found') ||
+          e.message.includes('Revert') ||
+          e.message.includes('revert') ||
+          e.message.includes('VM execution error')
+        ) {
           return { lastSeenTimestamp: 0 }
         } else {
           this.logger.error(`getRelayInfo failed ${e.message}`)
