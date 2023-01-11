@@ -17,8 +17,8 @@ if (fs.existsSync(secretMnemonicFile)) {
 
 module.exports = {
   contracts_build_directory: '../cli/src/compiled',
-  // contracts_directory: '../contracts/solpp',
-  contracts_directory: '../paymasters/contracts',
+  contracts_directory: '../contracts/solpp',
+
   plugins: [
     'truffle-plugin-stdjsonin'
   ],
