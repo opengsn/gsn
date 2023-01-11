@@ -6,6 +6,7 @@
     ],
     "nohoist": [
       "**eslint**",
+      "**stdjsonin**",
       "**ts-node**"
     ]
   },
