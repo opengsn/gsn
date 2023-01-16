@@ -11,7 +11,8 @@ contract('RelayServerRequestsProfiling', function (accounts) {
   const callsPerStateRefresh = 13
   const callsPerBlock = 0
   // one of the calls is 'get manager balance' which is not really necessary
-  const callsPerTransaction = 11
+  // two excessive calls are needed to query worker and paymaster balances to calculate viewable gas limit
+  const callsPerTransaction = 13
 
   let provider: ProfilingProvider
   let relayServer: RelayServer
