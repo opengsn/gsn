@@ -147,7 +147,8 @@ export interface GSNConfig {
   requestValidSeconds: number
 
   /**
-   * @deprecated
+   * The absolute maximum gas limit to pass to a view call and DRY-RUN call.
+   * Will override the maximum dictated by block size limits and entries' balances.
    */
   maxViewableGasLimit: IntString
 

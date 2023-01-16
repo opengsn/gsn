@@ -264,6 +264,12 @@ export interface ServerConfigParams {
   defaultGasLimit: number
 
   /**
+   * The absolute maximum gas limit to pass to a view call and DRY-RUN call.
+   * Will override the maximum dictated by block size limits and entries' balances.
+   */
+  maxViewableGasLimit: string
+
+  /**
    * If the RelayRequest becomes invalid this soon after it is received it should be rejected.
    */
   requestMinValidSeconds: number
@@ -366,6 +372,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   defaultGasLimit: 500000,
   maxMaxFeePerGas: 500e9.toString(),
   defaultPriorityFee: 1e9.toString(),
+  maxViewableGasLimit: '12000000',
   getGasFeesBlocks: 5,
   getGasFeesPercentile: 50,
 
@@ -438,6 +445,7 @@ const ConfigParamsTypes = {
   getGasFeesBlocks: 'number',
   getGasFeesPercentile: 'number',
   defaultPriorityFee: 'string',
+  maxViewableGasLimit: 'string',
   pastEventsQueryMaxPageSize: 'number',
   pastEventsQueryMaxPageCount: 'number',
   dbPruneTxAfterBlocks: 'number',

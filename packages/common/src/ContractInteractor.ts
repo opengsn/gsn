@@ -495,7 +495,7 @@ export class ContractInteractor {
     return nonce.toString()
   }
 
-  async _getBlockGasLimit (): Promise<number> {
+  async getBlockGasLimit (): Promise<number> {
     const latestBlock = await this.web3.eth.getBlock('latest')
     return latestBlock.gasLimit
   }
@@ -1299,6 +1299,38 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const topics = address2topic(managerAddress)
     const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])
     return workersAddedEvents.map(it => it.returnValues.newRelayWorkers).flat()
+  }
+
+  /**
+   *
+   * @param paymasterAddress
+   * @param workerAddress
+   * @param maxFeePerGas
+   * @param maxViewableGasLimit
+   */
+  async calculateDryRunCallGasLimit (
+    paymasterAddress: Address,
+    workerAddress: Address,
+    maxFeePerGas: BN,
+    maxViewableGasLimit: BN
+  ): Promise<BN> {
+    const paymasterBalance = await this.hubBalanceOf(paymasterAddress)
+    let workerBalance = constants.MAX_UINT256 // skipping worker address balance check in dry-run
+    if (!isSameAddress(workerAddress, constants.DRY_RUN_ADDRESS)) {
+      const workerBalanceStr = await this.getBalance(workerAddress, 'pending')
+      workerBalance = toBN(workerBalanceStr)
+    }
+    const smallerBalance = BN.min(paymasterBalance, workerBalance)
+    if (maxFeePerGas.eqn(0)) {
+      // using base fee override to avoid division by zero
+      maxFeePerGas = toBN((await this.getGasFees(5, 50)).baseFeePerGas)
+    }
+    const smallerBalanceGasLimit = smallerBalance.div(maxFeePerGas)
+      .muln(9).divn(10) // hard-coded to use 90% of available worker/paymaster balance
+    const blockGasLimitNum = await this.getBlockGasLimit()
+    const blockGasLimit = toBN(blockGasLimitNum)
+      .muln(3).divn(4) // hard-coded to use 75% of available block gas limit
+    return BN.min(maxViewableGasLimit, BN.min(smallerBalanceGasLimit, blockGasLimit))
   }
 }
 

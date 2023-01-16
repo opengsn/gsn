@@ -213,7 +213,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const blockGasLimit = await contractInteractor.getBlockGasLimit()
       const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
       assert.deepEqual(ret, {
         paymasterAccepted: false,
@@ -262,7 +262,7 @@ contract('ContractInteractor', function (accounts) {
           clientId: '1'
         }
       }
-      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const blockGasLimit = await contractInteractor.getBlockGasLimit()
       const encodedData: RelayCallABI = {
         domainSeparatorName: defaultGsnConfig.domainSeparatorName,
         maxAcceptanceBudget: '200000',
@@ -290,7 +290,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const blockGasLimit = await contractInteractor.getBlockGasLimit()
       const spy = sinon.spy(contractInteractor.web3.currentProvider as HttpProvider, 'send')
       try {
         contractInteractor.transactionType = TransactionType.LEGACY
@@ -316,7 +316,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const blockGasLimit = await contractInteractor.getBlockGasLimit()
       const spy = sinon.spy(contractInteractor.web3.currentProvider as HttpProvider, 'send')
       try {
         await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)

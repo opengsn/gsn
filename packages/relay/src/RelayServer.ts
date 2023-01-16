@@ -286,16 +286,21 @@ export class RelayServer extends EventEmitter {
   }
 
   async calculateAndValidatePaymasterGasAndDataLimits (relayTransactionRequest: RelayTransactionRequest): Promise<number> {
-    const trustedPaymasterGasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(relayTransactionRequest.relayRequest.relayData.paymaster)
-    const managerBalance = await this.getManagerBalance()
-    const viewCallGasLimit = managerBalance.div(toBN(relayTransactionRequest.relayRequest.relayData.maxFeePerGas))
-      .muln(9).divn(10)
+    const paymasterAddress = relayTransactionRequest.relayRequest.relayData.paymaster
+    const trustedPaymasterGasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(paymasterAddress)
+    // reusing dry-run gas limit, note that paymaster balance may cause this to fail for no reason - should be no issue
+    const viewCallGasLimit = await this.contractInteractor.calculateDryRunCallGasLimit(
+      paymasterAddress,
+      this.workerAddress,
+      toBN(relayTransactionRequest.relayRequest.relayData.maxFeePerGas),
+      toBN(this.config.maxViewableGasLimit)
+    )
     const relayRequestLimits = await this.contractInteractor.calculatePaymasterGasAndDataLimits(
       relayTransactionRequest,
       trustedPaymasterGasAndDataLimits,
       GAS_RESERVE,
       GAS_FACTOR,
-      this.managerAddress,
+      this.workerAddress,
       viewCallGasLimit
     )
     await this.validatePaymasterGasAndDataLimits(relayTransactionRequest, relayRequestLimits)
