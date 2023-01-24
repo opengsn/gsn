@@ -95,7 +95,7 @@
     "typechain": "^6.0.5",
     "typescript": "^4.7.4",
     "verdaccio": "^5.13.3",
-    "web3": "^1.7.3",
+    "web3": "^1.8.1",
     "web3-core": "^1.7.3",
     "web3-core-helpers": "^1.7.3",
     "web3-eth": "^1.7.3",
