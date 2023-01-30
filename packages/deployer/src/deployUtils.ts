@@ -57,7 +57,6 @@ export function getMergedEnvironment (chainId: number, defaultDevAddress: string
 
 export function printSampleEnvironment (defaultDevAddress: string, chainId: number): void {
   const deploymentConfiguration: DeploymentConfiguration = {
-    environmentsKey: EnvironmentsKeys.ethereumMainnet,
     registrationMaxAge: 180 * 24 * 3600,
     paymasterDeposit: '0.1',
     isArbitrum: false,
@@ -66,6 +65,7 @@ export function printSampleEnvironment (defaultDevAddress: string, chainId: numb
     minimumStakePerToken: { test: '0.5' }
   }
   const sampleEnv = {
+    environmentsKey: EnvironmentsKeys.ethereumMainnet,
     relayHubConfiguration: {
       devAddress: defaultDevAddress,
       devFee: 10
