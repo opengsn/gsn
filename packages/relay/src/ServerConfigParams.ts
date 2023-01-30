@@ -294,7 +294,7 @@ export interface ServerConfigParams {
   pastEventsQueryMaxPageCount: number
 
   /**
-   * The name of preconfigured network. Supported values: "ganacheLocal", "ethereumMainnet", "arbitrum".
+   * The name of preconfigured network. Supported values: "ethereumMainnet", "arbitrum".
    */
   environmentName?: string
 

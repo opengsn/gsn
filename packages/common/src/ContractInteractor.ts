@@ -24,7 +24,6 @@ import { LoggerInterface } from './LoggerInterface'
 import {
   address2topic,
   averageBN,
-  calculateCalldataBytesZeroNonzero,
   decodeRevertReason,
   errorAsBoolean,
   event2topic,
@@ -46,7 +45,15 @@ import {
   IStakeManagerInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
-import { Address, EventName, IntString, ObjectMap, SemVerString, Web3ProviderBaseInterface } from './types/Aliases'
+import {
+  Address,
+  CalldataGasEstimation,
+  EventName,
+  IntString,
+  ObjectMap,
+  SemVerString,
+  Web3ProviderBaseInterface
+} from './types/Aliases'
 import { GsnTransactionDetails } from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from './LightTruffleContract'
@@ -60,13 +67,16 @@ import {
   StakeInfo
 } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
-import { Environment } from './Environments'
+import { Environment } from './environments/Environments'
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from 'bignumber.js'
 import { TransactionType } from './types/TransactionType'
 import { RegistrarRelayInfo } from './types/RelayInfo'
 import { constants, erc165Interfaces, RelayCallStatusCodes } from './Constants'
+import { MainnetCalldataGasEstimation } from './environments/MainnetCalldataGasEstimation'
+import { AsyncZeroAddressCalldataGasEstimation } from './environments/AsyncZeroAddressCalldataGasEstimation'
+
 import TransactionDetails = Truffle.TransactionDetails
 
 export interface ConstructorParams {
@@ -147,6 +157,7 @@ export class ContractInteractor {
   private readonly relayCallMethod: any
 
   readonly web3: Web3
+  readonly calculateCalldataGasUsed: CalldataGasEstimation
   private readonly provider: Web3ProviderBaseInterface
   private deployment: GSNContractsDeployment
   private readonly versionManager: VersionsManager
@@ -183,6 +194,10 @@ export class ContractInteractor {
     this.provider = provider
     this.lastBlockNumber = 0
     this.environment = environment
+    this.calculateCalldataGasUsed =
+      this.environment.useEstimateGasForCalldataCost
+        ? MainnetCalldataGasEstimation
+        : AsyncZeroAddressCalldataGasEstimation
     this.domainSeparatorName = domainSeparatorName ?? ''
     this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
@@ -838,13 +853,12 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
 
   async estimateGasWithoutCalldata (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
     const originalGasEstimation = await this.estimateGas(gsnTransactionDetails)
-    const calldataGasCost = this.calculateCalldataGasUsed(gsnTransactionDetails.data)
+    const calldataGasCost = await this.calculateCalldataGasUsed(gsnTransactionDetails.data, this.environment, this.web3)
     const adjustedEstimation = originalGasEstimation - calldataGasCost
     this.logger.debug(
       `estimateGasWithoutCalldata: original estimation: ${originalGasEstimation}; calldata cost: ${calldataGasCost}; adjusted estimation: ${adjustedEstimation}`)
     if (adjustedEstimation < 0) {
-      throw new Error('estimateGasWithoutCalldata: calldataGasCost exceeded originalGasEstimation\n' +
-        'your Environment configuration and Ethereum node you are connected to are not compatible')
+      throw new Error(`estimateGasWithoutCalldata: calldataGasCost(${calldataGasCost}) exceeded originalGasEstimation(${originalGasEstimation})`)
     }
     return adjustedEstimation
   }
@@ -869,18 +883,18 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
    * @returns result - maximum possible gas consumption by this relayed call
    * (calculated on chain by RelayHub.verifyGasAndDataLimits)
    */
-  calculateTransactionMaxPossibleGas (
+  async calculateTransactionMaxPossibleGas (
     _: {
       msgData: PrefixedHexString
       gasAndDataLimits: PaymasterGasAndDataLimits
       relayCallGasLimit: string
-    }): number {
+    }): Promise<number> {
     const msgDataLength = toBuffer(_.msgData).length
     const msgDataGasCostInsideTransaction =
       toBN(this.environment.dataOnChainHandlingGasCostPerByte)
         .muln(msgDataLength)
         .toNumber()
-    const calldataCost = this.calculateCalldataGasUsed(_.msgData)
+    const calldataCost = await this.calculateCalldataGasUsed(_.msgData, this.environment, this.web3)
     const result = toNumber(this.relayHubConfiguration.gasOverhead) +
       msgDataGasCostInsideTransaction +
       calldataCost +
@@ -905,10 +919,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
    * @param variableFieldSizes configurable sizes of 'relayCall' parameters with variable size types
    * @return {PrefixedHexString} top boundary estimation of how much gas sending this data will consume
    */
-  estimateCalldataCostForRequest (
+  async estimateCalldataCostForRequest (
     relayRequestOriginal: RelayRequest,
     variableFieldSizes: { maxApprovalDataLength: number, maxPaymasterDataLength: number }
-  ): PrefixedHexString {
+  ): Promise<PrefixedHexString> {
     // protecting the original object from temporary modifications done here
     const relayRequest: RelayRequest =
       Object.assign(
@@ -928,13 +942,8 @@ calculateTransactionMaxPossibleGas: result: ${result}
       approvalData,
       maxAcceptanceBudget
     })
-    return `0x${this.calculateCalldataGasUsed(encodedData).toString(16)}`
-  }
-
-  calculateCalldataGasUsed (msgData: PrefixedHexString): number {
-    const { calldataZeroBytes, calldataNonzeroBytes } = calculateCalldataBytesZeroNonzero(msgData)
-    return calldataZeroBytes * this.environment.gtxdatazero +
-      calldataNonzeroBytes * this.environment.gtxdatanonzero
+    const calculatedCalldataGasUsed = await this.calculateCalldataGasUsed(encodedData, this.environment, this.web3)
+    return `0x${calculatedCalldataGasUsed.toString(16)}`
   }
 
   // note: when passing 'gasPrice' to a view call, the sender balance is checked to have sufficient balance
@@ -956,7 +965,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
       effectiveAcceptanceBudget,
       transactionCalldataGasUsed,
       maxPossibleGas
-    } = this.calculateRequestLimits(relayTransactionRequest, gasAndDataLimits)
+    } = await this.calculateRequestLimits(relayTransactionRequest, gasAndDataLimits)
 
     const maxPossibleGasFactorReserve = gasReserve + Math.floor(maxPossibleGas * gasFactor)
     const maxPossibleCharge =
@@ -976,10 +985,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
     }
   }
 
-  calculateRequestLimits (
+  async calculateRequestLimits (
     relayTransactionRequest: RelayTransactionRequest,
     gasAndDataLimits: PaymasterGasAndDataLimits
-  ): { paymasterAcceptanceBudget: number, effectiveAcceptanceBudget: number, transactionCalldataGasUsed: number, maxPossibleGas: number } {
+  ): Promise<{ paymasterAcceptanceBudget: number, effectiveAcceptanceBudget: number, transactionCalldataGasUsed: number, maxPossibleGas: number }> {
     const relayCallAbiInput: RelayCallABI = {
       domainSeparatorName: relayTransactionRequest.metadata.domainSeparatorName,
       maxAcceptanceBudget: '0xffffffff',
@@ -988,8 +997,8 @@ calculateTransactionMaxPossibleGas: result: ${result}
       approvalData: relayTransactionRequest.metadata.approvalData
     }
     const msgData = this.encodeABI(relayCallAbiInput)
-    const transactionCalldataGasUsed = this.calculateCalldataGasUsed(msgData)
-    const maxPossibleGas = this.calculateTransactionMaxPossibleGas({
+    const transactionCalldataGasUsed = await this.calculateCalldataGasUsed(msgData, this.environment, this.web3)
+    const maxPossibleGas = await this.calculateTransactionMaxPossibleGas({
       msgData,
       gasAndDataLimits,
       relayCallGasLimit: relayTransactionRequest.relayRequest.request.gas

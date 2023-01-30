@@ -74,7 +74,7 @@ async function run (): Promise<void> {
       error('missing ethereumNodeUrl')
     }
     const loggingProvider: LoggingProviderMode = conf.loggingProvider ?? LoggingProviderMode.NONE
-    conf.environmentName = conf.environmentName ?? EnvironmentsKeys.ganacheLocal
+    conf.environmentName = conf.environmentName ?? EnvironmentsKeys.ethereumMainnet
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
     if (loggingProvider !== LoggingProviderMode.NONE) {
       const orig = web3provider

@@ -461,11 +461,11 @@ export class RelayClient {
     return relayRequest
   }
 
-  fillRelayInfo (relayRequest: RelayRequest, relayInfo: RelayInfo): void {
+  async fillRelayInfo (relayRequest: RelayRequest, relayInfo: RelayInfo): Promise<void> {
     relayRequest.relayData.relayWorker = relayInfo.pingResponse.relayWorkerAddress
     // cannot estimate before relay info is filled in
     relayRequest.relayData.transactionCalldataGasUsed =
-      this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
+      await this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
   }
 
   async _prepareRelayHttpRequest (
@@ -710,7 +710,7 @@ export class RelayClient {
       }
     }
     // TODO: clone?
-    this.fillRelayInfo(relayRequest, dryRunRelayInfo)
+    await this.fillRelayInfo(relayRequest, dryRunRelayInfo)
     // note that here 'maxAcceptanceBudget' is set to the entire transaction 'maxViewableGasLimit'
     const relayCallABI: RelayCallABI = {
       domainSeparatorName: this.config.domainSeparatorName,

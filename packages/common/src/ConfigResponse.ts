@@ -3,7 +3,7 @@ import {
   IntString,
   NpmLogLevel
 } from './types/Aliases'
-import { Environment } from './Environments'
+import { Environment } from './environments/Environments'
 import { EIP712Domain } from './EIP712/TypedRequestData'
 
 export interface LoggerConfiguration {

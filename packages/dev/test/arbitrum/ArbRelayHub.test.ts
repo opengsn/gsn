@@ -22,6 +22,7 @@ import {
 import { TransactionRelayed } from '@opengsn/contracts/types/truffle-contracts/RelayHub'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { defaultGsnConfig } from '@opengsn/provider'
+import { hardhatNodeChainId } from '../TestUtils'
 
 const TestToken = artifacts.require('TestToken')
 const Forwarder = artifacts.require('Forwarder')
@@ -119,7 +120,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
       }
       const dataToSign = new TypedRequestData(
         defaultGsnConfig.domainSeparatorName,
-        defaultEnvironment.chainId,
+        hardhatNodeChainId,
         forwarder.address,
         relayRequest
       )
