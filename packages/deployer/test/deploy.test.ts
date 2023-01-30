@@ -14,7 +14,6 @@ let saveError: any
 let logBuf: string
 
 const defaultDeploymentConfiguration: DeploymentConfiguration = {
-  environmentsKey: EnvironmentsKeys.ethereumMainnet,
   registrationMaxAge: 15552000,
   paymasterDeposit: '0.1',
   isArbitrum: false,
@@ -36,6 +35,7 @@ function writeTmpDeployConfig (env: DeepPartial<Environment> = {}, deploymentCon
   fs.writeFileSync(tmpConfigFile, `module.exports = ${JSON.stringify({
     1337: {
       ...env,
+      environmentsKey: EnvironmentsKeys.ethereumMainnet,
       deploymentConfiguration
     }
   }, null, 2)}`)
