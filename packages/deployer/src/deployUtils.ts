@@ -6,6 +6,7 @@ import {
   DeploymentConfiguration,
   Environment,
   environments,
+  EnvironmentsKeys,
   isSameAddress,
   merge
 } from '@opengsn/common'
@@ -56,6 +57,7 @@ export function getMergedEnvironment (chainId: number, defaultDevAddress: string
 
 export function printSampleEnvironment (defaultDevAddress: string, chainId: number): void {
   const deploymentConfiguration: DeploymentConfiguration = {
+    environmentsKey: EnvironmentsKeys.ethereumMainnet,
     registrationMaxAge: 180 * 24 * 3600,
     paymasterDeposit: '0.1',
     isArbitrum: false,
