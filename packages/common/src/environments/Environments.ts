@@ -12,7 +12,13 @@ export interface DeploymentConfiguration {
   readonly isArbitrum?: boolean
 }
 
+export enum EnvironmentsKeys {
+  ethereumMainnet = 'ethereumMainnet',
+  arbitrum = 'arbitrum'
+}
+
 export interface Environment {
+  readonly environmentsKey: EnvironmentsKeys
   readonly mintxgascost: number
   readonly relayHubConfiguration: RelayHubConfiguration
   readonly penalizerConfiguration: PenalizerConfiguration
@@ -80,6 +86,7 @@ const defaultPaymasterConfiguration: PaymasterConfiguration = {
 }
 
 const ethereumMainnet: Environment = {
+  environmentsKey: EnvironmentsKeys.ethereumMainnet,
   calldataEstimationSlackFactor: 1,
   useEstimateGasForCalldataCost: false,
   dataOnChainHandlingGasCostPerByte: 13,
@@ -109,6 +116,7 @@ const arbitrumRelayHubConfiguration: RelayHubConfiguration =
     arbitrumRelayHubConfigurationOverride)
 
 const arbitrum: Environment = Object.assign({}, ethereumMainnet, {
+  environmentsKey: EnvironmentsKeys.arbitrum,
   calldataEstimationSlackFactor: 1.3,
   useEstimateGasForCalldataCost: true,
   relayHubConfiguration: arbitrumRelayHubConfiguration,
@@ -125,11 +133,6 @@ const arbitrum: Environment = Object.assign({}, ethereumMainnet, {
 })
 
 /* end Arbitrum-specific Environment */
-
-export enum EnvironmentsKeys {
-  ethereumMainnet = 'ethereumMainnet',
-  arbitrum = 'arbitrum'
-}
 
 export const environments: { [key in EnvironmentsKeys]: Environment } = {
   ethereumMainnet,

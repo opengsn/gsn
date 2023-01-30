@@ -3,10 +3,9 @@ import * as util from 'util'
 import path from 'path'
 import fs from 'fs'
 import {
-  defaultEnvironment,
   DeploymentConfiguration,
   Environment,
-  getEnvironment,
+  environments,
   isSameAddress,
   merge
 } from '@opengsn/common'
@@ -32,12 +31,7 @@ export function fatal (...params: any): never {
 
 export function getMergedEnvironment (chainId: number, defaultDevAddress: string): Environment {
   try {
-    const env = getEnvironment(chainId) ?? { name: 'default', environment: defaultEnvironment }
-    if (env == null) {
-      fatal(`Environment with chainID ${chainId} not found`)
-    }
-    console.log('loading env ( based on chainId', chainId, ')', env.name)
-    let config: any
+    let config: Environment | undefined
     if (fs.existsSync(deploymentConfigFile())) {
       console.log('loading config file', deploymentConfigFile())
       const fileConfig = require(deploymentConfigFile()) as DeploymentConfig
@@ -49,8 +43,12 @@ export function getMergedEnvironment (chainId: number, defaultDevAddress: string
       printSampleEnvironment(defaultDevAddress, chainId)
       process.exit(1)
     }
-
-    return merge(env.environment, config)
+    const env = environments[config?.environmentsKey]
+    if (env == null) {
+      fatal(`Environment with name ${config?.environmentsKey} not found`)
+    }
+    console.log('loading env', config.environmentsKey)
+    return merge(env, config)
   } catch (e: any) {
     fatal(`Error reading config file ${deploymentConfigFile()}: ${(e as Error).message}`)
   }
