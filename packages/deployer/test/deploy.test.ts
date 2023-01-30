@@ -3,7 +3,7 @@ import deploymentFunc from '../deploy/deploy'
 import hre from 'hardhat'
 import { expect } from 'chai'
 import fs from 'fs'
-import { DeploymentConfiguration, Environment } from '@opengsn/common'
+import { DeploymentConfiguration, Environment, EnvironmentsKeys } from '@opengsn/common'
 import { Contract } from 'ethers'
 import { applyDeploymentConfig } from '../src/deployUtils'
 
@@ -14,6 +14,7 @@ let saveError: any
 let logBuf: string
 
 const defaultDeploymentConfiguration: DeploymentConfiguration = {
+  environmentsKey: EnvironmentsKeys.ethereumMainnet,
   registrationMaxAge: 15552000,
   paymasterDeposit: '0.1',
   isArbitrum: false,

@@ -4,6 +4,7 @@ import { PenalizerConfiguration } from '../types/PenalizerConfiguration'
 import { constants } from '../Constants'
 
 export interface DeploymentConfiguration {
+  readonly environmentsKey: EnvironmentsKeys,
   readonly registrationMaxAge: number
   readonly minimumStakePerToken: { [key: string]: string }
   readonly paymasterDeposit: string
