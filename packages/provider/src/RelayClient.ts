@@ -630,6 +630,7 @@ export class RelayClient {
         maxPageCount: this.config.pastEventsQueryMaxPageCount,
         environment: this.config.environment,
         domainSeparatorName: this.config.domainSeparatorName,
+        calldataEstimationSlackFactor: this.config.calldataEstimationSlackFactor,
         deployment: { paymasterAddress: config?.paymasterAddress }
       }).init()
     const chainId = contractInteractor.chainId

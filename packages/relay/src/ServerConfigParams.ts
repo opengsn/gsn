@@ -139,6 +139,12 @@ export interface ServerConfigParams {
   gasPriceFactor: number
 
   /**
+   * If the calldata gas estimation is non-deterministic, as is the case on L2s, use a factor to supply some extra gas.
+   * Note that the server should have a smaller factor then the clients to avoid rejecting valid Relay Requests.
+   */
+  calldataEstimationSlackFactor: number
+
+  /**
    * The URL to access to get the gas price from.
    * This is done instead of reading the 'gasPrice'/'maxPriorityFeePerGas' from the RPC node.
    */
@@ -337,6 +343,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   whitelistedPaymasters: [],
   whitelistedRecipients: [],
   gasPriceFactor: 1,
+  calldataEstimationSlackFactor: 1,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
   workerMinBalance: 0.1e18,
@@ -384,6 +391,7 @@ const ConfigParamsTypes = {
   port: 'number',
   relayHubAddress: 'string',
   gasPriceFactor: 'number',
+  calldataEstimationSlackFactor: 'number',
   gasPriceOracleUrl: 'string',
   gasPriceOraclePath: 'string',
   ethereumNodeUrl: 'string',
@@ -546,6 +554,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   const logger = createServerLogger(config.logLevel ?? 'debug', config.loggerUrl ?? '', config.loggerUserId ?? '')
   const contractInteractor: ContractInteractor = new ContractInteractor({
     maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
+    calldataEstimationSlackFactor: config.calldataEstimationSlackFactor ?? 1,
     provider: web3provider,
     logger,
     deployment: {

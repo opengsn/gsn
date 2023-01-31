@@ -30,6 +30,7 @@ export const defaultLoggerConfiguration: LoggerConfiguration = {
 }
 
 export const defaultGsnConfig: GSNConfig = {
+  calldataEstimationSlackFactor: 1,
   preferredRelays: [],
   blacklistedRelays: [],
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,

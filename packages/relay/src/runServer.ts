@@ -155,6 +155,7 @@ async function run (): Promise<void> {
     provider: web3provider,
     logger,
     environment,
+    calldataEstimationSlackFactor: config.calldataEstimationSlackFactor,
     maxPageSize: config.pastEventsQueryMaxPageSize,
     versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
     deployment: {

@@ -10,17 +10,19 @@ import { constants } from '../Constants'
  * As our result must be above the Relay Server's estimate, it makes sense to add some slack to the estimate.
  * @param calldata
  * @param environment
+ * @param calldataEstimationSlackFactor
  * @param web3
  * @constructor
  */
 export const AsyncZeroAddressCalldataGasEstimation: CalldataGasEstimation = async (
   calldata: PrefixedHexString,
   environment: Environment,
+  calldataEstimationSlackFactor: number,
   web3: Web3
 ): Promise<number> => {
   const estimateGasCallToZero = await web3.eth.estimateGas({
     to: constants.ZERO_ADDRESS,
     data: calldata
   })
-  return estimateGasCallToZero * environment.calldataEstimationSlackFactor
+  return estimateGasCallToZero * calldataEstimationSlackFactor
 }

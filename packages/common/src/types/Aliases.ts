@@ -30,9 +30,10 @@ export type SignTypedDataCallback = (signedData: TypedMessage<any>, from: Addres
 /**
  * Different L2 rollups and side-chains have different behavior for the calldata gas cost.
  * This means the calldata estimation cannot be hard-coded and new implementations should be easy to add.
- * Note that both Relay Client and Relay Server must come to the same number once
+ * Note that both Relay Client and Relay Server must come to the same number.
+ * Also, this value does include the base transaction cost (2100 on mainnet).
  */
-export type CalldataGasEstimation = (calldata: PrefixedHexString, environment: Environment, web3: Web3) => Promise<number>
+export type CalldataGasEstimation = (calldata: PrefixedHexString, environment: Environment, calldataEstimationSlackFactor: number, web3: Web3) => Promise<number>
 
 export type RelayFilter = (registrarRelayInfo: RegistrarRelayInfo) => boolean
 

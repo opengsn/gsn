@@ -26,7 +26,7 @@ import {
   defaultEnvironment,
   gsnRequiredVersion,
   gsnRuntimeVersion,
-  splitRelayUrlForRegistrar
+  splitRelayUrlForRegistrar, environments
 } from '@opengsn/common'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
@@ -648,8 +648,32 @@ contract('ContractInteractor', function (accounts) {
           maxPriorityFeePerGas: '0x1'
         }
         const estimation = await contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
-        const expectedEstimation = originalGasEstimation - msgDataLength * defaultEnvironment.gtxdatanonzero
+        const expectedEstimation = originalGasEstimation - defaultEnvironment.mintxgascost - msgDataLength * defaultEnvironment.gtxdatanonzero
         assert.equal(estimation, expectedEstimation)
+      })
+
+      it('should calculate gas used for calculation only using async estimate gas', async function () {
+        const recipient = await TestRecipient.new(constants.ZERO_ADDRESS)
+        const asyncContractInteractor = new ContractInteractor(
+          {
+            environment: environments.arbitrum,
+            provider: web3.currentProvider as HttpProvider,
+            logger,
+            maxPageSize,
+            deployment: { paymasterAddress: pm.address }
+          })
+        gsnTransactionDetails = {
+          from: accounts[0],
+          to: recipient.address,
+          data: '0x' + 'ff'.repeat(msgDataLength),
+          clientId: '1',
+          maxFeePerGas: '0xffffffff',
+          maxPriorityFeePerGas: '0xffffffff'
+        }
+        const estimation = await asyncContractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
+        const expectedEstimation = 60000 // TestRecipient fallback function makes 3 SSTOREs
+        assert.isOk(estimation > expectedEstimation)
+        assert.closeTo(estimation, expectedEstimation, 10000)
       })
 
       it('should throw if calldataGasCost estimation exceeds originalGasEstimation', async function () {
@@ -662,7 +686,7 @@ contract('ContractInteractor', function (accounts) {
           maxPriorityFeePerGas: '0x1'
         }
         await expect(contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails))
-          .to.eventually.be.rejectedWith('calldataGasCost exceeded originalGasEstimation')
+          .to.eventually.be.rejectedWith(/calldataGasCost\(.*\) exceeded originalGasEstimation\(100000\)/)
       })
     })
   })

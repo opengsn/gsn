@@ -81,6 +81,10 @@ export interface GSNConfig {
   gasPriceFactorPercent: number
 
   /**
+   * If the calldata gas estimation is non-deterministic, as is the case on L2s, use a factor to supply some extra gas.
+   */
+  calldataEstimationSlackFactor: number
+  /**
    * The number of past blocks to query in 'eth_getGasFees' RPC request.
    */
   getGasFeesBlocks: number

@@ -84,6 +84,7 @@ export interface ConstructorParams {
   logger: LoggerInterface
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
+  calldataEstimationSlackFactor?: number
   maxPageSize: number
   maxPageCount?: number
   environment: Environment
@@ -162,6 +163,7 @@ export class ContractInteractor {
   private deployment: GSNContractsDeployment
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
+  private readonly calldataEstimationSlackFactor: number
   private readonly maxPageSize: number
   private readonly maxPageCount: number
   private lastBlockNumber: number
@@ -182,6 +184,7 @@ export class ContractInteractor {
       versionManager,
       logger,
       environment,
+      calldataEstimationSlackFactor,
       domainSeparatorName,
       deployment = {}
     }: ConstructorParams) {
@@ -192,12 +195,13 @@ export class ContractInteractor {
     this.web3 = new Web3(provider as any)
     this.deployment = deployment
     this.provider = provider
+    this.calldataEstimationSlackFactor = calldataEstimationSlackFactor ?? 1
     this.lastBlockNumber = 0
     this.environment = environment
     this.calculateCalldataGasUsed =
       this.environment.useEstimateGasForCalldataCost
-        ? MainnetCalldataGasEstimation
-        : AsyncZeroAddressCalldataGasEstimation
+        ? AsyncZeroAddressCalldataGasEstimation
+        : MainnetCalldataGasEstimation
     this.domainSeparatorName = domainSeparatorName ?? ''
     this.IPaymasterContract = TruffleContract({
       contractName: 'IPaymaster',
@@ -848,12 +852,20 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
   }
 
   async estimateGas (transactionDetails: TransactionConfig): Promise<number> {
-    return await this.web3.eth.estimateGas(transactionDetails)
+    let estimation = await this.web3.eth.estimateGas(transactionDetails)
+    // there is a bug that breaks tests that rely on exact gas limit:
+    // https://ethereum.stackexchange.com/questions/20878/why-estimategas-return-21001-instead-21000
+    if (estimation === 21001) {
+      estimation = 21000
+    }
+    return estimation
   }
 
   async estimateGasWithoutCalldata (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
     const originalGasEstimation = await this.estimateGas(gsnTransactionDetails)
-    const calldataGasCost = await this.calculateCalldataGasUsed(gsnTransactionDetails.data, this.environment, this.web3)
+    // note: overriding 'calldataEstimationSlackFactor' here as this value is used for inner call gas limit
+    // and therefore there is no need to add extra factor even in case of L2s
+    const calldataGasCost = await this.calculateCalldataGasUsed(gsnTransactionDetails.data, this.environment, 1, this.web3)
     const adjustedEstimation = originalGasEstimation - calldataGasCost
     this.logger.debug(
       `estimateGasWithoutCalldata: original estimation: ${originalGasEstimation}; calldata cost: ${calldataGasCost}; adjusted estimation: ${adjustedEstimation}`)
@@ -894,7 +906,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
       toBN(this.environment.dataOnChainHandlingGasCostPerByte)
         .muln(msgDataLength)
         .toNumber()
-    const calldataCost = await this.calculateCalldataGasUsed(_.msgData, this.environment, this.web3)
+    const calldataCost = await this.calculateCalldataGasUsed(_.msgData, this.environment, this.calldataEstimationSlackFactor, this.web3)
     const result = toNumber(this.relayHubConfiguration.gasOverhead) +
       msgDataGasCostInsideTransaction +
       calldataCost +
@@ -942,7 +954,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
       approvalData,
       maxAcceptanceBudget
     })
-    const calculatedCalldataGasUsed = await this.calculateCalldataGasUsed(encodedData, this.environment, this.web3)
+    const calculatedCalldataGasUsed = await this.calculateCalldataGasUsed(encodedData, this.environment, this.calldataEstimationSlackFactor, this.web3)
     return `0x${calculatedCalldataGasUsed.toString(16)}`
   }
 
@@ -997,7 +1009,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
       approvalData: relayTransactionRequest.metadata.approvalData
     }
     const msgData = this.encodeABI(relayCallAbiInput)
-    const transactionCalldataGasUsed = await this.calculateCalldataGasUsed(msgData, this.environment, this.web3)
+    const transactionCalldataGasUsed = await this.calculateCalldataGasUsed(msgData, this.environment, this.calldataEstimationSlackFactor, this.web3)
     const maxPossibleGas = await this.calculateTransactionMaxPossibleGas({
       msgData,
       gasAndDataLimits,
