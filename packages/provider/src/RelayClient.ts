@@ -717,7 +717,8 @@ export class RelayClient {
       relayRequest.relayData.paymaster,
       relayWorkerAddress,
       toBN(maxMaxFeePerGas),
-      toBN(this.config.maxViewableGasLimit)
+      toBN(this.config.maxViewableGasLimit),
+      toBN(this.config.minViewableGasLimit)
     )
     // note that here 'maxAcceptanceBudget' is set to the entire transaction 'maxViewableGasLimit'
     const relayCallABI: RelayCallABI = {

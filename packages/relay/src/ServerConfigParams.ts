@@ -270,6 +270,12 @@ export interface ServerConfigParams {
   maxViewableGasLimit: string
 
   /**
+   * The absolute minimum gas limit to pass to a view call and DRY-RUN call.
+   * If Paymaster or Worker do not have enough ether to supply it to the view call the request will fail.
+   */
+  minViewableGasLimit: string
+
+  /**
    * If the RelayRequest becomes invalid this soon after it is received it should be rejected.
    */
   requestMinValidSeconds: number
@@ -373,6 +379,7 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   maxMaxFeePerGas: 500e9.toString(),
   defaultPriorityFee: 1e9.toString(),
   maxViewableGasLimit: '12000000',
+  minViewableGasLimit: '900000',
   getGasFeesBlocks: 5,
   getGasFeesPercentile: 50,
 
@@ -446,6 +453,7 @@ const ConfigParamsTypes = {
   getGasFeesPercentile: 'number',
   defaultPriorityFee: 'string',
   maxViewableGasLimit: 'string',
+  minViewableGasLimit: 'string',
   pastEventsQueryMaxPageSize: 'number',
   pastEventsQueryMaxPageCount: 'number',
   dbPruneTxAfterBlocks: 'number',

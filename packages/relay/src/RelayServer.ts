@@ -293,7 +293,8 @@ export class RelayServer extends EventEmitter {
       paymasterAddress,
       this.workerAddress,
       toBN(relayTransactionRequest.relayRequest.relayData.maxFeePerGas),
-      toBN(this.config.maxViewableGasLimit)
+      toBN(this.config.maxViewableGasLimit),
+      toBN(this.config.minViewableGasLimit)
     )
     const relayRequestLimits = await this.contractInteractor.calculatePaymasterGasAndDataLimits(
       relayTransactionRequest,
