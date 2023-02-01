@@ -639,6 +639,72 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         }
       })
 
+      it('should relay when paymaster\'s balance is low but sufficient', async function () {
+        id = (await snapshot()).result
+        const req = await env.createRelayHttpRequest()
+        try {
+          await env.paymaster.withdrawAll(accounts[0])
+          const paymasterHubDeposit = 4e16
+          await env.paymaster.deposit({ value: paymasterHubDeposit.toString() })
+          sinon.spy(env.relayServer.contractInteractor, 'calculatePaymasterGasAndDataLimits')
+          await env.relayServer.calculateAndValidatePaymasterGasAndDataLimits(req)
+
+          // the expected value for 'maxAcceptanceBudget' in case of low paymaster balance depends on it
+          const viewCallGasLimit = (paymasterHubDeposit / parseInt(req.relayRequest.relayData.maxFeePerGas) * 0.9).toString()
+          expect(env.relayServer.contractInteractor.calculatePaymasterGasAndDataLimits).to.have.been.calledWith(
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            viewCallGasLimit
+          )
+        } finally {
+          await revert(id)
+        }
+      })
+
+      it('should relay when worker\'s balance is low but sufficient', async function () {
+        id = (await snapshot()).result
+        const req = await env.createRelayHttpRequest()
+        try {
+          const workerLowBalance = 4e16.toString()
+          const gasPrice = 1e9.toString()
+          const workerBalanceBefore = await env.relayServer.getWorkerBalance(1)
+          const txCost = toBN(defaultEnvironment.mintxgascost * parseInt(gasPrice))
+          const value = toHex(workerBalanceBefore.sub(txCost).sub(toBN(workerLowBalance)))
+          await env.relayServer.transactionManager.sendTransaction({
+            signer: env.relayServer.workerAddress,
+            serverAction: ServerAction.VALUE_TRANSFER,
+            destination: accounts[0],
+            maxFeePerGas: gasPrice,
+            maxPriorityFeePerGas: gasPrice,
+            gasLimit: defaultEnvironment.mintxgascost,
+            creationBlockNumber: 0,
+            creationBlockHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+            creationBlockTimestamp: 0,
+            value
+          })
+          const workerBalanceAfter = await env.relayServer.getWorkerBalance(1)
+          assert.isTrue(workerBalanceAfter.eq(toBN(workerLowBalance)),
+            'worker balance should be equal to "workerLowBalance"')
+          sinon.spy(env.relayServer.contractInteractor, 'calculatePaymasterGasAndDataLimits')
+          await env.relayServer.calculateAndValidatePaymasterGasAndDataLimits(req)
+
+          // the expected value for 'maxAcceptanceBudget' in case of low paymaster balance depends on it
+          const viewCallGasLimit = (parseInt(workerLowBalance) / parseInt(req.relayRequest.relayData.maxFeePerGas) * 0.9).toString()
+          expect(env.relayServer.contractInteractor.calculatePaymasterGasAndDataLimits).to.have.been.calledWith(
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            viewCallGasLimit
+          )
+        } finally {
+          await revert(id)
+        }
+      })
       describe('relay max exposure to paymaster rejections', function () {
         const paymasterExpectedAcceptanceBudget = 150000
         let rejectingPaymaster: TestPaymasterConfigurableMisbehaviorInstance

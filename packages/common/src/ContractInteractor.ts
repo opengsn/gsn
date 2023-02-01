@@ -945,7 +945,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     gasReserve: number,
     gasFactor: number,
     viewCallFrom: Address,
-    viewCallGasLimit: BN
+    viewCallGasLimit: IntString
   ): Promise<RelayRequestLimits> {
     if (gasAndDataLimits == null) {
       gasAndDataLimits = await this.getGasAndDataLimitsFromPaymaster(relayTransactionRequest.relayRequest.relayData.paymaster)
@@ -1315,7 +1315,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     maxFeePerGas: BN,
     maxViewableGasLimit: BN,
     minViewableGasLimit: BN = toBN(21000)
-  ): Promise<BN> {
+  ): Promise<IntString> {
     const paymasterBalance = await this.hubBalanceOf(paymasterAddress)
     let workerBalance = constants.MAX_UINT256 // skipping worker address balance check in dry-run
     if (!isSameAddress(workerAddress, constants.DRY_RUN_ADDRESS)) {
@@ -1332,7 +1332,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const blockGasLimitNum = await this.getBlockGasLimit()
     const blockGasLimit = toBN(blockGasLimitNum)
       .muln(3).divn(4) // hard-coded to use 75% of available block gas limit
-    return BN.max(minViewableGasLimit, BN.min(maxViewableGasLimit, BN.min(smallerBalanceGasLimit, blockGasLimit)))
+    return BN.max(minViewableGasLimit, BN.min(maxViewableGasLimit, BN.min(smallerBalanceGasLimit, blockGasLimit))).toString()
   }
 }
 
