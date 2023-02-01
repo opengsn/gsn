@@ -689,6 +689,8 @@ export class RelayClient {
 
   async _verifyDryRunSuccessful (relayRequest: RelayRequest): Promise<Error | undefined> {
     // TODO: only 3 fields are needed, extract fields instead of building stub object
+    const relayWorkerAddress = constants.DRY_RUN_ADDRESS
+    const maxMaxFeePerGas = '0'
     const dryRunRelayInfo: RelayInfo = {
       relayInfo: {
         lastSeenTimestamp: toBN(0),
@@ -699,11 +701,11 @@ export class RelayClient {
         relayUrl: ''
       },
       pingResponse: {
-        relayWorkerAddress: constants.DRY_RUN_ADDRESS,
+        relayWorkerAddress,
         relayManagerAddress: constants.ZERO_ADDRESS,
         relayHubAddress: constants.ZERO_ADDRESS,
         ownerAddress: constants.ZERO_ADDRESS,
-        maxMaxFeePerGas: '0',
+        maxMaxFeePerGas,
         minMaxFeePerGas: '0',
         minMaxPriorityFeePerGas: '0',
         maxAcceptanceBudget: '0',
@@ -713,13 +715,20 @@ export class RelayClient {
     }
     // TODO: clone?
     await this.fillRelayInfo(relayRequest, dryRunRelayInfo)
+    const maxAcceptanceBudget = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
+      relayRequest.relayData.paymaster,
+      relayWorkerAddress,
+      toBN(maxMaxFeePerGas),
+      toBN(this.config.maxViewableGasLimit),
+      toBN(this.config.minViewableGasLimit)
+    )
     // note that here 'maxAcceptanceBudget' is set to the entire transaction 'maxViewableGasLimit'
     const relayCallABI: RelayCallABI = {
       domainSeparatorName: this.config.domainSeparatorName,
       relayRequest,
       signature: '0x',
       approvalData: '0x',
-      maxAcceptanceBudget: this.config.maxViewableGasLimit
+      maxAcceptanceBudget: maxAcceptanceBudget.toString()
     }
     return await this._verifyViewCallSuccessful(dryRunRelayInfo, relayCallABI, true)
   }
