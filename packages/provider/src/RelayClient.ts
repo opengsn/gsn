@@ -249,7 +249,8 @@ export class RelayClient {
     gsnTransactionDetails.maxPriorityFeePerGas = toHex(gsnTransactionDetails.maxPriorityFeePerGas)
     if (gsnTransactionDetails.gas == null) {
       const estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
-      gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
+      const adjusted = Math.max(estimated, this.config.minInnerCallGasLimit)
+      gsnTransactionDetails.gas = `0x${adjusted.toString(16)}`
     }
     const relayingErrors = new Map<string, Error>()
     const auditPromises: Array<Promise<AuditResponse>> = []

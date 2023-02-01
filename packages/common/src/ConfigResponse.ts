@@ -116,6 +116,12 @@ export interface GSNConfig {
   maxRelayNonceGap: number
 
   /**
+   * In case the estimated gas for inner call of the Relay Request is small, there is a risk of it running out-of-gas.
+   * This value will be given to inner call gas limit instead.
+   */
+  minInnerCallGasLimit: number
+
+  /**
    * The address of the Payamster contract to be used.
    */
   paymasterAddress?: Address

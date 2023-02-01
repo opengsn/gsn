@@ -41,6 +41,7 @@ export const defaultGsnConfig: GSNConfig = {
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
   minMaxPriorityFeePerGas: 1e9,
+  minInnerCallGasLimit: 10000,
   maxRelayNonceGap: MAX_RELAY_NONCE_GAP,
   relayTimeoutGrace: DEFAULT_RELAY_TIMEOUT_GRACE_SEC,
   methodSuffix: '_v4',

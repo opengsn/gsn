@@ -872,8 +872,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     if (adjustedEstimation < 0) {
       throw new Error(`estimateGasWithoutCalldata: calldataGasCost(${calldataGasCost}) exceeded originalGasEstimation(${originalGasEstimation})`)
     }
-    // TODO: avoid hard-coded coefficients
-    return adjustedEstimation * 1.3
+    return adjustedEstimation
   }
 
   async getGasAndDataLimitsFromPaymaster (paymaster: string): Promise<PaymasterGasAndDataLimits> {
