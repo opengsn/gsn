@@ -85,7 +85,7 @@ contract TokenPaymaster is BasePaymaster {
 
     function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {
         // solhint-disable-next-line reason-string
-        require(relayRequest.relayData.paymasterData.length == 32, "paymasterData: invalid length for Uniswap v1 exchange address");
+        require(relayRequest.relayData.paymasterData.length == 32, "paymasterData: invalid length for Uniswap v3 exchange address");
     }
 
     function _preRelayedCall(
