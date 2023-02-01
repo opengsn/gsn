@@ -147,9 +147,16 @@ export interface GSNConfig {
   requestValidSeconds: number
 
   /**
-   * @deprecated
+   * The absolute maximum gas limit to pass to a view call and DRY-RUN call.
+   * Will override the maximum dictated by block size limits and entries' balances.
    */
   maxViewableGasLimit: IntString
+
+  /**
+   * The absolute minimum gas limit to pass to a view call and DRY-RUN call.
+   * If Paymaster or Worker do not have enough ether to supply it to the view call the request will fail.
+   */
+  minViewableGasLimit: string
 
   /**
    * The name of preconfigured network. Supported values: "ganacheLocal", "ethereumMainnet", "arbitrum".
