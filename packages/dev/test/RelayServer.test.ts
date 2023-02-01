@@ -639,31 +639,6 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         }
       })
 
-      it('should relay when paymaster\'s balance is low but sufficient', async function () {
-        id = (await snapshot()).result
-        const req = await env.createRelayHttpRequest()
-        try {
-          await env.paymaster.withdrawAll(accounts[0])
-          const paymasterHubDeposit = 4e16
-          await env.paymaster.deposit({ value: paymasterHubDeposit.toString() })
-          sinon.spy(env.relayServer.contractInteractor, 'calculatePaymasterGasAndDataLimits')
-          await env.relayServer.calculateAndValidatePaymasterGasAndDataLimits(req)
-
-          // the expected value for 'maxAcceptanceBudget' in case of low paymaster balance depends on it
-          const viewCallGasLimit = (paymasterHubDeposit / parseInt(req.relayRequest.relayData.maxFeePerGas) * 0.9).toString()
-          expect(env.relayServer.contractInteractor.calculatePaymasterGasAndDataLimits).to.have.been.calledWith(
-            sinon.match.any,
-            sinon.match.any,
-            sinon.match.any,
-            sinon.match.any,
-            sinon.match.any,
-            viewCallGasLimit
-          )
-        } finally {
-          await revert(id)
-        }
-      })
-
       it('should relay when worker\'s balance is low but sufficient', async function () {
         id = (await snapshot()).result
         const req = await env.createRelayHttpRequest()

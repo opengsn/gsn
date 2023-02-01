@@ -1314,7 +1314,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     workerAddress: Address,
     maxFeePerGas: BN,
     maxViewableGasLimit: BN,
-    minViewableGasLimit: BN = toBN(21000)
+    minViewableGasLimit: BN
   ): Promise<IntString> {
     const paymasterBalance = await this.hubBalanceOf(paymasterAddress)
     let workerBalance = constants.MAX_UINT256 // skipping worker address balance check in dry-run
