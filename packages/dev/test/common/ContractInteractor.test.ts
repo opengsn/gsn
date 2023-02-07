@@ -647,7 +647,7 @@ contract('ContractInteractor', function (accounts) {
           maxFeePerGas: '0x1',
           maxPriorityFeePerGas: '0x1'
         }
-        const estimation = await contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
+        const estimation = await contractInteractor.estimateInnerCallGasLimit(gsnTransactionDetails)
         const expectedEstimation = originalGasEstimation - defaultEnvironment.mintxgascost - msgDataLength * defaultEnvironment.gtxdatanonzero
         assert.equal(estimation, expectedEstimation)
       })
@@ -670,7 +670,7 @@ contract('ContractInteractor', function (accounts) {
           maxFeePerGas: '0xffffffff',
           maxPriorityFeePerGas: '0xffffffff'
         }
-        const estimation = await asyncContractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
+        const estimation = await asyncContractInteractor.estimateInnerCallGasLimit(gsnTransactionDetails)
         const expectedEstimation = 60000 // TestRecipient fallback function makes 3 SSTOREs
         assert.isOk(estimation > expectedEstimation)
         assert.closeTo(estimation, expectedEstimation, 10000)
@@ -685,7 +685,7 @@ contract('ContractInteractor', function (accounts) {
           maxFeePerGas: '0x1',
           maxPriorityFeePerGas: '0x1'
         }
-        await expect(contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails))
+        await expect(contractInteractor.estimateInnerCallGasLimit(gsnTransactionDetails))
           .to.eventually.be.rejectedWith(/calldataGasCost\(.*\) exceeded originalGasEstimation\(100000\)/)
       })
     })

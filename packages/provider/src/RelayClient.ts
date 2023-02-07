@@ -249,11 +249,16 @@ export class RelayClient {
     gsnTransactionDetails.maxPriorityFeePerGas = toHex(gsnTransactionDetails.maxPriorityFeePerGas)
     if (gsnTransactionDetails.gas == null) {
       // in order to avoid using less gas in '_msgSender()', make an 'estimateGas' call from the Forwarder address
-      const from = this.dependencies.contractInteractor.getDeployment().forwarderAddress
-      const data = gsnTransactionDetails.data + gsnTransactionDetails.from.replace('0x', '')
+      let from = this.dependencies.contractInteractor.getDeployment().forwarderAddress
+      let data = gsnTransactionDetails.data + gsnTransactionDetails.from.replace('0x', '')
+      if (this.config.performEstimateGasFromRealSender) {
+        // use only in case making an 'estimateGas' from Forwarder address causes exceptions
+        from = gsnTransactionDetails.from
+        data = gsnTransactionDetails.data
+      }
       const value = '0'
       const txDetailsFromForwarder = Object.assign({}, gsnTransactionDetails, { from, data, value })
-      const estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(txDetailsFromForwarder)
+      const estimated = await this.dependencies.contractInteractor.estimateInnerCallGasLimit(txDetailsFromForwarder)
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
     const relayingErrors = new Map<string, Error>()

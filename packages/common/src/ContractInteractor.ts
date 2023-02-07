@@ -861,7 +861,11 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return estimation
   }
 
-  async estimateGasWithoutCalldata (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
+  /**
+   * In order to calculate the inner transaction gas limit we perform an 'estimateGas' from the Forwarder address.
+   * As the calldata is already on-chain, the is no need to include its cost in the gas limit, so we subtract it.
+   */
+  async estimateInnerCallGasLimit (gsnTransactionDetails: GsnTransactionDetails): Promise<number> {
     const originalGasEstimation = await this.estimateGas(gsnTransactionDetails)
     // note: overriding 'calldataEstimationSlackFactor' here as this value is used for inner call gas limit
     // and therefore there is no need to add extra factor even in case of L2s

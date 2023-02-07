@@ -58,6 +58,7 @@ export const defaultGsnConfig: GSNConfig = {
   clientDefaultConfigUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
   useClientDefaultConfigUrl: true,
   performDryRunViewRelayCall: true,
+  performEstimateGasFromRealSender: false,
   tokenPaymasterAddress: '',
   tokenPaymasterDomainSeparators: {},
   waitForSuccessSliceSize: 3,

@@ -193,6 +193,12 @@ export interface GSNConfig {
   performDryRunViewRelayCall: boolean
 
   /**
+   * In case there is an issue making an 'estimateGas' from a Forwarder address, make it from the real sender address.
+   * Note that the estimation will not be precise in this case as '_msgSender' will consume significantly less gas.
+   */
+  performEstimateGasFromRealSender: boolean
+
+  /**
    * The number of Relay Servers to be pinged simultaneously.
    */
   waitForSuccessSliceSize: number
