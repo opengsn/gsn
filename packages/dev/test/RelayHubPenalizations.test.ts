@@ -31,7 +31,7 @@ import {
   TestRecipientInstance, TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
-import { deployHub, evmMineMany, revert, snapshot } from './TestUtils'
+import { deployHub, evmMineMany, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 import { defaultGsnConfig } from '@opengsn/provider'
@@ -50,7 +50,7 @@ const clientId = '0'
 
 contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommitter,
   sender, other, relayManager, reporterRelayManager]) { // eslint-disable-line no-unused-vars
-  const chainId = defaultEnvironment.chainId
+  const chainId = hardhatNodeChainId
 
   let stakeManager: StakeManagerInstance
   let relayHub: RelayHubInstance

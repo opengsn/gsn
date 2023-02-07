@@ -7,9 +7,9 @@ import { HttpProvider } from 'web3-core'
 import { constants } from '@openzeppelin/test-helpers'
 
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
-import { RelayRequest, TypedRequestData, defaultEnvironment, isSameAddress } from '@opengsn/common'
+import { RelayRequest, TypedRequestData, isSameAddress } from '@opengsn/common'
 
-import { configureGSN } from '../TestUtils'
+import { configureGSN, hardhatNodeChainId } from '../TestUtils'
 import { defaultGsnConfig } from '@opengsn/provider'
 
 const { expect, assert } = chai.use(chaiAsPromised)
@@ -22,7 +22,7 @@ contract('AccountManager', function (accounts) {
   const privateKeyAllZero = '0x0000000000000000000000000000000000000000000000000000000000000000'
   let accountManager: AccountManager
   before(function () {
-    accountManager = new AccountManager(web3.currentProvider as HttpProvider, defaultEnvironment.chainId, config)
+    accountManager = new AccountManager(web3.currentProvider as HttpProvider, hardhatNodeChainId, config)
     sinon.spy(accountManager)
   })
   const config = configureGSN({
@@ -51,7 +51,7 @@ contract('AccountManager', function (accounts) {
   })
 
   describe('#newAccount()', function () {
-    const accountManager = new AccountManager(web3.currentProvider as HttpProvider, defaultEnvironment.chainId, config)
+    const accountManager = new AccountManager(web3.currentProvider as HttpProvider, hardhatNodeChainId, config)
 
     it('should create a new keypair, return it and save it internally', function () {
       const keypair = accountManager.newAccount()
@@ -99,7 +99,7 @@ contract('AccountManager', function (accounts) {
       relayRequest.request.from = address
       const signedData = new TypedRequestData(
         defaultGsnConfig.domainSeparatorName,
-        defaultEnvironment.chainId,
+        hardhatNodeChainId,
         constants.ZERO_ADDRESS,
         relayRequestWithoutExtraData(relayRequest)
       )
@@ -117,7 +117,7 @@ contract('AccountManager', function (accounts) {
       relayRequest.request.from = accounts[0]
       const signedData = new TypedRequestData(
         defaultGsnConfig.domainSeparatorName,
-        defaultEnvironment.chainId,
+        hardhatNodeChainId,
         constants.ZERO_ADDRESS,
         relayRequestWithoutExtraData(relayRequest)
       )

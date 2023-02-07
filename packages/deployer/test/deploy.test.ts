@@ -3,7 +3,7 @@ import deploymentFunc from '../deploy/deploy'
 import hre from 'hardhat'
 import { expect } from 'chai'
 import fs from 'fs'
-import { DeploymentConfiguration, Environment } from '@opengsn/common'
+import { DeploymentConfiguration, Environment, EnvironmentsKeys } from '@opengsn/common'
 import { Contract } from 'ethers'
 import { applyDeploymentConfig } from '../src/deployUtils'
 
@@ -35,6 +35,7 @@ function writeTmpDeployConfig (env: DeepPartial<Environment> = {}, deploymentCon
   fs.writeFileSync(tmpConfigFile, `module.exports = ${JSON.stringify({
     1337: {
       ...env,
+      environmentsKey: EnvironmentsKeys.ethereumMainnet,
       deploymentConfiguration
     }
   }, null, 2)}`)

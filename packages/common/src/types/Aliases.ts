@@ -6,6 +6,7 @@ import { RegistrarRelayInfo } from './RelayInfo'
 import { HttpProvider, IpcProvider, WebsocketProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { TypedMessage } from '@metamask/eth-sig-util'
+import { Environment } from '../environments/Environments'
 
 export type Address = string
 export type EventName = string
@@ -25,6 +26,14 @@ export type PaymasterDataCallback = (relayRequest: RelayRequest) => Promise<Pref
 export type ApprovalDataCallback = (relayRequest: RelayRequest, relayRequestId: PrefixedHexString) => Promise<PrefixedHexString>
 
 export type SignTypedDataCallback = (signedData: TypedMessage<any>, from: Address) => Promise<PrefixedHexString>
+
+/**
+ * Different L2 rollups and side-chains have different behavior for the calldata gas cost.
+ * This means the calldata estimation cannot be hard-coded and new implementations should be easy to add.
+ * Note that both Relay Client and Relay Server must come to the same number.
+ * Also, this value does include the base transaction cost (2100 on mainnet).
+ */
+export type CalldataGasEstimation = (calldata: PrefixedHexString, environment: Environment, calldataEstimationSlackFactor: number, web3: Web3) => Promise<number>
 
 export type RelayFilter = (registrarRelayInfo: RegistrarRelayInfo) => boolean
 

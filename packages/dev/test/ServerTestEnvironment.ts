@@ -298,8 +298,10 @@ export class ServerTestEnvironment {
       // (will crash on 'let x = [createRelayHttpRequest(), createRelayHttpRequest()]')
       // eslint-disable-next-line @typescript-eslint/return-await,@typescript-eslint/promise-function-async
       return this.relayClient._prepareRelayRequest(mergedTransactionDetail).then(relayRequest => {
-        this.relayClient.fillRelayInfo(relayRequest, relayInfo)
-        return this.relayClient._prepareRelayHttpRequest(relayRequest, relayInfo)
+        return this.relayClient.fillRelayInfo(relayRequest, relayInfo).then(async () => {
+          // eslint-disable-next-line @typescript-eslint/return-await,@typescript-eslint/promise-function-async
+          return this.relayClient._prepareRelayHttpRequest(relayRequest, relayInfo)
+        })
       })
     } finally {
       sandbox.restore()

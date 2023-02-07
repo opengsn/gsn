@@ -33,7 +33,7 @@ import {
   RelayRegistrarInstance,
   TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { deployHub, revert, snapshot } from './TestUtils'
+import { deployHub, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { toBN } from 'web3-utils'
@@ -60,7 +60,7 @@ if (process.env.GAS_CALCULATIONS == null) {
 contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, relayManager, senderAddress, other]) {
   const message = 'Gas Calculations'
   const unstakeDelay = 15000
-  const chainId = defaultEnvironment.chainId
+  const chainId = hardhatNodeChainId
   const gasPrice = new BN(1e9)
   const maxFeePerGas = 1e9.toString()
   const maxPriorityFeePerGas = 1e9.toString()
@@ -361,7 +361,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
               clientId
             }
           }
-          relayRequest.relayData.transactionCalldataGasUsed = contractInteractor.estimateCalldataCostForRequest(relayRequest, {
+          relayRequest.relayData.transactionCalldataGasUsed = await contractInteractor.estimateCalldataCostForRequest(relayRequest, {
             maxPaymasterDataLength: 0,
             maxApprovalDataLength: 0
           })
@@ -390,7 +390,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           })
           // As there can be some discrepancy between estimation and actual cost (zeroes in signature, etc.)
           // we actually account for this difference this way
-          const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataGasUsed(encodedData)
+          const actualTransactionCalldataGasUsed = await contractInteractor.calculateCalldataGasUsed(encodedData, defaultEnvironment, 1, web3)
           const calldataOverchargeGas =
             (parseInt(relayRequest.relayData.transactionCalldataGasUsed) - actualTransactionCalldataGasUsed)
           // This discrepancy should not be even close 100 gas in a transaction without paymaster, approval datas
@@ -472,7 +472,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             gas: externalGasLimit,
             gasPrice: gasPrice
           })
-          gassesUsed.push(receipt.gasUsed - contractInteractor.calculateCalldataGasUsed(relayCall.encodeABI()))
+          gassesUsed.push(receipt.gasUsed - await contractInteractor.calculateCalldataGasUsed(relayCall.encodeABI(), defaultEnvironment, 1, web3))
           // console.log('relayCall encodeABI len', relayCall.encodeABI().length / 2)
           // console.log('gasUsed is', receipt.gasUsed)
           // console.log('calculateCalldataCost is', calculateCalldataCost(relayCall.encodeABI()))
@@ -542,7 +542,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                       clientId
                     }
                   }
-                  relayRequest.relayData.transactionCalldataGasUsed = contractInteractor.estimateCalldataCostForRequest(relayRequest, {
+                  relayRequest.relayData.transactionCalldataGasUsed = await contractInteractor.estimateCalldataCostForRequest(relayRequest, {
                     maxPaymasterDataLength: 0,
                     maxApprovalDataLength: 0
                   })
@@ -583,7 +583,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     approvalData: '0x'
                   })
 
-                  const actualTransactionCalldataGasUsed = contractInteractor.calculateCalldataGasUsed(encodedData)
+                  const actualTransactionCalldataGasUsed = await contractInteractor.calculateCalldataGasUsed(encodedData, defaultEnvironment, 1, web3)
                   const calldataOverchargeGas =
                     (parseInt(relayRequest.relayData.transactionCalldataGasUsed) - actualTransactionCalldataGasUsed)
                   const calldataOverchargeWei = gasPrice.muln(calldataOverchargeGas)

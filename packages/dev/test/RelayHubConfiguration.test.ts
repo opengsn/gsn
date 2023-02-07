@@ -2,7 +2,7 @@ import BN from 'bn.js'
 import chai from 'chai'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 
-import { deployHub, evmMine, setNextBlockTimestamp } from './TestUtils'
+import { deployHub, evmMine, hardhatNodeChainId, setNextBlockTimestamp } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
 import {
@@ -41,7 +41,7 @@ contract('RelayHub Configuration',
   function ([relayHubDeployer, relayOwner, relayManager, relayWorker, senderAddress, other, dest, incorrectOwner]) { // eslint-disable-line no-unused-vars
     const message = 'Configuration'
     const unstakeDelay = 15000
-    const chainId = defaultEnvironment.chainId
+    const chainId = hardhatNodeChainId
     const gasPrice = new BN(1e9)
     const maxFeePerGas = new BN(1e9)
     const maxPriorityFeePerGas = new BN(1e9)

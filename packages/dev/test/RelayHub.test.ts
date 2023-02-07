@@ -29,7 +29,7 @@ import {
   TestRecipientInstance,
   TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
-import { deployHub, encodeRevertReason, revert, snapshot } from './TestUtils'
+import { deployHub, encodeRevertReason, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
@@ -59,7 +59,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
   const paymasterData = '0x'
   const clientId = '1'
 
-  const chainId = defaultEnvironment.chainId
+  const chainId = hardhatNodeChainId
   const oneEther = ether('1')
 
   let relayHub: string
