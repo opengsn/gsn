@@ -32,7 +32,7 @@ import Web3 from 'web3'
 import { toWei } from 'web3-utils'
 import { PrefixedHexString, MAX_INTEGER } from 'ethereumjs-util'
 
-import { deployHub } from '@opengsn/dev/dist/test/TestUtils'
+import { deployHub, hardhatNodeChainId } from '@opengsn/dev/dist/test/TestUtils'
 import { defaultGsnConfig } from '@opengsn/provider'
 
 const TokenPaymaster = artifacts.require('TokenPaymaster')
@@ -115,7 +115,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       }
     }
 
-    const chainId = defaultEnvironment.chainId
+    const chainId = hardhatNodeChainId
     const dataToSign = new TypedRequestData(
       defaultGsnConfig.domainSeparatorName,
       chainId,

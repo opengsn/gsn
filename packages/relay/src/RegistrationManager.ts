@@ -11,7 +11,6 @@ import {
   LoggerInterface,
   RegistrarRelayInfo,
   constants,
-  defaultEnvironment,
   toNumber
 } from '@opengsn/common'
 
@@ -36,8 +35,6 @@ import {
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 
 import { BlockTransactionString } from 'web3-eth'
-
-const mintxgascost = defaultEnvironment.mintxgascost
 
 export class RegistrationManager {
   balanceRequired!: AmountRequired
@@ -415,10 +412,14 @@ export class RegistrationManager {
     // todo add better maxFeePerGas, maxPriorityFeePerGas
     const gasPrice = await this.contractInteractor.getGasPrice()
     const transactionHashes: PrefixedHexString[] = []
-    const gasLimit = mintxgascost
+    const managerBalance = toBN(await this.contractInteractor.getBalance(this.managerAddress))
+    const gasLimit = await this.contractInteractor.estimateGas({
+      from: this.managerAddress,
+      to: this.ownerAddress as string,
+      value: managerBalance
+    })
     const txCost = toBN(gasLimit).mul(toBN(gasPrice))
 
-    const managerBalance = toBN(await this.contractInteractor.getBalance(this.managerAddress))
     // sending manager eth balance to owner
     if (managerBalance.gte(txCost)) {
       this.logger.info(`Sending manager eth balance ${managerBalance.toString()} to owner`)
@@ -447,9 +448,14 @@ export class RegistrationManager {
     const transactionHashes: PrefixedHexString[] = []
     // todo add better maxFeePerGas, maxPriorityFeePerGas
     const gasPrice = await this.contractInteractor.getGasPrice()
-    const gasLimit = mintxgascost
-    const txCost = toBN(gasLimit * parseInt(gasPrice))
     const workerBalance = toBN(await this.contractInteractor.getBalance(this.workerAddress))
+    const gasLimit = await this.contractInteractor.estimateGas({
+      from: this.managerAddress,
+      to: this.ownerAddress as string,
+      value: workerBalance
+    })
+    const txCost = toBN(gasLimit * parseInt(gasPrice))
+
     if (workerBalance.gte(txCost)) {
       this.logger.info(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
       const details: SendTransactionDetails = {

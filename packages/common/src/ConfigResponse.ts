@@ -3,7 +3,7 @@ import {
   IntString,
   NpmLogLevel
 } from './types/Aliases'
-import { Environment } from './Environments'
+import { Environment } from './environments/Environments'
 import { EIP712Domain } from './EIP712/TypedRequestData'
 
 export interface LoggerConfiguration {
@@ -80,6 +80,10 @@ export interface GSNConfig {
    */
   gasPriceFactorPercent: number
 
+  /**
+   * If the calldata gas estimation is non-deterministic, as is the case on L2s, use a factor to supply some extra gas.
+   */
+  calldataEstimationSlackFactor: number
   /**
    * The number of past blocks to query in 'eth_getGasFees' RPC request.
    */
@@ -187,6 +191,12 @@ export interface GSNConfig {
    * If set to 'true' the client will make the view call to the RelayHub before requesting user signature for Request.
    */
   performDryRunViewRelayCall: boolean
+
+  /**
+   * In case there is an issue making an 'estimateGas' from a Forwarder address, make it from the real sender address.
+   * Note that the estimation will not be precise in this case as '_msgSender' will consume significantly less gas.
+   */
+  performEstimateGasFromRealSender: boolean
 
   /**
    * The number of Relay Servers to be pinged simultaneously.

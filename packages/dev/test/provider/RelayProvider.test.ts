@@ -33,7 +33,7 @@ import {
   registerForwarderForGsn
 } from '@opengsn/common'
 
-import { deployHub, emptyBalance, encodeRevertReason, startRelay, stopRelay } from '../TestUtils'
+import { deployHub, emptyBalance, encodeRevertReason, hardhatNodeChainId, startRelay, stopRelay } from '../TestUtils'
 import { BadRelayClient } from '../dummies/BadRelayClient'
 
 import {
@@ -89,7 +89,7 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
   }
   const dataToSign = new TypedRequestData(
     defaultGsnConfig.domainSeparatorName,
-    defaultEnvironment.chainId,
+    hardhatNodeChainId,
     testRecipientForwarderAddress,
     relayRequest
   )

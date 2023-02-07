@@ -82,7 +82,7 @@ async function makeRequest (
     maxPageSize: Number.MAX_SAFE_INTEGER
   })
   filledRequest.relayData.transactionCalldataGasUsed =
-    contractInteractor.estimateCalldataCostForRequest(filledRequest, {
+    await contractInteractor.estimateCalldataCostForRequest(filledRequest, {
       maxApprovalDataLength: 0,
       maxPaymasterDataLength: 0
     })
