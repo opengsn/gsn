@@ -9,6 +9,7 @@ import {
   PingFilter,
   RelayFilter,
   SignTypedDataCallback,
+  AcceptRelaySuggestionsCallback,
   defaultEnvironment,
   gsnRequiredVersion,
   gsnRuntimeVersion
@@ -78,4 +79,5 @@ export interface GSNDependencies {
   asyncApprovalData: ApprovalDataCallback
   asyncPaymasterData: PaymasterDataCallback
   asyncSignTypedData?: SignTypedDataCallback
+  acceptRelaySuggestionCallback: AcceptRelaySuggestionsCallback
 }

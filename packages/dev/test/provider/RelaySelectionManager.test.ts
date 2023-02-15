@@ -21,7 +21,7 @@ import {
 
 import { RelaySelectionManager } from '@opengsn/provider/dist/RelaySelectionManager'
 import { DefaultRelayFilter, KnownRelaysManager } from '@opengsn/provider/dist/KnownRelaysManager'
-import { GasPricePingFilter } from '@opengsn/provider/dist/RelayClient'
+// import { GasPricePingFilter } from '@opengsn/provider/dist/RelayClient'
 
 import { configureGSN, deployHub } from '../TestUtils'
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
@@ -98,7 +98,7 @@ contract('RelaySelectionManager', function (accounts) {
       knownRelaysManager = new KnownRelaysManager(contractInteractor, logger, configureGSN({}), DefaultRelayFilter)
       stubGetRelaysShuffled = sinon.stub(knownRelaysManager, 'getRelaysShuffledForTransaction')
       stubGetRelaysShuffled.returns(Promise.resolve([[eventInfo]]))
-      relaySelectionManager = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
+      relaySelectionManager = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, () => {}, logger, config).init()
       stubWaitForSuccess = sinon.stub(relaySelectionManager, '_waitForSuccess')
       stubGetNextSlice = sinon.stub(relaySelectionManager, '_getNextSlice')
       // unless this is stubbed, promises will not be handled and exception will be thrown somewhere
@@ -154,7 +154,7 @@ contract('RelaySelectionManager', function (accounts) {
 
         relaySelectionManager =
           await new RelaySelectionManager(
-            transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
+            transactionDetails, knownRelaysManager, httpClient, () => {}, logger, config).init()
         stubWaitForSuccess = sinon.stub(relaySelectionManager, '_waitForSuccess')
         stubGetNextSlice = sinon.stub(relaySelectionManager, '_getNextSlice')
 
@@ -209,7 +209,7 @@ contract('RelaySelectionManager', function (accounts) {
     it('should return \'relaySliceSize\' relays if available on the highest priority level', async function () {
       stubGetRelaysShuffled.returns(Promise.resolve([[winner.relayInfo, winner.relayInfo, winner.relayInfo, winner.relayInfo, winner.relayInfo]]))
       for (let i = 1; i < 5; i++) {
-        const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, configureGSN({
+        const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, () => {}, logger, configureGSN({
           waitForSuccessSliceSize: i
         })).init()
         const returned = await rsm._getNextSlice()
@@ -220,7 +220,7 @@ contract('RelaySelectionManager', function (accounts) {
     it('should return all remaining relays if less then \'relaySliceSize\' remains on current priority level', async function () {
       const relaysLeft = [[winner.relayInfo, winner.relayInfo]]
       stubGetRelaysShuffled.returns(Promise.resolve(relaysLeft))
-      const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, configureGSN({
+      const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, () => {}, logger, configureGSN({
         waitForSuccessSliceSize: 7
       })).init()
       const returned = await rsm._getNextSlice()
@@ -238,7 +238,7 @@ contract('RelaySelectionManager', function (accounts) {
 
       const relaysLeft = [Array(2).fill(winner).map(relayInfoGenerator), Array(3).fill(winner).map(relayInfoGenerator)]
       stubGetRelaysShuffled.returns(Promise.resolve(relaysLeft))
-      const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, configureGSN({
+      const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, () => {}, logger, configureGSN({
         waitForSuccessSliceSize: 7
       })).init()
       // Initial request only returns the top preference relays
@@ -291,7 +291,7 @@ contract('RelaySelectionManager', function (accounts) {
     it('should throw if the Relay Server responded with a different RelayHub address', async function () {
       const pingResponseWrongHub = Object.assign({}, pingResponse, { relayHubAddress: constants.ZERO_ADDRESS })
       stubPingResponse.returns(Promise.resolve(pingResponseWrongHub))
-      const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config)
+      const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, () => {}, logger, config)
       const promise = rsm._getRelayAddressPing(eventInfo, relayHubAddress)
       await expect(promise).to.be.eventually.rejectedWith(`Client is using RelayHub ${constants.BURN_ADDRESS} while the server responded with RelayHub address ${constants.ZERO_ADDRESS}`)
     })
@@ -349,7 +349,7 @@ contract('RelaySelectionManager', function (accounts) {
         }
         throw new Error('Non test relay pinged')
       })
-      const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config)
+      const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, () => {}, logger, config)
       const raceResults = await rsm._waitForSuccess(relays, relayHubAddress)
       // waitForSuccess will pick either the fast or a slow relay as a winner as long as they are close
       const winnerUrl = raceResults.winner?.relayInfo.relayUrl
@@ -373,7 +373,7 @@ contract('RelaySelectionManager', function (accounts) {
     it('should remove all relays featured in race results', async function () {
       sinon.stub(knownRelaysManager, 'refresh')
       stubGetRelaysShuffled.returns(Promise.resolve([[winner.relayInfo, failureRelayEventInfo, otherRelayEventInfo]]))
-      const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
+      const rsm = await new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, () => {}, logger, config).init()
       // initialize 'remainingRelays' field by calling '_getNextSlice'
       await rsm._getNextSlice()
       const errors = new Map<string, Error>()

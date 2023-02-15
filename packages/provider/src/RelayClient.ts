@@ -16,7 +16,6 @@ import {
   LoggerInterface,
   ObjectMap,
   PaymasterDataCallback,
-  PingFilter,
   RelayCallABI,
   RelayInfo,
   RelayMetadata,
@@ -30,7 +29,9 @@ import {
   getRelayRequestID,
   gsnRequiredVersion,
   gsnRuntimeVersion,
-  removeNullValues
+  removeNullValues,
+  AcceptRelaySuggestionsCallback,
+  PingResponse, cloneRelayRequest
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'
@@ -66,18 +67,57 @@ export const EmptyDataCallback: ApprovalDataCallback & PaymasterDataCallback = a
   return '0x'
 }
 
-export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
+/**
+ * Returns the best value to use as a gas parameter - the one user provided if it is above minimum, the minimum if
+ * it is within the slack range, or undefined if minimum cannot be reached even with a slack.
+ * @param value
+ * @param minimum
+ * @param slackPercent
+ */
+function adjustGasCostParameter (value: string, minimum: string, slackPercent: number): string | undefined {
+  const valueWithSlack = parseInt(value) * (slackPercent + 100) / 100
   if (
-    parseInt(pingResponse.minMaxPriorityFeePerGas) > parseInt(gsnTransactionDetails.maxPriorityFeePerGas)
+    parseInt(value) < parseInt(minimum)
   ) {
-    throw new Error(`Proposed priority gas fee: ${parseInt(gsnTransactionDetails.maxPriorityFeePerGas)}; relay's minMaxPriorityFeePerGas: ${pingResponse.minMaxPriorityFeePerGas}`)
+    if (valueWithSlack > parseInt(minimum)) {
+      return minimum
+    } else {
+      return undefined
+    }
+  } else {
+    return value
   }
-  if (parseInt(gsnTransactionDetails.maxFeePerGas) > parseInt(pingResponse.maxMaxFeePerGas)) {
-    throw new Error(`Proposed fee per gas: ${parseInt(gsnTransactionDetails.maxFeePerGas)}; relay's configured maxMaxFeePerGas: ${pingResponse.maxMaxFeePerGas}`)
+}
+
+export const GasPriceRangeAutoCheckCallback: AcceptRelaySuggestionsCallback = async (
+  config: GSNConfig,
+  pingResponse: PingResponse,
+  relayRequest: RelayRequest
+) => {
+  const maxPriorityFeePerGas = adjustGasCostParameter(
+    relayRequest.relayData.maxPriorityFeePerGas,
+    pingResponse.minMaxPriorityFeePerGas,
+    config.gasPriceFactorPercent
+  )
+
+  let maxFeePerGas = adjustGasCostParameter(
+    relayRequest.relayData.maxFeePerGas,
+    pingResponse.minMaxFeePerGas,
+    config.gasPriceFactorPercent
+  )
+
+  // do not supply more gas than the absolute maximum
+  if (maxFeePerGas != null && parseInt(maxFeePerGas) > parseInt(pingResponse.maxMaxFeePerGas)) {
+    maxFeePerGas = pingResponse.maxMaxFeePerGas
   }
-  if (parseInt(gsnTransactionDetails.maxFeePerGas) < parseInt(pingResponse.minMaxFeePerGas)) {
-    throw new Error(`Proposed fee per gas: ${parseInt(gsnTransactionDetails.maxFeePerGas)}; relay's minMaxFeePerGas: ${pingResponse.minMaxFeePerGas}`)
+
+  if (maxPriorityFeePerGas == null || maxFeePerGas == null) {
+    return undefined
   }
+  const clone = cloneRelayRequest(relayRequest)
+  relayRequest.relayData.maxPriorityFeePerGas = maxPriorityFeePerGas
+  relayRequest.relayData.maxFeePerGas = maxFeePerGas
+  return clone
 }
 
 export interface GSNUnresolvedConstructorInput {
@@ -264,7 +304,7 @@ export class RelayClient {
     const relayingErrors = new Map<string, Error>()
     const auditPromises: Array<Promise<AuditResponse>> = []
 
-    let relayRequest: RelayRequest
+    let relayRequest: RelayRequest | undefined
     try {
       relayRequest = await this._prepareRelayRequest(gsnTransactionDetails)
     } catch (error: any) {
@@ -302,6 +342,12 @@ export class RelayClient {
       const relayHub = this.dependencies.contractInteractor.getDeployment().relayHubAddress ?? ''
       const activeRelay = await relaySelectionManager.selectNextRelay(relayHub, paymaster)
       if (activeRelay != null) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        relayRequest = await this.dependencies.acceptRelaySuggestionCallback(this.config, activeRelay.pingResponse, relayRequest!)
+        if (relayRequest == null) {
+          this.logger.warn('Refused to adjust RelayRequest for the selected Relay Server')
+          continue
+        }
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
         relayingAttempt = await this._attemptRelay(activeRelay, relayRequest)
           .catch(error => ({ error }))
@@ -649,7 +695,7 @@ export class RelayClient {
     // TODO: accept HttpWrapper as a dependency - calling 'new' here is breaking the init flow.
     const httpWrapper = new HttpWrapper()
     const httpClient = overrideDependencies?.httpClient ?? new HttpClient(httpWrapper, this.logger)
-    const pingFilter = overrideDependencies?.pingFilter ?? GasPricePingFilter
+    const pingFilter = overrideDependencies?.pingFilter ?? function () {}
     const relayFilter = overrideDependencies?.relayFilter ?? DefaultRelayFilter
     const asyncApprovalData = await this._resolveVerifierApprovalDataCallback(config, httpWrapper, chainId, overrideDependencies?.asyncApprovalData)
     const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
@@ -657,6 +703,7 @@ export class RelayClient {
     const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
     const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, this.logger, this.config)
 
+    const acceptRelaySuggestionCallback = overrideDependencies.acceptRelaySuggestionCallback ?? GasPriceRangeAutoCheckCallback
     return {
       logger: this.logger,
       httpClient,
@@ -668,7 +715,8 @@ export class RelayClient {
       relayFilter,
       asyncApprovalData,
       asyncPaymasterData,
-      asyncSignTypedData
+      asyncSignTypedData,
+      acceptRelaySuggestionCallback
     }
   }
 
