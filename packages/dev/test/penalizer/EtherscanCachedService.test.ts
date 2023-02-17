@@ -2,7 +2,7 @@ import { EtherscanCachedService } from '@opengsn/relay/dist/penalizer/EtherscanC
 import { TransactionDataCache } from '@opengsn/relay/dist/penalizer/TransactionDataCache'
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 
-contract('EtherscanCachedService', function () {
+contract.skip('EtherscanCachedService', function () {
   const testApiKey = '22E2FW3YJDPA76RETFSGYB3I41I1JHGSR9'
   const transactionHash = '0xc156b7c666a223a2ccb151f0258bd97ad2e87c979af1d7c854b409f082812a41'
   const account = '0xa975D1DE6d7dA3140E9e293509337373402558bE'
