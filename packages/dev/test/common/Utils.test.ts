@@ -260,17 +260,17 @@ contract('Utils', function (accounts) {
     }
 
     it('should return a single response', async () => {
-      assert.equal(await waitForSuccess([Promise.resolve(1)], [''], 100).then(r => r.winner), 1)
+      assert.deepEqual(await waitForSuccess([Promise.resolve(1)], [''], 100).then(r => r.results), [1])
     })
 
-    it('should select at random if multiple responses resolve', async () => {
-      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['a', 'b'], 100, () => 0).then(r => r.winner), 1)
-      assert.equal(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['a', 'b'], 100, () => 0.6).then(r => r.winner), 2)
+    it('should return a multiple responses if multiple responses resolve', async () => {
+      assert.deepEqual(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['a', 'b'], 100).then(r => r.results), [1, 2])
+      assert.deepEqual(await waitForSuccess([Promise.resolve(1), Promise.resolve(2)], ['a', 'b'], 100).then(r => r.results), [1, 2])
     })
 
     it('should reject with first error if all fail', async () => {
       const ret = await waitForSuccess([Promise.reject(Error('err1')), Promise.reject(Error('err2'))], ['one', 'two'], 100)
-      assert.equal(ret.winner, null)
+      assert.deepEqual(ret.results, [])
       assert.equal(ret.errors.get('one')!.message, 'err1')
     })
 
@@ -289,23 +289,16 @@ contract('Utils', function (accounts) {
         [Promise.reject(Error('err1')), after(50), after(1000)],
         ['a', 'b', 'c'],
         200)
-      assert.equal(res.winner, 50)
+      assert.deepEqual(res.results, [50])
     })
 
     it('should wait after first response', async () => {
       const res1 = await waitForSuccess(
         [after(1), after(50), after(1000)],
         ['a', 'b', 'c'],
-        200, () => 0
+        200
       )
-      assert.equal(res1.winner, 1)
-
-      const res2 = await waitForSuccess(
-        [after(1), after(50), after(1000)],
-        ['a', 'b', 'c'],
-        200, () => 0.9
-      )
-      assert.equal(res2.winner, 50)
+      assert.deepEqual(res1.results, [1, 50])
     })
 
     it('should throw if input has duplicate keys', async function () {
@@ -313,7 +306,7 @@ contract('Utils', function (accounts) {
         waitForSuccess(
           [after(1), after(50), after(1000)],
           ['a', 'b', 'a'],
-          200, () => 0.9)
+          200)
       ).to.be.eventually.rejectedWith('waitForSuccess: duplicate relay URL keys, aborting')
     })
   })
