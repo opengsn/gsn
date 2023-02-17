@@ -81,6 +81,11 @@ export interface GSNConfig {
   gasPriceFactorPercent: number
 
   /**
+   * The Relay Client is allowed to accept a Relay Server that requires higher gas fees than originally proposed.
+   */
+  gasPriceSlackPercent: number
+
+  /**
    * If the calldata gas estimation is non-deterministic, as is the case on L2s, use a factor to supply some extra gas.
    */
   calldataEstimationSlackFactor: number

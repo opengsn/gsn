@@ -2,12 +2,11 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { PingResponse } from '../PingResponse'
 import { RelayRequest } from '../EIP712/RelayRequest'
 import { GsnTransactionDetails } from './GsnTransactionDetails'
-import { RegistrarRelayInfo } from './RelayInfo'
+import { PartialRelayInfo, RegistrarRelayInfo } from './RelayInfo'
 import { HttpProvider, IpcProvider, WebsocketProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { TypedMessage } from '@metamask/eth-sig-util'
 import { Environment } from '../environments/Environments'
-import { GSNConfig } from '../ConfigResponse'
 
 export type Address = string
 export type EventName = string
@@ -27,17 +26,6 @@ export type PaymasterDataCallback = (relayRequest: RelayRequest) => Promise<Pref
 export type ApprovalDataCallback = (relayRequest: RelayRequest, relayRequestId: PrefixedHexString) => Promise<PrefixedHexString>
 
 export type SignTypedDataCallback = (signedData: TypedMessage<any>, from: Address) => Promise<PrefixedHexString>
-
-/**
- * The RelayServer may respond to a ping or a Relay Request with a response that will require adjusting some parameters.
- * This callback allows the clients to intercept the adjustment to accept or refuse it.
- * This may be automated or use a GUI to ask for an input from a user.
- */
-export type AcceptRelaySuggestionsCallback = (
-  config: GSNConfig,
-  pingResponse: PingResponse,
-  relayRequest: RelayRequest
-) => Promise<RelayRequest | undefined>
 
 /**
  * Different L2 rollups and side-chains have different behavior for the calldata gas cost.
@@ -62,6 +50,17 @@ export type Web3Provider =
   | HttpProvider
   | IpcProvider
   | WebsocketProvider
+
+export interface RelaySelectionResult {
+  relayInfo: PartialRelayInfo
+  maxDeltaPercent: number
+  updatedGasFees: EIP1559Fees
+}
+
+export interface EIP1559Fees {
+  maxFeePerGas: PrefixedHexString
+  maxPriorityFeePerGas: PrefixedHexString
+}
 
 /**
  * The only thing that is guaranteed a Web3 provider or a similar object is a {@link send} method.
