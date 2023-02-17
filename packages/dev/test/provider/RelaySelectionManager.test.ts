@@ -31,7 +31,7 @@ import { ether } from '@openzeppelin/test-helpers'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
-contract.only('RelaySelectionManager', function (accounts) {
+contract('RelaySelectionManager', function (accounts) {
   const relayHubAddress = constants.BURN_ADDRESS
   const waitForSuccessSliceSize = 3
 
@@ -40,8 +40,7 @@ contract.only('RelaySelectionManager', function (accounts) {
   let knownRelaysManager: KnownRelaysManager
   let stubGetRelaysShuffled: SinonStub
 
-  // TODO: DO NOT COMMIT
-  const logger = createClientLogger({ logLevel: 'debug' })
+  const logger = createClientLogger({ logLevel: 'error' })
 
   const errors = new Map<string, Error>()
   const config = configureGSN({
@@ -112,19 +111,22 @@ contract.only('RelaySelectionManager', function (accounts) {
       stubWaitForSuccess.reset()
     })
 
-    it.only('should return the first relay to ping', async function () {
+    it('should return the first relay to ping', async function () {
       stubGetNextSlice.returns([eventInfo])
       stubWaitForSuccess
         .onFirstCall()
         .returns(Promise.resolve({ errors, results: [] }))
         .onSecondCall()
         .returns(Promise.resolve({
-          winner,
+          // winner,
           results: [winner],
           errors
         }))
       const nextRelay = await relaySelectionManager.selectNextRelay(relayHubAddress)
-      assert.equal(nextRelay, winner)
+      assert.equal(nextRelay?.relayInfo, winner)
+      assert.equal(nextRelay?.updatedGasFees.maxFeePerGas, transactionDetails.maxFeePerGas)
+      assert.equal(nextRelay?.updatedGasFees.maxPriorityFeePerGas, transactionDetails.maxPriorityFeePerGas)
+      assert.equal(nextRelay?.maxDeltaPercent, 0)
     })
 
     describe('with preferred relay URL', function () {
@@ -168,8 +170,8 @@ contract.only('RelaySelectionManager', function (accounts) {
           relayWorkerAddress: relayManager,
           relayManagerAddress: relayManager,
           relayHubAddress: relayHub.address,
-          minMaxFeePerGas: '0',
-          maxMaxFeePerGas: '0',
+          minMaxFeePerGas: '1',
+          maxMaxFeePerGas: Number.MAX_SAFE_INTEGER.toString(),
           minMaxPriorityFeePerGas: '1',
           ownerAddress: accounts[0],
           maxAcceptanceBudget: 1e10.toString(),
@@ -183,7 +185,8 @@ contract.only('RelaySelectionManager', function (accounts) {
 
         stubGetNextSlice.returns([urlInfo])
         stubWaitForSuccess.returns(Promise.resolve({
-          winner,
+          // winner,
+          results: [winner],
           errors
         }))
         stubGetRelaysShuffled.returns(Promise.resolve([[urlInfo]]))
@@ -352,11 +355,10 @@ contract.only('RelaySelectionManager', function (accounts) {
       })
       const rsm = new RelaySelectionManager(transactionDetails, knownRelaysManager, httpClient, () => {}, logger, config)
       const raceResults = await rsm._waitForSuccess(relays, relayHubAddress)
-      // waitForSuccess will pick either the fast or a slow relay as a winner as long as they are close
-      // const winnerUrl = raceResults.winner?.relayInfo.relayUrl
-      // TODO: check these keys are there
-      // assert.isTrue(winnerUrl === 'fastRelay' || winnerUrl === 'slowRelay')
+
       assert.equal(raceResults.results.length, 2)
+      assert.equal(raceResults.results[0].relayInfo.relayUrl, 'fastRelay')
+      assert.equal(raceResults.results[1].relayInfo.relayUrl, 'slowRelay')
       assert.equal(raceResults.errors.size, 1)
       assert.equal(raceResults.errors.get('fastFailRelay')?.message, fastFailedMessage)
     })
@@ -383,7 +385,6 @@ contract.only('RelaySelectionManager', function (accounts) {
       errors.set(failureRelayUrl, new Error(message))
       const raceResults = {
         results: [winner],
-        winner,
         errors
       }
       // @ts-ignore
@@ -393,7 +394,7 @@ contract.only('RelaySelectionManager', function (accounts) {
       assert.equal(remainingRelays[0][0].relayUrl, winnerRelayUrl)
       assert.equal(remainingRelays[0][1].relayUrl, failureRelayUrl)
       assert.equal(remainingRelays[0][2].relayUrl, otherRelayUrl)
-      rsm._handleWaitForSuccessResults(raceResults)
+      rsm._handleWaitForSuccessResults(raceResults, winner)
       // @ts-ignore
       remainingRelays = rsm.remainingRelays
       assert.equal(remainingRelays?.length, 1)

@@ -178,7 +178,7 @@ export class RelaySelectionManager {
     allPingResults: WaitForSuccessResults<PartialRelayInfo>,
     random = Math.random
   ): RelaySelectionResult | undefined {
-    if (allPingResults.results.length == 0) {
+    if (allPingResults.results.length === 0) {
       return
     }
     const winner = this.selectWinnerWithoutAdjustingFees(allPingResults, random)
@@ -245,7 +245,9 @@ Value currently configured is: ${this.config.gasPriceSlackPercent}%`
         return a.maxDeltaPercent - b.maxDeltaPercent
       })
     const winner = adjustedArray[0]
-    this.logger.debug(`Adjusting to use Relay Server (${winner.relayInfo.relayInfo.relayUrl}) with fees ${JSON.stringify(winner.updatedGasFees)}`)
+    if (winner != null) {
+      this.logger.debug(`Adjusting RelayRequest to use Relay Server (${winner.relayInfo.relayInfo.relayUrl}) with fees ${JSON.stringify(winner.updatedGasFees)}`)
+    }
     return winner
   }
 
