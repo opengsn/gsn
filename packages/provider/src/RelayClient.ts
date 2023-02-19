@@ -10,12 +10,14 @@ import {
   ApprovalDataCallback,
   AuditResponse,
   ContractInteractor,
+  EIP1559Fees,
   GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
   LoggerInterface,
   ObjectMap,
   PaymasterDataCallback,
+  PingFilter,
   RelayCallABI,
   RelayInfo,
   RelayMetadata,
@@ -29,7 +31,7 @@ import {
   getRelayRequestID,
   gsnRequiredVersion,
   gsnRuntimeVersion,
-  removeNullValues, EIP1559Fees
+  removeNullValues
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'
@@ -65,6 +67,20 @@ export const EmptyDataCallback: ApprovalDataCallback & PaymasterDataCallback = a
   return '0x'
 }
 
+/**
+ * Warning: if providing custom 'PingFilter' it is important to call this one as well.
+ * The MaxMaxFeePerGas parameter only exists on the Relay Server for the sanity check (i.e. not paying 1 ETH per gas).
+ * We do not adjust a request for the MaxMaxFeePerGas, proposing gas prices above it is a sure misconfiguration.
+ */
+export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
+  if (
+    parseInt(pingResponse.minMaxFeePerGas) >= parseInt(pingResponse.maxMaxFeePerGas)) {
+    throw new Error(`Misconfigured relay: relay's configured maxMaxFeePerGas: ${pingResponse.maxMaxFeePerGas} relay's minMaxFeePerGas: ${pingResponse.minMaxFeePerGas}`)
+  }
+  if (parseInt(gsnTransactionDetails.maxFeePerGas) > parseInt(pingResponse.maxMaxFeePerGas)) {
+    throw new Error(`Proposed fee per gas: ${parseInt(gsnTransactionDetails.maxFeePerGas)}; relay's configured maxMaxFeePerGas: ${pingResponse.maxMaxFeePerGas}`)
+  }
+}
 export interface GSNUnresolvedConstructorInput {
   provider: Web3ProviderBaseInterface
   config: Partial<GSNConfig>
@@ -640,7 +656,7 @@ export class RelayClient {
     // TODO: accept HttpWrapper as a dependency - calling 'new' here is breaking the init flow.
     const httpWrapper = new HttpWrapper()
     const httpClient = overrideDependencies?.httpClient ?? new HttpClient(httpWrapper, this.logger)
-    const pingFilter = overrideDependencies?.pingFilter ?? function () {}
+    const pingFilter = overrideDependencies?.pingFilter ?? GasPricePingFilter
     const relayFilter = overrideDependencies?.relayFilter ?? DefaultRelayFilter
     const asyncApprovalData = await this._resolveVerifierApprovalDataCallback(config, httpWrapper, chainId, overrideDependencies?.asyncApprovalData)
     const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback

@@ -14,6 +14,7 @@ import {
   adjustRelayRequestForPingResponse,
   isInfoFromEvent,
   isSameAddress,
+  pickRandomElementFromArray,
   waitForSuccess
 } from '@opengsn/common'
 
@@ -175,13 +176,12 @@ export class RelaySelectionManager {
   }
 
   selectWinnerFromResult (
-    allPingResults: WaitForSuccessResults<PartialRelayInfo>,
-    random = Math.random
+    allPingResults: WaitForSuccessResults<PartialRelayInfo>
   ): RelaySelectionResult | undefined {
     if (allPingResults.results.length === 0) {
       return
     }
-    const winner = this.selectWinnerWithoutAdjustingFees(allPingResults, random)
+    const winner = this.selectWinnerWithoutAdjustingFees(allPingResults)
     if (winner != null) {
       return winner
     }
@@ -193,8 +193,7 @@ export class RelaySelectionManager {
    * Pick a random relay among those that satisfy the original client gas fees parameters.
    */
   selectWinnerWithoutAdjustingFees (
-    allPingResults: WaitForSuccessResults<PartialRelayInfo>,
-    random = Math.random
+    allPingResults: WaitForSuccessResults<PartialRelayInfo>
   ): RelaySelectionResult | undefined {
     const relaysWithSatisfyingFees =
       allPingResults.results.filter(it => {
@@ -205,12 +204,13 @@ export class RelaySelectionManager {
 
     this.logger.debug(`selectWinnerWithoutAdjustingFees: allPingResults length: (${allPingResults.results.length}) relaysWithSatisfyingFees length: (${relaysWithSatisfyingFees.length})`)
 
-    if (relaysWithSatisfyingFees.length !== 0) {
-      return {
-        relayInfo: relaysWithSatisfyingFees[Math.floor(random() * relaysWithSatisfyingFees.length)],
-        updatedGasFees: this.gsnTransactionDetails,
-        maxDeltaPercent: 0
-      }
+    if (relaysWithSatisfyingFees.length === 0) {
+      return
+    }
+    return {
+      relayInfo: pickRandomElementFromArray(relaysWithSatisfyingFees),
+      updatedGasFees: this.gsnTransactionDetails,
+      maxDeltaPercent: 0
     }
   }
 
@@ -223,9 +223,6 @@ export class RelaySelectionManager {
     allPingResults: WaitForSuccessResults<PartialRelayInfo>
   ): RelaySelectionResult | undefined {
     const adjustedArray = allPingResults.results
-      .filter(it => {
-        return this.validateMaxMaxFeePerGas(parseInt(this.gsnTransactionDetails.maxFeePerGas), it)
-      })
       .map(it => {
         return adjustRelayRequestForPingResponse(this.gsnTransactionDetails, it)
       })
@@ -249,26 +246,5 @@ Value currently configured is: ${this.config.gasPriceSlackPercent}%`
       this.logger.debug(`Adjusting RelayRequest to use Relay Server (${winner.relayInfo.relayInfo.relayUrl}) with fees ${JSON.stringify(winner.updatedGasFees)}`)
     }
     return winner
-  }
-
-  /**
-   * The MaxMaxFeePerGas parameter only exists on the Relay Server for the sanity check (i.e. not paying 1 ETH per gas).
-   * We do not adjust a request for the MaxMaxFeePerGas, proposing gas prices above it is a sure misconfiguration.
-   */
-  validateMaxMaxFeePerGas (
-    maxFeePerGas: number,
-    partialRelayInfo: PartialRelayInfo
-  ): boolean {
-    const pingResponseMaxMaxFeePerGas = parseInt(partialRelayInfo.pingResponse.maxMaxFeePerGas)
-    if (
-      parseInt(partialRelayInfo.pingResponse.minMaxFeePerGas) >= pingResponseMaxMaxFeePerGas) {
-      this.logger.info(`Skipping misconfigured relay: relay's configured maxMaxFeePerGas: ${partialRelayInfo.pingResponse.maxMaxFeePerGas} relay's minMaxFeePerGas: ${partialRelayInfo.pingResponse.minMaxFeePerGas}`)
-      return false
-    }
-    if (maxFeePerGas > pingResponseMaxMaxFeePerGas) {
-      this.logger.info(`Skipping relay (${partialRelayInfo.relayInfo.relayUrl}): proposed maxFeePerGas: ${maxFeePerGas}; relay's configured maxMaxFeePerGas: ${partialRelayInfo.pingResponse.maxMaxFeePerGas}`)
-      return false
-    }
-    return true
   }
 }

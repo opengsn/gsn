@@ -483,6 +483,10 @@ export async function waitForSuccess<T> (
   })
 }
 
+export function pickRandomElementFromArray<T> (arrayIn: T[], random = Math.random): T {
+  return arrayIn[Math.floor(random() * arrayIn.length)]
+}
+
 /**
  * @return newValue - the best value to use as a gas parameter:
  *          the one RelayProvider used if it is above RelayServer minimum, the minimum otherwise
