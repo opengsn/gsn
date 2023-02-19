@@ -306,8 +306,8 @@ export class RelayClient {
       if (activeRelay != null) {
         if (relaySelectionResult != null) {
           // adjust relay request fees for the selected relay if necessary
-          relayRequest.relayData.maxFeePerGas = relaySelectionResult.updatedGasFees.maxFeePerGas
-          relayRequest.relayData.maxPriorityFeePerGas = relaySelectionResult.updatedGasFees.maxPriorityFeePerGas
+          relayRequest.relayData.maxFeePerGas = toHex(relaySelectionResult.updatedGasFees.maxFeePerGas)
+          relayRequest.relayData.maxPriorityFeePerGas = toHex(relaySelectionResult.updatedGasFees.maxPriorityFeePerGas)
         }
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
         relayingAttempt = await this._attemptRelay(activeRelay, relayRequest)
