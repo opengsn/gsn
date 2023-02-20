@@ -9,18 +9,20 @@ gsnCommander(['n'])
   .parse(process.argv);
 
 (async () => {
-  try {
-    const network: string = commander.network
-    const localRelayUrl: string = commander.relayUrl
-    const port: number | undefined = parseInt(commander.port)
-    const env = await GsnTestEnvironment.startGsn(network, localRelayUrl, port)
-    saveDeployment(env.contractsDeployment, commander.workdir)
-    showDeployment(env.contractsDeployment, 'GSN started')
-
-    console.log(`Relay is active, URL = ${env.relayUrl} . Press Ctrl-C to abort`)
-  } catch (e) {
-    console.error(e)
+  const network: string = commander.network
+  const localRelayUrl: string = commander.relayUrl
+  let port: number | undefined
+  if (commander.port != null) {
+    port = parseInt(commander.port)
+    if (isNaN(port)) {
+      throw new Error('port is NaN')
+    }
   }
+  const env = await GsnTestEnvironment.startGsn(network, localRelayUrl, port)
+  saveDeployment(env.contractsDeployment, commander.workdir)
+  showDeployment(env.contractsDeployment, 'GSN started')
+
+  console.log(`Relay is active, URL = ${env.relayUrl} . Press Ctrl-C to abort`)
 })().catch(
   reason => {
     console.error(reason)
