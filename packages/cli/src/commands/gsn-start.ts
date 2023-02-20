@@ -4,12 +4,16 @@ import { GsnTestEnvironment } from '../GsnTestEnvironment'
 
 gsnCommander(['n'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
+  .option('--relayUrl <url>', 'url to advertise the relayer', 'http://127.0.0.1/')
+  .option('--port <number>', 'a port for the relayer to listen on. By default, relay will find random available port')
   .parse(process.argv);
 
 (async () => {
   try {
     const network: string = commander.network
-    const env = await GsnTestEnvironment.startGsn(network)
+    const localRelayUrl: string = commander.relayUrl
+    const port: number | undefined = parseInt(commander.port)
+    const env = await GsnTestEnvironment.startGsn(network, localRelayUrl, port)
     saveDeployment(env.contractsDeployment, commander.workdir)
     showDeployment(env.contractsDeployment, 'GSN started')
 
