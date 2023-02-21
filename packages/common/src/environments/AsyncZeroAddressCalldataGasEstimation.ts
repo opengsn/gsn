@@ -3,6 +3,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { CalldataGasEstimation } from '../types/Aliases'
 import { Environment } from './Environments'
 import { constants } from '../Constants'
+import { JsonRpcProvider } from '@ethersproject/providers'
 
 /**
  * In most L2s, the cost of the transaction is dynamic and depends on L1 gas price.
@@ -11,18 +12,18 @@ import { constants } from '../Constants'
  * @param calldata
  * @param environment
  * @param calldataEstimationSlackFactor
- * @param web3
+ * @param provider
  * @constructor
  */
 export const AsyncZeroAddressCalldataGasEstimation: CalldataGasEstimation = async (
   calldata: PrefixedHexString,
   environment: Environment,
   calldataEstimationSlackFactor: number,
-  web3: Web3
+  provider: JsonRpcProvider
 ): Promise<number> => {
-  const estimateGasCallToZero = await web3.eth.estimateGas({
+  const estimateGasCallToZero = await provider.estimateGas({
     to: constants.ZERO_ADDRESS,
     data: calldata
   })
-  return estimateGasCallToZero * calldataEstimationSlackFactor
+  return parseInt(estimateGasCallToZero.toString()) * calldataEstimationSlackFactor
 }

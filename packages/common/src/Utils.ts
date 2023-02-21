@@ -1,10 +1,12 @@
 import BN from 'bn.js'
-import Web3 from 'web3'
-import abi from 'web3-eth-abi'
 import chalk from 'chalk'
-import { AbiItem, fromWei, toWei, toBN } from 'web3-utils'
-import { EventData } from 'web3-eth-contract'
-import { JsonRpcResponse } from 'web3-core-helpers'
+
+
+import {
+  JsonRpcProvider,
+} from '@ethersproject/providers'
+
+import { JsonFragment, Interface } from '@ethersproject/abi'
 import { TypedMessage } from '@metamask/eth-sig-util'
 import { encode, List } from 'rlp'
 
@@ -31,6 +33,9 @@ import { Address } from './types/Aliases'
 
 import { RelayRequest } from './EIP712/RelayRequest'
 import { MessageTypes } from './EIP712/TypedRequestData'
+import { fromWei, toBN, toWei } from './web3js/Web3JSUtils'
+import { ethers } from 'ethers'
+import { keccak256 } from 'ethers/lib/utils'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -99,7 +104,8 @@ export async function getDefaultMethodSuffix (web3: Web3): Promise<string> {
 }
 
 export async function getEip712Signature<T extends MessageTypes> (
-  web3: Web3,
+  // web3: Web3,
+  provider: JsonRpcProvider,
   typedRequestData: TypedMessage<T>,
   methodSuffix: string | null = null,
   jsonStringifyRequest = false
@@ -112,33 +118,38 @@ export async function getEip712Signature<T extends MessageTypes> (
     dataToSign = typedRequestData
   }
   methodSuffix = methodSuffix ?? await getDefaultMethodSuffix(web3)
-  return await new Promise((resolve, reject) => {
-    let method
-    // @ts-ignore (the entire web3 typing is fucked up)
-    if (typeof web3.currentProvider.sendAsync === 'function') {
-      // @ts-ignore
-      method = web3.currentProvider.sendAsync
-    } else {
-      // @ts-ignore
-      method = web3.currentProvider.send
-    }
-    const paramBlock = {
-      method: `eth_signTypedData${methodSuffix}`,
-      params: [senderAddress, dataToSign],
-      jsonrpc: '2.0',
-      id: Date.now()
-    }
-    method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null | boolean, result?: JsonRpcResponse) => {
-      if (result?.error != null) {
-        error = result.error as any
-      }
-      if ((errorAsBoolean(error)) || result == null) {
-        reject((error as any).message ?? error)
-      } else {
-        resolve(correctV(result.result))
-      }
-    })
-  })
+  // return await new Promise((resolve, reject) => {
+  //   let method
+  //   // @ts-ignore (the entire web3 typing is fucked up)
+  //   if (typeof web3.currentProvider.sendAsync === 'function') {
+  //     // @ts-ignore
+  //     method = web3.currentProvider.sendAsync
+  //   } else {
+  //     // @ts-ignore
+  //     method = web3.currentProvider.send
+  //   }
+  const paramBlock = {
+    method: `eth_signTypedData${methodSuffix}`,
+    params: [senderAddress, dataToSign],
+    jsonrpc: '2.0',
+    id: Date.now()
+  }
+
+  // TODO: check promises logic is not broken here; apply fixes;
+  const signedStuff = await provider.send(paramBlock.method, paramBlock.params)
+
+  return signedStuff
+  // method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null | boolean, result?: JsonRpcResult) => {
+  //   if (result?.error != null) {
+  //     error = result.error as any
+  //   }
+  //   if ((errorAsBoolean(error)) || result == null) {
+  //     reject((error as any).message ?? error)
+  //   } else {
+  //     resolve(correctV(result.result))
+  //   }
+  // })
+  // })
 }
 
 function correctV (result: PrefixedHexString): PrefixedHexString {
@@ -210,6 +221,9 @@ export function ether (n: string): BN {
 export function randomInRange (min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
 }
+
+// TODO: replace !!!
+type EventData = any
 
 export function eventsComparator (a: EventData, b: EventData): number {
   if (a.blockNumber === b.blockNumber) {
@@ -379,22 +393,26 @@ export function toNumber (numberish: number | string | BN | BigInt): number {
 }
 
 export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString): PrefixedHexString {
-  const web3 = new Web3()
+  // const web3 = new Web3()
   const types = ['address', 'uint256', 'bytes']
   const parameters = [relayRequest.request.from, relayRequest.request.nonce, signature]
-  const hash = web3.utils.keccak256(web3.eth.abi.encodeParameters(types, parameters))
+  const abiCoder = new ethers.utils.AbiCoder()
+  const hash = keccak256(abiCoder.encode(types, parameters))
   const rawRelayRequestId = removeHexPrefix(hash).padStart(64, '0')
   const prefixSize = 8
   const prefixedRelayRequestId = rawRelayRequestId.replace(new RegExp(`^.{${prefixSize}}`), '0'.repeat(prefixSize))
   return `0x${prefixedRelayRequestId}`
 }
 
-export function getERC165InterfaceID (abi: AbiItem[]): string {
-  const web3 = new Web3()
+export function getERC165InterfaceID (abi: JsonFragment[]): string {
+  // const web3 = new Web3()
   let interfaceId =
     abi
-      .filter(it => it.type === 'function')
-      .map(web3.eth.abi.encodeFunctionSignature)
+      .filter(it => it.type === 'function' && it.name != null)
+      .map(it => {
+        const iface = new Interface([it])
+        return iface.getSighash(it.name!)
+      })
       .filter(it => it !== '0x01ffc9a7') // remove the IERC165 method itself
       .map((x) => parseInt(x, 16))
       .reduce((x, y) => x ^ y)

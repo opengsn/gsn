@@ -44,9 +44,9 @@
     "web3-utils": "^1.7.4"
   },
   "devDependencies": {
-    "@ethersproject/abstract-signer": "^5.6.2",
-    "@ethersproject/experimental": "^5.6.3",
-    "@ethersproject/providers": "^5.6.5",
+    "@ethersproject/abstract-signer": "^5.7.0",
+    "@ethersproject/experimental": "^5.7.0",
+    "@ethersproject/providers": "^5.7.2",
     "@opengsn/cli": "^3.0.0-beta.3",
     "@openzeppelin/test-helpers": "^0.5.15",
     "@types/chai-as-promised": "^7.1.3",
@@ -55,7 +55,7 @@
     "bn.js": "^5.2.1",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "ethers": "^5.6.5",
+    "ethers": "^5.7.2",
     "solhint": "^3.3.2",
     "ts-node": "8.6.2",
     "web3-core": "^1.7.4"

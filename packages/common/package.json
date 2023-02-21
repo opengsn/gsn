@@ -18,6 +18,7 @@
     "access": "public"
   },
   "dependencies": {
+    "ethers": "^5.7.2",
     "@ethereumjs/common": "^2.6.5",
     "@ethereumjs/tx": "^3.2.0",
     "@metamask/eth-sig-util": "^4.0.1",

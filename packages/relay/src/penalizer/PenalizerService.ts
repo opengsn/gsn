@@ -2,7 +2,7 @@
 import abiDecoder from 'abi-decoder'
 import crypto from 'crypto'
 import { Transaction as EthereumJsTransaction, TxOptions, TxData } from '@ethereumjs/tx'
-import { Transaction as Web3CoreTransaction } from 'web3-core'
+import { TransactionResponse } from '@ethersproject/providers'
 import { bufferToHex, isZeroAddress, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import * as ethUtils from 'ethereumjs-util'
 
@@ -52,21 +52,18 @@ export interface PenalizerDependencies {
   txByNonceService: BlockExplorerInterface
 }
 
-function createWeb3Transaction (transaction: Web3CoreTransaction, rawTxOptions: TxOptions): EthereumJsTransaction {
-  const gasPrice = '0x' + BigInt(transaction.gasPrice).toString(16)
-  const value = '0x' + BigInt(transaction.value).toString(16)
+function createWeb3Transaction (transaction: TransactionResponse, rawTxOptions: TxOptions): EthereumJsTransaction {
+  const gasPrice = '0x' + BigInt(transaction.gasPrice!.toString()).toString(16)
+  const value = '0x' + BigInt(transaction.value.toString()).toString(16)
   const txData: TxData = {
-    gasLimit: transaction.gas,
+    gasLimit: transaction.gasLimit.toString(),
     gasPrice,
     to: transaction.to ?? '',
-    data: transaction.input,
+    data: transaction.data,
     nonce: transaction.nonce,
     value,
-    // @ts-ignore
     v: transaction.v,
-    // @ts-ignore
     r: transaction.r,
-    // @ts-ignore
     s: transaction.s
   }
   return new EthereumJsTransaction(txData, rawTxOptions)

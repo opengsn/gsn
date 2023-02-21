@@ -5,9 +5,13 @@ import Web3 from 'web3'
 import { hdkey as EthereumHDKey } from 'ethereumjs-wallet'
 import { toHex, toWei } from 'web3-utils'
 
+import { JsonRpcProvider } from '@ethersproject/providers'
+
+import { HttpProvider } from 'web3-core'
+
 import {
+  Address,
   LoggerInterface
-  , Address, Web3ProviderBaseInterface
 } from '@opengsn/common'
 
 import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput, RelayProvider } from '@opengsn/provider'
@@ -36,15 +40,11 @@ async function getProvider (
   paymaster: Address,
   mnemonic: string | undefined,
   logger: LoggerInterface,
-  host: string): Promise<{ provider: Web3ProviderBaseInterface, from: Address }> {
+  host: string): Promise<{ provider: HttpProvider, from: Address }> {
   const config: Partial<GSNConfig> = {
     clientId: '0',
     paymasterAddress: paymaster
   }
-  const provider = new Web3.providers.HttpProvider(host, {
-    keepAlive: true,
-    timeout: 120000
-  })
   let from: Address
   let privateKey: PrefixedHexString | undefined
   if (commander.from != null) {
@@ -64,6 +64,10 @@ async function getProvider (
     throw new Error('must specify either "--mnemonic" or pass "--from" account')
   }
   if (commander.directCall === true) {
+    const provider = new Web3.providers.HttpProvider(host, {
+      keepAlive: true,
+      timeout: 120000
+    })
     return { provider, from }
   } else {
     if (paymaster == null) {
@@ -72,6 +76,7 @@ async function getProvider (
     const overrideDependencies: Partial<GSNDependencies> = {
       logger
     }
+    const provider = new JsonRpcProvider(host)
     const input: GSNUnresolvedConstructorInput = {
       provider,
       config,

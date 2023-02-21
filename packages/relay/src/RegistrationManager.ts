@@ -2,12 +2,14 @@ import chalk from 'chalk'
 import { EventData, PastEventOptions } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-util'
+import { Block } from '@ethersproject/providers'
 import { toBN, toHex } from 'web3-utils'
 
 import {
   Address,
   AmountRequired,
   ContractInteractor,
+  EventFilterBlocks,
   LoggerInterface,
   RegistrarRelayInfo,
   constants,
@@ -111,7 +113,7 @@ export class RegistrationManager {
     this.config = config
   }
 
-  async init (lastScannedBlock: number, latestBlock: BlockTransactionString): Promise<PrefixedHexString[]> {
+  async init (lastScannedBlock: number, latestBlock: Block): Promise<PrefixedHexString[]> {
     let transactionHashes: PrefixedHexString[] = []
     const tokenMetadata = await this.contractInteractor.getErc20TokenMetadata()
     const listener = (): void => {
@@ -130,14 +132,14 @@ export class RegistrationManager {
   async handlePastEvents (
     hubEventsSinceLastScan: EventData[],
     lastScannedBlock: number,
-    currentBlock: BlockTransactionString,
+    currentBlock: Block,
     currentBlockTimestamp: number,
     forceRegistration: boolean): Promise<PrefixedHexString[]> {
     if (!this.isInitialized) {
       throw new Error('RegistrationManager not initialized')
     }
     const topics = [address2topic(this.managerAddress)]
-    const options: PastEventOptions = {
+    const options: EventFilterBlocks = {
       fromBlock: lastScannedBlock + 1,
       toBlock: 'latest'
     }
@@ -416,7 +418,7 @@ export class RegistrationManager {
     const gasLimit = await this.contractInteractor.estimateGas({
       from: this.managerAddress,
       to: this.ownerAddress as string,
-      value: managerBalance
+      value: managerBalance.toString()
     })
     const txCost = toBN(gasLimit).mul(toBN(gasPrice))
 
@@ -452,7 +454,7 @@ export class RegistrationManager {
     const gasLimit = await this.contractInteractor.estimateGas({
       from: this.managerAddress,
       to: this.ownerAddress as string,
-      value: workerBalance
+      value: workerBalance.toString()
     })
     const txCost = toBN(gasLimit * parseInt(gasPrice))
 

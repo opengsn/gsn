@@ -1,8 +1,10 @@
-import Web3 from 'web3'
-import { AbiItem, AbiOutput, toBN } from 'web3-utils'
-import { Web3ProviderBaseInterface } from './types/Aliases'
+import { Contract as EthersContract } from 'ethers'
 
-function getComponent (key: string, components: AbiOutput[]): AbiOutput | undefined {
+import { JsonFragment, ParamType } from '@ethersproject/abi'
+import { JsonRpcProvider } from '@ethersproject/providers'
+import { toBN } from './web3js/Web3JSUtils'
+
+function getComponent (key: string, components: ReadonlyArray<ParamType>): JsonFragment | undefined {
   // @ts-ignore
   const component = components[key]
   if (component != null) {
@@ -11,7 +13,10 @@ function getComponent (key: string, components: AbiOutput[]): AbiOutput | undefi
   return components.find(it => it.name === key)
 }
 
-function retypeItem (abiOutput: AbiOutput, ret: any): any {
+function retypeItem (abiOutput: Partial<ParamType>, ret: any): any {
+  if (abiOutput.type == null) {
+    return ret
+  }
   if (abiOutput.type.includes('int')) {
     return toBN(ret)
   } else if (abiOutput.type === 'tuple[]') {
@@ -36,7 +41,7 @@ function retypeItem (abiOutput: AbiOutput, ret: any): any {
 }
 
 // restore TF type: uint are returned as string in web3, and as BN in TF.
-function retype (outputs?: AbiOutput[], ret?: any): any {
+function retype (outputs?: ReadonlyArray<JsonFragment>, ret?: any): any {
   if (outputs?.length === 1) {
     return retypeItem(outputs[0], ret)
   } else {
@@ -49,13 +54,15 @@ function retype (outputs?: AbiOutput[], ret?: any): any {
 }
 
 export class Contract<T> {
-  web3!: Web3
+  // web3!: Web3
+  provider!: JsonRpcProvider
 
-  constructor (readonly contractName: string, readonly abi: AbiItem[]) {
+  constructor (readonly contractName: string, readonly abi: JsonFragment[]) {
   }
 
   createContract (address: string): any {
-    return new this.web3.eth.Contract(this.abi, address)
+    const ethersContract = new EthersContract(address, this.abi)
+    return ethersContract.connect(this.provider)
   }
 
   // return a contract instance at the given address.
@@ -108,8 +115,9 @@ export class Contract<T> {
     return obj as unknown as T
   }
 
-  setProvider (provider: Web3ProviderBaseInterface, _: unknown): void {
-    this.web3 = new Web3(provider as any)
+  setProvider (provider: JsonRpcProvider, _: unknown): void {
+    this.provider = provider
+    // this.web3 = new Web3(provider as any)
   }
 }
 

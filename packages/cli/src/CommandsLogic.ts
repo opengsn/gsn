@@ -429,7 +429,7 @@ export class CommandsLogic {
     const fromBlock = await relayHub.getCreationBlock()
     const toBlock = Math.min(toNumber(fromBlock) + 5000, await this.contractInteractor.getBlockNumber())
     const tokens = await this.contractInteractor.getPastEventsForHub([], {
-      fromBlock,
+      fromBlock: fromBlock.toString(),
       toBlock
     }, ['StakingTokenDataChanged'])
     if (tokens.length === 0) {
@@ -484,7 +484,7 @@ export class CommandsLogic {
           nonce
         }
         console.log('Calling in view mode', web3TxData)
-        await this.contractInteractor.web3.eth.call({ ...web3TxData })
+        await this.contractInteractor.provider.send('eth_sendTransaction', [{ ...web3TxData }])
         const txData = { ...web3TxData, gasLimit: web3TxData.gas }
         // @ts-ignore
         delete txData.gas

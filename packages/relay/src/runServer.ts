@@ -3,6 +3,7 @@ import fs from 'fs'
 import Web3 from 'web3'
 import chalk from 'chalk'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { HttpServer } from './HttpServer'
 import { RelayServer } from './RelayServer'
 import { KeyManager } from './KeyManager'
@@ -63,6 +64,7 @@ async function run (): Promise<void> {
   let config: ServerConfigParams
   let environment: Environment
   let web3provider
+  let ethersJsonRpcProvider
   let runPenalizer: boolean
   let reputationManagerConfig: Partial<ReputationManagerConfiguration>
   let runPaymasterReputations: boolean
@@ -76,6 +78,8 @@ async function run (): Promise<void> {
     const loggingProvider: LoggingProviderMode = conf.loggingProvider ?? LoggingProviderMode.NONE
     conf.environmentName = conf.environmentName ?? EnvironmentsKeys.ethereumMainnet
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
+    ethersJsonRpcProvider = new JsonRpcProvider(conf.ethereumNodeUrl)
+
     if (loggingProvider !== LoggingProviderMode.NONE) {
       const orig = web3provider
       web3provider = {
@@ -152,7 +156,7 @@ async function run (): Promise<void> {
     ' Using this address for any other purpose may result in loss of funds.'))
   console.log('Creating interactor...\n')
   const contractInteractor = new ContractInteractor({
-    provider: web3provider,
+    provider: ethersJsonRpcProvider,
     logger,
     environment,
     calldataEstimationSlackFactor: config.calldataEstimationSlackFactor,

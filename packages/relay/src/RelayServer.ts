@@ -3,6 +3,7 @@ import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { toBN, toHex } from 'web3-utils'
 import { PrefixedHexString, BN } from 'ethereumjs-util'
+import { Block } from '@ethersproject/providers'
 
 import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
@@ -538,7 +539,7 @@ networkId               | ${this.networkId}
 latestBlock             | ${latestBlock.number}
 latestBlock timestamp   | ${latestBlock.timestamp}
 `)
-    this.maxGasLimit = Math.floor(0.75 * latestBlock.gasLimit)
+    this.maxGasLimit = Math.floor(0.75 * parseInt(latestBlock.gasLimit.toString()))
     this.initialized = true
 
     // Assume started server is not registered until _worker figures stuff out
@@ -666,7 +667,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
   }
 
-  async _worker (block: BlockTransactionString): Promise<PrefixedHexString[]> {
+  async _worker (block: Block): Promise<PrefixedHexString[]> {
     if (!this.initialized) {
       throw new Error('Please run init() first')
     }
@@ -744,7 +745,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
   }
 
-  async _handleChanges (currentBlock: BlockTransactionString): Promise<PrefixedHexString[]> {
+  async _handleChanges (currentBlock: Block): Promise<PrefixedHexString[]> {
     const currentBlockTimestamp = toNumber(currentBlock.timestamp)
     let transactionHashes: PrefixedHexString[] = []
     const hubEventsSinceLastScan = await this.getAllHubEventsSinceLastScan()
@@ -812,11 +813,11 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return shouldRegister
   }
 
-  _shouldRefreshState (currentBlock: BlockTransactionString): boolean {
+  _shouldRefreshState (currentBlock: Block): boolean {
     return currentBlock.number - this.lastRefreshBlock >= this.config.refreshStateTimeoutBlocks || !this.isReady()
   }
 
-  async handlePastHubEvents (currentBlock: BlockTransactionString, hubEventsSinceLastScan: EventData[]): Promise<void> {
+  async handlePastHubEvents (currentBlock: Block, hubEventsSinceLastScan: EventData[]): Promise<void> {
     for (const event of hubEventsSinceLastScan) {
       switch (event.event) {
         case TransactionRejectedByPaymaster:

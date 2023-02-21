@@ -1,5 +1,6 @@
 import Web3 from 'web3'
 import { EventEmitter } from 'events'
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { Provider } from '@ethersproject/abstract-provider'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
@@ -23,7 +24,6 @@ import {
   RelayRequest,
   RelayTransactionRequest,
   VersionsManager,
-  Web3ProviderBaseInterface,
   asRelayCallAbi,
   constants,
   decodeRevertReason,
@@ -81,7 +81,7 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
 }
 
 export interface GSNUnresolvedConstructorInput {
-  provider: Web3ProviderBaseInterface
+  provider: JsonRpcProvider
   config: Partial<GSNConfig>
   overrideDependencies?: Partial<GSNDependencies>
 }
@@ -127,15 +127,16 @@ export class RelayClient {
     this.wrapEthersJsProvider()
   }
 
+  // TODO: reverse this to accept Web3 provider and wrap with Ethers!
   wrapEthersJsProvider (): void {
-    const provider = this.rawConstructorInput.provider as any
-    if (typeof provider.getSigner === 'function') {
-      this.rawConstructorInput.provider = bridgeProvider(provider)
-    } else if (provider instanceof Provider) {
-      throw new Error('Your "provider" instance appears to be an Ethers.js provider but it does not have a "getSigner" method. We recommend constructing JsonRpcProvider or Web3Provider yourself.')
-    } else if (typeof provider.send !== 'function' && typeof provider.sendAsync !== 'function') {
-      throw new Error('Your "provider" instance does not have neither "send" nor "sendAsync" method. This is not supported.')
-    }
+    // const provider = this.rawConstructorInput.provider as any
+    // if (typeof provider.getSigner === 'function') {
+    //   this.rawConstructorInput.provider = bridgeProvider(provider)
+    // } else if (provider instanceof Provider) {
+    //   throw new Error('Your "provider" instance appears to be an Ethers.js provider but it does not have a "getSigner" method. We recommend constructing JsonRpcProvider or Web3Provider yourself.')
+    // } else if (typeof provider.send !== 'function' && typeof provider.sendAsync !== 'function') {
+    //   throw new Error('Your "provider" instance does not have neither "send" nor "sendAsync" method. This is not supported.')
+    // }
   }
 
   async init (useTokenPaymaster = false): Promise<this> {
@@ -222,9 +223,9 @@ export class RelayClient {
 
   async _isAlreadySubmitted (txHash: string): Promise<boolean> {
     const [txMinedReceipt, pendingBlock] = await Promise.all([
-      this.dependencies.contractInteractor.web3.eth.getTransactionReceipt(txHash),
+      this.dependencies.contractInteractor.provider.getTransactionReceipt(txHash),
       // mempool transactions
-      this.dependencies.contractInteractor.web3.eth.getBlock('pending')
+      this.dependencies.contractInteractor.provider.getBlock('pending')
     ])
 
     if (txMinedReceipt != null) {
@@ -557,7 +558,7 @@ export class RelayClient {
     }
   }
 
-  getUnderlyingProvider (): Web3ProviderBaseInterface {
+  getUnderlyingProvider (): JsonRpcProvider {
     return this.rawConstructorInput.provider
   }
 
@@ -626,7 +627,7 @@ export class RelayClient {
     config,
     overrideDependencies = {}
   }: {
-    provider: Web3ProviderBaseInterface
+    provider: JsonRpcProvider
     config: GSNConfig
     overrideDependencies?: Partial<GSNDependencies>
   }): Promise<GSNDependencies> {

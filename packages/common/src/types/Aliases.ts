@@ -3,10 +3,10 @@ import { PingResponse } from '../PingResponse'
 import { RelayRequest } from '../EIP712/RelayRequest'
 import { GsnTransactionDetails } from './GsnTransactionDetails'
 import { RegistrarRelayInfo } from './RelayInfo'
-import { HttpProvider, IpcProvider, WebsocketProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { TypedMessage } from '@metamask/eth-sig-util'
 import { Environment } from '../environments/Environments'
+import { JsonRpcProvider } from '@ethersproject/providers'
 
 export type Address = string
 export type EventName = string
@@ -33,7 +33,7 @@ export type SignTypedDataCallback = (signedData: TypedMessage<any>, from: Addres
  * Note that both Relay Client and Relay Server must come to the same number.
  * Also, this value does include the base transaction cost (2100 on mainnet).
  */
-export type CalldataGasEstimation = (calldata: PrefixedHexString, environment: Environment, calldataEstimationSlackFactor: number, web3: Web3) => Promise<number>
+export type CalldataGasEstimation = (calldata: PrefixedHexString, environment: Environment, calldataEstimationSlackFactor: number, provider: JsonRpcProvider) => Promise<number>
 
 export type RelayFilter = (registrarRelayInfo: RegistrarRelayInfo) => boolean
 
@@ -46,20 +46,20 @@ export function notNull<TValue> (value: TValue | null | undefined): value is TVa
  */
 export type NpmLogLevel = 'error' | 'warn' | 'info' | 'debug'
 
-export type Web3Provider =
-  | HttpProvider
-  | IpcProvider
-  | WebsocketProvider
+// export type Web3Provider =
+//   | HttpProvider
+//   | IpcProvider
+//   | WebsocketProvider
 
-/**
- * The only thing that is guaranteed a Web3 provider or a similar object is a {@link send} method.
- */
-export interface Web3ProviderBaseInterface {
-  send: (
-    payload: JsonRpcPayload,
-    callback: (error: Error | null, result?: JsonRpcResponse) => void
-  ) => void
-}
+// /**
+//  * The only thing that is guaranteed a Web3 provider or a similar object is a {@link send} method.
+//  */
+// export interface Web3ProviderBaseInterface {
+//   send: (
+//     payload: JsonRpcPayload,
+//     callback: (error: Error | null, result?: JsonRpcResponse) => void
+//   ) => void
+// }
 
 export interface ObjectMap<T> {
   [key: string]: T
