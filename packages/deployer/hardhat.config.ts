@@ -77,7 +77,9 @@ const config: HardhatUserConfig = {
     bsctestnet: getNetwork('https://bsc-testnet.public.blastapi.io'),
     rarb: getNetwork('https://rinkeby.arbitrum.io/rpc'),
     garb: getNetwork('https://goerli-rollup.arbitrum.io/rpc'),
+    arbitrum: getNetwork('https://arb1.arbitrum.io/rpc'),
     aox: getNetwork('https://arbitrum.xdaichain.com/'),
+    gnosis: getNetwork('https://rpc.gnosis.gateway.fm'),
 
     goerli: getInfuraNetwork('goerli'),
     ropsten: getInfuraNetwork('ropsten'),
@@ -85,7 +87,11 @@ const config: HardhatUserConfig = {
     fuji: getNetwork('https://api.avax-test.network/ext/bc/C/rpc'),
     mumbai: getNetwork('https://rpc-mumbai.maticvigil.com'),
     gopt: getNetwork('https://goerli.optimism.io/'),
-
+    optimism: getNetwork('https://rpc.ankr.com/optimism'),
+    polygon: {
+      ...getNetwork('https://rpc-mainnet.maticvigil.com'),
+      gasPrice: 137577028731
+    },
     mainnet: getInfuraNetwork('mainnet')
   },
 
