@@ -32,7 +32,7 @@ export function createVerifierApprovalDataCallback (
       relayRequest,
       relayRequestId
     }
-    const signRelayRequestResponse = await httpWrapper.sendPromise(`${verifierUrl}/signRelayRequest`, approvalRequest)
+    const signRelayRequestResponse = await httpWrapper.sendPromise(new URL('signRelayRequest', verifierUrl), approvalRequest)
     logger.info(`signRelayRequest response: ${JSON.stringify(signRelayRequestResponse)}`)
     return signRelayRequestResponse.signature
   }

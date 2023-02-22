@@ -16,7 +16,7 @@ import {
 
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 
-import { deployHub } from '@opengsn/dev/dist/test/TestUtils'
+import { deployHub, hardhatNodeChainId } from '@opengsn/dev/dist/test/TestUtils'
 
 import { constants, expectEvent } from '@openzeppelin/test-helpers'
 import { PrefixedHexString } from 'ethereumjs-util'
@@ -162,7 +162,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
       web3,
       new TypedRequestData(
         defaultGsnConfig.domainSeparatorName,
-        defaultEnvironment.chainId,
+        hardhatNodeChainId,
         forwarder.address,
         relayRequest
       )
@@ -195,7 +195,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
           web3,
           new TypedRequestData(
             defaultGsnConfig.domainSeparatorName,
-            defaultEnvironment.chainId,
+            hardhatNodeChainId,
             forwarder.address,
             relayRequestX
           )

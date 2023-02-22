@@ -38,6 +38,8 @@ const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const localhostOne = 'http://localhost:8090'
 
+export const hardhatNodeChainId = 1337
+
 export const serverWorkDir = '/tmp/gsn/test/server'
 
 // start a background relay process.
