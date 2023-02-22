@@ -248,7 +248,17 @@ export class RelayClient {
     gsnTransactionDetails.maxFeePerGas = toHex(gsnTransactionDetails.maxFeePerGas)
     gsnTransactionDetails.maxPriorityFeePerGas = toHex(gsnTransactionDetails.maxPriorityFeePerGas)
     if (gsnTransactionDetails.gas == null) {
-      const estimated = await this.dependencies.contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
+      // in order to avoid using less gas in '_msgSender()', make an 'estimateGas' call from the Forwarder address
+      let from = this.dependencies.contractInteractor.getDeployment().forwarderAddress
+      let data = gsnTransactionDetails.data + gsnTransactionDetails.from.replace('0x', '')
+      if (this.config.performEstimateGasFromRealSender) {
+        // use only in case making an 'estimateGas' from Forwarder address causes exceptions
+        from = gsnTransactionDetails.from
+        data = gsnTransactionDetails.data
+      }
+      const value = '0'
+      const txDetailsFromForwarder = Object.assign({}, gsnTransactionDetails, { from, data, value })
+      const estimated = await this.dependencies.contractInteractor.estimateInnerCallGasLimit(txDetailsFromForwarder)
       gsnTransactionDetails.gas = `0x${estimated.toString(16)}`
     }
     const relayingErrors = new Map<string, Error>()
@@ -461,11 +471,11 @@ export class RelayClient {
     return relayRequest
   }
 
-  fillRelayInfo (relayRequest: RelayRequest, relayInfo: RelayInfo): void {
+  async fillRelayInfo (relayRequest: RelayRequest, relayInfo: RelayInfo): Promise<void> {
     relayRequest.relayData.relayWorker = relayInfo.pingResponse.relayWorkerAddress
     // cannot estimate before relay info is filled in
     relayRequest.relayData.transactionCalldataGasUsed =
-      this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
+      await this.dependencies.contractInteractor.estimateCalldataCostForRequest(relayRequest, this.config)
   }
 
   async _prepareRelayHttpRequest (
@@ -630,6 +640,7 @@ export class RelayClient {
         maxPageCount: this.config.pastEventsQueryMaxPageCount,
         environment: this.config.environment,
         domainSeparatorName: this.config.domainSeparatorName,
+        calldataEstimationSlackFactor: this.config.calldataEstimationSlackFactor,
         deployment: { paymasterAddress: config?.paymasterAddress }
       }).init()
     const chainId = contractInteractor.chainId
@@ -687,6 +698,8 @@ export class RelayClient {
 
   async _verifyDryRunSuccessful (relayRequest: RelayRequest): Promise<Error | undefined> {
     // TODO: only 3 fields are needed, extract fields instead of building stub object
+    const relayWorkerAddress = constants.DRY_RUN_ADDRESS
+    const maxMaxFeePerGas = '0'
     const dryRunRelayInfo: RelayInfo = {
       relayInfo: {
         lastSeenTimestamp: toBN(0),
@@ -697,11 +710,11 @@ export class RelayClient {
         relayUrl: ''
       },
       pingResponse: {
-        relayWorkerAddress: constants.DRY_RUN_ADDRESS,
+        relayWorkerAddress,
         relayManagerAddress: constants.ZERO_ADDRESS,
         relayHubAddress: constants.ZERO_ADDRESS,
         ownerAddress: constants.ZERO_ADDRESS,
-        maxMaxFeePerGas: '0',
+        maxMaxFeePerGas,
         minMaxFeePerGas: '0',
         minMaxPriorityFeePerGas: '0',
         maxAcceptanceBudget: '0',
@@ -710,14 +723,21 @@ export class RelayClient {
       }
     }
     // TODO: clone?
-    this.fillRelayInfo(relayRequest, dryRunRelayInfo)
+    await this.fillRelayInfo(relayRequest, dryRunRelayInfo)
+    const maxAcceptanceBudget = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
+      relayRequest.relayData.paymaster,
+      relayWorkerAddress,
+      toBN(maxMaxFeePerGas),
+      toBN(this.config.maxViewableGasLimit),
+      toBN(this.config.minViewableGasLimit)
+    )
     // note that here 'maxAcceptanceBudget' is set to the entire transaction 'maxViewableGasLimit'
     const relayCallABI: RelayCallABI = {
       domainSeparatorName: this.config.domainSeparatorName,
       relayRequest,
       signature: '0x',
       approvalData: '0x',
-      maxAcceptanceBudget: this.config.maxViewableGasLimit
+      maxAcceptanceBudget: maxAcceptanceBudget.toString()
     }
     return await this._verifyViewCallSuccessful(dryRunRelayInfo, relayCallABI, true)
   }

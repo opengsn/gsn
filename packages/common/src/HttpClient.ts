@@ -19,8 +19,11 @@ export class HttpClient {
   }
 
   async getPingResponse (relayUrl: string, paymaster?: string): Promise<PingResponse> {
-    const paymasterSuffix = paymaster == null ? '' : '?paymaster=' + paymaster
-    const pingResponse: PingResponse = await this.httpWrapper.sendPromise(relayUrl + '/getaddr' + paymasterSuffix)
+    const url = new URL('getaddr', relayUrl.trim())
+    if (paymaster != null) {
+      url.searchParams.set('paymaster', paymaster)
+    }
+    const pingResponse: PingResponse = await this.httpWrapper.sendPromise(url)
     this.logger.info(`pingResponse: ${JSON.stringify(pingResponse)}`)
     if (pingResponse == null) {
       throw new Error('Relay responded without a body')
@@ -28,8 +31,13 @@ export class HttpClient {
     return pingResponse
   }
 
-  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{signedTx: PrefixedHexString, nonceGapFilled: ObjectMap<PrefixedHexString>}> {
-    const { signedTx, nonceGapFilled, error }: { signedTx: PrefixedHexString, nonceGapFilled: ObjectMap<PrefixedHexString>, error: string } = await this.httpWrapper.sendPromise(relayUrl + '/relay', request)
+  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{ signedTx: PrefixedHexString, nonceGapFilled: ObjectMap<PrefixedHexString> }> {
+    const url = new URL('relay', relayUrl.trim())
+    const {
+      signedTx,
+      nonceGapFilled,
+      error
+    }: { signedTx: PrefixedHexString, nonceGapFilled: ObjectMap<PrefixedHexString>, error: string } = await this.httpWrapper.sendPromise(url, request)
     this.logger.info(`relayTransaction response: ${signedTx}, error: ${error}`)
     if (error != null) {
       throw new Error(`Got error response from relay: ${error}`)
@@ -41,20 +49,23 @@ export class HttpClient {
   }
 
   async auditTransaction (relayUrl: string, signedTx: PrefixedHexString): Promise<AuditResponse> {
+    const url = new URL('audit', relayUrl.trim())
     const auditRequest: AuditRequest = { signedTx }
-    const auditResponse: AuditResponse = await this.httpWrapper.sendPromise(relayUrl + '/audit', auditRequest)
+    const auditResponse: AuditResponse = await this.httpWrapper.sendPromise(url, auditRequest)
     this.logger.info(`auditTransaction response: ${JSON.stringify(auditResponse)}`)
     return auditResponse
   }
 
   async getNetworkConfiguration (clientDefaultConfigUrl: string): Promise<ConfigResponse> {
-    const configResponse: ConfigResponse = await this.httpWrapper.sendPromise(clientDefaultConfigUrl)
+    const configResponse: ConfigResponse = await this.httpWrapper.sendPromise(new URL(clientDefaultConfigUrl))
     this.logger.info(`Config response: ${JSON.stringify(configResponse)}`)
     return configResponse
   }
 
   async getVerifyingPaymasterAddress (verifierServerUrl: string, chainId: number): Promise<Address> {
-    const { paymasterAddress } = await this.httpWrapper.sendPromise(verifierServerUrl + `/getPaymasterAddress?chainId=${chainId}`)
+    const url = new URL('getPaymasterAddress', verifierServerUrl.trim())
+    url.searchParams.set('chainId', chainId.toString())
+    const { paymasterAddress } = await this.httpWrapper.sendPromise(url)
     this.logger.info(`VerifyingPaymaster address: ${JSON.stringify(paymasterAddress)}`)
     return paymasterAddress
   }

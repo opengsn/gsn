@@ -26,7 +26,7 @@ import {
   defaultEnvironment,
   gsnRequiredVersion,
   gsnRuntimeVersion,
-  splitRelayUrlForRegistrar
+  splitRelayUrlForRegistrar, environments
 } from '@opengsn/common'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
@@ -213,7 +213,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const blockGasLimit = await contractInteractor.getBlockGasLimit()
       const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
       assert.deepEqual(ret, {
         paymasterAccepted: false,
@@ -262,7 +262,7 @@ contract('ContractInteractor', function (accounts) {
           clientId: '1'
         }
       }
-      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const blockGasLimit = await contractInteractor.getBlockGasLimit()
       const encodedData: RelayCallABI = {
         domainSeparatorName: defaultGsnConfig.domainSeparatorName,
         maxAcceptanceBudget: '200000',
@@ -290,7 +290,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const blockGasLimit = await contractInteractor.getBlockGasLimit()
       const spy = sinon.spy(contractInteractor.web3.currentProvider as HttpProvider, 'send')
       try {
         contractInteractor.transactionType = TransactionType.LEGACY
@@ -316,7 +316,7 @@ contract('ContractInteractor', function (accounts) {
           deployment: { paymasterAddress: pm.address }
         })
       await contractInteractor.init()
-      const blockGasLimit = await contractInteractor._getBlockGasLimit()
+      const blockGasLimit = await contractInteractor.getBlockGasLimit()
       const spy = sinon.spy(contractInteractor.web3.currentProvider as HttpProvider, 'send')
       try {
         await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
@@ -647,9 +647,33 @@ contract('ContractInteractor', function (accounts) {
           maxFeePerGas: '0x1',
           maxPriorityFeePerGas: '0x1'
         }
-        const estimation = await contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails)
-        const expectedEstimation = originalGasEstimation - msgDataLength * defaultEnvironment.gtxdatanonzero
+        const estimation = await contractInteractor.estimateInnerCallGasLimit(gsnTransactionDetails)
+        const expectedEstimation = originalGasEstimation - defaultEnvironment.mintxgascost - msgDataLength * defaultEnvironment.gtxdatanonzero
         assert.equal(estimation, expectedEstimation)
+      })
+
+      it('should calculate gas used for calculation only using async estimate gas', async function () {
+        const recipient = await TestRecipient.new(constants.ZERO_ADDRESS)
+        const asyncContractInteractor = new ContractInteractor(
+          {
+            environment: environments.arbitrum,
+            provider: web3.currentProvider as HttpProvider,
+            logger,
+            maxPageSize,
+            deployment: { paymasterAddress: pm.address }
+          })
+        gsnTransactionDetails = {
+          from: accounts[0],
+          to: recipient.address,
+          data: '0x' + 'ff'.repeat(msgDataLength),
+          clientId: '1',
+          maxFeePerGas: '0xffffffff',
+          maxPriorityFeePerGas: '0xffffffff'
+        }
+        const estimation = await asyncContractInteractor.estimateInnerCallGasLimit(gsnTransactionDetails)
+        const expectedEstimation = 60000 // TestRecipient fallback function makes 3 SSTOREs
+        assert.isOk(estimation > expectedEstimation)
+        assert.closeTo(estimation, expectedEstimation, 10000)
       })
 
       it('should throw if calldataGasCost estimation exceeds originalGasEstimation', async function () {
@@ -661,8 +685,8 @@ contract('ContractInteractor', function (accounts) {
           maxFeePerGas: '0x1',
           maxPriorityFeePerGas: '0x1'
         }
-        await expect(contractInteractor.estimateGasWithoutCalldata(gsnTransactionDetails))
-          .to.eventually.be.rejectedWith('calldataGasCost exceeded originalGasEstimation')
+        await expect(contractInteractor.estimateInnerCallGasLimit(gsnTransactionDetails))
+          .to.eventually.be.rejectedWith(/calldataGasCost\(.*\) exceeded originalGasEstimation\(100000\)/)
       })
     })
   })

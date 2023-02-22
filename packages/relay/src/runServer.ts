@@ -74,7 +74,7 @@ async function run (): Promise<void> {
       error('missing ethereumNodeUrl')
     }
     const loggingProvider: LoggingProviderMode = conf.loggingProvider ?? LoggingProviderMode.NONE
-    conf.environmentName = conf.environmentName ?? EnvironmentsKeys.ganacheLocal
+    conf.environmentName = conf.environmentName ?? EnvironmentsKeys.ethereumMainnet
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
     if (loggingProvider !== LoggingProviderMode.NONE) {
       const orig = web3provider
@@ -155,6 +155,7 @@ async function run (): Promise<void> {
     provider: web3provider,
     logger,
     environment,
+    calldataEstimationSlackFactor: config.calldataEstimationSlackFactor,
     maxPageSize: config.pastEventsQueryMaxPageSize,
     versionManager: new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion),
     deployment: {

@@ -20,7 +20,7 @@ describe('HttpWrapper', () => {
 
   it('should fail on connection refused', async () => {
     const http = new HttpWrapper()
-    const res = http.sendPromise('http://localhost:44321', {
+    const res = http.sendPromise(new URL('http://localhost:44321'), {
       jsonrpc: '2.0',
       method: 'net_version',
       id: 123

@@ -1,7 +1,7 @@
-import { RelayHubConfiguration } from './types/RelayHubConfiguration'
-import { PaymasterConfiguration } from './types/PaymasterConfiguration'
-import { PenalizerConfiguration } from './types/PenalizerConfiguration'
-import { constants } from './Constants'
+import { RelayHubConfiguration } from '../types/RelayHubConfiguration'
+import { PaymasterConfiguration } from '../types/PaymasterConfiguration'
+import { PenalizerConfiguration } from '../types/PenalizerConfiguration'
+import { constants } from '../Constants'
 
 export interface DeploymentConfiguration {
   readonly registrationMaxAge: number
@@ -12,8 +12,13 @@ export interface DeploymentConfiguration {
   readonly isArbitrum?: boolean
 }
 
+export enum EnvironmentsKeys {
+  ethereumMainnet = 'ethereumMainnet',
+  arbitrum = 'arbitrum'
+}
+
 export interface Environment {
-  readonly chainId: number
+  readonly environmentsKey: EnvironmentsKeys
   readonly mintxgascost: number
   readonly relayHubConfiguration: RelayHubConfiguration
   readonly penalizerConfiguration: PenalizerConfiguration
@@ -28,6 +33,8 @@ export interface Environment {
   readonly dataOnChainHandlingGasCostPerByte: number
   readonly getGasPriceFactor: number
   readonly nonZeroDevFeeGasOverhead: number
+  readonly calldataEstimationSlackFactor: number
+  readonly useEstimateGasForCalldataCost: boolean
 }
 
 // deep (3-level) merge of environments
@@ -55,8 +62,8 @@ const defaultPenalizerConfiguration: PenalizerConfiguration = {
 }
 
 const defaultRelayHubConfiguration: RelayHubConfiguration = {
-  gasOverhead: 55909,
-  postOverhead: 17516,
+  gasOverhead: 34909,
+  postOverhead: 38516,
   gasReserve: 100000,
   maxWorkerCount: 10,
   minimumUnstakeDelay: 15000,
@@ -79,8 +86,10 @@ const defaultPaymasterConfiguration: PaymasterConfiguration = {
 }
 
 const ethereumMainnet: Environment = {
+  environmentsKey: EnvironmentsKeys.ethereumMainnet,
+  calldataEstimationSlackFactor: 1,
+  useEstimateGasForCalldataCost: false,
   dataOnChainHandlingGasCostPerByte: 13,
-  chainId: 1,
   relayHubConfiguration: defaultRelayHubConfiguration,
   penalizerConfiguration: defaultPenalizerConfiguration,
   paymasterConfiguration: defaultPaymasterConfiguration,
@@ -88,23 +97,6 @@ const ethereumMainnet: Environment = {
   stakeBurnAddress: constants.BURN_ADDRESS,
   abandonmentDelay: 31536000, // 1 year
   escheatmentDelay: 2629746, // 1 month
-  mintxgascost: 21000,
-  gtxdatanonzero: 16,
-  gtxdatazero: 4,
-  getGasPriceFactor: 1,
-  nonZeroDevFeeGasOverhead: 5605
-}
-
-const ganacheLocal: Environment = {
-  dataOnChainHandlingGasCostPerByte: 13,
-  chainId: 1337,
-  relayHubConfiguration: defaultRelayHubConfiguration,
-  penalizerConfiguration: defaultPenalizerConfiguration,
-  paymasterConfiguration: defaultPaymasterConfiguration,
-  maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
-  stakeBurnAddress: constants.BURN_ADDRESS,
-  abandonmentDelay: 1000,
-  escheatmentDelay: 500,
   mintxgascost: 21000,
   gtxdatanonzero: 16,
   gtxdatazero: 4,
@@ -123,47 +115,28 @@ const arbitrumRelayHubConfiguration: RelayHubConfiguration =
     defaultRelayHubConfiguration,
     arbitrumRelayHubConfigurationOverride)
 
-const arbitrum: Environment = {
-  dataOnChainHandlingGasCostPerByte: 13, // TODO: check if memory allocation costs in Arbitrum are unchanged!
+const arbitrum: Environment = Object.assign({}, ethereumMainnet, {
+  environmentsKey: EnvironmentsKeys.arbitrum,
+  calldataEstimationSlackFactor: 1.3,
+  useEstimateGasForCalldataCost: true,
   relayHubConfiguration: arbitrumRelayHubConfiguration,
   penalizerConfiguration: defaultPenalizerConfiguration,
   paymasterConfiguration: defaultPaymasterConfiguration,
   maxUnstakeDelay: defaultStakeManagerMaxUnstakeDelay,
-  stakeBurnAddress: constants.BURN_ADDRESS,
-  chainId: 421611,
-  mintxgascost: 700000,
-  gtxdatanonzero: 2024,
-  gtxdatazero: 506,
-  abandonmentDelay: 31536000, // 1 year
-  escheatmentDelay: 2629746, // 1 month
+  mintxgascost: 0,
+  gtxdatanonzero: 0,
+  gtxdatazero: 0,
   // there is currently a hard-coded to be 2 at arbitrum:eth.go:43 (commit: 12483cfa17a29e7d68c354c456ebc371b05a6ea2)
   // setting factor to 0.6 instead of 0.5 to allow the transaction to pass in case of moderate gas price increase
   // note that excess will be collected by the Relay Server as an extra profit
-  getGasPriceFactor: 0.6,
-  nonZeroDevFeeGasOverhead: 5605
-}
+  getGasPriceFactor: 0.6
+})
 
 /* end Arbitrum-specific Environment */
 
-export enum EnvironmentsKeys {
-  ganacheLocal = 'ganacheLocal',
-  ethereumMainnet = 'ethereumMainnet',
-  arbitrum = 'arbitrum'
-}
-
 export const environments: { [key in EnvironmentsKeys]: Environment } = {
   ethereumMainnet,
-  ganacheLocal,
   arbitrum
 }
 
-export function getEnvironment (chainId: number): { name: EnvironmentsKeys, environment: Environment } | undefined {
-  const name = Object.keys(environments).find(env => environments[env as EnvironmentsKeys].chainId === chainId) as EnvironmentsKeys
-  if (name == null) {
-    return undefined
-  }
-  const environment = environments[name]
-  return { name, environment }
-}
-
-export const defaultEnvironment = environments.ganacheLocal
+export const defaultEnvironment = environments.ethereumMainnet

@@ -32,7 +32,7 @@ import Web3 from 'web3'
 import { toWei } from 'web3-utils'
 import { PrefixedHexString, MAX_INTEGER } from 'ethereumjs-util'
 
-import { deployHub } from '@opengsn/dev/dist/test/TestUtils'
+import { deployHub, hardhatNodeChainId } from '@opengsn/dev/dist/test/TestUtils'
 import { defaultGsnConfig } from '@opengsn/provider'
 
 const TokenPaymaster = artifacts.require('TokenPaymaster')
@@ -115,7 +115,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       }
     }
 
-    const chainId = defaultEnvironment.chainId
+    const chainId = hardhatNodeChainId
     const dataToSign = new TypedRequestData(
       defaultGsnConfig.domainSeparatorName,
       chainId,
@@ -148,7 +148,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       it('should reject if unknown paymasterData', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: '0x1234' })
         const signature = await getEip712Signature(web3, new TypedRequestData(defaultGsnConfig.domainSeparatorName, 1, forwarder.address, req))
-        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /paymasterData: invalid length for Uniswap v1 exchange address/)
+        assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /paymasterData: invalid length for Uniswap v3 exchange address/)
       })
 
       it('should reject if unsupported uniswap in paymasterData', async () => {

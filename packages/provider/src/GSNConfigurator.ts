@@ -30,6 +30,7 @@ export const defaultLoggerConfiguration: LoggerConfiguration = {
 }
 
 export const defaultGsnConfig: GSNConfig = {
+  calldataEstimationSlackFactor: 1,
   preferredRelays: [],
   blacklistedRelays: [],
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
@@ -50,12 +51,14 @@ export const defaultGsnConfig: GSNConfig = {
   clientId: '1',
   requestValidSeconds: 172800, // 2 days
   maxViewableGasLimit: '12000000',
+  minViewableGasLimit: '50000',
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,
   maxPaymasterDataLength: 0,
   clientDefaultConfigUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
   useClientDefaultConfigUrl: true,
   performDryRunViewRelayCall: true,
+  performEstimateGasFromRealSender: false,
   tokenPaymasterAddress: '',
   tokenPaymasterDomainSeparators: {},
   waitForSuccessSliceSize: 3,
