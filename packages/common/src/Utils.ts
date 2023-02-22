@@ -318,7 +318,7 @@ export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
 export function formatTokenAmount (
   balance: BN,
   decimals: BN | number,
-  tokenAddress: Address,
+  tokenAddress: Address | undefined,
   tokenSymbol: string): string {
   let shiftedBalance: BN
   const tokenDecimals = toBN(decimals.toString())
@@ -331,8 +331,11 @@ export function formatTokenAmount (
     const shift = tokenDecimals.subn(18)
     shiftedBalance = balance.div(toBN(10).pow(shift))
   }
-  const shortTokenAddress = `${tokenAddress.substring(0, 6)}...${tokenAddress.substring(39)}`
-  return `${fromWei(shiftedBalance)} ${tokenSymbol} (${shortTokenAddress})`
+  let shortTokenAddress = ''
+  if (tokenAddress != null) {
+    shortTokenAddress = `(${tokenAddress.substring(0, 6)}...${tokenAddress.substring(39)})`
+  }
+  return `${fromWei(shiftedBalance)} ${tokenSymbol} ${shortTokenAddress}`
 }
 
 export function splitRelayUrlForRegistrar (url: string, partsCount: number = 3): string[] {

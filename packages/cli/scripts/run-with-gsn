@@ -1,2 +1,0 @@
-#!/bin/bash -xe
-gsn start --withNode --run "$*"
