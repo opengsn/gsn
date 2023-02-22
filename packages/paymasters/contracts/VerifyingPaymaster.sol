@@ -22,12 +22,16 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * - etc.
  */
 contract VerifyingPaymaster is Ownable, BasePaymaster {
+    address private constant DRY_RUN_ADDRESS = 0x0000000000000000000000000000000000000000;
 
     address public signer;
 
-    function _verifyApprovalData(bytes calldata approvalData) internal virtual override view{
-        // solhint-disable-next-line reason-string
-        require(approvalData.length == 65, "approvalData: invalid length for signature");
+    function _verifyApprovalData(bytes calldata approvalData) internal virtual override view {
+        // solhint-disable-next-line avoid-tx-origin
+        if (tx.origin != DRY_RUN_ADDRESS) {
+            // solhint-disable-next-line reason-string
+            require(approvalData.length == 65, "approvalData: invalid length for signature");
+        }
     }
 
     function _preRelayedCall(
@@ -43,8 +47,10 @@ contract VerifyingPaymaster is Ownable, BasePaymaster {
         (signature, maxPossibleGas);
 
         bytes32 requestHash = getRequestHash(relayRequest);
-        require(signer == ECDSA.recover(requestHash, approvalData), "approvalData: wrong signature");
-
+        // solhint-disable-next-line avoid-tx-origin
+        if (tx.origin != DRY_RUN_ADDRESS) {
+            require(signer == ECDSA.recover(requestHash, approvalData), "approvalData: wrong signature");
+        }
         return ("", false);
     }
 
