@@ -2,7 +2,7 @@ import BN from 'bn.js'
 import Web3 from 'web3'
 import abi from 'web3-eth-abi'
 import chalk from 'chalk'
-import { AbiItem, fromWei, toWei, toBN } from 'web3-utils'
+import { AbiItem, fromWei, toWei, toBN, toHex } from 'web3-utils'
 import { EventData } from 'web3-eth-contract'
 import { JsonRpcResponse } from 'web3-core-helpers'
 import { TypedMessage } from '@metamask/eth-sig-util'
@@ -27,10 +27,11 @@ import {
   unpadBuffer
 } from 'ethereumjs-util'
 
-import { Address } from './types/Aliases'
+import { Address, EIP1559Fees, RelaySelectionResult } from './types/Aliases'
 
-import { RelayRequest } from './EIP712/RelayRequest'
 import { MessageTypes } from './EIP712/TypedRequestData'
+import { PartialRelayInfo } from './types/RelayInfo'
+import { RelayRequest } from './EIP712/RelayRequest'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -424,12 +425,10 @@ export function shuffle<T> (array: T[]): T[] {
 }
 
 /**
- * @param winner - the selected result if at least one promise had resolved successfully
  * @param results - all successfully resolved results in the order that they resolved.
  * @param errors - all rejection results
  */
 export interface WaitForSuccessResults<T> {
-  winner?: T
   results: T[]
   errors: Map<string, Error>
 }
@@ -447,8 +446,7 @@ export interface WaitForSuccessResults<T> {
 export async function waitForSuccess<T> (
   promises: Array<Promise<T>>,
   errorKeys: string[],
-  graceTime: number,
-  random = Math.random): Promise<WaitForSuccessResults<T>> {
+  graceTime: number): Promise<WaitForSuccessResults<T>> {
   if (promises.length !== errorKeys.length) {
     throw new Error('Invalid errorKeys length')
   }
@@ -465,9 +463,6 @@ export async function waitForSuccess<T> (
     }
 
     function complete (): void {
-      if (ret.results.length !== 0) {
-        ret.winner = ret.results[Math.floor(random() * ret.results.length)]
-      }
       resolve(ret)
     }
 
@@ -489,6 +484,57 @@ export async function waitForSuccess<T> (
         })
     }
   })
+}
+
+export function pickRandomElementFromArray<T> (arrayIn: T[], random = Math.random): T {
+  return arrayIn[Math.floor(random() * arrayIn.length)]
+}
+
+/**
+ * @return newValue - the best value to use as a gas parameter:
+ *          the one RelayProvider used if it is above RelayServer minimum, the minimum otherwise
+ * @return deltaPercent - the difference between input and result, in percents
+ */
+export function adjustGasCostParameterUp (
+  clientInput: number,
+  pingResponseMinimum: number
+): { newValue: number, deltaPercent: number } {
+  if (clientInput >= pingResponseMinimum) {
+    return { newValue: clientInput, deltaPercent: 0 }
+  }
+  const deltaPercent = Math.round(((pingResponseMinimum - clientInput) * 100) / clientInput)
+  return { newValue: pingResponseMinimum, deltaPercent }
+}
+
+/**
+ * The RelayServer may respond with a {@link PingResponse} with a response that will require adjusting some parameters.
+ * @return - a {@link RelayRequest} with parameters that should satisfy the RelayServer,
+ *           or null if the required gas fees are different more than the {@link gasPriceFactorPercent}.
+ */
+export function adjustRelayRequestForPingResponse (
+  feesIn: EIP1559Fees,
+  relayInfo: PartialRelayInfo
+): RelaySelectionResult {
+  const maxPriorityFeePerGas = adjustGasCostParameterUp(
+    parseInt(feesIn.maxPriorityFeePerGas),
+    parseInt(relayInfo.pingResponse.minMaxPriorityFeePerGas)
+  )
+
+  const maxFeePerGas = adjustGasCostParameterUp(
+    parseInt(feesIn.maxFeePerGas),
+    parseInt(relayInfo.pingResponse.minMaxFeePerGas)
+  )
+
+  const updatedGasFees: EIP1559Fees = {
+    maxPriorityFeePerGas: toHex(maxPriorityFeePerGas.newValue),
+    maxFeePerGas: toHex(maxFeePerGas.newValue)
+  }
+  const maxDeltaPercent = Math.max(maxFeePerGas.deltaPercent, maxPriorityFeePerGas.deltaPercent)
+  return {
+    relayInfo,
+    maxDeltaPercent,
+    updatedGasFees
+  }
 }
 
 export function averageBN (array: BN[]): BN {

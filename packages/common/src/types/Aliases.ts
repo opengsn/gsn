@@ -2,7 +2,7 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { PingResponse } from '../PingResponse'
 import { RelayRequest } from '../EIP712/RelayRequest'
 import { GsnTransactionDetails } from './GsnTransactionDetails'
-import { RegistrarRelayInfo } from './RelayInfo'
+import { PartialRelayInfo, RegistrarRelayInfo } from './RelayInfo'
 import { HttpProvider, IpcProvider, WebsocketProvider } from 'web3-core'
 import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { TypedMessage } from '@metamask/eth-sig-util'
@@ -50,6 +50,17 @@ export type Web3Provider =
   | HttpProvider
   | IpcProvider
   | WebsocketProvider
+
+export interface RelaySelectionResult {
+  relayInfo: PartialRelayInfo
+  maxDeltaPercent: number
+  updatedGasFees: EIP1559Fees
+}
+
+export interface EIP1559Fees {
+  maxFeePerGas: PrefixedHexString
+  maxPriorityFeePerGas: PrefixedHexString
+}
 
 /**
  * The only thing that is guaranteed a Web3 provider or a similar object is a {@link send} method.
