@@ -19,6 +19,9 @@ module.exports = {
   contracts_build_directory: '../cli/src/compiled',
   contracts_directory: '../contracts/solpp',
 
+  plugins: [
+    'truffle-plugin-stdjsonin'
+  ],
   networks: {
 
     development: {
