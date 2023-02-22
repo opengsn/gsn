@@ -83,10 +83,12 @@ class GsnTestEnvironmentClass {
 
   /**
    *
-   * @param host:
+   * @param host - the Ethereum RPC node URL
+   * @param localRelayUrl - the local GSN RelayServer URL for RelayRegistrar
+   * @param port - the port for the RelayServer to listen to (optional)
    * @return
    */
-  async startGsn (host: string): Promise<TestEnvironment> {
+  async startGsn (host: string, localRelayUrl: string = 'http://127.0.0.1/', port?: number): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
     if (_host == null) {
@@ -99,8 +101,10 @@ class GsnTestEnvironmentClass {
     await commandsLogic.init()
     const from = await commandsLogic.findWealthyAccount()
 
-    const port = await this._resolveAvailablePort()
-    const relayUrl = 'http://127.0.0.1:' + port.toString()
+    port = port ?? await this._resolveAvailablePort()
+    const url = new URL(localRelayUrl)
+    url.port = port.toString()
+    const relayUrl = url.toString()
     await this._runServer(_host, deploymentResult, from, relayUrl, port)
     if (this.httpServer == null) {
       throw new Error('Failed to run a local Relay Server')

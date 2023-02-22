@@ -4,19 +4,25 @@ import { GsnTestEnvironment } from '../GsnTestEnvironment'
 
 gsnCommander(['n'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')
+  .option('--relayUrl <url>', 'url to advertise the relayer', 'http://127.0.0.1/')
+  .option('--port <number>', 'a port for the relayer to listen on. By default, relay will find random available port')
   .parse(process.argv);
 
 (async () => {
-  try {
-    const network: string = commander.network
-    const env = await GsnTestEnvironment.startGsn(network)
-    saveDeployment(env.contractsDeployment, commander.workdir)
-    showDeployment(env.contractsDeployment, 'GSN started')
-
-    console.log(`Relay is active, URL = ${env.relayUrl} . Press Ctrl-C to abort`)
-  } catch (e) {
-    console.error(e)
+  const network: string = commander.network
+  const localRelayUrl: string = commander.relayUrl
+  let port: number | undefined
+  if (commander.port != null) {
+    port = parseInt(commander.port)
+    if (isNaN(port)) {
+      throw new Error('port is NaN')
+    }
   }
+  const env = await GsnTestEnvironment.startGsn(network, localRelayUrl, port)
+  saveDeployment(env.contractsDeployment, commander.workdir)
+  showDeployment(env.contractsDeployment, 'GSN started')
+
+  console.log(`Relay is active, URL = ${env.relayUrl} . Press Ctrl-C to abort`)
 })().catch(
   reason => {
     console.error(reason)
