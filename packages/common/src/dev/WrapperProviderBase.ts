@@ -1,29 +1,12 @@
-import { HttpProvider } from 'web3-core'
-import { SendCallback } from './SendCallback'
-import { JsonRpcPayload } from 'web3-core-helpers'
+import { JsonRpcProvider } from '@ethersproject/providers'
 
-export abstract class WrapperProviderBase implements HttpProvider {
-  provider: HttpProvider
+export abstract class WrapperProviderBase extends JsonRpcProvider {
+  provider: JsonRpcProvider
 
-  protected constructor (provider: HttpProvider) {
+  protected constructor (provider: JsonRpcProvider) {
+    super()
     this.provider = provider
   }
 
-  get connected (): boolean {
-    return this.provider.connected
-  }
-
-  get host (): string {
-    return this.provider.host
-  }
-
-  disconnect (): boolean {
-    return this.provider.disconnect()
-  }
-
-  abstract send (payload: JsonRpcPayload, callback: SendCallback): void
-
-  supportsSubscriptions (): boolean {
-    return this.provider.supportsSubscriptions()
-  }
+  abstract send (method: string, params: any[]): Promise<any>
 }

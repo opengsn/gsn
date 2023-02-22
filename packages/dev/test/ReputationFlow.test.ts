@@ -5,6 +5,7 @@ import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import sinon from 'sinon'
 import { GsnTestEnvironment, TestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { RelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
+import { JsonRpcProvider } from '@ethersproject/providers'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -12,6 +13,10 @@ const Forwarder = artifacts.require('Forwarder')
 const RelayHub = artifacts.require('RelayHub')
 
 contract('ReputationFlow', function () {
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+
   let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
   let testRecipient: TestRecipientInstance
   let relayProvider: RelayProvider
@@ -32,7 +37,7 @@ contract('ReputationFlow', function () {
     await misbehavingPaymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
 
     relayProvider = await RelayProvider.newProvider({
-      provider: web3.currentProvider as HttpProvider,
+      provider: ethersProvider,
       config: {
         loggerConfiguration: { logLevel: 'error' },
         paymasterAddress: misbehavingPaymaster.address
@@ -48,8 +53,16 @@ contract('ReputationFlow', function () {
 
   describe('with misbehaving paymaster', function () {
     it('should stop serving the paymaster after specified number of on-chain rejected transactions', async function () {
-      sinon.stub(relayProvider.relayClient.dependencies.contractInteractor, 'validateRelayCall').returns(Promise.resolve({ paymasterAccepted: true, returnValue: '', relayHubReverted: false, recipientReverted: false }))
-      sinon.stub(relayProvider.relayClient.dependencies.contractInteractor, 'getGasFees').returns(Promise.resolve({ priorityFeePerGas: 30e9.toString(), baseFeePerGas: 30e9.toString() }))
+      sinon.stub(relayProvider.relayClient.dependencies.contractInteractor, 'validateRelayCall').returns(Promise.resolve({
+        paymasterAccepted: true,
+        returnValue: '',
+        relayHubReverted: false,
+        recipientReverted: false
+      }))
+      sinon.stub(relayProvider.relayClient.dependencies.contractInteractor, 'getGasFees').returns(Promise.resolve({
+        priorityFeePerGas: 30e9.toString(),
+        baseFeePerGas: 30e9.toString()
+      }))
       sinon.stub(testEnv.httpServer.relayService!, 'validateViewCallSucceeds')
       for (let i = 0; i < 20; i++) {
         const block = await web3.eth.getBlockNumber()

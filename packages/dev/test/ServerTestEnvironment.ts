@@ -4,6 +4,7 @@ import Web3 from 'web3'
 import crypto from 'crypto'
 import sinon from 'sinon'
 import { HttpProvider } from 'web3-core'
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { toBN, toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
 import {
@@ -103,11 +104,13 @@ export class ServerTestEnvironment {
 
   relayClient!: RelayClient
   provider: HttpProvider
+  ethersProvider: JsonRpcProvider
   web3: Web3
   relayServer!: RelayServer
 
   constructor (provider: HttpProvider, accounts: Address[]) {
     this.provider = provider
+    this.ethersProvider = new JsonRpcProvider(this.provider.host)
     this.web3 = new Web3(this.provider)
     this.relayOwner = accounts[4]
   }
@@ -145,7 +148,7 @@ export class ServerTestEnvironment {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       this.contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: this.provider,
+        provider: this.ethersProvider,
         logger,
         maxPageSize,
         deployment: {
@@ -162,7 +165,7 @@ export class ServerTestEnvironment {
     }
     const mergedConfig = Object.assign({}, shared, clientConfig)
     this.relayClient = new RelayClient({
-      provider: this.provider,
+      provider: this.ethersProvider,
       config: mergedConfig
     })
     await this.relayClient.init()
@@ -174,15 +177,15 @@ export class ServerTestEnvironment {
     await this.fundServer()
     await this.relayServer.init()
     // initialize server - gas price, stake, owner, etc, whatever
-    let latestBlock = await this.web3.eth.getBlock('latest')
+    let latestBlock = await this.ethersProvider.getBlock('latest')
 
     await this.relayServer._worker(latestBlock)
-    latestBlock = await this.web3.eth.getBlock('latest')
+    latestBlock = await this.ethersProvider.getBlock('latest')
     await this.stakeAndAuthorizeHub(ether('1'), unstakeDelay)
     // This run should call 'registerRelayServer' and 'addWorkers'
     const receipts = await this.relayServer._worker(latestBlock)
     await assertRelayAdded(receipts, this.relayServer) // sanity check
-    latestBlock = await this.web3.eth.getBlock('latest')
+    latestBlock = await this.ethersProvider.getBlock('latest')
     await this.relayServer._worker(latestBlock)
   }
 

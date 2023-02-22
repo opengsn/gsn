@@ -3,8 +3,6 @@
 import abiDecoder from 'abi-decoder'
 
 import { BigNumber } from '@ethersproject/bignumber'
-import { TransactionReceipt } from '@ethersproject/providers'
-import { JsonRpcPayload, JsonRpcResponse } from '@opengsn/common'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { EventData } from 'web3-eth-contract'
 import { TypedMessage } from '@metamask/eth-sig-util'
@@ -12,6 +10,8 @@ import { TypedMessage } from '@metamask/eth-sig-util'
 import {
   Address,
   GsnTransactionDetails,
+  JsonRpcPayload,
+  JsonRpcResponse,
   LoggerInterface,
   SignTypedDataCallback,
   TransactionRejectedByPaymaster,
@@ -27,15 +27,11 @@ import { GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from './RelayClient'
 import { GSNConfig } from './GSNConfigurator'
 
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, TransactionReceipt } from '@ethersproject/providers'
 
 abiDecoder.addABI(relayHubAbi)
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
-
-interface ISendAsync {
-  sendAsync?: any
-}
 
 /**
  * This data can later be used to optimize creation of Transaction Receipts
@@ -343,7 +339,7 @@ export class RelayProvider {
     relayRequestID: string,
     submissionDetails: SubmittedRelayRequestInfo
   ): Promise<string> {
-    const extraTopics = [undefined, undefined, [relayRequestID]]
+    const extraTopics = [null, null, [relayRequestID]]
     const events = await this.relayClient.dependencies.contractInteractor.getPastEventsForHub(
       extraTopics,
       { fromBlock: submissionDetails.submissionBlock },

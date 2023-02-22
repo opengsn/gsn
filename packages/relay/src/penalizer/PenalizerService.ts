@@ -53,6 +53,7 @@ export interface PenalizerDependencies {
 }
 
 function createWeb3Transaction (transaction: TransactionResponse, rawTxOptions: TxOptions): EthereumJsTransaction {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const gasPrice = '0x' + BigInt(transaction.gasPrice!.toString()).toString(16)
   const value = '0x' + BigInt(transaction.value.toString()).toString(16)
   const txData: TxData = {

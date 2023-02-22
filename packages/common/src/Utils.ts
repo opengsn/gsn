@@ -1,12 +1,9 @@
 import BN from 'bn.js'
 import chalk from 'chalk'
 
+import { JsonRpcProvider } from '@ethersproject/providers'
 
-import {
-  JsonRpcProvider,
-} from '@ethersproject/providers'
-
-import { JsonFragment, Interface } from '@ethersproject/abi'
+import { AbiCoder, JsonFragment, Interface } from '@ethersproject/abi'
 import { TypedMessage } from '@metamask/eth-sig-util'
 import { encode, List } from 'rlp'
 
@@ -33,7 +30,7 @@ import { Address } from './types/Aliases'
 
 import { RelayRequest } from './EIP712/RelayRequest'
 import { MessageTypes } from './EIP712/TypedRequestData'
-import { fromWei, toBN, toWei } from './web3js/Web3JSUtils'
+import { fromWei, isBigNumber, toBN, toWei } from './web3js/Web3JSUtils'
 import { ethers } from 'ethers'
 import { keccak256 } from 'ethers/lib/utils'
 
@@ -60,11 +57,9 @@ export function signatureRSV2Hex (r: BN | Buffer, s: BN | Buffer, v: number): st
 export function event2topic (contract: any, names: string[]): any {
   // for testing: don't crash on mockup..
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!contract.options || !contract.options.jsonInterface) { return names }
-  return contract.options.jsonInterface
-    .filter((e: any) => names.includes(e.name))
-    // @ts-ignore
-    .map(abi.encodeEventSignature)
+  if (!contract.filters) { return names }
+  return names
+    .map(name => { return contract.filters[name]().topics[0] })
 }
 
 export function addresses2topics (addresses: string[]): string[] {
@@ -89,8 +84,7 @@ export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError
     }
     return revertBytes
   }
-  // @ts-ignore
-  return abi.decodeParameter('string', '0x' + revertBytes.slice(10)) as any
+  return new AbiCoder().decode(['string'], '0x' + revertBytes.slice(10))[0]
 }
 
 export async function getDefaultMethodSuffix (web3: Web3): Promise<string> {
@@ -152,7 +146,7 @@ export async function getEip712Signature<T extends MessageTypes> (
   // })
 }
 
-function correctV (result: PrefixedHexString): PrefixedHexString {
+export function correctV (result: PrefixedHexString): PrefixedHexString {
   const buffer = toBuffer(result)
   const last = buffer.length - 1
   const oldV = buffer[last]
@@ -369,10 +363,6 @@ export function packRelayUrlForRegistrar (parts: string[]): string {
       .replace(/(00)+$/g, ''), 'hex').toString()
 }
 
-function isBigNumber (object: Object): boolean {
-  return object?.constructor?.name === 'BigNumber' || object?.constructor?.name === 'BN'
-}
-
 export function toNumber (numberish: number | string | BN | BigInt): number {
   switch (typeof numberish) {
     case 'string':
@@ -411,6 +401,7 @@ export function getERC165InterfaceID (abi: JsonFragment[]): string {
       .filter(it => it.type === 'function' && it.name != null)
       .map(it => {
         const iface = new Interface([it])
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         return iface.getSighash(it.name!)
       })
       .filter(it => it !== '0x01ffc9a7') // remove the IERC165 method itself

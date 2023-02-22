@@ -1,6 +1,7 @@
 import BN from 'bn.js'
 import chai from 'chai'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
+import { JsonRpcProvider } from '@ethersproject/providers'
 
 import { deployHub, evmMine, hardhatNodeChainId, setNextBlockTimestamp } from './TestUtils'
 
@@ -54,6 +55,10 @@ contract('RelayHub Configuration',
     const maxAcceptanceBudget = 10e6
     const deprecationTimeInSeconds = 100
     const stake = ether('2')
+
+    // @ts-ignore
+    const currentProviderHost = web3.currentProvider.host
+    const ethersProvider = new JsonRpcProvider(currentProviderHost)
 
     let relayHub: RelayHubInstance
     let relayRegistrar: RelayRegistrarInstance
@@ -130,7 +135,7 @@ contract('RelayHub Configuration',
         relayRequest
       )
       signature = await getEip712Signature(
-        web3,
+        ethersProvider,
         dataToSign
       )
 

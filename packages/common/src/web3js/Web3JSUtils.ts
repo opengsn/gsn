@@ -1,7 +1,11 @@
+/* eslint-disable */
 // @ts-nocheck
 
 // Utilities from Web3.js library that need to be replaced
-var numberToBN = require('number-to-bn')
+
+import BN from 'bn.js'
+import numberToBN from 'number-to-bn'
+import ethjsUnit from 'ethjs-unit'
 
 /**
  * Takes an input and transforms it into an BN
@@ -10,12 +14,16 @@ var numberToBN = require('number-to-bn')
  * @param {Number|String|BN} number, string, HEX string or BN
  * @return {BN} BN
  */
-export var toBN = function (number) {
+export var toBN = function (number): BN {
   try {
     return numberToBN.apply(null, arguments)
   } catch (e) {
     throw new Error(e + ' Given value: "' + number + '"')
   }
+}
+
+export function isBigNumber (object: Object): boolean {
+  return object?.constructor?.name === 'BigNumber' || object?.constructor?.name === 'BN'
 }
 
 /**
@@ -32,34 +40,34 @@ export var toHex = function (value, returnType?: any) {
   /*jshint maxcomplexity: false */
 
   if (isAddress(value)) {
-    return returnType ? 'address' : '0x'+ value.toLowerCase().replace(/^0x/i,'');
+    return returnType ? 'address' : '0x' + value.toLowerCase().replace(/^0x/i, '')
   }
 
-  if (typeof value === 'boolean' ) {
-    return returnType ? 'bool' : value ? '0x01' : '0x00';
+  if (typeof value === 'boolean') {
+    return returnType ? 'bool' : value ? '0x01' : '0x00'
   }
 
   if (Buffer.isBuffer(value)) {
-    return '0x' + value.toString('hex');
+    return '0x' + value.toString('hex')
   }
 
   if (typeof value === 'object' && !!value && !isBigNumber(value) && !isBN(value)) {
-    return returnType ? 'string' : utf8ToHex(JSON.stringify(value));
+    return returnType ? 'string' : utf8ToHex(JSON.stringify(value))
   }
 
   // if its a negative number, pass it through numberToHex
   if (typeof value === 'string') {
     if (value.indexOf('-0x') === 0 || value.indexOf('-0X') === 0) {
-      return returnType ? 'int256' : numberToHex(value);
-    } else if(value.indexOf('0x') === 0 || value.indexOf('0X') === 0) {
-      return returnType ? 'bytes' : value;
+      return returnType ? 'int256' : numberToHex(value)
+    } else if (value.indexOf('0x') === 0 || value.indexOf('0X') === 0) {
+      return returnType ? 'bytes' : value
     } else if (!isFinite(value)) {
-      return returnType ? 'string' : utf8ToHex(value);
+      return returnType ? 'string' : utf8ToHex(value)
     }
   }
 
-  return returnType ? (value < 0 ? 'int256' : 'uint256') : numberToHex(value);
-};
+  return returnType ? (value < 0 ? 'int256' : 'uint256') : numberToHex(value)
+}
 
 /**
  * Converts value to it's hex representation
@@ -70,18 +78,18 @@ export var toHex = function (value, returnType?: any) {
  */
 var numberToHex = function (value) {
   if ((value === null || value === undefined)) {
-    return value;
+    return value
   }
 
   if (!isFinite(value) && !isHexStrict(value)) {
-    throw new Error('Given input "'+value+'" is not a number.');
+    throw new Error('Given input "' + value + '" is not a number.')
   }
 
-  var number = toBN(value);
-  var result = number.toString(16);
+  var number = toBN(value)
+  var result = number.toString(16)
 
-  return number.lt(new BN(0)) ? '-0x' + result.slice(1) : '0x' + result;
-};
+  return number.lt(new BN(0)) ? '-0x' + result.slice(1) : '0x' + result
+}
 
 /**
  * Checks if the given string is an address
@@ -93,15 +101,15 @@ var numberToHex = function (value) {
 var isAddress = function (address) {
   // check if it has the basic requirements of an address
   if (!/^(0x)?[0-9a-f]{40}$/i.test(address)) {
-    return false;
+    return false
     // If it's ALL lowercase or ALL upppercase
   } else if (/^(0x|0X)?[0-9a-f]{40}$/.test(address) || /^(0x|0X)?[0-9A-F]{40}$/.test(address)) {
-    return true;
+    return true
     // Otherwise check each case
   } else {
-    return checkAddressChecksum(address);
+    return checkAddressChecksum(address)
   }
-};
+}
 
 // TODO TODO!!!
 var checkAddressChecksum = function (address) {
@@ -116,10 +124,8 @@ var checkAddressChecksum = function (address) {
  * @returns {Boolean}
  */
 var isHexStrict = function (hex) {
-  return ((typeof hex === 'string' || typeof hex === 'number') && /^(-)?0x[0-9a-f]*$/i.test(hex));
-};
-
-
+  return ((typeof hex === 'string' || typeof hex === 'number') && /^(-)?0x[0-9a-f]*$/i.test(hex))
+}
 
 /**
  * Takes a number of a unit and converts it to wei.
@@ -143,16 +149,15 @@ var isHexStrict = function (hex) {
  * @param {String} unit the unit to convert from, default ether
  * @return {String|Object} When given a BN object it returns one as well, otherwise a number
  */
-export var toWei = function(number, unit) {
-  unit = getUnitValue(unit);
+export var toWei = function (number, unit) {
+  unit = getUnitValue(unit)
 
-  if(!utils.isBN(number) && !(typeof number === 'string')) {
-    throw new Error('Please pass numbers as strings or BN objects to avoid precision errors.');
+  if (!isBN(number) && !(typeof number === 'string')) {
+    throw new Error('Please pass numbers as strings or BN objects to avoid precision errors.')
   }
 
-  return utils.isBN(number) ? ethjsUnit.toWei(number, unit) : ethjsUnit.toWei(number, unit).toString(10);
-};
-
+  return isBN(number) ? ethjsUnit.toWei(number, unit) : ethjsUnit.toWei(number, unit).toString(10)
+}
 
 /**
  * Takes a number of wei and converts it to any other ether unit.
@@ -175,12 +180,38 @@ export var toWei = function(number, unit) {
  * @param {String} unit the unit to convert to, default ether
  * @return {String|Object} When given a BN object it returns one as well, otherwise a number
  */
-export var fromWei = function(number, unit?: any) {
-  unit = getUnitValue(unit);
+export var fromWei = function (number, unit?: any): string {
+  unit = getUnitValue(unit)
 
-  if(!utils.isBN(number) && !(typeof number === 'string')) {
-    throw new Error('Please pass numbers as strings or BN objects to avoid precision errors.');
+  if (!isBN(number) && !(typeof number === 'string')) {
+    throw new Error('Please pass numbers as strings or BN objects to avoid precision errors.')
   }
 
-  return utils.isBN(number) ? ethjsUnit.fromWei(number, unit) : ethjsUnit.fromWei(number, unit).toString(10);
-};
+  return ethjsUnit.fromWei(number, unit).toString(10)
+}
+
+/**
+ * Returns true if object is BN, otherwise false
+ *
+ * @method isBN
+ * @param {Object} object
+ * @return {Boolean}
+ */
+var isBN = function (object) {
+  return BN.isBN(object)
+}
+/**
+ * Returns value of unit in Wei
+ *
+ * @method getUnitValue
+ * @param {String} unit the unit to convert to, default ether
+ * @returns {BN} value of the unit (in Wei)
+ * @throws error if the unit is not correct:w
+ */
+export var getUnitValue = function (unit) {
+  unit = unit ? unit.toLowerCase() : 'ether'
+  if (!ethjsUnit.unitMap[unit]) {
+    throw new Error('This unit "' + unit + '" doesn\'t exist, please use the one of the following units' + JSON.stringify(ethjsUnit.unitMap, null, 2))
+  }
+  return unit
+}

@@ -3,6 +3,7 @@
 import { SignTypedDataVersion, recoverTypedSignature, TypedDataUtils } from '@metamask/eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 import chai, { expect } from 'chai'
+import { JsonRpcProvider } from '@ethersproject/providers'
 
 import {
   RelayRequest,
@@ -37,6 +38,10 @@ const Forwarder = artifacts.require('Forwarder')
 const TestRecipient = artifacts.require('TestRecipient')
 
 contract('Utils', function (accounts) {
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new JsonRpcProvider(currentProviderHost)
+
   describe('#getEip712Signature()', function () {
     // ganache always reports chainId as '1'
     let chainId: number
@@ -156,7 +161,7 @@ contract('Utils', function (accounts) {
       )
 
       const sig = await getEip712Signature(
-        web3,
+        provider,
         dataToSign
       )
 
@@ -174,7 +179,8 @@ contract('Utils', function (accounts) {
       it('should return revert result', async function () {
         relayRequest.request.data = await recipient.contract.methods.testRevert().encodeABI()
         const sig = await getEip712Signature(
-          web3, new TypedRequestData(
+          provider,
+          new TypedRequestData(
             defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,
@@ -192,7 +198,8 @@ contract('Utils', function (accounts) {
         relayRequest.request.nonce = (await forwarderInstance.getNonce(relayRequest.request.from)).toString()
 
         const sig = await getEip712Signature(
-          web3, new TypedRequestData(
+          provider,
+          new TypedRequestData(
             defaultGsnConfig.domainSeparatorName,
             chainId,
             forwarder,

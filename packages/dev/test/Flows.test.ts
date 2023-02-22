@@ -3,7 +3,7 @@
 // the two modes must behave just the same (with an exception of gasless test, which must fail on direct mode, and must
 // succeed in gasless)
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
-import { HttpProvider } from 'web3-core'
+import { JsonRpcProvider } from '@ethersproject/providers'
 
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import {
@@ -63,6 +63,9 @@ options.forEach(params => {
     let relayproc: ChildProcessWithoutNullStreams
     let relayClientConfig: Partial<GSNConfig>
     let relayProvider: RelayProvider
+    // @ts-ignore
+    const currentProviderHost = web3.currentProvider.host
+    const provider = new JsonRpcProvider(currentProviderHost)
 
     before(async () => {
       await emptyBalance(gasless, accounts[0])
@@ -128,7 +131,7 @@ options.forEach(params => {
 
         relayProvider = await RelayProvider.newProvider(
           {
-            provider: web3.currentProvider as HttpProvider,
+            provider,
             config: relayClientConfig
           }).init()
 
@@ -201,7 +204,7 @@ options.forEach(params => {
         before(async function () {
           relayProvider = await RelayProvider.newProvider(
             {
-              provider: web3.currentProvider as HttpProvider,
+              provider,
               config: relayClientConfig
             }).init()
         });
@@ -235,7 +238,7 @@ options.forEach(params => {
           relayClientConfig = { ...relayClientConfig, ...{ paymasterAddress: approvalPaymaster.address }, performDryRunViewRelayCall: false }
           const relayProvider = await RelayProvider.newProvider(
             {
-              provider: web3.currentProvider as HttpProvider,
+              provider,
               config: relayClientConfig
             }).init()
           // @ts-ignore
@@ -245,7 +248,7 @@ options.forEach(params => {
         const setRecipientProvider = async function (asyncApprovalData: ApprovalDataCallback): Promise<void> {
           const relayProvider =
             await RelayProvider.newProvider({
-              provider: web3.currentProvider as HttpProvider,
+              provider,
               config: relayClientConfig,
               overrideDependencies: { asyncApprovalData }
             }).init()

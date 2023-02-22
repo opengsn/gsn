@@ -1,7 +1,9 @@
-import Web3 from 'web3'
+// import Web3 from 'web3'
 import { PrefixedHexString, toBuffer, bufferToHex } from 'ethereumjs-util'
 import { TypedTransaction, Transaction, FeeMarketEIP1559Transaction, TransactionFactory } from '@ethereumjs/tx'
 import { toBN } from 'web3-utils'
+
+import { Interface } from '@ethersproject/abi'
 
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import { ContractInteractor, LoggerInterface, RelayTransactionRequest, isSameAddress, ObjectMap } from '@opengsn/common'
@@ -129,7 +131,8 @@ export class RelayedTransactionValidator {
    * For transactions that are filling the nonce gap, we only check that the transaction is not penalizable.
    */
   _validateTransactionMethodSignature (transaction: TypedTransaction): boolean {
-    const relayCallSignature = new Web3().eth.abi.encodeFunctionSignature(RelayHubABI.find(it => it.name === 'relayCall') as any)
+    const iface = new Interface(RelayHubABI)
+    const relayCallSignature = iface.getSighash('relayCall')
     return bufferToHex(transaction.data).startsWith(relayCallSignature)
   }
 

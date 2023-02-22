@@ -36,8 +36,6 @@ import {
   StakeWithdrawn
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 
-import { BlockTransactionString } from 'web3-eth'
-
 export class RegistrationManager {
   balanceRequired!: AmountRequired
   stakeRequired!: AmountRequired

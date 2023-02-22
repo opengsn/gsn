@@ -1,6 +1,4 @@
-import { HttpProvider } from 'web3-core'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
-import { SendCallback } from './SendCallback'
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { WrapperProviderBase } from './WrapperProviderBase'
 
 export class ProfilingProvider extends WrapperProviderBase {
@@ -9,35 +7,28 @@ export class ProfilingProvider extends WrapperProviderBase {
 
   logTraffic: boolean
 
-  constructor (provider: HttpProvider, logTraffic: boolean = false) {
+  constructor (provider: JsonRpcProvider, logTraffic: boolean = false) {
     super(provider)
     this.logTraffic = logTraffic
   }
 
-  disconnect (): boolean {
-    return false
-  }
-
-  supportsSubscriptions (): boolean {
-    return false
-  }
-
-  send (payload: JsonRpcPayload, callback: SendCallback): void {
+  async send (method: string, params: any[]): Promise<any> {
     this.requestsCount++
-    const currentCount = this.methodsCount.get(payload.method) ?? 0
-    this.methodsCount.set(payload.method, currentCount + 1)
-    let wrappedCallback: SendCallback = callback
-    if (this.logTraffic) {
-      wrappedCallback = function (error: (Error | null), result?: JsonRpcResponse): void {
-        if (error != null) {
-          console.log(`<<< error: ${error.message ?? 'null error message'}`)
-        }
-        console.log(`<<< result: ${JSON.stringify(result) ?? 'null result'}`)
-        callback(error, result)
-      }
-      console.log(`>>> payload: ${JSON.stringify(payload) ?? 'null result'}`)
-    }
-    this.provider.send(payload, wrappedCallback)
+    const currentCount = this.methodsCount.get(method) ?? 0
+    this.methodsCount.set(method, currentCount + 1)
+    // let wrappedCallback: SendCallback = callback
+    // TODO: reimplement logging
+    // if (this.logTraffic) {
+    //   wrappedCallback = function (error: (Error | null), result?: JsonRpcResponse): void {
+    //     if (error != null) {
+    //       console.log(`<<< error: ${error.message ?? 'null error message'}`)
+    //     }
+    //     console.log(`<<< result: ${JSON.stringify(result) ?? 'null result'}`)
+    //     callback(error, result)
+    //   }
+    //   console.log(`>>> payload: ${JSON.stringify(payload) ?? 'null result'}`)
+    // }
+    return await this.provider.send(method, params)
   }
 
   reset (): void {

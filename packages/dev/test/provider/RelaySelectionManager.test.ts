@@ -1,7 +1,7 @@
 import chaiAsPromised from 'chai-as-promised'
 import sinon, { SinonStub } from 'sinon'
-import { HttpProvider } from 'web3-core'
 import { toBN } from 'web3-utils'
+import { JsonRpcProvider } from '@ethersproject/providers'
 
 import {
   Address,
@@ -80,6 +80,10 @@ contract('RelaySelectionManager', function (accounts) {
     maxPriorityFeePerGas: ''
   }
 
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+
   let stubPingResponse: SinonStub
   describe('#selectNextRelay()', function () {
     let relaySelectionManager: RelaySelectionManager
@@ -90,7 +94,7 @@ contract('RelaySelectionManager', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = await new ContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
+        provider: ethersProvider,
         maxPageSize,
         logger
       }).init()

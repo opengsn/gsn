@@ -1,7 +1,5 @@
-import Web3 from 'web3'
 import { EventEmitter } from 'events'
 import { JsonRpcProvider } from '@ethersproject/providers'
-import { Provider } from '@ethersproject/abstract-provider'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
@@ -55,7 +53,6 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
-import { bridgeProvider } from './WrapContract'
 
 // forwarder requests are signed with expiration time.
 
@@ -567,7 +564,8 @@ export class RelayClient {
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     let configFromServer = {}
-    const chainId = await new Web3(provider as any).eth.getChainId()
+    const network = await provider.getNetwork()
+    const chainId = network.chainId
     const useClientDefaultConfigUrl = config.useClientDefaultConfigUrl ?? defaultGsnConfig.useClientDefaultConfigUrl
     if (useClientDefaultConfigUrl) {
       this.logger.debug(`Reading default client config for chainId ${chainId.toString()}`)

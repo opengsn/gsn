@@ -2,7 +2,7 @@ import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
-
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { KnownRelaysManager, DefaultRelayFilter } from '@opengsn/provider/dist/KnownRelaysManager'
 import {
   ContractInteractor,
@@ -69,6 +69,9 @@ contract('KnownRelaysManager', function (
     workerNotActive
   ]) {
   const pastEventsQueryMaxPageSize = 10
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new JsonRpcProvider(currentProviderHost)
 
   describe('#_fetchRecentlyActiveRelayManagers()', function () {
     let config: GSNConfig
@@ -95,7 +98,7 @@ contract('KnownRelaysManager', function (
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
+        provider: ethersProvider,
         maxPageSize,
         logger,
         deployment: { relayHubAddress: relayHub.address }
@@ -259,12 +262,16 @@ contract('KnownRelaysManager 2', function (accounts) {
   let contractInteractor: ContractInteractor
   let logger: LoggerInterface
 
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+
   before(async function () {
     logger = createClientLogger({ logLevel: 'error' })
     const maxPageSize = Number.MAX_SAFE_INTEGER
     contractInteractor = new ContractInteractor({
       environment: defaultEnvironment,
-      provider: web3.currentProvider as HttpProvider,
+      provider: ethersProvider,
       maxPageSize,
       logger
     })
@@ -304,7 +311,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
+        provider: ethersProvider,
         logger,
         maxPageSize,
         deployment

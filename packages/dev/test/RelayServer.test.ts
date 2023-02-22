@@ -6,6 +6,7 @@ import chai from 'chai'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
+import { JsonRpcProvider, Block } from '@ethersproject/providers'
 
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
@@ -28,8 +29,6 @@ import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts } from './Serve
 import { PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 
-import { BlockTransactionString } from 'web3-eth'
-
 const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 
 const TestRelayHub = artifacts.require('TestRelayHub')
@@ -42,6 +41,10 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   let id: string
   let globalId: string
   let env: ServerTestEnvironment
+
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new JsonRpcProvider(currentProviderHost)
 
   beforeEach(async function () {
     globalId = (await snapshot()).result
@@ -98,7 +101,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     it('should return immediately if shouldn\'t refresh state', async function () {
       await env.newServerInstance({})
       await evmMineMany(1)
-      const latestBlock = (await env.web3.eth.getBlock('latest'))
+      const latestBlock = await ethersProvider.getBlock('latest')
       const serverSpy = sinon.spy(env.relayServer)
       await env.relayServer._worker(latestBlock)
       sinon.assert.callOrder(
@@ -112,7 +115,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     it('should call all maintenance functions to refresh state', async function () {
       await env.newServerInstance({})
       await evmMineMany(env.relayServer.config.refreshStateTimeoutBlocks + 1)
-      const latestBlock = (await env.web3.eth.getBlock('latest'))
+      const latestBlock = await ethersProvider.getBlock('latest')
       const serverSpy = sinon.spy(env.relayServer)
       await env.relayServer._worker(latestBlock)
       sinon.assert.callOrder(
@@ -127,7 +130,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     it('should call all maintenance functions if not ready', async function () {
       await env.newServerInstance({})
       await evmMineMany(1)
-      const latestBlock = (await env.web3.eth.getBlock('latest'))
+      const latestBlock = await ethersProvider.getBlock('latest')
       const serverSpy = sinon.spy(env.relayServer)
       env.relayServer.setReadyState(false)
       await env.relayServer._worker(latestBlock)
@@ -146,7 +149,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     it('should call all maintenance functions on happy flow', async function () {
       await env.newServerInstance()
       await evmMineMany(1)
-      const latestBlock = (await env.web3.eth.getBlock('latest'))
+      const latestBlock = await ethersProvider.getBlock('latest')
       const serverSpy = sinon.spy(env.relayServer)
       const registrationSpy = sinon.spy(env.relayServer.registrationManager)
       const tmSpy = sinon.spy(env.relayServer.transactionManager)
@@ -457,7 +460,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
         beforeEach(async function () {
           // this is a new worker account - create transaction
           await evmMineMany(1)
-          const latestBlock = (await env.web3.eth.getBlock('latest'))
+          const latestBlock = await ethersProvider.getBlock('latest')
           await env.relayServer._worker(latestBlock)
           const signer = env.relayServer.workerAddress
           await env.relayServer.transactionManager.sendTransaction({
@@ -1152,17 +1155,17 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
   describe('server keepalive re-registration', function () {
     const refreshStateTimeoutBlocks = 1
     let relayServer: RelayServer
-    let latestBlock: BlockTransactionString
+    let latestBlock: Block
     let receipts: string[]
 
     async function checkRegistration (shouldRegister: boolean): Promise<void> {
-      latestBlock = await env.web3.eth.getBlock('latest')
+      latestBlock = await ethersProvider.getBlock('latest')
       receipts = await relayServer._worker(latestBlock)
       expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any,
         shouldRegister)
       if (shouldRegister) {
         await assertRelayAdded(receipts, relayServer, false)
-        latestBlock = await env.web3.eth.getBlock('latest')
+        latestBlock = await ethersProvider.getBlock('latest')
         receipts = await relayServer._worker(latestBlock)
         expect(relayServer.registrationManager.handlePastEvents).to.have.been.calledWith(sinon.match.any, sinon.match.any, sinon.match.any, sinon.match.any,
           false)
@@ -1210,7 +1213,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
   describe('listener task', function () {
     let relayServer: RelayServer
-    let origWorker: (block: BlockTransactionString) => Promise<PrefixedHexString[]>
+    let origWorker: (block: Block) => Promise<PrefixedHexString[]>
     let started: boolean
     beforeEach(function () {
       relayServer = env.relayServer
@@ -1284,7 +1287,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
       const req = await env.createRelayHttpRequest({}, { paymasterAddress: rejectingPaymaster.address })
       await env.relayServer.createRelayTransaction(req)
       // await relayTransaction(relayTransactionParams2, options2, { paymaster: rejectingPaymaster.address }, false)
-      const currentBlock = await env.web3.eth.getBlock('latest')
+      const currentBlock = await ethersProvider.getBlock('latest')
       await server._worker(currentBlock)
       assert.isTrue(server.alerted, 'server not alerted')
       assert.equal(server.alertedByTransactionBlockTimestamp, currentBlock.timestamp, 'server alerted block incorrect')
@@ -1303,11 +1306,11 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
     it('should exit alerted state after the configured blocks delay', async function () {
       await increaseTime(newServer.config.alertedDelaySeconds - 1)
-      let latestBlock = await env.web3.eth.getBlock('latest')
+      let latestBlock = await ethersProvider.getBlock('latest')
       await newServer._worker(latestBlock)
       assert.isTrue(newServer.alerted, 'server not alerted')
       await evmMineMany(2)
-      latestBlock = await env.web3.eth.getBlock('latest')
+      latestBlock = await ethersProvider.getBlock('latest')
       await newServer._worker(latestBlock)
       assert.isFalse(newServer.alerted, 'server alerted')
     })

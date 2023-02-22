@@ -4,6 +4,7 @@ import { JsonFragment, ParamType } from '@ethersproject/abi'
 import { JsonRpcProvider } from '@ethersproject/providers'
 import { toBN } from './web3js/Web3JSUtils'
 
+// eslint-disable-next-line @typescript-eslint/array-type
 function getComponent (key: string, components: ReadonlyArray<ParamType>): JsonFragment | undefined {
   // @ts-ignore
   const component = components[key]
@@ -41,6 +42,7 @@ function retypeItem (abiOutput: Partial<ParamType>, ret: any): any {
 }
 
 // restore TF type: uint are returned as string in web3, and as BN in TF.
+// eslint-disable-next-line @typescript-eslint/array-type
 function retype (outputs?: ReadonlyArray<JsonFragment>, ret?: any): any {
   if (outputs?.length === 1) {
     return retypeItem(outputs[0], ret)
@@ -60,7 +62,7 @@ export class Contract<T> {
   constructor (readonly contractName: string, readonly abi: JsonFragment[]) {
   }
 
-  createContract (address: string): any {
+  createContract (address: string): EthersContract {
     const ethersContract = new EthersContract(address, this.abi)
     return ethersContract.connect(this.provider)
   }
@@ -89,17 +91,20 @@ export class Contract<T> {
       const isViewFunction = m.stateMutability === 'view' || m.stateMutability === 'pure'
       obj[methodName] = async function () {
         let args = Array.from(arguments)
-        let options
+        let options = {}
         if (args.length === nArgs + 1 && typeof args[args.length - 1] === 'object') {
           options = args[args.length - 1]
           args = args.slice(0, args.length - 1)
         }
 
-        const methodCall = contract.methods[methodName].apply(contract.methods, args)
+        // TODO: this substitution seems redundant - try removing it!
+        let methodCall: any
         if (!isViewFunction) {
-          return methodCall.send(options)
+          methodCall = contract.functions[methodName]
+          return methodCall(...args, options)
         } else {
-          return methodCall.call(options)
+          methodCall = contract.callStatic[methodName]
+          return methodCall(...args, options)
             .then((res: any) => {
               return retype(m.outputs, res)
             })
@@ -117,7 +122,6 @@ export class Contract<T> {
 
   setProvider (provider: JsonRpcProvider, _: unknown): void {
     this.provider = provider
-    // this.web3 = new Web3(provider as any)
   }
 }
 

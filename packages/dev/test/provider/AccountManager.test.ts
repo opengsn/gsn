@@ -1,9 +1,9 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { SignTypedDataVersion, recoverTypedSignature } from '@metamask/eth-sig-util'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
-import { HttpProvider } from 'web3-core'
 import { constants } from '@openzeppelin/test-helpers'
 
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
@@ -21,8 +21,13 @@ contract('AccountManager', function (accounts) {
   const privateKey = '0xd353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c'
   const privateKeyAllZero = '0x0000000000000000000000000000000000000000000000000000000000000000'
   let accountManager: AccountManager
+  let ethersProvider: JsonRpcProvider
+
   before(function () {
-    accountManager = new AccountManager(web3.currentProvider as HttpProvider, hardhatNodeChainId, config)
+    // @ts-ignore
+    const currentProviderHost = web3.currentProvider.host
+    ethersProvider = new JsonRpcProvider(currentProviderHost)
+    accountManager = new AccountManager(ethersProvider, hardhatNodeChainId, config)
     sinon.spy(accountManager)
   })
   const config = configureGSN({
@@ -51,7 +56,7 @@ contract('AccountManager', function (accounts) {
   })
 
   describe('#newAccount()', function () {
-    const accountManager = new AccountManager(web3.currentProvider as HttpProvider, hardhatNodeChainId, config)
+    const accountManager = new AccountManager(ethersProvider, hardhatNodeChainId, config)
 
     it('should create a new keypair, return it and save it internally', function () {
       const keypair = accountManager.newAccount()

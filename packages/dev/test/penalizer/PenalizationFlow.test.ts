@@ -1,6 +1,7 @@
 import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { Transaction } from '@ethereumjs/tx'
 import { ether } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
@@ -25,6 +26,9 @@ contract('PenalizationFlow', function (accounts) {
   let relayClient: RelayClient
 
   before(async function () {
+    // @ts-ignore
+    const currentProviderHost = web3.currentProvider.host
+    const ethersProvider = new JsonRpcProvider(currentProviderHost)
     const currentProvider = web3.currentProvider as HttpProvider
     env = new ServerTestEnvironment(currentProvider, accounts)
     await env.init()
@@ -94,7 +98,7 @@ contract('PenalizationFlow', function (accounts) {
       httpClient
     }
 
-    relayClient = new RelayClient({ provider: currentProvider, config, overrideDependencies })
+    relayClient = new RelayClient({ provider: ethersProvider, config, overrideDependencies })
     await relayClient.init()
     const { maxFeePerGas, maxPriorityFeePerGas } = await relayClient.calculateGasFees()
     gsnTransactionDetails = {

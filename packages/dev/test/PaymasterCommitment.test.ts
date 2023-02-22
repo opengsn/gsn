@@ -1,7 +1,7 @@
 /* eslint-disable no-global-assign */
 
 import BN from 'bn.js'
-import { HttpProvider } from 'web3-core'
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
 
@@ -73,10 +73,13 @@ async function makeRequest (
   const deployment: GSNContractsDeployment = {
     relayHubAddress: relayHubInstance.address
   }
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new JsonRpcProvider(currentProviderHost)
   const contractInteractor = new ContractInteractor({
     domainSeparatorName: defaultGsnConfig.domainSeparatorName,
     environment: defaultEnvironment,
-    provider: web3.eth.currentProvider as HttpProvider,
+    provider,
     logger: createServerLogger('error', '', ''),
     deployment,
     maxPageSize: Number.MAX_SAFE_INTEGER
@@ -88,7 +91,7 @@ async function makeRequest (
     })
 
   const sig = await getEip712Signature(
-    web3,
+    provider,
     new TypedRequestData(
       defaultGsnConfig.domainSeparatorName,
       chainId,

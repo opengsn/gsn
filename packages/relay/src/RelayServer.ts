@@ -48,8 +48,6 @@ import { ServerAction, ShortBlockInfo } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 
-import { BlockTransactionString } from 'web3-eth'
-
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
  * the 63/64th rule is applied to gas limit.
