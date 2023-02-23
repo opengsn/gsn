@@ -1,3 +1,5 @@
+import { JsonRpcProvider } from '@ethersproject/providers'
+
 import { RelayProvider, GSNConfig, defaultGsnConfig } from '@opengsn/provider'
 import {
   Address,
@@ -83,6 +85,10 @@ export async function revert (id: string): Promise<void> {
 }
 
 contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) => {
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new JsonRpcProvider(currentProviderHost)
+
   const tokensPerEther = 2
 
   let paymaster: ProxyDeployingPaymasterInstance
@@ -159,7 +165,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
     }
     proxyAddress = await paymaster.getPayer(relayRequest)
     signature = await getEip712Signature(
-      web3,
+      provider,
       new TypedRequestData(
         defaultGsnConfig.domainSeparatorName,
         hardhatNodeChainId,
@@ -192,7 +198,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
         const relayRequestX = cloneRelayRequest(relayRequest)
         relayRequestX.request.value = 1e18.toString()
         const signatureX = await getEip712Signature(
-          web3,
+          provider,
           new TypedRequestData(
             defaultGsnConfig.domainSeparatorName,
             hardhatNodeChainId,
@@ -225,7 +231,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
         it('should reject if incorrect signature', async () => {
           await paymaster.setRelayHub(relayHub.address)
           const wrongSignature = await getEip712Signature(
-            web3,
+            provider,
             new TypedRequestData(
               defaultGsnConfig.domainSeparatorName,
               222,
@@ -415,7 +421,7 @@ contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) 
       }
       encodedCall = counter.contract.methods.increment().encodeABI()
       relayProvider = await RelayProvider.newProvider({
-        provider: web3.currentProvider as HttpProvider,
+        provider,
         overrideDependencies: {
           asyncPaymasterData: async () => {
             return paymasterData

@@ -1,4 +1,5 @@
 import Web3 from 'web3'
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { PrefixedHexString, fromRpcSig, bufferToHex, keccakFromString } from 'ethereumjs-util'
 import { getEip712Signature, TruffleContract, Address, IntString } from '@opengsn/common'
 import { TypedMessage } from '@metamask/eth-sig-util'
@@ -144,8 +145,11 @@ export async function signAndEncodeDaiPermit (
     domainSeparator,
     permit
   )
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new JsonRpcProvider(currentProviderHost)
   const signature = await getEip712Signature(
-    web3,
+    provider,
     dataToSign
   )
   const { r, s, v } = fromRpcSig(signature)
@@ -194,8 +198,11 @@ export async function signAndEncodeEIP2612Permit (
     permit,
     domainType
   )
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new JsonRpcProvider(currentProviderHost)
   const signature = await getEip712Signature(
-    web3,
+    provider,
     dataToSign
   )
   const { r, s, v } = fromRpcSig(signature)

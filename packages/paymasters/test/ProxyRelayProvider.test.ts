@@ -1,3 +1,4 @@
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { AccountKeypair } from '@opengsn/provider/dist/AccountManager'
 import { Address } from '@opengsn/common'
@@ -22,6 +23,10 @@ const ProxyFactory = artifacts.require('ProxyFactory')
 const ProxyDeployingPaymaster = artifacts.require('ProxyDeployingPaymaster')
 
 contract('ProxyRelayProvider', function () {
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new JsonRpcProvider(currentProviderHost)
+
   let token: TestTokenInstance
   let proxyFactory: ProxyFactoryInstance
   let paymaster: ProxyDeployingPaymasterInstance
@@ -65,7 +70,7 @@ contract('ProxyRelayProvider', function () {
     proxyRelayProvider = await ProxyRelayProvider.newProxyRelayProvider(
       proxyFactory.address,
       {
-        provider: web3.currentProvider as HttpProvider,
+        provider,
         config: gsnConfig,
         overrideDependencies: {
           asyncPaymasterData: async () => {

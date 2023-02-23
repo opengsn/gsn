@@ -1,3 +1,4 @@
+import { JsonRpcProvider } from '@ethersproject/providers'
 import {
   createHashcashAsyncApproval, calculateHashcashApproval, calculateHashcash
 } from '../src/HashCashApproval'
@@ -16,6 +17,10 @@ const SampleRecipient = artifacts.require('SampleRecipient')
 const IRelayHub = artifacts.require('IRelayHub')
 
 contract('HashcashPaymaster', ([from]) => {
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new JsonRpcProvider(currentProviderHost)
+
   let pm: HashcashPaymasterInstance
   let s: SampleRecipientInstance
   let gsnConfig: Partial<GSNConfig>
@@ -59,7 +64,7 @@ contract('HashcashPaymaster', ([from]) => {
 
   it('should fail to send without approvalData', async () => {
     const input: GSNUnresolvedConstructorInput = {
-      provider: web3.currentProvider as HttpProvider,
+      provider,
       config: gsnConfig
     }
     const p = RelayProvider.newProvider(input)
@@ -71,7 +76,7 @@ contract('HashcashPaymaster', ([from]) => {
 
   it('should fail with no wrong hash', async () => {
     const input: GSNUnresolvedConstructorInput = {
-      provider: web3.currentProvider as HttpProvider,
+      provider,
       config: gsnConfig,
       overrideDependencies:
         {
@@ -88,7 +93,7 @@ contract('HashcashPaymaster', ([from]) => {
 
   it('should fail low difficulty', async () => {
     const input: GSNUnresolvedConstructorInput = {
-      provider: web3.currentProvider as HttpProvider,
+      provider,
       config: gsnConfig,
       overrideDependencies:
         {
@@ -107,7 +112,7 @@ contract('HashcashPaymaster', ([from]) => {
     this.timeout(60000)
 
     const input: GSNUnresolvedConstructorInput = {
-      provider: web3.currentProvider as HttpProvider,
+      provider,
       config: gsnConfig,
       overrideDependencies:
         {
@@ -141,7 +146,7 @@ contract('HashcashPaymaster', ([from]) => {
     const approval = await calculateHashcashApproval(web3, from, s.address, forwarderAddress ?? '', pm.address)
     console.log('approval=', approval)
     const input: GSNUnresolvedConstructorInput = {
-      provider: web3.currentProvider as HttpProvider,
+      provider,
       config: gsnConfig,
       overrideDependencies: {
         asyncApprovalData: async (req: RelayRequest) => {
@@ -164,7 +169,7 @@ contract('HashcashPaymaster', ([from]) => {
     let saveret: string
 
     const input: GSNUnresolvedConstructorInput = {
-      provider: web3.currentProvider as HttpProvider,
+      provider,
       config: gsnConfig,
       overrideDependencies:
         {
@@ -181,7 +186,7 @@ contract('HashcashPaymaster', ([from]) => {
     await s.something()
 
     const input1: GSNUnresolvedConstructorInput = {
-      provider: web3.currentProvider as HttpProvider,
+      provider,
       config: gsnConfig,
       overrideDependencies:
         {

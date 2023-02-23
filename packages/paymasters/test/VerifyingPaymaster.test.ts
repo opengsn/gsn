@@ -1,3 +1,4 @@
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { SampleRecipientInstance, VerifyingPaymasterInstance } from '../types/truffle-contracts'
 
 import { GSNUnresolvedConstructorInput, RelayProvider, GSNConfig } from '@opengsn/provider'
@@ -15,6 +16,10 @@ const VerifyingPaymaster = artifacts.require('VerifyingPaymaster')
 const SampleRecipient = artifacts.require('SampleRecipient')
 
 contract('VerifyingPaymaster', ([from]) => {
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new JsonRpcProvider(currentProviderHost)
+
   describe('#getRequestHash', () => {
     let req: RelayRequest
     let pm: VerifyingPaymasterInstance
@@ -104,7 +109,7 @@ contract('VerifyingPaymaster', ([from]) => {
         paymasterAddress: pm.address
       }
       const input: GSNUnresolvedConstructorInput = {
-        provider: web3.currentProvider as HttpProvider,
+        provider,
         config: gsnConfig,
         overrideDependencies: {
           asyncApprovalData: mockGetApprovalData
