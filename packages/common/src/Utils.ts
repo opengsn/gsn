@@ -29,9 +29,11 @@ import {
 import { Address, EIP1559Fees, RelaySelectionResult } from './types/Aliases'
 
 import { MessageTypes } from './EIP712/TypedRequestData'
-import { fromWei, isBigNumber, toBN, toWei } from './web3js/Web3JSUtils'
+import { fromWei, isBigNumber, toBN, toHex, toWei } from './web3js/Web3JSUtils'
 import { ethers } from 'ethers'
 import { keccak256 } from 'ethers/lib/utils'
+import { RelayRequest } from './EIP712/RelayRequest'
+import { PartialRelayInfo } from './types/RelayInfo'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {

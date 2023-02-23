@@ -17,7 +17,8 @@ import {
   RelayInfoUrl,
   WaitForSuccessResults,
   constants,
-  defaultEnvironment
+  defaultEnvironment,
+  toHex
 } from '@opengsn/common'
 
 import { RelaySelectionManager } from '@opengsn/provider/dist/RelaySelectionManager'
