@@ -22,6 +22,7 @@ import { RelayedTransactionValidator } from './RelayedTransactionValidator'
 export type { GSNConfig } from '@opengsn/common'
 
 const GAS_PRICE_PERCENT = 20
+const GAS_PRICE_SLACK_PERCENT = 80
 const MAX_RELAY_NONCE_GAP = 3
 const DEFAULT_RELAY_TIMEOUT_GRACE_SEC = 1800
 
@@ -36,6 +37,7 @@ export const defaultGsnConfig: GSNConfig = {
   pastEventsQueryMaxPageSize: Number.MAX_SAFE_INTEGER,
   pastEventsQueryMaxPageCount: 20,
   gasPriceFactorPercent: GAS_PRICE_PERCENT,
+  gasPriceSlackPercent: GAS_PRICE_SLACK_PERCENT,
   getGasFeesBlocks: 5,
   getGasFeesPercentile: 50,
   gasPriceOracleUrl: '',

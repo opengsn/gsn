@@ -9,6 +9,7 @@ import {
   ApprovalDataCallback,
   AuditResponse,
   ContractInteractor,
+  EIP1559Fees,
   GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
@@ -63,20 +64,20 @@ export const EmptyDataCallback: ApprovalDataCallback & PaymasterDataCallback = a
   return '0x'
 }
 
+/**
+ * Warning: if providing custom 'PingFilter' it is important to call this one as well.
+ * The MaxMaxFeePerGas parameter only exists on the Relay Server for the sanity check (i.e. not paying 1 ETH per gas).
+ * We do not adjust a request for the MaxMaxFeePerGas, proposing gas prices above it is a sure misconfiguration.
+ */
 export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetails) => {
   if (
-    parseInt(pingResponse.minMaxPriorityFeePerGas) > parseInt(gsnTransactionDetails.maxPriorityFeePerGas)
-  ) {
-    throw new Error(`Proposed priority gas fee: ${parseInt(gsnTransactionDetails.maxPriorityFeePerGas)}; relay's minMaxPriorityFeePerGas: ${pingResponse.minMaxPriorityFeePerGas}`)
+    parseInt(pingResponse.minMaxFeePerGas) >= parseInt(pingResponse.maxMaxFeePerGas)) {
+    throw new Error(`Misconfigured relay: relay's configured maxMaxFeePerGas: ${pingResponse.maxMaxFeePerGas} relay's minMaxFeePerGas: ${pingResponse.minMaxFeePerGas}`)
   }
   if (parseInt(gsnTransactionDetails.maxFeePerGas) > parseInt(pingResponse.maxMaxFeePerGas)) {
     throw new Error(`Proposed fee per gas: ${parseInt(gsnTransactionDetails.maxFeePerGas)}; relay's configured maxMaxFeePerGas: ${pingResponse.maxMaxFeePerGas}`)
   }
-  if (parseInt(gsnTransactionDetails.maxFeePerGas) < parseInt(pingResponse.minMaxFeePerGas)) {
-    throw new Error(`Proposed fee per gas: ${parseInt(gsnTransactionDetails.maxFeePerGas)}; relay's minMaxFeePerGas: ${pingResponse.minMaxFeePerGas}`)
-  }
 }
-
 export interface GSNUnresolvedConstructorInput {
   provider: JsonRpcProvider
   config: Partial<GSNConfig>
@@ -262,7 +263,7 @@ export class RelayClient {
     const relayingErrors = new Map<string, Error>()
     const auditPromises: Array<Promise<AuditResponse>> = []
 
-    let relayRequest: RelayRequest
+    let relayRequest: RelayRequest | undefined
     try {
       relayRequest = await this._prepareRelayRequest(gsnTransactionDetails)
     } catch (error: any) {
@@ -298,8 +299,14 @@ export class RelayClient {
     while (true) {
       let relayingAttempt: RelayingAttempt | undefined
       const relayHub = this.dependencies.contractInteractor.getDeployment().relayHubAddress ?? ''
-      const activeRelay = await relaySelectionManager.selectNextRelay(relayHub, paymaster)
+      const relaySelectionResult = await relaySelectionManager.selectNextRelay(relayHub, paymaster)
+      const activeRelay = relaySelectionResult?.relayInfo as RelayInfo // safe to cast as R.S.M. looks up missing details internally
       if (activeRelay != null) {
+        if (relaySelectionResult != null) {
+          // adjust relay request fees for the selected relay if necessary
+          relayRequest.relayData.maxFeePerGas = toHex(relaySelectionResult.updatedGasFees.maxFeePerGas)
+          relayRequest.relayData.maxPriorityFeePerGas = toHex(relaySelectionResult.updatedGasFees.maxPriorityFeePerGas)
+        }
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
         relayingAttempt = await this._attemptRelay(activeRelay, relayRequest)
           .catch(error => ({ error }))
@@ -330,7 +337,7 @@ export class RelayClient {
     this.logger.warn(msg)
   }
 
-  async calculateGasFees (): Promise<{ maxFeePerGas: PrefixedHexString, maxPriorityFeePerGas: PrefixedHexString }> {
+  async calculateGasFees (): Promise<EIP1559Fees> {
     const pct = this.config.gasPriceFactorPercent
     const gasFees = await this.dependencies.contractInteractor.getGasFees(this.config.getGasFeesBlocks, this.config.getGasFeesPercentile)
     let priorityFee = Math.round(parseInt(gasFees.priorityFeePerGas) * (pct + 100) / 100)

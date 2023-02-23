@@ -45,20 +45,16 @@ export function notNull<TValue> (value: TValue | null | undefined): value is TVa
  */
 export type NpmLogLevel = 'error' | 'warn' | 'info' | 'debug'
 
-// export type Web3Provider =
-//   | HttpProvider
-//   | IpcProvider
-//   | WebsocketProvider
+export interface RelaySelectionResult {
+  relayInfo: PartialRelayInfo
+  maxDeltaPercent: number
+  updatedGasFees: EIP1559Fees
+}
 
-// /**
-//  * The only thing that is guaranteed a Web3 provider or a similar object is a {@link send} method.
-//  */
-// export interface Web3ProviderBaseInterface {
-//   send: (
-//     payload: JsonRpcPayload,
-//     callback: (error: Error | null, result?: JsonRpcResponse) => void
-//   ) => void
-// }
+export interface EIP1559Fees {
+  maxFeePerGas: PrefixedHexString
+  maxPriorityFeePerGas: PrefixedHexString
+}
 
 export interface ObjectMap<T> {
   [key: string]: T
