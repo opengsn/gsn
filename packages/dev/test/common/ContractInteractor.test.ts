@@ -680,8 +680,8 @@ contract.only('ContractInteractor', function (accounts) {
         const ret = await contractInteractor.getPastEventsForHub([], { fromBlock: 1, toBlock: 300 })
 
         assert.equal(ret.length, 300)
-        assert.equal(ret[0].event, 'event1-1-75')
-        assert.equal(ret[299].event, 'event300-226-300')
+        assert.equal(ret[0].name, 'event1-1-75')
+        assert.equal(ret[299].name, 'event300-226-300')
       })
     })
   })

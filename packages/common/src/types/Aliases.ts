@@ -1,4 +1,7 @@
 import { PrefixedHexString } from 'ethereumjs-util'
+import { Log } from '@ethersproject/providers'
+import { LogDescription } from '@ethersproject/abi'
+
 import { PingResponse } from '../PingResponse'
 import { RelayRequest } from '../EIP712/RelayRequest'
 import { GsnTransactionDetails } from './GsnTransactionDetails'
@@ -35,6 +38,8 @@ export type SignTypedDataCallback = (signedData: TypedMessage<any>, from: Addres
 export type CalldataGasEstimation = (calldata: PrefixedHexString, environment: Environment, calldataEstimationSlackFactor: number, provider: JsonRpcProvider) => Promise<number>
 
 export type RelayFilter = (registrarRelayInfo: RegistrarRelayInfo) => boolean
+
+export type EventData = Log & LogDescription
 
 export function notNull<TValue> (value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined

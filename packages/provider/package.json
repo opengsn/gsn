@@ -19,8 +19,10 @@
   },
   "dependencies": {
     "@ethereumjs/tx": "^3.2.0",
+    "@ethersproject/abi": "^5.7.0",
     "@ethersproject/abstract-provider": "^5.7.0",
     "@ethersproject/abstract-signer": "^5.7.0",
+    "@ethersproject/bignumber": "^5.7.0",
     "@ethersproject/experimental": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "@metamask/eth-sig-util": "^4.0.1",
@@ -29,10 +31,8 @@
     "ethereumjs-util": "^7.1.0",
     "ethereumjs-wallet": "^1.0.2",
     "ethers": "^5.7.2",
-    "web3": "^1.7.4",
     "web3-core": "^1.7.4",
     "web3-core-helpers": "^1.7.4",
-    "web3-eth-contract": "^1.7.4",
     "web3-utils": "^1.7.4"
   }
 }

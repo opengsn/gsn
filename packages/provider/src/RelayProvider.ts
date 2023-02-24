@@ -4,11 +4,11 @@ import abiDecoder from 'abi-decoder'
 
 import { BigNumber } from '@ethersproject/bignumber'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { EventData } from 'web3-eth-contract'
 import { TypedMessage } from '@metamask/eth-sig-util'
 
 import {
   Address,
+  EventData,
   GsnTransactionDetails,
   JsonRpcPayload,
   JsonRpcResponse,
@@ -564,7 +564,7 @@ export class RelayProvider {
    * If there is more than one successful {@link TransactionRelayed} throws as this is impossible for current Forwarder
    */
   _pickSingleEvent (events: EventData[], relayRequestID: string): EventData {
-    const successes = events.filter(it => it.event === TransactionRelayed)
+    const successes = events.filter(it => it.name === TransactionRelayed)
     if (successes.length === 0) {
       const sorted = events.sort((a: EventData, b: EventData) => b.blockNumber - a.blockNumber)
       return sorted[0]

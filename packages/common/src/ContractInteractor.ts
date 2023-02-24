@@ -1,4 +1,5 @@
 import BN from 'bn.js'
+import { Contract as EthersContract } from 'ethers'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { TxOptions } from '@ethereumjs/tx'
 
@@ -40,7 +41,15 @@ import {
   IStakeManagerInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
-import { Address, CalldataGasEstimation, EventName, IntString, ObjectMap, SemVerString } from './types/Aliases'
+import {
+  Address,
+  CalldataGasEstimation,
+  EventData,
+  EventName,
+  IntString,
+  ObjectMap,
+  SemVerString
+} from './types/Aliases'
 import { GsnTransactionDetails } from './types/GsnTransactionDetails'
 
 import { Contract, TruffleContract } from './LightTruffleContract'
@@ -67,9 +76,6 @@ import { isAddress } from 'ethers/lib/utils'
 import { Block, BlockTag, JsonRpcProvider, TransactionRequest, TransactionResponse } from '@ethersproject/providers'
 import { AbiCoder, Interface } from '@ethersproject/abi'
 import TransactionDetails = Truffle.TransactionDetails
-
-// TODO: replace !!!
-type EventData = any
 
 export type EventFilterBlocks = EventFilter & { fromBlock?: BlockTag, toBlock?: BlockTag }
 
@@ -149,7 +155,6 @@ export class ContractInteractor {
   private erc2771RecipientInstance?: IERC2771RecipientInstance
   relayRegistrar!: IRelayRegistrarInstance
   erc20Token!: IERC20TokenInstance
-  // private readonly relayCallMethod: any
 
   // readonly web3: Web3
 
@@ -240,8 +245,6 @@ export class ContractInteractor {
     this.IERC2771Recipient.setProvider(this.provider, undefined)
     this.IRelayRegistrar.setProvider(this.provider, undefined)
     this.IERC20Token.setProvider(this.provider, undefined)
-
-    // this.relayCallMethod = this.IRelayHubContract.createContract(constants.ZERO_ADDRESS).methods.relayCall
   }
 
   async init (): Promise<ContractInteractor> {
@@ -276,8 +279,7 @@ export class ContractInteractor {
   async _initializeNetworkParams (): Promise<void> {
     this.network = await this.provider.getNetwork()
     this.chainId = parseInt(this.network.chainId.toString())
-    const networkIdCallResult = await this.provider.send('net_version', [])
-    this.networkId = networkIdCallResult[0]
+    this.networkId = await this.provider.send('net_version', [])
     if (this.networkId == null) {
       throw new Error('Failed to query "net_version" from the RPC endpoint')
     }
@@ -668,7 +670,6 @@ export class ContractInteractor {
   encodeABI (
     _: RelayCallABI
   ): PrefixedHexString {
-    // return this.relayCallMethod(_.domainSeparatorName, _.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData).encodeABI()
     const iface = new Interface(this.relayHubInstance.contract.interface.fragments)
     return iface.encodeFunctionData('relayCall', [_.domainSeparatorName, _.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData])
   }
@@ -740,7 +741,7 @@ export class ContractInteractor {
    * Splits requested range into pages to avoid fetching too many blocks at once.
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
-  async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
+  async _getPastEventsPaginated (contract: EthersContract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
@@ -821,7 +822,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return relayEventParts.flat()
   }
 
-  async _getPastEvents (contract: any, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
+  async _getPastEvents (contract: EthersContract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
     const topics: Array<string[] | string | null> = []
     const eventTopic = event2topic(contract, names)
     topics.push(eventTopic)
@@ -837,8 +838,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
       address: contract.address,
       topics: topics
     })
-    return logs
-    // return contract.getPastEvents('allEvents', Object.assign({}, options, { topics }))
+    return logs.map(it => {return Object.assign(it, contract.interface.parseLog(it))})
   }
 
   async getBalance (address: Address, defaultBlock: BlockTag = 'latest'): Promise<string> {
@@ -908,10 +908,13 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     try {
       const paymasterContract = await this._createPaymaster(paymaster)
       return await paymasterContract.getGasAndDataLimits()
-    } catch (e) {
+    } catch (e: any) {
       const error = e as Error
       let message = `unknown paymaster error: ${error.message}`
-      if (error.message.includes('Returned values aren\'t valid, did it run Out of Gas?')) {
+      if (
+        e?.code === 'CALL_EXCEPTION' || // ethers.js does not differentiate revert reasons
+        error.message.includes('Returned values aren\'t valid, did it run Out of Gas?')
+      ) {
         message = `not a valid paymaster contract: ${paymaster}`
       } else if (error.message.includes('no code at address')) {
         message = `'non-existent paymaster contract: ${paymaster}`
@@ -1013,7 +1016,9 @@ calculateTransactionMaxPossibleGas: result: ${result}
       await this.relayHubInstance.calculateCharge(maxPossibleGasFactorReserve, relayTransactionRequest.relayRequest.relayData,
         {
           from: viewCallFrom,
-          gas: viewCallGasLimit,
+          // TODO: normalize types for 'Contract Instance' to accept Ethers.js options
+          // @ts-ignore
+          gasLimit: viewCallGasLimit,
           gasPrice: relayTransactionRequest.relayRequest.relayData.maxFeePerGas
         })
 
@@ -1194,46 +1199,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return this.deployment
   }
 
-  async withdrawHubBalanceEstimateGas (amount: BN, destination: Address, managerAddress: Address, gasPrice: IntString): Promise<{
-    gasCost: BN
-    gasLimit: number
-    method: any
-  }> {
-    const hub = this.relayHubInstance
-    const method = hub.contract.methods.withdraw(destination, amount.toString())
-    const withdrawTxGasLimit = await method.estimateGas(
-      {
-        from: managerAddress
-      })
-    const gasCost = toBN(withdrawTxGasLimit).mul(toBN(gasPrice))
-    return {
-      gasLimit: parseInt(withdrawTxGasLimit),
-      gasCost,
-      method
-    }
-  }
-
-  // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
-  async getRegisterRelayMethod (relayHub: Address, url: string): Promise<any> {
-    const registrar = this.relayRegistrar
-    return registrar?.contract.methods.registerRelayServer(relayHub, splitRelayUrlForRegistrar(url))
-  }
-
-  async getAuthorizeHubByManagerMethod (): Promise<any> {
-    const hub = this.relayHubInstance.address
-    return this.stakeManagerInstance.contract.methods.authorizeHubByManager(hub)
-  }
-
-  async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
-    const hub = this.relayHubInstance
-    return hub.contract.methods.addRelayWorkers(workers)
-  }
-
-  async getSetRelayManagerMethod (owner: Address): Promise<any> {
-    const sm = this.stakeManagerInstance
-    return sm.contract.methods.setRelayManagerOwner(owner)
-  }
-
   /**
    * Broadcast the "raw" signed hex-encoded Ethereum transaction.
    * This method sends the RPC call directly
@@ -1332,7 +1297,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {
     const topics = address2topic(managerAddress)
     const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])
-    return workersAddedEvents.map(it => it.returnValues.newRelayWorkers).flat()
+    return workersAddedEvents.map(it => it.args.newRelayWorkers).flat()
   }
 
   /**

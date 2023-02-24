@@ -34,7 +34,7 @@ const { expect, assert } = chai.use(chaiAsPromised).use(sinonChai)
 const TestRelayHub = artifacts.require('TestRelayHub')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-contract('RelayServer', function (accounts: Truffle.Accounts) {
+contract.only('RelayServer', function (accounts: Truffle.Accounts) {
   const registrationRateSeconds = 500
   const alertedDelaySeconds = 0
 

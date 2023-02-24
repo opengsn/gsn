@@ -1,5 +1,4 @@
 import chalk from 'chalk'
-import { EventData } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { toBN, toHex } from 'web3-utils'
 import { PrefixedHexString, BN } from 'ethereumjs-util'
@@ -12,12 +11,14 @@ import {
   AmountRequired,
   ContractInteractor,
   Environment,
+  EventData,
   IntString,
   LoggerInterface,
   ObjectMap,
   PingResponse,
   ReadinessInfo,
   RelayRequest,
+  RelayRequestLimits,
   RelayTransactionRequest,
   StatsResponse,
   TransactionRejectedByPaymaster,
@@ -28,7 +29,7 @@ import {
   gsnRequiredVersion,
   gsnRuntimeVersion,
   isSameAddress,
-  toNumber, RelayRequestLimits
+  toNumber
 } from '@opengsn/common'
 
 import { GasPriceFetcher } from './GasPriceFetcher'
@@ -47,6 +48,7 @@ import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } 
 import { ServerAction, ShortBlockInfo } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
+import { Web3MethodsBuilder } from './Web3MethodsBuilder'
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -77,6 +79,7 @@ export class RelayServer extends EventEmitter {
   initialized: boolean = false
   shouldRefreshBalances = true
   readonly contractInteractor: ContractInteractor
+  readonly web3MethodsBuilder: Web3MethodsBuilder
   readonly gasPriceFetcher: GasPriceFetcher
   private readonly versionManager: VersionsManager
   config: ServerConfigParams
@@ -107,6 +110,7 @@ export class RelayServer extends EventEmitter {
     this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
+    this.web3MethodsBuilder = dependencies.web3MethodsBuilder
     this.environment = this.contractInteractor.environment
     this.gasPriceFetcher = dependencies.gasPriceFetcher
     this.txStoreManager = dependencies.txStoreManager
@@ -122,6 +126,7 @@ export class RelayServer extends EventEmitter {
     }
     this.registrationManager = new RegistrationManager(
       this.contractInteractor,
+      this.web3MethodsBuilder,
       this.transactionManager,
       this.txStoreManager,
       this,
@@ -360,7 +365,7 @@ export class RelayServer extends EventEmitter {
 
   async validateViewCallSucceeds (req: RelayTransactionRequest, maxAcceptanceBudget: number, maxPossibleGas: number): Promise<void> {
     this.logger.debug(`validateViewCallSucceeds: ${JSON.stringify(arguments)}`)
-    const method = this.relayHubContract.contract.methods.relayCall(
+    const method = this.web3MethodsBuilder.getRelayCallMethod(
       req.metadata.domainSeparatorName,
       maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     let viewRelayCallRet: { paymasterAccepted: boolean, returnValue: string }
@@ -369,15 +374,15 @@ export class RelayServer extends EventEmitter {
         viewRelayCallRet =
           await method.call({
             from: this.workerAddress,
-            maxFeePerGas: req.relayRequest.relayData.maxFeePerGas,
-            maxPriorityFeePerGas: req.relayRequest.relayData.maxPriorityFeePerGas,
+            maxFeePerGas: toHex(req.relayRequest.relayData.maxFeePerGas),
+            maxPriorityFeePerGas: toHex(req.relayRequest.relayData.maxPriorityFeePerGas),
             gasLimit: maxPossibleGas
           }, 'pending')
       } else {
         viewRelayCallRet =
           await method.call({
             from: this.workerAddress,
-            gasPrice: req.relayRequest.relayData.maxFeePerGas,
+            gasPrice: toHex(req.relayRequest.relayData.maxFeePerGas),
             gasLimit: maxPossibleGas
           }, 'pending')
       }
@@ -422,7 +427,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     // Send relayed transaction
     this.logger.debug(`maxPossibleGas is: ${maxPossibleGas}`)
 
-    const method = this.relayHubContract.contract.methods.relayCall(
+    const method = this.web3MethodsBuilder.getRelayCallMethod(
       req.metadata.domainSeparatorName, req.metadata.maxAcceptanceBudget, req.relayRequest, req.metadata.signature, req.metadata.approvalData)
     const details: SendTransactionDetails =
       {
@@ -574,7 +579,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   ): Promise<PrefixedHexString> {
     this.logger.info(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
     // Refill manager eth balance from hub balance
-    const method = this.relayHubContract?.contract.methods.withdraw(this.managerAddress, toHex(managerHubBalance))
+    const method = await this.web3MethodsBuilder.getWithdrawMethod(this.managerAddress, managerHubBalance)
     const details: SendTransactionDetails = {
       signer: this.managerAddress,
       serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
@@ -817,14 +822,14 @@ latestBlock timestamp   | ${latestBlock.timestamp}
 
   async handlePastHubEvents (currentBlock: Block, hubEventsSinceLastScan: EventData[]): Promise<void> {
     for (const event of hubEventsSinceLastScan) {
-      switch (event.event) {
+      switch (event.name) {
         case TransactionRejectedByPaymaster:
           this.logger.debug(`handle TransactionRejectedByPaymaster event: ${JSON.stringify(event)}`)
-          await this._handleTransactionRejectedByPaymasterEvent(event.returnValues.paymaster, event.blockNumber)
+          await this._handleTransactionRejectedByPaymasterEvent(event.args.paymaster, event.blockNumber)
           break
         case TransactionRelayed:
           this.logger.debug(`handle TransactionRelayed event: ${JSON.stringify(event)}`)
-          await this._handleTransactionRelayedEvent(event.returnValues.paymaster, event.blockNumber)
+          await this._handleTransactionRelayedEvent(event.args.paymaster, event.blockNumber)
           break
       }
     }

@@ -435,7 +435,7 @@ export class CommandsLogic {
     if (tokens.length === 0) {
       throw new Error(`no registered staking tokens on RelayHub ${relayHubAddress}`)
     }
-    return tokens[0].returnValues.token
+    return tokens[0].args.token
   }
 
   async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {

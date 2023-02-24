@@ -21,6 +21,7 @@ import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 
 import { toBN } from 'web3-utils'
+import { Web3MethodsBuilder } from './Web3MethodsBuilder'
 
 export enum LoggingProviderMode {
   NONE,
@@ -320,6 +321,7 @@ export interface ServerDependencies {
   managerKeyManager: KeyManager
   workersKeyManager: KeyManager
   contractInteractor: ContractInteractor
+  web3MethodsBuilder: Web3MethodsBuilder
   gasPriceFetcher: GasPriceFetcher
   txStoreManager: TxStoreManager
   reputationManager?: ReputationManager

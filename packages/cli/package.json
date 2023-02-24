@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@ethereumjs/tx": "^3.2.0",
+    "@ethersproject/providers": "^5.7.2",
     "@opengsn/common": "^3.0.0-beta.3",
     "@opengsn/logger": "^3.0.0-beta.3",
     "@opengsn/provider": "^3.0.0-beta.3",
@@ -52,6 +53,7 @@
     "ow": "^0.28.1",
     "terminal-link": "^2.1.1",
     "web3": "^1.7.3",
+    "web3-core": "^1.7.4",
     "web3-provider-engine": "^16.0.4"
   },
   "devDependencies": {

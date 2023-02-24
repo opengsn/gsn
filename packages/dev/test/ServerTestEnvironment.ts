@@ -39,7 +39,12 @@ import { PrefixedHexString } from 'ethereumjs-util'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
-import { configureServer, ServerConfigParams, serverDefaultConfiguration } from '@opengsn/relay/dist/ServerConfigParams'
+import {
+  configureServer,
+  ServerConfigParams,
+  serverDefaultConfiguration,
+  ServerDependencies
+} from '@opengsn/relay/dist/ServerConfigParams'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 
@@ -55,6 +60,7 @@ import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
+import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -101,6 +107,7 @@ export class ServerTestEnvironment {
    * Note: do not call methods of contract interactor inside Test Environment. It may affect Profiling Test.
    */
   contractInteractor!: ContractInteractor
+  web3MethodsBuilder!: Web3MethodsBuilder
 
   relayClient!: RelayClient
   provider: HttpProvider
@@ -163,6 +170,9 @@ export class ServerTestEnvironment {
         managerStakeTokenAddress: this.testToken.address
       })
     }
+    const resolvedDeployment = this.contractInteractor.getDeployment()
+    this.web3MethodsBuilder = new Web3MethodsBuilder(web3, resolvedDeployment)
+
     const mergedConfig = Object.assign({}, shared, clientConfig)
     this.relayClient = new RelayClient({
       provider: this.ethersProvider,
@@ -238,8 +248,10 @@ export class ServerTestEnvironment {
       const reputationStoreManager = new ReputationStoreManager({ inMemory: true }, logger)
       reputationManager = new ReputationManager(reputationStoreManager, logger, {})
     }
-    const serverDependencies = {
+
+    const serverDependencies: ServerDependencies = {
       contractInteractor: this.contractInteractor,
+      web3MethodsBuilder: this.web3MethodsBuilder,
       gasPriceFetcher,
       logger,
       txStoreManager,

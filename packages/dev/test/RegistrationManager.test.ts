@@ -32,6 +32,7 @@ import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 import { expectEvent } from '@openzeppelin/test-helpers'
+import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
 
 const TestRelayHub = artifacts.require('TestRelayHub')
 const TestToken = artifacts.require('TestToken')
@@ -162,12 +163,16 @@ contract('RegistrationManager', function (accounts) {
       await contractInteractor.init()
       const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 
+      const resolvedDeployment = contractInteractor.getDeployment()
+      const web3MethodsBuilder = new Web3MethodsBuilder(web3, resolvedDeployment)
+
       serverDependencies = {
         logger,
         txStoreManager,
         managerKeyManager,
         workersKeyManager,
         contractInteractor,
+        web3MethodsBuilder,
         gasPriceFetcher
       }
       const transactionManager = new TransactionManager(serverDependencies, configureServer(params))

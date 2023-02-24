@@ -33,6 +33,7 @@ import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManag
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 
 import { ChildProcess } from 'child_process'
+import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
 
 export interface TestEnvironment {
   contractsDeployment: GSNContractsDeployment
@@ -209,6 +210,9 @@ class GsnTestEnvironmentClass {
         deployment: deploymentResult
       })
     await contractInteractor.init()
+    const resolvedDeployment = contractInteractor.getDeployment()
+    const httpProvider = new Web3.providers.HttpProvider(host)
+    const web3MethodsBuilder = new Web3MethodsBuilder(new Web3(httpProvider), resolvedDeployment)
     const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 
     const reputationStoreManager = new ReputationStoreManager({ inMemory: true }, logger)
@@ -217,6 +221,7 @@ class GsnTestEnvironmentClass {
     const relayServerDependencies: ServerDependencies = {
       logger,
       contractInteractor,
+      web3MethodsBuilder,
       gasPriceFetcher,
       txStoreManager,
       managerKeyManager,

@@ -26,7 +26,7 @@ import {
   unpadBuffer
 } from 'ethereumjs-util'
 
-import { Address, EIP1559Fees, RelaySelectionResult } from './types/Aliases'
+import { Address, EIP1559Fees, EventData, RelaySelectionResult } from './types/Aliases'
 
 import { MessageTypes } from './EIP712/TypedRequestData'
 import { fromWei, isBigNumber, toBN, toHex, toWei } from './web3js/Web3JSUtils'
@@ -216,9 +216,6 @@ export function ether (n: string): BN {
 export function randomInRange (min: number, max: number): number {
   return Math.floor(Math.random() * (max - min) + min)
 }
-
-// TODO: replace !!!
-type EventData = any
 
 export function eventsComparator (a: EventData, b: EventData): number {
   if (a.blockNumber === b.blockNumber) {

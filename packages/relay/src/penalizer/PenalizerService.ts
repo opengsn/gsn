@@ -253,12 +253,12 @@ export class PenalizerService {
       const commitments = await this.contractInteractor.getPastEventsForPenalizer([CommitAdded], topics, { fromBlock: 1 })
       const newlyMinedCommitments = commitments
         .filter(it => {
-          return nonMinedCommitHashes.includes(it.returnValues.commitHash)
+          return nonMinedCommitHashes.includes(it.args.commitHash)
         })
       unconfirmedPenalizations.forEach(it => {
-        const commitment = newlyMinedCommitments.find(nmc => nmc.returnValues.commitHash === it.commitHash)
+        const commitment = newlyMinedCommitments.find(nmc => nmc.args.commitHash === it.commitHash)
         if (commitment != null) {
-          it.readyBlockNumber = commitment.returnValues.readyBlockNumber
+          it.readyBlockNumber = commitment.args.readyBlockNumber
         }
       })
     }

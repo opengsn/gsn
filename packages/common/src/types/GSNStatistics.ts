@@ -43,7 +43,7 @@ export interface RelayHubEvents {
 }
 
 export interface StakeMangerEvents {
-  allEvents: EventData[]
+  allEvents: any[]
   stakeAddedEvents: Array<EventTransactionInfo<StakeAddedEventInfo>>
   stakeUnlockedEvents: Array<EventTransactionInfo<StakeUnlockedEventInfo>>
   stakeWithdrawnEvents: Array<EventTransactionInfo<StakeWithdrawnEventInfo>>

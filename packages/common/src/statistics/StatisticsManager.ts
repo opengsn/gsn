@@ -1,5 +1,3 @@
-import { EventData } from 'web3-eth-contract'
-
 import { ContractInteractor } from '../ContractInteractor'
 import { HttpClient } from '../HttpClient'
 import { Address, EventName, ObjectMap, SemVerString } from '../types/Aliases'
@@ -331,7 +329,7 @@ export class StatisticsManager {
     return relayPing
   }
 
-  extractTransactionInfos<T extends GNSContractsEvent> (eventsData: EventData[], eventName: EventName): Array<EventTransactionInfo<T>> {
+  extractTransactionInfos<T extends GNSContractsEvent> (eventsData: any[], eventName: EventName): Array<EventTransactionInfo<T>> {
     return eventsData
       .filter(eventData => eventData.event === eventName)
       .map(

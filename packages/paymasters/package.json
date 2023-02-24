@@ -44,8 +44,6 @@
     "web3-utils": "^1.7.4"
   },
   "devDependencies": {
-    "@ethersproject/abstract-signer": "^5.7.0",
-    "@ethersproject/experimental": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "@opengsn/cli": "^3.0.0-beta.3",
     "@openzeppelin/test-helpers": "^0.5.15",

@@ -32,6 +32,7 @@ import { TransactionDataCache, TX_PAGES_FILENAME, TX_STORE_FILENAME } from './pe
 import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 import { REPUTATION_STORE_FILENAME, ReputationStoreManager } from './ReputationStoreManager'
+import { Web3MethodsBuilder } from './Web3MethodsBuilder'
 
 function error (err: string): never {
   console.error(err)
@@ -151,7 +152,10 @@ async function run (): Promise<void> {
   console.log('Creating managers...\n')
   const managerKeyManager = new KeyManager(1, `${workdir}/manager`)
   const workersKeyManager = new KeyManager(1, `${workdir}/workers/${config.relayHubAddress}`)
-  const txStoreManager = new TxStoreManager({ workdir, autoCompactionInterval: config.dbAutoCompactionInterval }, logger)
+  const txStoreManager = new TxStoreManager({
+    workdir,
+    autoCompactionInterval: config.dbAutoCompactionInterval
+  }, logger)
   console.log(chalk.redBright('Relay worker key manager created. This address is staked and meant only for internal (gsn) usage.' +
     ' Using this address for any other purpose may result in loss of funds.'))
   console.log('Creating interactor...\n')
@@ -169,6 +173,9 @@ async function run (): Promise<void> {
   })
   console.log('Initializing interactor...\n')
   await contractInteractor.init()
+  const resolvedDeployment = contractInteractor.getDeployment()
+  const web3MethodsBuilder = new Web3MethodsBuilder(new Web3(web3provider as any), resolvedDeployment)
+
   console.log('Creating gasPrice fetcher...\n')
   const gasPriceFetcher = new GasPriceFetcher(config.gasPriceOracleUrl, config.gasPriceOraclePath, contractInteractor, logger)
   let reputationManager: ReputationManager | undefined
@@ -185,6 +192,7 @@ async function run (): Promise<void> {
     managerKeyManager,
     workersKeyManager,
     contractInteractor,
+    web3MethodsBuilder,
     gasPriceFetcher
   }
   console.log('Creating Transaction Manager...\n')
