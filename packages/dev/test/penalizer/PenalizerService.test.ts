@@ -1,4 +1,5 @@
 import { HttpProvider } from 'web3-core'
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { Transaction } from '@ethereumjs/tx'
 import { toBN } from 'web3-utils'
 
@@ -31,6 +32,10 @@ contract('PenalizerService', function (accounts) {
       txByNonceService
     }
 
+    // @ts-ignore
+    const currentProviderHost = web3.currentProvider.host
+    const provider = new JsonRpcProvider(currentProviderHost)
+
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const { config: serverConfigParams } = await resolveServerConfig({
       url: '',
@@ -39,7 +44,7 @@ contract('PenalizerService', function (accounts) {
       managerStakeTokenAddress: '',
       relayHubAddress: env.relayHub.address,
       ownerAddress: env.relayServer.config.ownerAddress
-    }, web3.currentProvider)
+    }, provider)
     penalizerService = new PenalizerService(penalizerParams, logger, serverConfigParams)
     await penalizerService.init(false)
 

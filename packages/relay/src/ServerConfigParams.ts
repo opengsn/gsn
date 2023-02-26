@@ -1,6 +1,8 @@
 import * as fs from 'fs'
 import parseArgs from 'minimist'
 
+import { JsonRpcProvider } from '@ethersproject/providers'
+
 import {
   Address,
   ContractInteractor,
@@ -537,7 +539,7 @@ export function parseServerConfig (args: string[], env: any): any {
 }
 
 // resolve params, and validate the resulting struct
-export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<{
+export async function resolveServerConfig (config: Partial<ServerConfigParams>, ethersProvider: JsonRpcProvider): Promise<{
   config: ServerConfigParams
   environment: Environment
 }> {
@@ -557,7 +559,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   const contractInteractor: ContractInteractor = new ContractInteractor({
     maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
     calldataEstimationSlackFactor: config.calldataEstimationSlackFactor ?? 1,
-    provider: web3provider,
+    provider: ethersProvider,
     logger,
     deployment: {
       relayHubAddress: config.relayHubAddress

@@ -49,7 +49,7 @@ const BLOCKS_FOR_LOOKUP = 5000
 // TODO: stop faking the HttpProvider implementation -  it won't work for any other 'origProvider' type
 export class RelayProvider {
   protected readonly origProvider: JsonRpcProvider
-  private readonly origProviderSend: any
+  private readonly _origProviderSend: (method: string, params: any[]) => Promise<any>
   private asyncSignTypedData?: SignTypedDataCallback
   // protected readonly web3: Web3
   protected readonly submittedRelayRequests = new Map<string, SubmittedRelayRequestInfo>()
@@ -82,28 +82,21 @@ export class RelayProvider {
     // if (typeof this.origProvider.sendAsync === 'function') {
     //   this.origProviderSend = this.origProvider.sendAsync.bind(this.origProvider)
     // } else {
-    this.origProviderSend = this.origProvider.send.bind(this.origProvider)
+    this._origProviderSend = this.origProvider.send.bind(this.origProvider)
     // }
     this._delegateEventsApi()
   }
 
-  sendId = 1000
-
-  // async wrapper for calling origSend
-  async origSend (method: string, params: any[]): Promise<any> {
-    return await new Promise((resolve, reject) => {
-      this.origProviderSend({
-        id: this.sendId++,
+  origProviderSend (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+    this._origProviderSend(payload.method, payload.params ?? []).then((it: any) => {
+      const response: JsonRpcResponse = {
         jsonrpc: '2.0',
-        method,
-        params
-      }, (error: Error | null, result?: JsonRpcResponse) => {
-        if (error != null) {
-          reject(error)
-        } else {
-          resolve(result?.result)
-        }
-      })
+        id: payload.id ?? 0,
+        result: it
+      }
+      callback(null, response)
+    }).catch((err: any) => {
+      callback(err)
     })
   }
 
@@ -172,20 +165,7 @@ export class RelayProvider {
       }
     }
 
-    // TODO: this may be problematic as we don't forward a request as-is but create a new one breaking ID logic
-    //  we should use 'fetchJson' from 'json-rpc-provider' directly
-    this.origProviderSend(payload.method, payload.params)
-      .then((it: any) => {
-        const response: JsonRpcResponse = {
-          id: payload.id ?? 0,
-          jsonrpc: '2.0',
-          result: it
-        }
-        callback(null, response)
-      })
-      .catch((err: any) => {
-        callback(err)
-      })
+    this.origProviderSend(payload, callback)
   }
 
   _ethGetTransactionReceiptWithTransactionHash (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
@@ -255,7 +235,7 @@ export class RelayProvider {
     if (!txHash.startsWith('0x')) {
       txHash = relayRequestID
     }
-    const tx = await this.origSend('eth_getTransactionByHash', [txHash])
+    const tx = await this._origProviderSend('eth_getTransactionByHash', [txHash])
     if (tx != null) {
       // must return exactly what was requested...
       tx.hash = relayRequestID

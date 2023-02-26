@@ -65,7 +65,7 @@ async function run (): Promise<void> {
   let config: ServerConfigParams
   let environment: Environment
   let web3provider
-  let ethersJsonRpcProvider
+  let ethersJsonRpcProvider: JsonRpcProvider
   let runPenalizer: boolean
   let reputationManagerConfig: Partial<ReputationManagerConfiguration>
   let runPaymasterReputations: boolean
@@ -124,7 +124,7 @@ async function run (): Promise<void> {
       }
     }
     console.log('Resolving server config ...\n');
-    ({ config, environment } = await resolveServerConfig(conf, web3provider))
+    ({ config, environment } = await resolveServerConfig(conf, ethersJsonRpcProvider))
     runPenalizer = config.runPenalizer
     console.log('Resolving reputation manager config...\n')
     reputationManagerConfig = resolveReputationManagerConfig(conf)
