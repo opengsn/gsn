@@ -16,7 +16,7 @@ import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 
 import { evmMineMany, startRelay, stopRelay } from '../TestUtils'
 
-contract.only('PenalizationFlow', function (accounts) {
+contract('PenalizationFlow', function (accounts) {
   const preferredRelays = ['http://www.my-preffered-relay.com']
 
   let penalizingRelayProcess: ChildProcessWithoutNullStreams

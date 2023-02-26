@@ -57,7 +57,7 @@ const RelayRegistrar = artifacts.require('RelayRegistrar')
 
 const environment = defaultEnvironment
 
-contract.only('ContractInteractor', function (accounts) {
+contract('ContractInteractor', function (accounts) {
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
   const ethersProvider = new JsonRpcProvider(currentProviderHost)

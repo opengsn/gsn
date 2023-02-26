@@ -107,7 +107,7 @@ export async function prepareTransaction (testRecipient: TestRecipientInstance, 
   }
 }
 
-contract.only('RelayProvider', function (accounts) {
+contract('RelayProvider', function (accounts) {
   const stake = ether('1')
 
   let web3: Web3

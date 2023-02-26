@@ -33,7 +33,7 @@ import { ether } from '@openzeppelin/test-helpers'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
-contract.only('RelaySelectionManager', function (accounts) {
+contract('RelaySelectionManager', function (accounts) {
   const relayHubAddress = constants.BURN_ADDRESS
   const waitForSuccessSliceSize = 3
 

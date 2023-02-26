@@ -23,6 +23,7 @@ import {
   gsnRequiredVersion,
   gsnRuntimeVersion,
   removeHexPrefix,
+  toHex,
   toNumber
 } from '@opengsn/common'
 
@@ -59,7 +60,7 @@ function createWeb3Transaction (transaction: TransactionResponse, rawTxOptions: 
   const gasPrice = '0x' + BigInt(transaction.gasPrice!.toString()).toString(16)
   const value = '0x' + BigInt(transaction.value.toString()).toString(16)
   const txData: TxData = {
-    gasLimit: transaction.gasLimit.toString(),
+    gasLimit: toHex(transaction.gasLimit.toString()),
     gasPrice,
     to: transaction.to ?? '',
     data: transaction.data,
