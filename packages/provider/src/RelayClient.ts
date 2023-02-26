@@ -78,6 +78,7 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
     throw new Error(`Proposed fee per gas: ${parseInt(gsnTransactionDetails.maxFeePerGas)}; relay's configured maxMaxFeePerGas: ${pingResponse.maxMaxFeePerGas}`)
   }
 }
+
 export interface GSNUnresolvedConstructorInput {
   provider: JsonRpcProvider
   config: Partial<GSNConfig>
@@ -223,7 +224,8 @@ export class RelayClient {
     const [txMinedReceipt, pendingBlock] = await Promise.all([
       this.dependencies.contractInteractor.provider.getTransactionReceipt(txHash),
       // mempool transactions
-      this.dependencies.contractInteractor.provider.getBlock('pending')
+      // ethers.js does not really support 'pending' block yet
+      this.dependencies.contractInteractor.provider.send('eth_getBlockByNumber', ['pending', false])
     ])
 
     if (txMinedReceipt != null) {

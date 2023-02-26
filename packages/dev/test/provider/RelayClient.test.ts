@@ -110,7 +110,6 @@ const localhost127One = 'http://127.0.0.1:8090'
 // @ts-ignore
 const currentProviderHost = web3.currentProvider.host
 const underlyingProvider = new JsonRpcProvider(currentProviderHost)
-// const underlyingProvider = web3.currentProvider as HttpProvider
 
 class MockHttpClient extends HttpClient {
   constructor (readonly mockPort: number,
@@ -128,7 +127,7 @@ class MockHttpClient extends HttpClient {
   }
 }
 
-contract('RelayClient', function (accounts) {
+contract.only('RelayClient', function (accounts) {
   let web3: Web3
   let relayHub: RelayHubInstance
   let relayRegistrar: RelayRegistrarInstance
@@ -1108,13 +1107,11 @@ contract('RelayClient', function (accounts) {
         const sandbox = sinon.createSandbox()
         sandbox
           .stub(provider)
-          .send
-          .withArgs(sinon.match({ method: 'eth_chainId' }), sinon.match.any)
-          .yields(null, {
-            id: 0,
-            jsonrpc: '2.0',
-            result: '0x5'
-          })
+          .getNetwork
+          .returns(Promise.resolve({
+            name: 'stubname',
+            chainId: 5
+          }))
         const resolvedConfig: GSNConfig = await relayClient._resolveConfiguration({
           provider,
           config

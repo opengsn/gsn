@@ -172,7 +172,7 @@ export class RelaySelectionManager {
       .map((relays) => {
         return relays.length
       })
-      .reduce((a, b) => { return a + b}, 0)
+      .reduce((a, b) => { return a + b }, 0)
     this.remainingRelays = this.remainingRelays.map(relays =>
       relays
         .filter(eventInfo => {
@@ -185,13 +185,13 @@ export class RelaySelectionManager {
         })
         .filter(eventInfo => {
           const urls = Array.from(raceResult.errors.keys()).map(it => new URL(it).toString())
-          !urls.includes(new URL(eventInfo.relayUrl).toString())
+          return !urls.includes(new URL(eventInfo.relayUrl).toString())
         })
         .filter(eventInfo => {
           // if there is no 'winner' remove all 'results' - none is suitable
           // TODO: report these as 'errors' as well - this code will make extra pings to overpriced relays
           if (winner == null) {
-            raceResult.results
+            return !raceResult.results
               .map(it => new URL(it.relayInfo.relayUrl).toString())
               .includes(new URL(eventInfo.relayUrl).toString())
           }
@@ -202,7 +202,7 @@ export class RelaySelectionManager {
       .map((relays) => {
         return relays.length
       })
-      .reduce((a, b) => { return a + b}, 0)
+      .reduce((a, b) => { return a + b }, 0)
     const touched = raceResult.errors.size + (winner != null ? 1 : raceResult.results.length)
     this.logger.debug(`_handleWaitForSuccessResults info ${totalRemainingRelaysBefore} ${totalRemainingRelaysAfter} ${touched}`)
   }
