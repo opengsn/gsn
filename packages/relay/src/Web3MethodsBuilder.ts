@@ -8,7 +8,6 @@ import {
   splitRelayUrlForRegistrar,
   toBN
 } from '@opengsn/common'
-import { IRelayHubInstance, IRelayRegistrarInstance, IStakeManagerInstance } from '@opengsn/contracts'
 import stakeManagerAbi from '@opengsn/common/dist/interfaces/IStakeManager.json'
 import relayRegistrarAbi from '@opengsn/common/dist/interfaces/IRelayRegistrar.json'
 import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
@@ -76,7 +75,7 @@ export class Web3MethodsBuilder {
     relayRequest: RelayRequest,
     signature: string,
     approvalData: string
-  ) {
+  ): any {
     return this.IRelayHubContract.methods.relayCall(
       domainSeparatorName,
       maxAcceptanceBudget,

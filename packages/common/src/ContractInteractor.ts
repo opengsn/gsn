@@ -1,5 +1,5 @@
 import BN from 'bn.js'
-import { Contract as EthersContract } from 'ethers'
+import { Contract as EthersContract, EventFilter, ethers } from 'ethers'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { TxOptions } from '@ethereumjs/tx'
 
@@ -26,7 +26,6 @@ import {
   isSameAddress,
   packRelayUrlForRegistrar,
   PaymasterGasAndDataLimits,
-  splitRelayUrlForRegistrar,
   toNumber
 } from './Utils'
 import {
@@ -69,9 +68,7 @@ import { MainnetCalldataGasEstimation } from './environments/MainnetCalldataGasE
 import { AsyncZeroAddressCalldataGasEstimation } from './environments/AsyncZeroAddressCalldataGasEstimation'
 import { toBN, toHex } from './web3js/Web3JSUtils'
 import { FeeHistoryResult } from './web3js/FeeHistoryResult'
-import { EventFilter } from 'ethers'
 import { Network } from '@ethersproject/networks'
-import { isAddress } from 'ethers/lib/utils'
 
 import { Block, BlockTag, JsonRpcProvider, TransactionRequest, TransactionResponse } from '@ethersproject/providers'
 import { AbiCoder, Interface } from '@ethersproject/abi'
@@ -838,7 +835,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
       address: contract.address,
       topics: topics
     })
-    return logs.map(it => {return Object.assign(it, contract.interface.parseLog(it))})
+    return logs.map(it => { return Object.assign(it, contract.interface.parseLog(it)) })
   }
 
   async getBalance (address: Address, defaultBlock: BlockTag = 'latest'): Promise<string> {
@@ -1012,12 +1009,13 @@ calculateTransactionMaxPossibleGas: result: ${result}
     } = await this.calculateRequestLimits(relayTransactionRequest, gasAndDataLimits)
 
     const maxPossibleGasFactorReserve = gasReserve + Math.floor(maxPossibleGas * gasFactor)
+    // removing Ethers 'signer' to allow overriding 'from' address
+    // note that it will remove the mapping of types to BN!
+    const viewOnlyHub: EthersContract = this.relayHubInstance.contract.connect(this.provider)
     const maxPossibleCharge =
-      await this.relayHubInstance.calculateCharge(maxPossibleGasFactorReserve, relayTransactionRequest.relayRequest.relayData,
+      await viewOnlyHub.calculateCharge(maxPossibleGasFactorReserve, relayTransactionRequest.relayRequest.relayData,
         {
           from: viewCallFrom,
-          // TODO: normalize types for 'Contract Instance' to accept Ethers.js options
-          // @ts-ignore
           gasLimit: viewCallGasLimit,
           gasPrice: relayTransactionRequest.relayRequest.relayData.maxFeePerGas
         })
@@ -1026,7 +1024,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
       paymasterAcceptanceBudget,
       effectiveAcceptanceBudget,
       transactionCalldataGasUsed,
-      maxPossibleCharge,
+      maxPossibleCharge: toBN(maxPossibleCharge.toString()),
       maxPossibleGas: maxPossibleGasFactorReserve
     }
   }
@@ -1113,7 +1111,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   validateAddress (address: string, exceptionTitle = 'invalid address:'): void {
-    if (!isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
+    if (!ethers.utils.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
   }
 
   async getCode (address: string): Promise<string> {

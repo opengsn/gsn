@@ -53,7 +53,6 @@
     "bn.js": "^5.2.1",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "ethers": "^5.7.2",
     "solhint": "^3.3.2",
     "ts-node": "8.6.2",
     "web3-core": "^1.7.4"

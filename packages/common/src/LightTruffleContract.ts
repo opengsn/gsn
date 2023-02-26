@@ -1,7 +1,7 @@
 import { Contract as EthersContract } from 'ethers'
 
 import { JsonFragment, ParamType } from '@ethersproject/abi'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, JsonRpcSigner } from '@ethersproject/providers'
 import { toBN } from './web3js/Web3JSUtils'
 
 // eslint-disable-next-line @typescript-eslint/array-type
@@ -58,13 +58,14 @@ function retype (outputs?: ReadonlyArray<JsonFragment>, ret?: any): any {
 export class Contract<T> {
   // web3!: Web3
   provider!: JsonRpcProvider
+  signer!: JsonRpcSigner
 
   constructor (readonly contractName: string, readonly abi: JsonFragment[]) {
   }
 
   createContract (address: string): EthersContract {
     const ethersContract = new EthersContract(address, this.abi)
-    return ethersContract.connect(this.provider)
+    return ethersContract.connect(this.signer ?? this.provider)
   }
 
   // return a contract instance at the given address.
@@ -122,6 +123,7 @@ export class Contract<T> {
 
   setProvider (provider: JsonRpcProvider, _: unknown): void {
     this.provider = provider
+    this.signer = provider.getSigner()
   }
 }
 

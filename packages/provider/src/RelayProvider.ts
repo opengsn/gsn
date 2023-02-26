@@ -172,9 +172,20 @@ export class RelayProvider {
       }
     }
 
-    this.origProviderSend(payload, (error: Error | null, result?: JsonRpcResponse) => {
-      callback(error, result)
-    })
+    // TODO: this may be problematic as we don't forward a request as-is but create a new one breaking ID logic
+    //  we should use 'fetchJson' from 'json-rpc-provider' directly
+    this.origProviderSend(payload.method, payload.params)
+      .then((it: any) => {
+        const response: JsonRpcResponse = {
+          id: payload.id ?? 0,
+          jsonrpc: '2.0',
+          result: it
+        }
+        callback(null, response)
+      })
+      .catch((err: any) => {
+        callback(err)
+      })
   }
 
   _ethGetTransactionReceiptWithTransactionHash (payload: JsonRpcPayload, callback: JsonRpcCallback): void {

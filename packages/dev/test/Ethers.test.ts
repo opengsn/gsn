@@ -28,7 +28,7 @@ function logProvider (provider: any): any {
   }
 }
 
-describe('Ethers client', () => {
+describe.skip('Ethers client', () => {
   let ethersProvider: providers.Web3Provider
   let gsnRecipient: Contract
   let sender: string

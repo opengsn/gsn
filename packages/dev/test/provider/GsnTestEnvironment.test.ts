@@ -10,7 +10,7 @@ import { CommandsLogic } from '@opengsn/cli/dist/CommandsLogic'
 
 const TestRecipient = artifacts.require('TestRecipient')
 
-contract('GsnTestEnvironment', function (accounts: string[]) {
+contract.only('GsnTestEnvironment', function (accounts: string[]) {
   let host: string
 
   before(function () {

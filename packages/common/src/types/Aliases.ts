@@ -1,5 +1,5 @@
 import { PrefixedHexString } from 'ethereumjs-util'
-import { Log } from '@ethersproject/providers'
+import { JsonRpcProvider, Log } from '@ethersproject/providers'
 import { LogDescription } from '@ethersproject/abi'
 
 import { PingResponse } from '../PingResponse'
@@ -8,7 +8,6 @@ import { GsnTransactionDetails } from './GsnTransactionDetails'
 import { RegistrarRelayInfo, PartialRelayInfo } from './RelayInfo'
 import { TypedMessage } from '@metamask/eth-sig-util'
 import { Environment } from '../environments/Environments'
-import { JsonRpcProvider } from '@ethersproject/providers'
 
 export type Address = string
 export type EventName = string
