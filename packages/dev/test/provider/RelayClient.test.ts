@@ -1173,7 +1173,7 @@ contract.only('RelayClient', function (accounts) {
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
       assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
-      assert.match(relayingErrors.values().next().value.message, /paymaster accepted but recipient reverted in DRY-RUN.*Reported reason: : null/s)
+      assert.match(relayingErrors.values().next().value.message, /paymaster accepted but recipient reverted in DRY-RUN.*Reported reason: : 0x/s)
     })
 
     it('should not require paymaster to have excessive balance when using "calculateDryRunCallGasLimit"', async function () {
