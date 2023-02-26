@@ -33,6 +33,7 @@ import { ServerAction } from '../StoredTransaction'
 import { TransactionManager } from '../TransactionManager'
 
 import { ServerConfigParams } from '../ServerConfigParams'
+import { Web3MethodsBuilder } from '../Web3MethodsBuilder'
 
 import Timeout = NodeJS.Timeout
 
@@ -49,6 +50,7 @@ const NONCE_FORWARD = 'Transaction nonce is higher then current account nonce an
 export interface PenalizerDependencies {
   transactionManager: TransactionManager
   contractInteractor: ContractInteractor
+  web3MethodsBuilder: Web3MethodsBuilder
   txByNonceService: BlockExplorerInterface
 }
 
@@ -94,6 +96,7 @@ export class PenalizerService {
   scheduledPenalizations: DelayedPenalization[] = []
   transactionManager: TransactionManager
   contractInteractor: ContractInteractor
+  web3MethodsBuilder: Web3MethodsBuilder
   txByNonceService: BlockExplorerInterface
   versionManager: VersionsManager
   logger: LoggerInterface
@@ -105,6 +108,7 @@ export class PenalizerService {
   constructor (params: PenalizerDependencies, logger: LoggerInterface, config: ServerConfigParams) {
     this.transactionManager = params.transactionManager
     this.contractInteractor = params.contractInteractor
+    this.web3MethodsBuilder = params.web3MethodsBuilder
     this.versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion)
     this.config = config
     this.txByNonceService = params.txByNonceService
@@ -297,7 +301,7 @@ export class PenalizerService {
 
   async commitAndScheduleReveal (delayedPenalization: DelayedPenalization): Promise<any> {
     this.scheduledPenalizations.push(delayedPenalization)
-    const method = this.contractInteractor.penalizerInstance.contract.methods.commit(delayedPenalization.commitHash)
+    const method = this.web3MethodsBuilder.getPenalizerCommitMethod(delayedPenalization.commitHash)
     return await this.broadcastTransaction('commit', method)
   }
 
@@ -401,9 +405,9 @@ export class PenalizerService {
   getMethod (penalizationTypes: PenalizationTypes, methodArgs: PrefixedHexString[]): any {
     switch (penalizationTypes) {
       case PenalizationTypes.REPEATED_NONCE:
-        return this.contractInteractor.penalizerInstance.contract.methods.penalizeRepeatedNonce(...methodArgs)
+        return this.web3MethodsBuilder.getPenalizeRepeatedNonceMethod(...methodArgs)
       case PenalizationTypes.ILLEGAL_TRANSACTION:
-        return this.contractInteractor.penalizerInstance.contract.methods.penalizeIllegalTransaction(...methodArgs)
+        return this.web3MethodsBuilder.getPenalizeIllegalTransactionMethod(...methodArgs)
     }
   }
 }

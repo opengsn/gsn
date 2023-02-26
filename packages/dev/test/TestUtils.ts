@@ -111,6 +111,9 @@ export async function startRelay (
   if (options.maxMaxFeePerGas) {
     args.push('--maxMaxFeePerGas', options.maxMaxFeePerGas)
   }
+  if (options.url) {
+    args.push('--url', options.url)
+  }
   let runServerPath = path.resolve(__dirname, '../../relay/dist/runServer.js')
   if (!fs.existsSync(runServerPath)) {
     runServerPath = path.resolve(__dirname, '../../../relay/dist/runServer.js')

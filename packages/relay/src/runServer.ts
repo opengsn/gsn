@@ -208,6 +208,7 @@ async function run (): Promise<void> {
     const penalizerParams: PenalizerDependencies = {
       transactionManager,
       contractInteractor,
+      web3MethodsBuilder,
       txByNonceService
     }
     console.log('Running Penalizer: creating penalizer service...\n')

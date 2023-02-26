@@ -8,7 +8,7 @@ import { toBN } from 'web3-utils'
 
 import { GsnTransactionDetails, HttpClient, HttpWrapper, Address, gsnRuntimeVersion, sleep, constants } from '@opengsn/common'
 
-import { LocalhostOne, ServerTestEnvironment } from '../ServerTestEnvironment'
+import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { GSNConfig, GSNDependencies } from '@opengsn/provider/dist/GSNConfigurator'
 
@@ -16,7 +16,7 @@ import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 
 import { evmMineMany, startRelay, stopRelay } from '../TestUtils'
 
-contract('PenalizationFlow', function (accounts) {
+contract.only('PenalizationFlow', function (accounts) {
   const preferredRelays = ['http://www.my-preffered-relay.com']
 
   let penalizingRelayProcess: ChildProcessWithoutNullStreams
@@ -46,7 +46,8 @@ contract('PenalizationFlow', function (accounts) {
       // TODO: adding 'intervalHandler' to the PenalizationService made tests crash/hang with 10ms interval...
       checkInterval: 100,
       delay: 3600 * 24 * 7,
-      url: LocalhostOne,
+      // using IP instead of localhost to avoid being excluded from list
+      url: 'http://127.0.0.1:8090/',
       relayOwner: accounts[0],
       ethereumNodeUrl: currentProvider.host,
       refreshStateTimeoutBlocks: 1,

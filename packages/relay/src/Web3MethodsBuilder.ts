@@ -4,15 +4,19 @@ import Web3 from 'web3'
 import {
   Address,
   GSNContractsDeployment,
-  IntString, RelayRequest,
+  IntString,
+  RelayRequest,
   splitRelayUrlForRegistrar,
   toBN
 } from '@opengsn/common'
-import stakeManagerAbi from '@opengsn/common/dist/interfaces/IStakeManager.json'
-import relayRegistrarAbi from '@opengsn/common/dist/interfaces/IRelayRegistrar.json'
+
+import penalizerAbi from '@opengsn/common/dist/interfaces/IPenalizer.json'
 import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
+import relayRegistrarAbi from '@opengsn/common/dist/interfaces/IRelayRegistrar.json'
+import stakeManagerAbi from '@opengsn/common/dist/interfaces/IStakeManager.json'
 
 export class Web3MethodsBuilder {
+  private readonly IPenalizer: any
   private readonly IRelayHubContract: any
   private readonly IRelayRegistrar: any
   private readonly IStakeManager: any
@@ -28,6 +32,8 @@ export class Web3MethodsBuilder {
     this.IRelayRegistrar = new web3.eth.Contract(relayRegistrarAbi, deployment?.relayRegistrarAddress)
     // @ts-ignore
     this.IRelayHubContract = new web3.eth.Contract(relayHubAbi, deployment?.relayHubAddress)
+    // @ts-ignore
+    this.IPenalizer = new web3.eth.Contract(penalizerAbi, deployment?.penalizerAddress)
   }
 
   // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
@@ -82,5 +88,17 @@ export class Web3MethodsBuilder {
       relayRequest,
       signature,
       approvalData)
+  }
+
+  getPenalizerCommitMethod (commitHash: string): any {
+    return this.IPenalizer.methods.commit(commitHash)
+  }
+
+  getPenalizeRepeatedNonceMethod (...args: any[]): any {
+    return this.IPenalizer.methods.penalizeRepeatedNonce(...args)
+  }
+
+  getPenalizeIllegalTransactionMethod (...args: any[]): any {
+    return this.IPenalizer.methods.penalizeIllegalTransaction(...args)
   }
 }

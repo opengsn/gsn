@@ -29,6 +29,7 @@ contract('PenalizerService', function (accounts) {
     const penalizerParams: PenalizerDependencies = {
       transactionManager: env.relayServer.transactionManager,
       contractInteractor: env.relayServer.contractInteractor,
+      web3MethodsBuilder: env.relayServer.web3MethodsBuilder,
       txByNonceService
     }
 

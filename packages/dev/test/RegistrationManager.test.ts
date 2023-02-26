@@ -120,7 +120,7 @@ contract('RegistrationManager', function (accounts) {
       await relayServer._worker(latestBlock)
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.equal(relayServer.lastScannedBlock, latestBlock.number)
-      assert.deepEqual(relayServer.registrationManager.stakeRequired.currentValue, oneEther)
+      assert.equal(relayServer.registrationManager.stakeRequired.currentValue.toString(), oneEther.toString())
       assert.equal(relayServer.registrationManager.ownerAddress, relayOwner)
       assert.equal(workerBalanceAfter.toString(), relayServer.config.workerTargetBalance.toString())
       assert.equal(relayServer.isReady(), true, 'relay not ready?')
@@ -525,7 +525,7 @@ contract('RegistrationManager', function (accounts) {
         newServer.registrationManager.stakeRequired.requiredValue = toBN(0)
         newServer.registrationManager.balanceRequired.requiredValue = toBN(0)
         await newServer.registrationManager.refreshStake(latestBlock.number, latestBlock.hash, toNumber(latestBlock.timestamp))
-        assert.deepEqual(newServer.registrationManager.stakeRequired.currentValue, oneEther)
+        assert.equal(newServer.registrationManager.stakeRequired.currentValue.toString(), oneEther.toString())
         assert.equal(newServer.registrationManager.ownerAddress, relayOwner, 'owner should be set after refreshing stake')
       })
 
