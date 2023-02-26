@@ -203,7 +203,7 @@ contract.only('RelayProvider', function (accounts) {
       const pingResponse = await relayProvider.relayClient.dependencies.httpClient.getPingResponse('http://127.0.0.1:8090')
       const res = await testRecipient.emitMessage('hello world', {
         from: gasLess,
-        gasPrice: pingResponse.minMaxPriorityFeePerGas,
+        gasPrice: (parseInt(pingResponse.minMaxPriorityFeePerGas) * 2).toString(),
         gas: '100000',
         // @ts-ignore
         paymaster
