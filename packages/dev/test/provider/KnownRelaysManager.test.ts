@@ -302,7 +302,6 @@ contract('KnownRelaysManager 2', function (accounts) {
       await testToken.approve(stakeManager.address, ether('1'), { from: accounts[1] })
       relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
         stake: 1e18.toString(),
-        url: 'asd',
         dbPruneTxAfterBlocks: 1,
         relayOwner: accounts[1],
         relaylog: process.env.relaylog,

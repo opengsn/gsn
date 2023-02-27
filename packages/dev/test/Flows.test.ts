@@ -85,7 +85,6 @@ options.forEach(params => {
           stake,
           stakeTokenAddress: testToken.address,
           delay: 3600 * 24 * 7,
-          url: 'asd',
           relayOwner: accounts[0],
           // @ts-ignore
           ethereumNodeUrl: web3.currentProvider.host,

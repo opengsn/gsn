@@ -143,7 +143,6 @@ contract('RelayProvider', function (accounts) {
       relaylog: process.env.relaylog,
       initialReputation: 100,
       stake: stake.toString(),
-      url: 'asd',
       relayOwner: accounts[1],
       ethereumNodeUrl: currentProviderHost
     })
