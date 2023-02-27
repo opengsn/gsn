@@ -28,7 +28,8 @@ function logProvider (provider: any): any {
   }
 }
 
-describe.skip('Ethers client', () => {
+// TODO: with complete ethers migration this test is not very informative
+describe('Ethers client', () => {
   let ethersProvider: providers.Web3Provider
   let gsnRecipient: Contract
   let sender: string
@@ -44,11 +45,10 @@ describe.skip('Ethers client', () => {
     const { paymasterAddress, forwarderAddress } = env.contractsDeployment
     const gsnConfig = {
       paymasterAddress
-      // loggerConfiguration: { logLevel: 'error' }
     }
     const rawEthersProvider = new providers.Web3Provider((web3provider))
     const gsnProvider = await RelayProvider.newProvider({
-      provider: web3provider,
+      provider: rawEthersProvider,
       config: gsnConfig
     }).init()
     ethersProvider = new providers.Web3Provider(logProvider(gsnProvider))
@@ -99,7 +99,6 @@ describe.skip('Ethers client', () => {
       paymasterAddress: paymasterAddress!,
       loggerConfiguration: { logLevel: 'error' }
     }
-    // @ts-ignore
     const gsnProvider = RelayProvider.newProvider({ provider: ethersProvider, config: gsnConfig })
     await gsnProvider.init()
     const gsnEthersProvider = new providers.Web3Provider(logProvider(gsnProvider))

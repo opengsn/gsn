@@ -25,7 +25,7 @@ import chaiAsPromised from 'chai-as-promised'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
-contract.only('Network Simulation for Relay Server', function (accounts) {
+contract('Network Simulation for Relay Server', function (accounts) {
   const pendingTransactionTimeoutSeconds = 50
 
   let logger: LoggerInterface
