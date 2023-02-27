@@ -84,6 +84,7 @@ async function makeRequest (
     deployment,
     maxPageSize: Number.MAX_SAFE_INTEGER
   })
+  await contractInteractor.init()
   filledRequest.relayData.transactionCalldataGasUsed =
     await contractInteractor.estimateCalldataCostForRequest(filledRequest, {
       maxApprovalDataLength: 0,

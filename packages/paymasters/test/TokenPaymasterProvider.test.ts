@@ -53,7 +53,7 @@ import {
   USDC_ETH_POOL_FEE
 } from './ForkTestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
-// import { TokenPaymasterEthersWrapper } from '../src/WrapContract'
+import { TokenPaymasterEthersWrapper } from '../src/WrapContract'
 import { defaultGsnConfig } from '@opengsn/provider'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
@@ -408,22 +408,22 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       SampleRecipient.web3.setProvider(origProvider)
     })
 
-    // it('should wrap ethers.js Contract instance with TokenPaymasterProvider', async function () {
-    //   await skipWithoutFork(this)
-    //   this.timeout(60000)
-    //   const ethersProvider = new providers.JsonRpcProvider((web3.currentProvider as any).host)
-    //   const signer = ethersProvider.getSigner()
-    //   // @ts-ignores
-    //   const factory = await new ContractFactory(SampleRecipient.abi, SampleRecipient.bytecode, signer)
-    //   const recipient = await factory.attach(sampleRecipient.address)
-    //   const wrappedGsnRecipient = await TokenPaymasterEthersWrapper.wrapContract(recipient, gsnConfig)
-    //   const signerAddress = await signer.getAddress()
-    //   const balanceBefore = await web3.eth.getBalance(signerAddress)
-    //   const ret = await wrappedGsnRecipient.something({ gasPrice: 1e10 })
-    //   const rcpt = await ret.wait()
-    //   const balanceAfter = await web3.eth.getBalance(signerAddress)
-    //   assert.equal(balanceBefore.toString(), balanceAfter.toString())
-    //   expectEvent.inLogs(rcpt.events, 'Sender', { _msgSenderFunc: signerAddress, sender: forwarderInstance.address })
-    // })
+    it('should wrap ethers.js Contract instance with TokenPaymasterProvider', async function () {
+      await skipWithoutFork(this)
+      this.timeout(60000)
+      const ethersProvider = new JsonRpcProvider((web3.currentProvider as any).host)
+      const signer = ethersProvider.getSigner()
+      // @ts-ignores
+      const factory = await new ContractFactory(SampleRecipient.abi, SampleRecipient.bytecode, signer)
+      const recipient = await factory.attach(sampleRecipient.address)
+      const wrappedGsnRecipient = await TokenPaymasterEthersWrapper.wrapContract(recipient, gsnConfig)
+      const signerAddress = await signer.getAddress()
+      const balanceBefore = await web3.eth.getBalance(signerAddress)
+      const ret = await wrappedGsnRecipient.something({ gasPrice: 1e10 })
+      const rcpt = await ret.wait()
+      const balanceAfter = await web3.eth.getBalance(signerAddress)
+      assert.equal(balanceBefore.toString(), balanceAfter.toString())
+      expectEvent.inLogs(rcpt.events, 'Sender', { _msgSenderFunc: signerAddress, sender: forwarderInstance.address })
+    })
   })
 })
