@@ -37,7 +37,7 @@ contract.skip('RelayServerRequestsProfiling', function (accounts) {
     await env.init({}, {}, contractFactory)
     await env.newServerInstance({ refreshStateTimeoutBlocks })
     relayServer = env.relayServer
-    const latestBlock = await web3.eth.getBlock('latest')
+    const latestBlock = await provider.getBlock('latest')
     await relayServer._worker(latestBlock)
   })
 
@@ -47,7 +47,7 @@ contract.skip('RelayServerRequestsProfiling', function (accounts) {
 
   it('should make X requests per block callback when state must be refreshed', async function () {
     await evmMineMany(5)
-    const latestBlock = await web3.eth.getBlock('latest')
+    const latestBlock = await provider.getBlock('latest')
     assert.isTrue(relayServer._shouldRefreshState(latestBlock))
     const receipts = await relayServer._worker(latestBlock)
     assert.equal(receipts.length, 0)
@@ -57,7 +57,7 @@ contract.skip('RelayServerRequestsProfiling', function (accounts) {
 
   it('should make X requests per block callback when nothing needs to be done', async function () {
     await evmMine()
-    const latestBlock = await web3.eth.getBlock('latest')
+    const latestBlock = await provider.getBlock('latest')
     assert.isFalse(relayServer._shouldRefreshState(latestBlock))
     const receipts = await relayServer._worker(latestBlock)
     assert.equal(receipts.length, 0)
