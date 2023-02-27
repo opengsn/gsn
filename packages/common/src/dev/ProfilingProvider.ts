@@ -1,14 +1,13 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
-import { WrapperProviderBase } from './WrapperProviderBase'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
-export class ProfilingProvider extends WrapperProviderBase {
+export class ProfilingProvider extends StaticJsonRpcProvider {
   methodsCount = new Map<string, number>()
   requestsCount = 0
 
   logTraffic: boolean
 
-  constructor (provider: JsonRpcProvider, logTraffic: boolean = false) {
-    super(provider)
+  constructor (host: string, logTraffic: boolean = false) {
+    super(host)
     this.logTraffic = logTraffic
   }
 
@@ -28,7 +27,7 @@ export class ProfilingProvider extends WrapperProviderBase {
     //   }
     //   console.log(`>>> payload: ${JSON.stringify(payload) ?? 'null result'}`)
     // }
-    return await this.provider.send(method, params)
+    return await super.send(method, params)
   }
 
   reset (): void {

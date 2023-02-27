@@ -63,9 +63,9 @@ export class Contract<T> {
   constructor (readonly contractName: string, readonly abi: JsonFragment[]) {
   }
 
-  createContract (address: string): EthersContract {
+  createContract (address: string, signer: JsonRpcSigner): EthersContract {
     const ethersContract = new EthersContract(address, this.abi)
-    return ethersContract.connect(this.signer ?? this.provider)
+    return ethersContract.connect(signer ?? this.provider)
   }
 
   // return a contract instance at the given address.
@@ -73,7 +73,10 @@ export class Contract<T> {
   // the application is assumed to call some view function (e.g. version) that implicitly verifies a contract
   // is deployed at that address (and has that view function)
   async at (address: string): Promise<T> {
-    const contract = this.createContract(address)
+    // TODO: this is done to force cache the 'from' address to avoid Ethers making a call to 'eth_accounts' every time
+    const signerFromAddress = await this.signer.getAddress()
+    const addressAwareSigner = this.provider.getSigner(signerFromAddress)
+    const contract = this.createContract(address, addressAwareSigner)
     const obj = {
       address,
       contract,

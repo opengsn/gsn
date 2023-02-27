@@ -7,13 +7,14 @@ import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
-contract.skip('RelayServerRequestsProfiling', function (accounts) {
+contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
   const callsPerStateRefresh = 13
   const callsPerBlock = 0
   // one of the calls is 'get manager balance' which is not really necessary
   const callsPerTransaction = 11
 
+  let ethersProvider: JsonRpcProvider
   let provider: ProfilingProvider
   let relayServer: RelayServer
   let env: ServerTestEnvironment
@@ -23,8 +24,8 @@ contract.skip('RelayServerRequestsProfiling', function (accounts) {
     logger = createServerLogger('error', '', '')
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
-    const ethersProvider = new JsonRpcProvider(currentProviderHost)
-    provider = new ProfilingProvider(ethersProvider)
+    ethersProvider = new JsonRpcProvider(currentProviderHost)
+    provider = new ProfilingProvider(currentProviderHost)
     const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = new ContractInteractor({
@@ -37,7 +38,7 @@ contract.skip('RelayServerRequestsProfiling', function (accounts) {
     await env.init({}, {}, contractFactory)
     await env.newServerInstance({ refreshStateTimeoutBlocks })
     relayServer = env.relayServer
-    const latestBlock = await provider.getBlock('latest')
+    const latestBlock = await ethersProvider.getBlock('latest')
     await relayServer._worker(latestBlock)
   })
 
@@ -47,7 +48,7 @@ contract.skip('RelayServerRequestsProfiling', function (accounts) {
 
   it('should make X requests per block callback when state must be refreshed', async function () {
     await evmMineMany(5)
-    const latestBlock = await provider.getBlock('latest')
+    const latestBlock = await ethersProvider.getBlock('latest')
     assert.isTrue(relayServer._shouldRefreshState(latestBlock))
     const receipts = await relayServer._worker(latestBlock)
     assert.equal(receipts.length, 0)
@@ -57,7 +58,7 @@ contract.skip('RelayServerRequestsProfiling', function (accounts) {
 
   it('should make X requests per block callback when nothing needs to be done', async function () {
     await evmMine()
-    const latestBlock = await provider.getBlock('latest')
+    const latestBlock = await ethersProvider.getBlock('latest')
     assert.isFalse(relayServer._shouldRefreshState(latestBlock))
     const receipts = await relayServer._worker(latestBlock)
     assert.equal(receipts.length, 0)

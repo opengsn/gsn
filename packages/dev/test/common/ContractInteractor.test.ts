@@ -62,7 +62,7 @@ contract('ContractInteractor', function (accounts) {
   const currentProviderHost = web3.currentProvider.host
   const ethersProvider = new JsonRpcProvider(currentProviderHost)
 
-  const provider = new ProfilingProvider(ethersProvider)
+  const provider = new ProfilingProvider(currentProviderHost)
   const logger = createClientLogger({ logLevel: 'error' })
   const workerAddress = accounts[2]
   const maxPageSize = Number.MAX_SAFE_INTEGER

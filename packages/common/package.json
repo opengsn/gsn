@@ -24,6 +24,7 @@
     "@ethersproject/bignumber": "^5.7.0",
     "@ethersproject/networks": "^5.7.1",
     "@ethersproject/providers": "^5.7.2",
+    "@ethersproject/web": "^5.7.1",
     "@metamask/eth-sig-util": "^4.0.1",
     "@opengsn/contracts": "^3.0.0-beta.3",
     "@types/bn.js": "^5.1.0",
