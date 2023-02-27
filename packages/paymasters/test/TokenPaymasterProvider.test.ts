@@ -1,6 +1,12 @@
+import chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+import { ContractFactory } from 'ethers'
+import { HttpProvider } from 'web3-core'
 import { JsonRpcProvider } from '@ethersproject/providers'
 import { TokenPaymasterConfig, TokenPaymasterProvider } from '../src/TokenPaymasterProvider'
-import { HttpProvider } from 'web3-core'
+import { expectEvent } from '@openzeppelin/test-helpers'
+import { toWei } from 'web3-utils'
+
 import {
   GasAndEthConfig,
   PERMIT_SELECTOR_DAI,
@@ -21,11 +27,8 @@ import {
 } from '../types/truffle-contracts'
 import { deployHub, revert, snapshot, startRelay, stopRelay } from '@opengsn/dev/dist/test/TestUtils'
 import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { expectEvent } from '@openzeppelin/test-helpers'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { toWei } from 'web3-utils'
-import chai from 'chai'
-import chaiAsPromised from 'chai-as-promised'
+
 import {
   CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,

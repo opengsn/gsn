@@ -1,6 +1,5 @@
 import Web3 from 'web3'
 import { JsonRpcProvider } from '@ethersproject/providers'
-import { Contract } from '@ethersproject/contracts'
 import { PrefixedHexString, fromRpcSig, bufferToHex, keccakFromString } from 'ethereumjs-util'
 import { getEip712Signature, TruffleContract, Address, IntString } from '@opengsn/common'
 import { TypedMessage } from '@metamask/eth-sig-util'
