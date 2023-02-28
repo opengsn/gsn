@@ -12,7 +12,6 @@ import {
   constants,
   defaultEnvironment,
   getEip712Signature,
-  registerForwarderForGsn,
   splitRelayUrlForRegistrar,
   toNumber
 } from '@opengsn/common/dist'
@@ -27,6 +26,7 @@ import {
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { cleanValue } from './utils/chaiHelper'
 import { defaultGsnConfig } from '@opengsn/provider'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 const { assert } = chai.use(chaiAsPromised)
 

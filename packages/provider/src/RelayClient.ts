@@ -2,7 +2,6 @@ import { EventEmitter } from 'events'
 import { JsonRpcProvider } from '@ethersproject/providers'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
-import { toBN, toHex } from 'web3-utils'
 
 import {
   Address,
@@ -29,7 +28,9 @@ import {
   getRelayRequestID,
   gsnRequiredVersion,
   gsnRuntimeVersion,
-  removeNullValues
+  removeNullValues,
+  toBN,
+  toHex
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'

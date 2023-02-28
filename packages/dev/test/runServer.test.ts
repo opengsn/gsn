@@ -10,7 +10,8 @@ import {
 import { deployHub, emptyBalance, evmMineMany, serverWorkDir, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { registerForwarderForGsn, defaultEnvironment, constants, ether, Address } from '@opengsn/common'
+import { defaultEnvironment, constants, ether, Address } from '@opengsn/common'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import Web3 from 'web3'
 import fs from 'fs'

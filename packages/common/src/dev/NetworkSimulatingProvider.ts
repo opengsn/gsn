@@ -1,6 +1,6 @@
 import { PrefixedHexString } from 'ethereumjs-util'
 import { JsonRpcProvider } from '@ethersproject/providers'
-import web3Utils from 'web3-utils'
+import { utils } from 'ethers'
 
 import { WrapperProviderBase } from './WrapperProviderBase'
 
@@ -23,7 +23,7 @@ export class NetworkSimulatingProvider extends WrapperProviderBase {
   }
 
   calculateTxHash (params?: any[]): PrefixedHexString {
-    const txHash = web3Utils.sha3(params?.[0])
+    const txHash = utils.keccak256(params?.[0])
     if (txHash == null) {
       throw new Error('Failed to hash transaction')
     }

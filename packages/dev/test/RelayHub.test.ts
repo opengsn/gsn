@@ -13,7 +13,6 @@ import {
   decodeRevertReason,
   defaultEnvironment,
   getEip712Signature,
-  registerForwarderForGsn,
   removeHexPrefix,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
@@ -35,6 +34,7 @@ import { deployHub, encodeRevertReason, hardhatNodeChainId, revert, snapshot } f
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { defaultGsnConfig } from '@opengsn/provider'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 

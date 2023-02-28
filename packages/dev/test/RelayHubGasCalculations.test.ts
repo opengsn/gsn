@@ -18,7 +18,6 @@ import {
   cloneRelayRequest,
   constants,
   defaultEnvironment,
-  registerForwarderForGsn,
   splitRelayUrlForRegistrar,
   toNumber
 } from '@opengsn/common'
@@ -36,6 +35,7 @@ import {
 import { deployHub, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 import { toBN } from 'web3-utils'
 
 import * as process from 'process'

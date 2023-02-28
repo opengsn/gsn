@@ -1,11 +1,11 @@
 import BN from 'bn.js'
-import { toBN } from 'web3-utils'
 
 import { ERC20TokenMetadata } from './ContractInteractor'
 import { LoggerInterface } from './LoggerInterface'
 import { boolString, formatTokenAmount, isSameAddress } from './Utils'
 import { constants } from './Constants'
 import { Address } from './types/Aliases'
+import { toBN } from './web3js/Web3JSUtils'
 
 const ether: ERC20TokenMetadata = {
   tokenAddress: constants.ZERO_ADDRESS,

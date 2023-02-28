@@ -2,7 +2,6 @@
 import ethWallet from 'ethereumjs-wallet'
 import { JsonRpcProvider } from '@ethersproject/providers'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { RLPEncodedTransaction } from 'web3-core'
 import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
 import {
   SignTypedDataVersion,
@@ -15,6 +14,7 @@ import {
 import {
   Address,
   RelayRequest,
+  RLPEncodedTransaction,
   TypedRequestData,
   getEip712Signature,
   getRawTxOptions,

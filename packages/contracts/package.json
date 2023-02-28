@@ -20,8 +20,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.2.0",
-    "web3-eth-contract": "^1.7.4"
+    "@openzeppelin/contracts": "^4.2.0"
   },
   "devDependencies": {
     "bn.js": "^5.2.1",

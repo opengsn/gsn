@@ -15,7 +15,6 @@ import {
   constants,
   defaultEnvironment,
   getEip712Signature,
-  registerForwarderForGsn,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
 
@@ -29,6 +28,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { defaultGsnConfig } from '@opengsn/provider'

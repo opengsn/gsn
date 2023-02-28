@@ -1,12 +1,18 @@
 // import Web3 from 'web3'
 import { PrefixedHexString, toBuffer, bufferToHex } from 'ethereumjs-util'
 import { TypedTransaction, Transaction, FeeMarketEIP1559Transaction, TransactionFactory } from '@ethereumjs/tx'
-import { toBN } from 'web3-utils'
 
 import { Interface } from '@ethersproject/abi'
 
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
-import { ContractInteractor, LoggerInterface, RelayTransactionRequest, isSameAddress, ObjectMap } from '@opengsn/common'
+import {
+  ContractInteractor,
+  LoggerInterface,
+  ObjectMap,
+  RelayTransactionRequest,
+  isSameAddress,
+  toBN
+} from '@opengsn/common'
 
 import { GSNConfig } from './GSNConfigurator'
 

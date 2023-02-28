@@ -16,13 +16,14 @@ import {
   defaultEnvironment,
   environments,
   getEip712Signature,
-  registerForwarderForGsn,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
 
 import { TransactionRelayed } from '@opengsn/contracts/types/truffle-contracts/RelayHub'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { defaultGsnConfig } from '@opengsn/provider'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
+
 import { hardhatNodeChainId } from '../TestUtils'
 
 const TestToken = artifacts.require('TestToken')

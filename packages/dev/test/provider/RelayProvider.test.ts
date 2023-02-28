@@ -11,6 +11,7 @@ import { toBN } from 'web3-utils'
 import { toChecksumAddress } from 'ethereumjs-util'
 import { JsonRpcProvider, TransactionReceipt } from '@ethersproject/providers'
 
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
@@ -30,8 +31,7 @@ import {
   constants,
   defaultEnvironment,
   getEcRecoverMeta,
-  getEip712Signature,
-  registerForwarderForGsn
+  getEip712Signature
 } from '@opengsn/common'
 
 import { deployHub, emptyBalance, encodeRevertReason, hardhatNodeChainId, startRelay, stopRelay } from '../TestUtils'

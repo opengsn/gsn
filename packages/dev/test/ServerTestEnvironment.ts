@@ -20,7 +20,6 @@ import {
   constants,
   defaultEnvironment,
   ether,
-  registerForwarderForGsn,
   removeHexPrefix
 } from '@opengsn/common'
 import {
@@ -37,6 +36,7 @@ import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './Server
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import {

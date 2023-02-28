@@ -11,8 +11,7 @@ import {
   ApprovalDataCallback,
   constants,
   defaultEnvironment,
-  ether,
-  registerForwarderForGsn
+  ether
 } from '@opengsn/common'
 import {
   RelayHubInstance, StakeManagerInstance,
@@ -22,6 +21,7 @@ import {
 import { deployHub, emptyBalance, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import Web3 from 'web3'
 

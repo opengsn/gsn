@@ -6,7 +6,8 @@ import {
 import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { deployHub } from './TestUtils'
-import { registerForwarderForGsn, defaultEnvironment, constants } from '@opengsn/common'
+import { defaultEnvironment, constants } from '@opengsn/common'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import { TestForwarderMessage } from '@opengsn/contracts/types/truffle-contracts/TestForwarderTarget'
 import { defaultGsnConfig } from '@opengsn/provider'

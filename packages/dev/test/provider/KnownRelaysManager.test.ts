@@ -11,7 +11,6 @@ import {
   RegistrarRelayInfo,
   constants,
   defaultEnvironment,
-  registerForwarderForGsn,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
@@ -26,6 +25,7 @@ import { configureGSN, deployHub, revert, snapshot, startRelay, stopRelay } from
 import { prepareTransaction } from './RelayProvider.test'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')

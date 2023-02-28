@@ -24,7 +24,6 @@ import {
   ether,
   formatTokenAmount,
   isSameAddress,
-  registerForwarderForGsn,
   sleep,
   toNumber
 } from '@opengsn/common'
@@ -41,6 +40,8 @@ import TestWrappedNativeToken from './compiled/TestWrappedNativeToken.json'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { defaultGsnConfig } from '@opengsn/provider'
+
+import { registerForwarderForGsn } from './ForwarderUtil'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */

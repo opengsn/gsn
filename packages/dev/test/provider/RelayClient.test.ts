@@ -42,7 +42,6 @@ import {
   constants,
   defaultEnvironment,
   getRawTxOptions,
-  registerForwarderForGsn,
   splitRelayUrlForRegistrar, RegistrarRelayInfo
 } from '@opengsn/common'
 import {
@@ -53,6 +52,7 @@ import {
 
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider'
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import { BadHttpClient } from '../dummies/BadHttpClient'
 import { BadRelayedTransactionValidator } from '../dummies/BadRelayedTransactionValidator'

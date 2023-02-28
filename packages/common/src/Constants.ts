@@ -1,5 +1,4 @@
 import BN from 'bn.js'
-import { toBN } from 'web3-utils'
 
 import paymasterAbi from './interfaces/IPaymaster.json'
 import relayHubAbi from './interfaces/IRelayHub.json'
@@ -8,6 +7,7 @@ import stakeManagerAbi from './interfaces/IStakeManager.json'
 import penalizerAbi from './interfaces/IPenalizer.json'
 import relayRegistrarAbi from './interfaces/IRelayRegistrar.json'
 import { getERC165InterfaceID } from './Utils'
+import { toBN } from './web3js/Web3JSUtils'
 
 const dayInSec = 24 * 60 * 60
 const weekInSec = dayInSec * 7
