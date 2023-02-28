@@ -1,5 +1,5 @@
 import Web3 from 'web3'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 import { RelayClient, RelayProvider, GSNUnresolvedConstructorInput } from '@opengsn/provider'
 import { PrefixedHexString, toChecksumAddress } from 'ethereumjs-util'
 import { Address, removeHexPrefix } from '@opengsn/common/dist'
@@ -20,7 +20,11 @@ import {
   signAndEncodeEIP2612Permit
 } from './PermitPaymasterUtils'
 import { constants } from '@opengsn/common/dist/Constants'
-import { EIP712Domain, EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import {
+  EIP712Domain,
+  EIP712DomainType,
+  EIP712DomainTypeWithoutVersion
+} from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { TokenPaymasterInteractor } from './TokenPaymasterInteractor'
 
 export interface TokenPaymasterConfig extends GSNConfig {
@@ -38,7 +42,7 @@ export class TokenPaymasterProvider extends RelayProvider {
   protected paymaster!: PermitERC20UniswapV3PaymasterInstance
   readonly tokenPaymasterInteractor: TokenPaymasterInteractor
 
-  constructor (relayClient: RelayClient, provider: JsonRpcProvider) {
+  constructor (relayClient: RelayClient, provider: JsonRpcProvider | ExternalProvider) {
     super(relayClient)
     this.tokenPaymasterInteractor = new TokenPaymasterInteractor(provider)
   }

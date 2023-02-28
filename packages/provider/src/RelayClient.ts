@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
@@ -30,7 +30,8 @@ import {
   gsnRuntimeVersion,
   removeNullValues,
   toBN,
-  toHex
+  toHex,
+  wrapWeb3JsProvider
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'
@@ -81,7 +82,7 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
 }
 
 export interface GSNUnresolvedConstructorInput {
-  provider: JsonRpcProvider
+  provider: JsonRpcProvider | ExternalProvider
   config: Partial<GSNConfig>
   overrideDependencies?: Partial<GSNDependencies>
 }
@@ -124,19 +125,6 @@ export class RelayClient {
     }
     this.rawConstructorInput = rawConstructorInput
     this.logger = rawConstructorInput.overrideDependencies?.logger ?? console
-    this.wrapEthersJsProvider()
-  }
-
-  // TODO: reverse this to accept Web3 provider and wrap with Ethers!
-  wrapEthersJsProvider (): void {
-    // const provider = this.rawConstructorInput.provider as any
-    // if (typeof provider.getSigner === 'function') {
-    //   this.rawConstructorInput.provider = bridgeProvider(provider)
-    // } else if (provider instanceof Provider) {
-    //   throw new Error('Your "provider" instance appears to be an Ethers.js provider but it does not have a "getSigner" method. We recommend constructing JsonRpcProvider or Web3Provider yourself.')
-    // } else if (typeof provider.send !== 'function' && typeof provider.sendAsync !== 'function') {
-    //   throw new Error('Your "provider" instance does not have neither "send" nor "sendAsync" method. This is not supported.')
-    // }
   }
 
   async init (useTokenPaymaster = false): Promise<this> {
@@ -158,7 +146,7 @@ export class RelayClient {
     }
     this.dependencies = await this._resolveDependencies({
       config: this.config,
-      provider: this.rawConstructorInput.provider,
+      provider: this.getUnderlyingProvider(),
       overrideDependencies: this.rawConstructorInput.overrideDependencies
     })
     if (!this.config.skipErc165Check) {
@@ -566,15 +554,14 @@ export class RelayClient {
   }
 
   getUnderlyingProvider (): JsonRpcProvider {
-    return this.rawConstructorInput.provider
+    return wrapWeb3JsProvider(this.rawConstructorInput.provider)
   }
 
   async _resolveConfiguration ({
-    provider,
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     let configFromServer = {}
-    const network = await provider.getNetwork()
+    const network = await this.getUnderlyingProvider().getNetwork()
     const chainId = network.chainId
     const useClientDefaultConfigUrl = config.useClientDefaultConfigUrl ?? defaultGsnConfig.useClientDefaultConfigUrl
     if (useClientDefaultConfigUrl) {

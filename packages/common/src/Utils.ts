@@ -1,7 +1,7 @@
 import BN from 'bn.js'
 import chalk from 'chalk'
 
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
 
 import { AbiCoder, JsonFragment, Interface } from '@ethersproject/abi'
 import { TypedMessage } from '@metamask/eth-sig-util'
@@ -556,4 +556,11 @@ export function validateRelayUrl (relayUrl: string): boolean {
     return false
   }
   return url.protocol === 'http:' || url.protocol === 'https:'
+}
+
+export function wrapWeb3JsProvider (provider: any): JsonRpcProvider {
+  if (typeof provider === 'object' && typeof provider.getSigner !== 'function') {
+    return new Web3Provider(provider)
+  }
+  return provider
 }
