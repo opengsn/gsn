@@ -26,7 +26,7 @@ import {
   TestTokenInstance
 } from '../types/truffle-contracts'
 import { deployHub, revert, snapshot, startRelay, stopRelay } from '@opengsn/dev/dist/test/TestUtils'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 
 import {
