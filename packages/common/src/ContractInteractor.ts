@@ -1312,24 +1312,22 @@ calculateTransactionMaxPossibleGas: result: ${result}
     maxFeePerGas: BN,
     maxViewableGasLimit: BN,
     minViewableGasLimit: BN
-  ): Promise<IntString> {
-    const paymasterBalance = await this.hubBalanceOf(paymasterAddress)
+  ): Promise<BN> {
     let workerBalance = constants.MAX_UINT256 // skipping worker address balance check in dry-run
     if (!isSameAddress(workerAddress, constants.DRY_RUN_ADDRESS)) {
       const workerBalanceStr = await this.getBalance(workerAddress, 'pending')
       workerBalance = toBN(workerBalanceStr)
     }
-    const smallerBalance = BN.min(paymasterBalance, workerBalance)
     if (maxFeePerGas.eqn(0)) {
       // using base fee override to avoid division by zero
       maxFeePerGas = toBN((await this.getGasFees(5, 50)).baseFeePerGas)
     }
-    const smallerBalanceGasLimit = smallerBalance.div(maxFeePerGas)
+    const workerBalanceGasLimit = workerBalance.div(maxFeePerGas)
       .muln(9).divn(10) // hard-coded to use 90% of available worker/paymaster balance
     const blockGasLimitNum = await this.getBlockGasLimit()
     const blockGasLimit = toBN(blockGasLimitNum)
       .muln(3).divn(4) // hard-coded to use 75% of available block gas limit
-    return BN.max(minViewableGasLimit, BN.min(maxViewableGasLimit, BN.min(smallerBalanceGasLimit, blockGasLimit))).toString()
+    return BN.max(minViewableGasLimit, BN.min(maxViewableGasLimit, BN.min(workerBalanceGasLimit, blockGasLimit)))
   }
 }
 

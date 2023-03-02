@@ -379,7 +379,7 @@ export class CommandsLogic {
           } catch (e) {
             throw new Error('No deposit() method on default token. is it wrapped ETH?')
           }
-          transactions.push(depositTx.transactionHash)
+          transactions.push(depositTx.hash)
         }
 
         const currentAllowance = await stakingTokenContract.allowance(options.from, stakeManager.address)
@@ -391,7 +391,7 @@ export class CommandsLogic {
             from: options.from
           })
           // @ts-ignore
-          transactions.push(approveTx.transactionHash)
+          transactions.push(approveTx.hash)
         }
 
         const stakeTx = await stakeManager
@@ -399,7 +399,7 @@ export class CommandsLogic {
             ...sendOptions
           })
         // @ts-ignore
-        transactions.push(stakeTx.transactionHash)
+        transactions.push(stakeTx.hash)
       }
 
       try {
@@ -414,7 +414,7 @@ export class CommandsLogic {
         const authorizeTx = await stakeManager
           .authorizeHubByOwner(relayAddress, relayHubAddress, sendOptions)
         // @ts-ignore
-        transactions.push(authorizeTx.transactionHash)
+        transactions.push(authorizeTx.hash)
       }
 
       await this.waitForRelay(options.relayUrl)

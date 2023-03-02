@@ -351,8 +351,14 @@ export class RelayClient {
     await this.fillRelayInfo(relayRequest, relayInfo)
     const httpRequest = await this._prepareRelayHttpRequest(relayRequest, relayInfo)
     this.emit(new GsnValidateRequestEvent())
-
-    const error = await this._verifyViewCallSuccessful(relayInfo, asRelayCallAbi(httpRequest), false)
+    const viewCallGasLimit = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
+      relayRequest.relayData.paymaster,
+      relayRequest.relayData.relayWorker,
+      toBN(relayRequest.relayData.maxFeePerGas),
+      toBN(this.config.maxViewableGasLimit),
+      toBN(this.config.minViewableGasLimit)
+    )
+    const error = await this._verifyViewCallSuccessful(relayInfo, asRelayCallAbi(httpRequest), viewCallGasLimit, false)
     if (error != null) {
       return { error }
     }
@@ -720,7 +726,10 @@ export class RelayClient {
     }
     // TODO: clone?
     await this.fillRelayInfo(relayRequest, dryRunRelayInfo)
-    const maxAcceptanceBudget = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
+    const paymasterLimits =
+      await this.dependencies.contractInteractor.getGasAndDataLimitsFromPaymaster(relayRequest.relayData.paymaster)
+    const maxAcceptanceBudget = paymasterLimits.acceptanceBudget
+    const viewCallGasLimit = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
       relayRequest.relayData.paymaster,
       relayWorkerAddress,
       toBN(maxMaxFeePerGas),
@@ -735,18 +744,19 @@ export class RelayClient {
       approvalData: '0x',
       maxAcceptanceBudget: maxAcceptanceBudget.toString()
     }
-    return await this._verifyViewCallSuccessful(dryRunRelayInfo, relayCallABI, true)
+    return await this._verifyViewCallSuccessful(dryRunRelayInfo, relayCallABI, viewCallGasLimit, true)
   }
 
   async _verifyViewCallSuccessful (
     relayInfo: RelayInfo,
     relayCallABI: RelayCallABI,
+    viewCallGasLimit: BN,
     isDryRun: boolean
   ): Promise<Error | undefined> {
     const acceptRelayCallResult =
       await this.dependencies.contractInteractor.validateRelayCall(
         relayCallABI,
-        toBN(this.config.maxViewableGasLimit),
+        viewCallGasLimit,
         isDryRun)
     if (!acceptRelayCallResult.paymasterAccepted || acceptRelayCallResult.recipientReverted) {
       let message: string
