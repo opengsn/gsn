@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import {
   TypedRequestData,
   GsnDomainSeparatorType,
@@ -50,7 +50,7 @@ export const transferErc20Error = /ERC20: insufficient allowance/
 contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) => {
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const provider = new JsonRpcProvider(currentProviderHost)
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
 
   let paymaster: TokenPaymasterInstance
   let uniswap: TestUniswapInstance

@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import {
   createHashcashAsyncApproval, calculateHashcashApproval, calculateHashcash
 } from '../src/HashCashApproval'
@@ -19,7 +19,7 @@ const IRelayHub = artifacts.require('IRelayHub')
 contract('HashcashPaymaster', ([from]) => {
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const provider = new JsonRpcProvider(currentProviderHost)
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
 
   let pm: HashcashPaymasterInstance
   let s: SampleRecipientInstance

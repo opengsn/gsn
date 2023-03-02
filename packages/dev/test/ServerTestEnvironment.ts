@@ -4,7 +4,7 @@ import Web3 from 'web3'
 import crypto from 'crypto'
 import sinon from 'sinon'
 import { HttpProvider } from 'web3-core'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
 import { toBN, toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
 import {
@@ -117,7 +117,7 @@ export class ServerTestEnvironment {
 
   constructor (provider: HttpProvider, accounts: Address[]) {
     this.provider = provider
-    this.ethersProvider = new JsonRpcProvider(this.provider.host)
+    this.ethersProvider = new StaticJsonRpcProvider(this.provider.host)
     this.web3 = new Web3(this.provider)
     this.relayOwner = accounts[4]
   }

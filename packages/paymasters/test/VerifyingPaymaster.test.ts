@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { SampleRecipientInstance, VerifyingPaymasterInstance } from '../types/truffle-contracts'
 
 import { GSNUnresolvedConstructorInput, RelayProvider, GSNConfig } from '@opengsn/provider'
@@ -18,7 +18,7 @@ const SampleRecipient = artifacts.require('SampleRecipient')
 contract('VerifyingPaymaster', ([from]) => {
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const provider = new JsonRpcProvider(currentProviderHost)
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
 
   describe('#getRequestHash', () => {
     let req: RelayRequest

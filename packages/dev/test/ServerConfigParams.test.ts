@@ -11,7 +11,7 @@ import {
 import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
 
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   RelayHubInstance
@@ -198,7 +198,7 @@ context('#ServerConfigParams', () => {
   context('#resolveServerConfig', () => {
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
-    const provider = new JsonRpcProvider(currentProviderHost)
+    const provider = new StaticJsonRpcProvider(currentProviderHost)
     it('should fail on missing hub/oracle', async () => {
       await expectRevert(resolveServerConfig({}, provider), 'missing param: must have relayHubAddress')
     })

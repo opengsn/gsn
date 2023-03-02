@@ -1,6 +1,6 @@
 import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   ArbRelayHubInstance,
@@ -129,7 +129,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
 
       // @ts-ignore
       const currentProviderHost = web3.currentProvider.host
-      const provider = new JsonRpcProvider(currentProviderHost)
+      const provider = new StaticJsonRpcProvider(currentProviderHost)
       signature = await getEip712Signature(
         provider,
         dataToSign

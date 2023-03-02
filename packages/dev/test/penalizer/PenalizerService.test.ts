@@ -1,5 +1,5 @@
 import { HttpProvider } from 'web3-core'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { Transaction } from '@ethereumjs/tx'
 import { toBN } from 'web3-utils'
 
@@ -35,7 +35,7 @@ contract('PenalizerService', function (accounts) {
 
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
-    const provider = new JsonRpcProvider(currentProviderHost)
+    const provider = new StaticJsonRpcProvider(currentProviderHost)
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const { config: serverConfigParams } = await resolveServerConfig({

@@ -3,7 +3,7 @@
 // the two modes must behave just the same (with an exception of gasless test, which must fail on direct mode, and must
 // succeed in gasless)
 // the entire 'contract' test is doubled. all tests titles are prefixed by either "Direct:" or "Relay:"
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import {
@@ -65,7 +65,7 @@ options.forEach(params => {
     let relayProvider: RelayProvider
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
-    const provider = new JsonRpcProvider(currentProviderHost)
+    const provider = new StaticJsonRpcProvider(currentProviderHost)
 
     before(async () => {
       await emptyBalance(gasless, accounts[0])

@@ -3,7 +3,7 @@
 import { SignTypedDataVersion, recoverTypedSignature, TypedDataUtils } from '@metamask/eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 import chai, { expect } from 'chai'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   RelayRequest,
@@ -40,7 +40,7 @@ const TestRecipient = artifacts.require('TestRecipient')
 contract('Utils', function (accounts) {
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const provider = new JsonRpcProvider(currentProviderHost)
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
 
   describe('#getEip712Signature()', function () {
     // ganache always reports chainId as '1'

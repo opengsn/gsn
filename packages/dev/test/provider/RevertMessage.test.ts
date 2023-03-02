@@ -8,7 +8,7 @@
 
 import { expectRevert } from '@openzeppelin/test-helpers'
 import { HttpProvider } from 'web3-core'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import Web3 from 'web3'
 
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
@@ -21,7 +21,7 @@ import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 
 // @ts-ignore
 const currentProviderHost = web3.currentProvider.host
-const ethersProvider = new JsonRpcProvider(currentProviderHost)
+const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 const underlyingProvider = web3.currentProvider as HttpProvider
 
 describe.skip('RevertMessage.test', function () {

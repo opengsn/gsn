@@ -9,7 +9,7 @@ import { TypedMessage } from '@metamask/eth-sig-util'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
 import { toChecksumAddress } from 'ethereumjs-util'
-import { JsonRpcProvider, TransactionReceipt } from '@ethersproject/providers'
+import { StaticJsonRpcProvider, TransactionReceipt } from '@ethersproject/providers'
 
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
@@ -57,7 +57,7 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 
 // @ts-ignore
 const currentProviderHost = web3.currentProvider.host
-const underlyingProvider = new JsonRpcProvider(currentProviderHost)
+const underlyingProvider = new StaticJsonRpcProvider(currentProviderHost)
 // const underlyingProvider = web3.currentProvider as HttpProvider
 
 const paymasterData = '0x'

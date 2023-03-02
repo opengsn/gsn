@@ -1,7 +1,7 @@
 /* eslint-disable no-global-assign */
 
 import BN from 'bn.js'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
 
@@ -75,7 +75,7 @@ async function makeRequest (
   }
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const provider = new JsonRpcProvider(currentProviderHost)
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
   const contractInteractor = new ContractInteractor({
     domainSeparatorName: defaultGsnConfig.domainSeparatorName,
     environment: defaultEnvironment,

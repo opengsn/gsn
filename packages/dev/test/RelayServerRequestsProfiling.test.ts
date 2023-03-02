@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider, JsonRpcProvider } from '@ethersproject/providers'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { evmMine, evmMineMany } from './TestUtils'
 import { ContractInteractor, LoggerInterface, GSNContractsDeployment, defaultEnvironment } from '@opengsn/common'
@@ -24,7 +24,7 @@ contract('RelayServerRequestsProfiling', function (accounts) {
     logger = createServerLogger('error', '', '')
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
-    ethersProvider = new JsonRpcProvider(currentProviderHost)
+    ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
     provider = new ProfilingProvider(currentProviderHost)
     const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
       const maxPageSize = Number.MAX_SAFE_INTEGER

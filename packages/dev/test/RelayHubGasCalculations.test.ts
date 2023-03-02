@@ -2,7 +2,7 @@
 
 import BN from 'bn.js'
 import { ether } from '@openzeppelin/test-helpers'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   getEip712Signature
@@ -75,7 +75,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   let relayHub: RelayHubInstance
   let relayRegistrar: RelayRegistrarInstance

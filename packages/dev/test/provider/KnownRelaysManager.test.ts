@@ -2,7 +2,7 @@ import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { KnownRelaysManager, DefaultRelayFilter } from '@opengsn/provider/dist/KnownRelaysManager'
 import {
   ContractInteractor,
@@ -71,7 +71,7 @@ contract('KnownRelaysManager', function (
   const pastEventsQueryMaxPageSize = 10
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   describe('#_fetchRecentlyActiveRelayManagers()', function () {
     let config: GSNConfig
@@ -264,7 +264,7 @@ contract('KnownRelaysManager 2', function (accounts) {
 
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   before(async function () {
     logger = createClientLogger({ logLevel: 'error' })

@@ -1,7 +1,7 @@
 import BN from 'bn.js'
 import chai from 'chai'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { deployHub, evmMine, hardhatNodeChainId, setNextBlockTimestamp } from './TestUtils'
 
@@ -58,7 +58,7 @@ contract('RelayHub Configuration',
 
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
-    const ethersProvider = new JsonRpcProvider(currentProviderHost)
+    const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
     let relayHub: RelayHubInstance
     let relayRegistrar: RelayRegistrarInstance

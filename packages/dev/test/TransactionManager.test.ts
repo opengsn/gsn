@@ -1,4 +1,4 @@
-import { JsonRpcProvider, Block } from '@ethersproject/providers'
+import { StaticJsonRpcProvider, Block } from '@ethersproject/providers'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import Mutex from 'async-mutex/lib/Mutex'
@@ -18,7 +18,7 @@ contract('TransactionManager', function (accounts) {
 
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   before(async function () {
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)

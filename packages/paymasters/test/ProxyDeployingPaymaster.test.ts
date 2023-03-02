@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { RelayProvider, GSNConfig, defaultGsnConfig } from '@opengsn/provider'
 import {
@@ -87,7 +87,7 @@ export async function revert (id: string): Promise<void> {
 contract('ProxyDeployingPaymaster', ([senderAddress, relayWorker, burnAddress]) => {
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const provider = new JsonRpcProvider(currentProviderHost)
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
 
   const tokensPerEther = 2
 

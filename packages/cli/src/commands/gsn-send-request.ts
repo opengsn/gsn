@@ -5,7 +5,7 @@ import Web3 from 'web3'
 import { hdkey as EthereumHDKey } from 'ethereumjs-wallet'
 import { toHex, toWei } from 'web3-utils'
 
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { HttpProvider } from 'web3-core'
 
@@ -76,7 +76,7 @@ async function getProvider (
     const overrideDependencies: Partial<GSNDependencies> = {
       logger
     }
-    const provider = new JsonRpcProvider(host)
+    const provider = new StaticJsonRpcProvider(host)
     const input: GSNUnresolvedConstructorInput = {
       provider,
       config,

@@ -6,7 +6,7 @@ import chai from 'chai'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
-import { JsonRpcProvider, Block } from '@ethersproject/providers'
+import { StaticJsonRpcProvider, Block } from '@ethersproject/providers'
 
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
@@ -44,7 +44,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
 
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   beforeEach(async function () {
     globalId = (await snapshot()).result

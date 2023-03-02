@@ -1,7 +1,7 @@
 import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { Transaction } from '@ethereumjs/tx'
 import { ether } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
@@ -28,7 +28,7 @@ contract('PenalizationFlow', function (accounts) {
   before(async function () {
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
-    const ethersProvider = new JsonRpcProvider(currentProviderHost)
+    const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
     const currentProvider = web3.currentProvider as HttpProvider
     env = new ServerTestEnvironment(currentProvider, accounts)
     await env.init()

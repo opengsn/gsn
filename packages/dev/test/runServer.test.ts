@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import {
   RelayHubInstance,
@@ -38,7 +38,7 @@ contract('runServer', function (accounts) {
 
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   async function deployGsnContracts (): Promise<void> {
     testToken = await TestToken.new()

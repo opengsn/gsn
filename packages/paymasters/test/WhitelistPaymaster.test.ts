@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { SampleRecipientInstance, WhitelistPaymasterInstance } from '../types/truffle-contracts'
 
 import { GSNUnresolvedConstructorInput, RelayProvider, GSNConfig } from '@opengsn/provider'
@@ -13,7 +13,7 @@ const SampleRecipient = artifacts.require('SampleRecipient')
 contract('WhitelistPaymaster', ([from, another]) => {
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const provider = new JsonRpcProvider(currentProviderHost)
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
 
   let pm: WhitelistPaymasterInstance
   let s: SampleRecipientInstance

@@ -1,5 +1,5 @@
 import Web3 from 'web3'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { PrefixedHexString, fromRpcSig, bufferToHex, keccakFromString } from 'ethereumjs-util'
 import { getEip712Signature, TruffleContract, Address, IntString } from '@opengsn/common'
 import { TypedMessage } from '@metamask/eth-sig-util'
@@ -124,7 +124,7 @@ export async function signAndEncodeDaiPermit (
   const web3 = new Web3(web3Input.currentProvider)
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const provider = new JsonRpcProvider(currentProviderHost)
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
   const DaiContract = TruffleContract({
     contractName: 'DAIPermitInterface',
     abi: daiPermitAbi
@@ -176,7 +176,7 @@ export async function signAndEncodeEIP2612Permit (
   const web3 = new Web3(web3Input.currentProvider)
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const provider = new JsonRpcProvider(currentProviderHost)
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
   const EIP2612Contract = TruffleContract({
     contractName: 'EIP2612Contract',
     abi: eip2612PermitAbi

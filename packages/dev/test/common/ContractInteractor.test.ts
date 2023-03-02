@@ -2,7 +2,7 @@ import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
 import BN from 'bn.js'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { BigNumber } from '@ethersproject/bignumber'
 import { PastEventOptions } from 'web3-eth-contract'
 import {
@@ -60,7 +60,7 @@ const environment = defaultEnvironment
 contract('ContractInteractor', function (accounts) {
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   const provider = new ProfilingProvider(currentProviderHost)
   const logger = createClientLogger({ logLevel: 'error' })
@@ -701,7 +701,7 @@ contract('ContractInteractor', function (accounts) {
 
     context('#estimateGasWithoutCalldata()', function () {
       it('should calculate gas used for calculation only', async function () {
-        const stubbedEstimateGasEthersProvider = new JsonRpcProvider(currentProviderHost)
+        const stubbedEstimateGasEthersProvider = new StaticJsonRpcProvider(currentProviderHost)
         const contractInteractor = new ContractInteractor({
           provider: stubbedEstimateGasEthersProvider, logger, maxPageSize, environment
         })
@@ -746,7 +746,7 @@ contract('ContractInteractor', function (accounts) {
       })
 
       it('should throw if calldataGasCost estimation exceeds originalGasEstimation', async function () {
-        const stubbedEstimateGasEthersProvider = new JsonRpcProvider(currentProviderHost)
+        const stubbedEstimateGasEthersProvider = new StaticJsonRpcProvider(currentProviderHost)
         const contractInteractor = new ContractInteractor({
           provider: stubbedEstimateGasEthersProvider, logger, maxPageSize, environment
         })

@@ -1,6 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
 import { SignTypedDataVersion, recoverTypedSignature } from '@metamask/eth-sig-util'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
@@ -26,7 +26,7 @@ contract('AccountManager', function (accounts) {
   before(function () {
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
-    ethersProvider = new JsonRpcProvider(currentProviderHost)
+    ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
     accountManager = new AccountManager(ethersProvider, hardhatNodeChainId, config)
     sinon.spy(accountManager)
   })

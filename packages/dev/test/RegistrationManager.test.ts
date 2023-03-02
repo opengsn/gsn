@@ -2,7 +2,7 @@ import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import BN from 'bn.js'
 import { toChecksumAddress } from 'ethereumjs-util'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   ContractInteractor,
@@ -48,7 +48,7 @@ const unstakeDelay = 15000
 
 // @ts-ignore
 const currentProviderHost = web3.currentProvider.host
-const provider = new JsonRpcProvider(currentProviderHost)
+const provider = new StaticJsonRpcProvider(currentProviderHost)
 
 contract('RegistrationManager', function (accounts) {
   const relayOwner = accounts[4]

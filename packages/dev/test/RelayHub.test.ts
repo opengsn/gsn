@@ -2,7 +2,7 @@ import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-he
 import BN from 'bn.js'
 import chai from 'chai'
 import { toBN } from 'web3-utils'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   RelayCallStatusCodes,
@@ -65,7 +65,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
 
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   let relayHub: string
   let testToken: TestTokenInstance

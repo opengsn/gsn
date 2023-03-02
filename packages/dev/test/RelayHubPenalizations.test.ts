@@ -2,7 +2,7 @@
 // This rule seems to be flickering and buggy - does not understand async arrow functions correctly
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { Transaction, AccessListEIP2930Transaction, FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
 import Common from '@ethereumjs/common'
@@ -70,7 +70,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
 
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   const encodedCallArgs = {
     sender,

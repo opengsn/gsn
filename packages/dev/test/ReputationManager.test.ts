@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { constants, ContractInteractor, defaultEnvironment } from '@opengsn/common'
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
@@ -26,7 +26,7 @@ contract('ReputationManager', function () {
 
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   function mockSleep (sleepTime: number): void {
     currentNow += sleepTime

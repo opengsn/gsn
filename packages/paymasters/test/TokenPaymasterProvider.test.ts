@@ -2,7 +2,7 @@ import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { ContractFactory } from 'ethers'
 import { HttpProvider } from 'web3-core'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { TokenPaymasterConfig, TokenPaymasterProvider } from '../src/TokenPaymasterProvider'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { toWei } from 'web3-utils'
@@ -74,7 +74,7 @@ const { expect, assert } = chai.use(chaiAsPromised)
 contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const provider = new JsonRpcProvider(currentProviderHost)
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
 
   let permitPaymaster: PermitERC20UniswapV3PaymasterInstance
   let daiPermittableToken: PermitInterfaceDAIInstance
@@ -414,7 +414,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
     it('should wrap ethers.js Contract instance with TokenPaymasterProvider', async function () {
       await skipWithoutFork(this)
       this.timeout(60000)
-      const ethersProvider = new JsonRpcProvider((web3.currentProvider as any).host)
+      const ethersProvider = new StaticJsonRpcProvider((web3.currentProvider as any).host)
       const signer = ethersProvider.getSigner()
       // @ts-ignores
       const factory = await new ContractFactory(SampleRecipient.abi, SampleRecipient.bytecode, signer)

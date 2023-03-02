@@ -9,7 +9,7 @@ import {
   isSameAddress
 } from '@opengsn/common'
 
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { CommandsLogic, RegisterOptions } from './CommandsLogic'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
@@ -139,7 +139,7 @@ class GsnTestEnvironmentClass {
       preferredRelays: [relayUrl],
       paymasterAddress: deploymentResult.paymasterAddress
     }
-    const provider = new JsonRpcProvider(_host)
+    const provider = new StaticJsonRpcProvider(_host)
     const input: GSNUnresolvedConstructorInput = {
       provider,
       config
@@ -200,7 +200,7 @@ class GsnTestEnvironmentClass {
     const txStoreManager = new TxStoreManager({ inMemory: true }, logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const environment = defaultEnvironment
-    const provider = new JsonRpcProvider(host)
+    const provider = new StaticJsonRpcProvider(host)
     const contractInteractor = new ContractInteractor(
       {
         provider,
@@ -262,7 +262,7 @@ class GsnTestEnvironmentClass {
     workdir = './build/gsn'
   ): Promise<GSNContractsDeployment> {
     const deployment = loadDeployment(workdir)
-    const provider = new JsonRpcProvider(url)
+    const provider = new StaticJsonRpcProvider(url)
     const contractInteractor = new ContractInteractor(
       {
         provider,

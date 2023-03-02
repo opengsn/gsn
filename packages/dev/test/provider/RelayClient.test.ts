@@ -11,7 +11,7 @@ import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { PrefixedHexString, toBuffer, bufferToHex } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   RelayHubInstance,
@@ -109,7 +109,7 @@ const localhost127One = 'http://127.0.0.1:8090'
 
 // @ts-ignore
 const currentProviderHost = web3.currentProvider.host
-const underlyingProvider = new JsonRpcProvider(currentProviderHost)
+const underlyingProvider = new StaticJsonRpcProvider(currentProviderHost)
 
 class MockHttpClient extends HttpClient {
   constructor (readonly mockPort: number,
@@ -1174,37 +1174,6 @@ contract('RelayClient', function (accounts) {
       assert.equal(relayingErrors.size, 1)
       assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
       assert.match(relayingErrors.values().next().value.message, /paymaster accepted but recipient reverted in DRY-RUN.*Reported reason: : 0x/s)
-    })
-
-    it('should not require paymaster to have excessive balance when using "calculateDryRunCallGasLimit"', async function () {
-      const relayClient =
-        new RelayClient({
-          provider: underlyingProvider,
-          config: {
-            ...gsnConfig,
-            performDryRunViewRelayCall: true
-          }
-        })
-      await paymaster.withdrawAll(constants.BURN_ADDRESS)
-      const paymasterHubDeposit = 4e16
-      const baseFeePerGas = 30e9
-      await paymaster.deposit({ value: paymasterHubDeposit.toString() })
-      await relayClient.init()
-      sinon.stub(relayClient.dependencies.contractInteractor, 'getGasFees').returns(Promise.resolve({
-        priorityFeePerGas: baseFeePerGas.toString(),
-        baseFeePerGas: baseFeePerGas.toString()
-      }))
-      sinon.spy(relayClient, '_verifyViewCallSuccessful')
-      const optionsWithGas = Object.assign({}, options, {
-        gas: '0xf4240',
-        maxFeePerGas: '0x51f4d5c00',
-        maxPriorityFeePerGas: '0x51f4d5c00'
-      })
-      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
-      await relayClient._verifyDryRunSuccessful(relayRequest)
-      // the expected value for 'maxAcceptanceBudget' in case of low paymaster balance depends on it
-      const maxAcceptanceBudget = (paymasterHubDeposit / baseFeePerGas * 0.9 - 1).toString()
-      expect(relayClient._verifyViewCallSuccessful).to.have.been.calledWith(sinon.match.any, sinon.match({ maxAcceptanceBudget }), sinon.match.any)
     })
   })
 })

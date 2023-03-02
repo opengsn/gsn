@@ -1,7 +1,7 @@
 import chaiAsPromised from 'chai-as-promised'
 import sinon, { SinonStub } from 'sinon'
 import { toBN } from 'web3-utils'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   Address,
@@ -84,7 +84,7 @@ contract('RelaySelectionManager', function (accounts) {
 
   // @ts-ignore
   const currentProviderHost = web3.currentProvider.host
-  const ethersProvider = new JsonRpcProvider(currentProviderHost)
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   let stubPingResponse: SinonStub
   describe('#selectNextRelay()', function () {
