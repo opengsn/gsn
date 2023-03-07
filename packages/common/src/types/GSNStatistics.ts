@@ -8,7 +8,6 @@ import {
 } from './GSNContractsDataTypes'
 import { PingResponse } from '../PingResponse'
 import { GSNContractsDeployment } from '../GSNContractsDeployment'
-
 type EventData = any
 
 export interface PingResult {
@@ -44,7 +43,7 @@ export interface RelayHubEvents {
 }
 
 export interface StakeMangerEvents {
-  allEvents: any[]
+  allEvents: EventData[]
   stakeAddedEvents: Array<EventTransactionInfo<StakeAddedEventInfo>>
   stakeUnlockedEvents: Array<EventTransactionInfo<StakeUnlockedEventInfo>>
   stakeWithdrawnEvents: Array<EventTransactionInfo<StakeWithdrawnEventInfo>>

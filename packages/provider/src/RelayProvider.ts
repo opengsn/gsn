@@ -46,12 +46,10 @@ const TX_NOTFOUND = 'tx-notfound'
 
 const BLOCKS_FOR_LOOKUP = 5000
 
-// TODO: stop faking the HttpProvider implementation -  it won't work for any other 'origProvider' type
 export class RelayProvider {
   protected readonly origProvider: JsonRpcProvider
   private readonly _origProviderSend: (method: string, params: any[]) => Promise<any>
   private asyncSignTypedData?: SignTypedDataCallback
-  // protected readonly web3: Web3
   protected readonly submittedRelayRequests = new Map<string, SubmittedRelayRequestInfo>()
   protected config!: GSNConfig
 
@@ -72,18 +70,10 @@ export class RelayProvider {
       throw new Error('Using new RelayProvider() constructor directly is deprecated.\nPlease create provider using RelayProvider.newProvider({})')
     }
     this.relayClient = relayClient
-    // this.web3 = new Web3(relayClient.getUnderlyingProvider() as HttpProvider)
-    // TODO: stop faking the HttpProvider implementation
     this.origProvider = this.relayClient.getUnderlyingProvider()
-    // this.host = this.origProvider.host
-    // this.connected = this.origProvider.connected
     this.logger = this.relayClient.logger
 
-    // if (typeof this.origProvider.sendAsync === 'function') {
-    //   this.origProviderSend = this.origProvider.sendAsync.bind(this.origProvider)
-    // } else {
     this._origProviderSend = this.origProvider.send.bind(this.origProvider)
-    // }
     this._delegateEventsApi()
   }
 

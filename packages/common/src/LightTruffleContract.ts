@@ -4,8 +4,7 @@ import { JsonFragment, ParamType } from '@ethersproject/abi'
 import { JsonRpcProvider, JsonRpcSigner } from '@ethersproject/providers'
 import { toBN } from './web3js/Web3JSUtils'
 
-// eslint-disable-next-line @typescript-eslint/array-type
-function getComponent (key: string, components: ReadonlyArray<ParamType>): JsonFragment | undefined {
+function getComponent (key: string, components: readonly ParamType[]): JsonFragment | undefined {
   // @ts-ignore
   const component = components[key]
   if (component != null) {
@@ -42,8 +41,7 @@ function retypeItem (abiOutput: Partial<ParamType>, ret: any): any {
 }
 
 // restore TF type: uint are returned as string in web3, and as BN in TF.
-// eslint-disable-next-line @typescript-eslint/array-type
-function retype (outputs?: ReadonlyArray<JsonFragment>, ret?: any): any {
+function retype (outputs?: readonly JsonFragment[], ret?: any): any {
   if (outputs?.length === 1) {
     return retypeItem(outputs[0], ret)
   } else {
@@ -56,7 +54,6 @@ function retype (outputs?: ReadonlyArray<JsonFragment>, ret?: any): any {
 }
 
 export class Contract<T> {
-  // web3!: Web3
   provider!: JsonRpcProvider
   signer!: JsonRpcSigner
 

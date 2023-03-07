@@ -148,8 +148,6 @@ contract('RegistrationManager', function (accounts) {
       managerKeyManager = new KeyManager(1, serverWorkdirs.managerWorkdir)
       const workersKeyManager = new KeyManager(1, serverWorkdirs.workersWorkdir)
       txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir }, logger)
-      // TODO: why did we have different providers here? Is it testing something or not?
-      // serverWeb3provider = new Web3.providers.HttpProvider((web3.currentProvider as HttpProvider).host)
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider: provider,

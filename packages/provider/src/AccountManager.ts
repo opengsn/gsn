@@ -35,14 +35,12 @@ function toAddress (privateKey: PrefixedHexString): Address {
 }
 
 export class AccountManager {
-  // private readonly web3: Web3
   private readonly provider: JsonRpcProvider
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
   readonly chainId: number
 
   constructor (provider: JsonRpcProvider, chainId: number, config: GSNConfig) {
-    // this.web3 = new Web3(provider as any)
     this.provider = provider
     this.chainId = chainId
     this.config = config

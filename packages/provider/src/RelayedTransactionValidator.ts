@@ -1,4 +1,3 @@
-// import Web3 from 'web3'
 import { PrefixedHexString, toBuffer, bufferToHex } from 'ethereumjs-util'
 import { TypedTransaction, Transaction, FeeMarketEIP1559Transaction, TransactionFactory } from '@ethereumjs/tx'
 

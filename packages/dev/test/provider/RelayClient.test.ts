@@ -11,7 +11,7 @@ import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { PrefixedHexString, toBuffer, bufferToHex } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
-import { StaticJsonRpcProvider } from '@ethersproject/providers'
+import { StaticJsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 
 import {
   RelayHubInstance,
@@ -38,7 +38,6 @@ import {
   RelayInfo,
   RelayRequest,
   RelayTransactionRequest,
-  // Web3ProviderBaseInterface,
   constants,
   defaultEnvironment,
   getRawTxOptions,
@@ -46,6 +45,7 @@ import {
 } from '@opengsn/common'
 import {
   _dumpRelayingResult,
+  GSNUnresolvedConstructorInput,
   RelayClient,
   EmptyDataCallback
 } from '@opengsn/provider/dist/RelayClient'
@@ -237,54 +237,54 @@ contract('RelayClient', function (accounts) {
   })
 
   describe('#_initInternal()', () => {
-    // TODO: uncomment!
-    // it('should set metamask defaults', async () => {
-    //   const metamaskProvider: Web3ProviderBaseInterface = {
-    //     // @ts-ignore
-    //     isMetaMask: true,
-    //     send: (options: any, cb: any) => {
-    //       (web3.currentProvider as any).send(options, cb)
-    //     }
-    //   }
-    //   const constructorInput: GSNUnresolvedConstructorInput = {
-    //     provider: metamaskProvider,
-    //     config: { paymasterAddress: paymaster.address }
-    //   }
-    //   const anotherRelayClient = new RelayClient(constructorInput)
-    //   assert.equal(anotherRelayClient.config, undefined)
-    //   await anotherRelayClient._initInternal()
-    //   assert.equal(anotherRelayClient.config.methodSuffix, '_v4')
-    //   assert.equal(anotherRelayClient.config.jsonStringifyRequest, true)
-    // })
+    it('should set metamask defaults', async () => {
+      // simulate client being constructed with Web3Provider instance injected by metamask
+      const metamaskProvider: ExternalProvider = {
+        // @ts-ignore
+        isMetaMask: true,
+        send: (options: any, cb: any) => {
+          (web3.currentProvider as any).send(options, cb)
+        }
+      }
+      const constructorInput: GSNUnresolvedConstructorInput = {
+        provider: metamaskProvider,
+        config: { paymasterAddress: paymaster.address }
+      }
+      const anotherRelayClient = new RelayClient(constructorInput)
+      assert.equal(anotherRelayClient.config, undefined)
+      await anotherRelayClient._initInternal()
+      assert.equal(anotherRelayClient.config.methodSuffix, '_v4')
+      assert.equal(anotherRelayClient.config.jsonStringifyRequest, true)
+    })
 
-    // it('should allow to override metamask defaults', async () => {
-    //   const minMaxPriorityFeePerGas = 777
-    //   const suffix = 'suffix'
-    //   const metamaskProvider = {
-    //     isMetaMask: true,
-    //     send: (options: any, cb: any) => {
-    //       (web3.currentProvider as any).send(options, cb)
-    //     }
-    //   }
-    //   const constructorInput: GSNUnresolvedConstructorInput = {
-    //     provider: metamaskProvider,
-    //     config: {
-    //       minMaxPriorityFeePerGas: minMaxPriorityFeePerGas,
-    //       paymasterAddress: paymaster.address,
-    //       methodSuffix: suffix,
-    //       jsonStringifyRequest: 5 as any
-    //     }
-    //   }
-    //   const anotherRelayClient = new RelayClient(constructorInput)
-    //   assert.equal(anotherRelayClient.config, undefined)
-    //   // note: to check boolean override, we explicitly set it to something that
-    //   // is not in the defaults..
-    //   await anotherRelayClient._initInternal()
-    //   assert.equal(anotherRelayClient.config.methodSuffix, suffix)
-    //   assert.equal(anotherRelayClient.config.jsonStringifyRequest as any, 5)
-    //   assert.equal(anotherRelayClient.config.minMaxPriorityFeePerGas, minMaxPriorityFeePerGas)
-    //   assert.equal(anotherRelayClient.config.waitForSuccessSliceSize, defaultGsnConfig.waitForSuccessSliceSize, 'default value expected for a skipped field')
-    // })
+    it('should allow to override metamask defaults', async () => {
+      const minMaxPriorityFeePerGas = 777
+      const suffix = 'suffix'
+      const metamaskProvider: ExternalProvider = {
+        isMetaMask: true,
+        send: (options: any, cb: any) => {
+          (web3.currentProvider as any).send(options, cb)
+        }
+      }
+      const constructorInput: GSNUnresolvedConstructorInput = {
+        provider: metamaskProvider,
+        config: {
+          minMaxPriorityFeePerGas: minMaxPriorityFeePerGas,
+          paymasterAddress: paymaster.address,
+          methodSuffix: suffix,
+          jsonStringifyRequest: 5 as any
+        }
+      }
+      const anotherRelayClient = new RelayClient(constructorInput)
+      assert.equal(anotherRelayClient.config, undefined)
+      // note: to check boolean override, we explicitly set it to something that
+      // is not in the defaults..
+      await anotherRelayClient._initInternal()
+      assert.equal(anotherRelayClient.config.methodSuffix, suffix)
+      assert.equal(anotherRelayClient.config.jsonStringifyRequest as any, 5)
+      assert.equal(anotherRelayClient.config.minMaxPriorityFeePerGas, minMaxPriorityFeePerGas)
+      assert.equal(anotherRelayClient.config.waitForSuccessSliceSize, defaultGsnConfig.waitForSuccessSliceSize, 'default value expected for a skipped field')
+    })
   })
 
   describe('#relayTransaction()', function () {

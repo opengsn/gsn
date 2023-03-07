@@ -31,8 +31,6 @@ export class NetworkSimulatingProvider extends WrapperProviderBase {
   }
 
   async send (method: string, params: any[]): Promise<any> {
-    // send (payload: JsonRpcPayload, callback: SendCallback): void {
-    //   let resp: JsonRpcResponse | undefined
     let txHash
     switch (method) {
       case 'eth_sendRawTransaction':
@@ -56,7 +54,6 @@ export class NetworkSimulatingProvider extends WrapperProviderBase {
   async mineTransaction (txHash: PrefixedHexString): Promise<any> {
     const txPayload: DelayedSend | undefined = this.mempool.get(txHash)
     this.mempool.delete(txHash)
-    // return await new Promise((resolve, reject) => {
     if (txPayload == null) {
       throw new Error(`Transaction ${txHash} is not in simulated mempool. It must be already mined`)
     }

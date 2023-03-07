@@ -153,8 +153,6 @@ export class ContractInteractor {
   relayRegistrar!: IRelayRegistrarInstance
   erc20Token!: IERC20TokenInstance
 
-  // readonly web3: Web3
-
   readonly calculateCalldataGasUsed: CalldataGasEstimation
   readonly provider: JsonRpcProvider
   // private readonly provider: Web3ProviderBaseInterface
@@ -191,7 +189,6 @@ export class ContractInteractor {
     this.maxPageCount = maxPageCount ?? Number.MAX_SAFE_INTEGER
     this.logger = logger
     this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
-    // this.web3 = new Web3(provider as any)
     this.deployment = deployment
     this.provider = provider
     this.calldataEstimationSlackFactor = calldataEstimationSlackFactor ?? 1

@@ -3,7 +3,7 @@ import chalk from 'chalk'
 
 import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
 
-import { AbiCoder, JsonFragment, Interface } from '@ethersproject/abi'
+import { AbiCoder, Interface, JsonFragment } from '@ethersproject/abi'
 import { TypedMessage } from '@metamask/eth-sig-util'
 import { encode, List } from 'rlp'
 
@@ -88,8 +88,8 @@ export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError
   return new AbiCoder().decode(['string'], '0x' + revertBytes.slice(10))[0]
 }
 
-export async function getDefaultMethodSuffix (web3: Web3): Promise<string> {
-  const nodeInfo = await web3.eth.getNodeInfo()
+export async function getDefaultMethodSuffix (provider: JsonRpcProvider): Promise<string> {
+  const nodeInfo: string = await provider.send('web3_clientVersion', [])
   // ganache-cli
   if (nodeInfo.toLowerCase().includes('testrpc')) return ''
   // hardhat
@@ -99,7 +99,6 @@ export async function getDefaultMethodSuffix (web3: Web3): Promise<string> {
 }
 
 export async function getEip712Signature<T extends MessageTypes> (
-  // web3: Web3,
   provider: JsonRpcProvider,
   typedRequestData: TypedMessage<T>,
   methodSuffix: string | null = null,
@@ -112,39 +111,14 @@ export async function getEip712Signature<T extends MessageTypes> (
   } else {
     dataToSign = typedRequestData
   }
-  methodSuffix = methodSuffix ?? await getDefaultMethodSuffix(web3)
-  // return await new Promise((resolve, reject) => {
-  //   let method
-  //   // @ts-ignore (the entire web3 typing is fucked up)
-  //   if (typeof web3.currentProvider.sendAsync === 'function') {
-  //     // @ts-ignore
-  //     method = web3.currentProvider.sendAsync
-  //   } else {
-  //     // @ts-ignore
-  //     method = web3.currentProvider.send
-  //   }
+  methodSuffix = methodSuffix ?? await getDefaultMethodSuffix(provider)
   const paramBlock = {
     method: `eth_signTypedData${methodSuffix}`,
     params: [senderAddress, dataToSign],
     jsonrpc: '2.0',
     id: Date.now()
   }
-
-  // TODO: check promises logic is not broken here; apply fixes;
-  const signedStuff = await provider.send(paramBlock.method, paramBlock.params)
-
-  return signedStuff
-  // method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null | boolean, result?: JsonRpcResult) => {
-  //   if (result?.error != null) {
-  //     error = result.error as any
-  //   }
-  //   if ((errorAsBoolean(error)) || result == null) {
-  //     reject((error as any).message ?? error)
-  //   } else {
-  //     resolve(correctV(result.result))
-  //   }
-  // })
-  // })
+  return await provider.send(paramBlock.method, paramBlock.params)
 }
 
 export function correctV (result: PrefixedHexString): PrefixedHexString {
@@ -384,7 +358,6 @@ export function toNumber (numberish: number | string | BN | BigInt): number {
 }
 
 export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString): PrefixedHexString {
-  // const web3 = new Web3()
   const types = ['address', 'uint256', 'bytes']
   const parameters = [relayRequest.request.from, relayRequest.request.nonce, signature]
   const abiCoder = new ethers.utils.AbiCoder()
@@ -396,7 +369,6 @@ export function getRelayRequestID (relayRequest: RelayRequest, signature: Prefix
 }
 
 export function getERC165InterfaceID (abi: JsonFragment[]): string {
-  // const web3 = new Web3()
   let interfaceId =
     abi
       .filter(it => it.type === 'function' && it.name != null)

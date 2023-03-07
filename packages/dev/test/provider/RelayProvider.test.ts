@@ -58,7 +58,6 @@ const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterCon
 // @ts-ignore
 const currentProviderHost = web3.currentProvider.host
 const underlyingProvider = new StaticJsonRpcProvider(currentProviderHost)
-// const underlyingProvider = web3.currentProvider as HttpProvider
 
 const paymasterData = '0x'
 const clientId = '1'

@@ -328,11 +328,11 @@ contract('ContractInteractor', function (accounts) {
         await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
       } finally {
         sinon.assert.calledOnce(spy)
-        // const rpcPayload = spy.getCall(0).args[0]
-        // TODO: Uncomment and adjust!
-        // assert.equal(rpcPayload.method, 'eth_call')
-        // assert.equal(rpcPayload.params![0].maxFeePerGas, toHex(relayRequest.relayData.maxFeePerGas))
-        // assert.equal(rpcPayload.params![0].maxPriorityFeePerGas, toHex(relayRequest.relayData.maxPriorityFeePerGas))
+        const method = spy.getCall(0).args[0]
+        const params = spy.getCall(0).args[1]
+        assert.equal(method, 'eth_call')
+        assert.equal(params[0].maxFeePerGas, toHex(relayRequest.relayData.maxFeePerGas))
+        assert.equal(params[0].maxPriorityFeePerGas, toHex(relayRequest.relayData.maxPriorityFeePerGas))
         spy.restore()
       }
     })

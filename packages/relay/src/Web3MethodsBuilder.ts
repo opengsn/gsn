@@ -21,10 +21,6 @@ export class Web3MethodsBuilder {
   private readonly IRelayRegistrar: any
   private readonly IStakeManager: any
 
-  // private relayHubInstance!: IRelayHubInstance
-  // private relayRegistrar!: IRelayRegistrarInstance
-  // private stakeManagerInstance!: IStakeManagerInstance
-
   constructor (web3: Web3, deployment?: GSNContractsDeployment) {
     // @ts-ignore
     this.IStakeManager = new web3.eth.Contract(stakeManagerAbi, deployment?.stakeManagerAddress)
