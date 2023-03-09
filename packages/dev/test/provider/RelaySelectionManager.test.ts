@@ -256,11 +256,11 @@ contract('RelaySelectionManager', function (accounts) {
       assert.equal(returned1.length, 2)
       // Pretend all relays failed to ping
       let errors = new Map(returned1.map(info => [info.relayUrl, new Error('fake error')]))
-      rsm._handleWaitForSuccessResults({ errors, results: [] })
+      rsm._handleWaitForSuccessResults({ errors, results: [] }, [])
       const returned2 = await rsm._getNextSlice()
       assert.equal(returned2.length, 3)
       errors = new Map(returned2.map(info => [info.relayUrl, new Error('fake error')]))
-      rsm._handleWaitForSuccessResults({ errors, results: [] })
+      rsm._handleWaitForSuccessResults({ errors, results: [] }, [])
       const returned3 = await rsm._getNextSlice()
       assert.equal(returned3.length, 0)
     })
@@ -400,7 +400,7 @@ contract('RelaySelectionManager', function (accounts) {
       assert.equal(remainingRelays[0][0].relayUrl, winnerRelayUrl)
       assert.equal(remainingRelays[0][1].relayUrl, failureRelayUrl)
       assert.equal(remainingRelays[0][2].relayUrl, otherRelayUrl)
-      rsm._handleWaitForSuccessResults(raceResults, winner)
+      rsm._handleWaitForSuccessResults(raceResults, [], winner)
       // @ts-ignore
       remainingRelays = rsm.remainingRelays
       assert.equal(remainingRelays?.length, 1)
@@ -427,6 +427,7 @@ contract('RelaySelectionManager', function (accounts) {
 
       relayInfo1 = Object.assign(
         {}, relayInfo, {
+          relayInfo: Object.assign({}, relayInfo.relayInfo, { relayUrl: 'http://relayUrl1' }),
           pingResponse: Object.assign({}, relayInfo.pingResponse, {
             minMaxFeePerGas: MAX_FEE_PER_GAS_CLIENT + 60000,
             minMaxPriorityFeePerGas: MAX_PRIO_FEE_PER_GAS_CLIENT + 70000
@@ -434,6 +435,7 @@ contract('RelaySelectionManager', function (accounts) {
         })
       relayInfo2 = Object.assign(
         {}, relayInfo, {
+          relayInfo: Object.assign({}, relayInfo.relayInfo, { relayUrl: 'http://relayUrl2' }),
           pingResponse: Object.assign({}, relayInfo.pingResponse, {
             minMaxFeePerGas: MAX_FEE_PER_GAS_CLIENT + 7777,
             minMaxPriorityFeePerGas: MAX_PRIO_FEE_PER_GAS_CLIENT + 8888
@@ -441,6 +443,7 @@ contract('RelaySelectionManager', function (accounts) {
         })
       relayInfo3 = Object.assign(
         {}, relayInfo, {
+          relayInfo: Object.assign({}, relayInfo.relayInfo, { relayUrl: 'http://relayUrl3' }),
           pingResponse: Object.assign({}, relayInfo.pingResponse, {
             minMaxFeePerGas: MAX_FEE_PER_GAS_CLIENT + 50000,
             minMaxPriorityFeePerGas: MAX_PRIO_FEE_PER_GAS_CLIENT + 50000
@@ -465,10 +468,10 @@ contract('RelaySelectionManager', function (accounts) {
         results: [relayInfo],
         errors: new Map()
       }
-      const adjustedRelayRequest = await relaySelectionManager.selectWinnerByAdjustingFees(fakePingResults)
-      assert.isOk(adjustedRelayRequest != null)
-      assert.equal(adjustedRelayRequest?.updatedGasFees.maxFeePerGas, originalTransactionDetails.maxFeePerGas)
-      assert.equal(adjustedRelayRequest?.updatedGasFees.maxPriorityFeePerGas, originalTransactionDetails.maxPriorityFeePerGas)
+      const { winner } = relaySelectionManager.selectWinnerByAdjustingFees(fakePingResults)
+      assert.isOk(winner != null)
+      assert.equal(winner?.updatedGasFees.maxFeePerGas, originalTransactionDetails.maxFeePerGas)
+      assert.equal(winner?.updatedGasFees.maxPriorityFeePerGas, originalTransactionDetails.maxPriorityFeePerGas)
     })
 
     it('should accept cheaper Relay Server whose fees are close enough', async function () {
@@ -477,33 +480,54 @@ contract('RelaySelectionManager', function (accounts) {
         results: [relayInfo1, relayInfo2, relayInfo3],
         errors: new Map()
       }
-      const adjustedRelayRequest = await relaySelectionManager.selectWinnerByAdjustingFees(fakePingResults)
-      assert.isOk(adjustedRelayRequest != null)
-      assert.equal(adjustedRelayRequest?.updatedGasFees.maxFeePerGas, toHex(relayInfo2.pingResponse.minMaxFeePerGas))
-      assert.equal(adjustedRelayRequest?.updatedGasFees.maxPriorityFeePerGas, toHex(relayInfo2.pingResponse.minMaxPriorityFeePerGas))
+      const { winner } = relaySelectionManager.selectWinnerByAdjustingFees(fakePingResults)
+      assert.isOk(winner != null)
+      assert.equal(winner?.updatedGasFees.maxFeePerGas, toHex(relayInfo2.pingResponse.minMaxFeePerGas))
+      assert.equal(winner?.updatedGasFees.maxPriorityFeePerGas, toHex(relayInfo2.pingResponse.minMaxPriorityFeePerGas))
     })
 
     it('should reject Relay Server fees if not close enough', async function () {
       relayInfo.pingResponse.minMaxFeePerGas = '10000000'
       relayInfo.pingResponse.minMaxPriorityFeePerGas = '10000000'
       const fakePingResults: WaitForSuccessResults<PartialRelayInfo> = {
-        // relayInfo2 is the closest one and is sandwiched in the middle
-        results: [relayInfo, relayInfo],
+        results: [relayInfo],
         errors: new Map()
       }
-      const adjustedRelayRequest = await relaySelectionManager.selectWinnerByAdjustingFees(fakePingResults)
+      const { winner: adjustedRelayRequest, skippedRelays } = relaySelectionManager.selectWinnerByAdjustingFees(fakePingResults)
       assert.isOk(adjustedRelayRequest == null)
+      assert.equal(skippedRelays.length, 1)
     })
-    it('should reject Relay Server if client gas price is above maxMaxFeePerGas', async function () {
-      relayInfo.pingResponse.maxMaxFeePerGas = '100'
-      relayInfo.pingResponse.minMaxFeePerGas = '10'
+
+    // TODO: this is not a great test as it re-implements order of calls in RelaySelectionManager under test
+    it('should remove skipped relays from the remaining relays', async function () {
+      // make the second relay be the bad guy
+      relayInfo.pingResponse.minMaxFeePerGas = '1'
+      relayInfo.pingResponse.minMaxPriorityFeePerGas = '1'
+      relayInfo1.pingResponse.minMaxFeePerGas = '10000000'
+      relayInfo1.pingResponse.minMaxPriorityFeePerGas = '10000000'
+      stubGetRelaysShuffled.returns(Promise.resolve([
+        [
+          eventInfo,
+          Object.assign({}, eventInfo, { relayUrl: 'http://relayUrl1' }),
+          Object.assign({}, eventInfo, { relayUrl: 'http://relayUrl2' }),
+          Object.assign({}, eventInfo, { relayUrl: 'http://relayUrl3' })
+        ]
+      ]))
+      const relaySelectionManager = await new RelaySelectionManager(originalTransactionDetails, knownRelaysManager, httpClient, GasPricePingFilter, logger, config).init()
       const fakePingResults: WaitForSuccessResults<PartialRelayInfo> = {
-        // relayInfo2 is the closest one and is sandwiched in the middle
-        results: [relayInfo, relayInfo],
+        results: [relayInfo, relayInfo1, relayInfo2, relayInfo3],
         errors: new Map()
       }
-      const adjustedRelayRequest = await relaySelectionManager.selectWinnerByAdjustingFees(fakePingResults)
-      assert.isOk(adjustedRelayRequest == null)
+      const { skippedRelays } = relaySelectionManager.selectWinnerByAdjustingFees(fakePingResults)
+      assert.equal(skippedRelays.length, 1)
+      assert.equal(skippedRelays[0], relayInfo1.relayInfo.relayUrl)
+      // not passing the winner as we want to see only the skipped one be removed
+      relaySelectionManager._handleWaitForSuccessResults(fakePingResults, skippedRelays, undefined)
+      const returned3 = relaySelectionManager._getNextSlice()
+      assert.equal(returned3.length, 3)
+      assert.equal(returned3[0].relayUrl, relayInfo.relayInfo.relayUrl)
+      assert.equal(returned3[1].relayUrl, relayInfo2.relayInfo.relayUrl)
+      assert.equal(returned3[2].relayUrl, relayInfo3.relayInfo.relayUrl)
     })
   })
 })
