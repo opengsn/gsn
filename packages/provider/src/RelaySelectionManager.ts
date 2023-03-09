@@ -67,8 +67,8 @@ export class RelaySelectionManager {
     this.logger.info('nextRelay: find fastest relay from: ' + JSON.stringify(relays))
     const allPingResults = await this._waitForSuccess(relays, relayHub, paymaster)
     this.logger.info(`race finished with a result: ${JSON.stringify(allPingResults, replaceErrors)}`)
-    const winner = this.selectWinnerFromResult(allPingResults)
-    this._handleWaitForSuccessResults(allPingResults, winner?.relayInfo)
+    const { winner, skippedRelays } = this.selectWinnerFromResult(allPingResults)
+    this._handleWaitForSuccessResults(allPingResults, skippedRelays, winner?.relayInfo)
     if (winner == null) {
       return
     }
@@ -164,6 +164,7 @@ export class RelaySelectionManager {
 
   _handleWaitForSuccessResults (
     raceResult: WaitForSuccessResults<PartialRelayInfo>,
+    skippedRelays: string[],
     winner?: PartialRelayInfo
   ): void {
     if (!this.isInitialized) { throw new Error('init() not called') }
@@ -173,30 +174,33 @@ export class RelaySelectionManager {
         return relays.length
       })
       .reduce((a, b) => { return a + b }, 0)
+
+    function notWinner (eventInfo: RelayInfoUrl): boolean {
+      if (winner == null) {
+        return true
+      }
+      const eventUrl = new URL(eventInfo.relayUrl).toString()
+      const winnerUrl = new URL(winner.relayInfo.relayUrl).toString()
+      return eventUrl !== winnerUrl
+    }
+
+    function notError (eventInfo: RelayInfoUrl): boolean {
+      const urls = Array.from(raceResult.errors.keys()).map(it => new URL(it).toString())
+      return !urls.includes(new URL(eventInfo.relayUrl).toString())
+    }
+
+    function notSkipped (eventInfo: RelayInfoUrl): boolean {
+      // remove relays skipped (due to gas fees being wrong)
+      return !skippedRelays
+        .map(it => new URL(it).toString())
+        .includes(new URL(eventInfo.relayUrl).toString())
+    }
+
     this.remainingRelays = this.remainingRelays.map(relays =>
       relays
-        .filter(eventInfo => {
-          if (winner == null) {
-            return true
-          }
-          const eventUrl = new URL(eventInfo.relayUrl)
-          const winnerUrl = new URL(winner.relayInfo.relayUrl)
-          return eventUrl.toString() !== winnerUrl.toString()
-        })
-        .filter(eventInfo => {
-          const urls = Array.from(raceResult.errors.keys()).map(it => new URL(it).toString())
-          return !urls.includes(new URL(eventInfo.relayUrl).toString())
-        })
-        .filter(eventInfo => {
-          // if there is no 'winner' remove all 'results' - none is suitable
-          // TODO: report these as 'errors' as well - this code will make extra pings to overpriced relays
-          if (winner == null) {
-            return !raceResult.results
-              .map(it => new URL(it.relayInfo.relayUrl).toString())
-              .includes(new URL(eventInfo.relayUrl).toString())
-          }
-          return true
-        })
+        .filter(notWinner)
+        .filter(notError)
+        .filter(notSkipped)
     )
     const totalRemainingRelaysAfter = this.remainingRelays
       .map((relays) => {
@@ -209,13 +213,13 @@ export class RelaySelectionManager {
 
   selectWinnerFromResult (
     allPingResults: WaitForSuccessResults<PartialRelayInfo>
-  ): RelaySelectionResult | undefined {
+  ): { winner?: RelaySelectionResult, skippedRelays: string[] } {
     if (allPingResults.results.length === 0) {
-      return
+      return { skippedRelays: [] }
     }
     const winner = this.selectWinnerWithoutAdjustingFees(allPingResults)
     if (winner != null) {
-      return winner
+      return { winner, skippedRelays: [] }
     }
     this.logger.debug('No relay with suitable gas fees found in current slice. Adjusting request...')
     return this.selectWinnerByAdjustingFees(allPingResults)
@@ -253,7 +257,8 @@ export class RelaySelectionManager {
    */
   selectWinnerByAdjustingFees (
     allPingResults: WaitForSuccessResults<PartialRelayInfo>
-  ): RelaySelectionResult | undefined {
+  ): { winner?: RelaySelectionResult, skippedRelays: string[] } {
+    const skippedRelays: string[] = []
     const adjustedArray = allPingResults.results
       .map(it => {
         return adjustRelayRequestForPingResponse(this.gsnTransactionDetails, it)
@@ -261,12 +266,14 @@ export class RelaySelectionManager {
       .filter(it => {
         const isGasPriceWithinSlack = it.maxDeltaPercent <= this.config.gasPriceSlackPercent
         if (!isGasPriceWithinSlack) {
+          const skippedRelayUrl = it.relayInfo.relayInfo.relayUrl
           this.logger.debug(`
-Skipping relay (${it.relayInfo.relayInfo.relayUrl}) due to gas fees being higher than allowed by ${it.maxDeltaPercent}%.
+Skipping relay (${skippedRelayUrl}) due to gas fees being higher than allowed by ${it.maxDeltaPercent}%.
 There are many reasons a Relay Server may want a higher price. See our FAQ page: https://docs.opengsn.org/faq/troubleshooting.html
 TLDR: you can set 'gasPriceSlackPercent' to ${it.maxDeltaPercent} or more to make this relay acceptable for now.
 Value currently configured is: ${this.config.gasPriceSlackPercent}%`
           )
+          skippedRelays.push(skippedRelayUrl)
         }
         return isGasPriceWithinSlack
       })
@@ -277,6 +284,9 @@ Value currently configured is: ${this.config.gasPriceSlackPercent}%`
     if (winner != null) {
       this.logger.debug(`Adjusting RelayRequest to use Relay Server (${winner.relayInfo.relayInfo.relayUrl}) with fees ${JSON.stringify(winner.updatedGasFees)}`)
     }
-    return winner
+    return {
+      winner,
+      skippedRelays
+    }
   }
 }
