@@ -1,43 +1,36 @@
-import { HttpProvider } from 'web3-core'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
-import { SendCallback } from './SendCallback'
-import { WrapperProviderBase } from './WrapperProviderBase'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
-export class ProfilingProvider extends WrapperProviderBase {
+export class ProfilingProvider extends StaticJsonRpcProvider {
   methodsCount = new Map<string, number>()
   requestsCount = 0
 
   logTraffic: boolean
 
-  constructor (provider: HttpProvider, logTraffic: boolean = false) {
-    super(provider)
+  constructor (host: string, logTraffic: boolean = false) {
+    super(host)
     this.logTraffic = logTraffic
   }
 
-  disconnect (): boolean {
-    return false
-  }
-
-  supportsSubscriptions (): boolean {
-    return false
-  }
-
-  send (payload: JsonRpcPayload, callback: SendCallback): void {
+  async send (method: string, params: any[]): Promise<any> {
     this.requestsCount++
-    const currentCount = this.methodsCount.get(payload.method) ?? 0
-    this.methodsCount.set(payload.method, currentCount + 1)
-    let wrappedCallback: SendCallback = callback
+    const currentCount = this.methodsCount.get(method) ?? 0
+    this.methodsCount.set(method, currentCount + 1)
     if (this.logTraffic) {
-      wrappedCallback = function (error: (Error | null), result?: JsonRpcResponse): void {
-        if (error != null) {
-          console.log(`<<< error: ${error.message ?? 'null error message'}`)
-        }
-        console.log(`<<< result: ${JSON.stringify(result) ?? 'null result'}`)
-        callback(error, result)
-      }
-      console.log(`>>> payload: ${JSON.stringify(payload) ?? 'null result'}`)
+      console.log(`>>> payload: "${method}" [${JSON.stringify(params)}]`)
     }
-    this.provider.send(payload, wrappedCallback)
+    try {
+      const result = await super.send(method, params)
+      if (this.logTraffic) {
+        console.log(`<<< result: ${JSON.stringify(result) ?? 'null result'}`)
+      }
+      return result
+    } catch (error: any) {
+      if (this.logTraffic) {
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        console.log(`<<< error: ${error.message ?? 'null error message'}`)
+      }
+      throw error
+    }
   }
 
   reset (): void {

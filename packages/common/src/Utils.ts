@@ -1,10 +1,9 @@
 import BN from 'bn.js'
-import Web3 from 'web3'
-import abi from 'web3-eth-abi'
 import chalk from 'chalk'
-import { AbiItem, fromWei, toWei, toBN, toHex } from 'web3-utils'
-import { EventData } from 'web3-eth-contract'
-import { JsonRpcResponse } from 'web3-core-helpers'
+
+import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
+
+import { AbiCoder, Interface, JsonFragment } from '@ethersproject/abi'
 import { TypedMessage } from '@metamask/eth-sig-util'
 import { encode, List } from 'rlp'
 
@@ -27,11 +26,14 @@ import {
   unpadBuffer
 } from 'ethereumjs-util'
 
-import { Address, EIP1559Fees, RelaySelectionResult } from './types/Aliases'
+import { Address, EIP1559Fees, EventData, RelaySelectionResult } from './types/Aliases'
 
 import { MessageTypes } from './EIP712/TypedRequestData'
-import { PartialRelayInfo } from './types/RelayInfo'
+import { fromWei, isBigNumber, toBN, toHex, toWei } from './web3js/Web3JSUtils'
+import { ethers } from 'ethers'
+import { keccak256 } from 'ethers/lib/utils'
 import { RelayRequest } from './EIP712/RelayRequest'
+import { PartialRelayInfo } from './types/RelayInfo'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -56,11 +58,9 @@ export function signatureRSV2Hex (r: BN | Buffer, s: BN | Buffer, v: number): st
 export function event2topic (contract: any, names: string[]): any {
   // for testing: don't crash on mockup..
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!contract.options || !contract.options.jsonInterface) { return names }
-  return contract.options.jsonInterface
-    .filter((e: any) => names.includes(e.name))
-    // @ts-ignore
-    .map(abi.encodeEventSignature)
+  if (!contract.filters) { return names }
+  return names
+    .map(name => { return contract.filters[name]().topics[0] })
 }
 
 export function addresses2topics (addresses: string[]): string[] {
@@ -85,12 +85,11 @@ export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError
     }
     return revertBytes
   }
-  // @ts-ignore
-  return abi.decodeParameter('string', '0x' + revertBytes.slice(10)) as any
+  return new AbiCoder().decode(['string'], '0x' + revertBytes.slice(10))[0]
 }
 
-export async function getDefaultMethodSuffix (web3: Web3): Promise<string> {
-  const nodeInfo = await web3.eth.getNodeInfo()
+export async function getDefaultMethodSuffix (provider: JsonRpcProvider): Promise<string> {
+  const nodeInfo: string = await provider.send('web3_clientVersion', [])
   // ganache-cli
   if (nodeInfo.toLowerCase().includes('testrpc')) return ''
   // hardhat
@@ -100,7 +99,7 @@ export async function getDefaultMethodSuffix (web3: Web3): Promise<string> {
 }
 
 export async function getEip712Signature<T extends MessageTypes> (
-  web3: Web3,
+  provider: JsonRpcProvider,
   typedRequestData: TypedMessage<T>,
   methodSuffix: string | null = null,
   jsonStringifyRequest = false
@@ -112,37 +111,17 @@ export async function getEip712Signature<T extends MessageTypes> (
   } else {
     dataToSign = typedRequestData
   }
-  methodSuffix = methodSuffix ?? await getDefaultMethodSuffix(web3)
-  return await new Promise((resolve, reject) => {
-    let method
-    // @ts-ignore (the entire web3 typing is fucked up)
-    if (typeof web3.currentProvider.sendAsync === 'function') {
-      // @ts-ignore
-      method = web3.currentProvider.sendAsync
-    } else {
-      // @ts-ignore
-      method = web3.currentProvider.send
-    }
-    const paramBlock = {
-      method: `eth_signTypedData${methodSuffix}`,
-      params: [senderAddress, dataToSign],
-      jsonrpc: '2.0',
-      id: Date.now()
-    }
-    method.bind(web3.currentProvider)(paramBlock, (error: Error | string | null | boolean, result?: JsonRpcResponse) => {
-      if (result?.error != null) {
-        error = result.error as any
-      }
-      if ((errorAsBoolean(error)) || result == null) {
-        reject((error as any).message ?? error)
-      } else {
-        resolve(correctV(result.result))
-      }
-    })
-  })
+  methodSuffix = methodSuffix ?? await getDefaultMethodSuffix(provider)
+  const paramBlock = {
+    method: `eth_signTypedData${methodSuffix}`,
+    params: [senderAddress, dataToSign],
+    jsonrpc: '2.0',
+    id: Date.now()
+  }
+  return await provider.send(paramBlock.method, paramBlock.params)
 }
 
-function correctV (result: PrefixedHexString): PrefixedHexString {
+export function correctV (result: PrefixedHexString): PrefixedHexString {
   const buffer = toBuffer(result)
   const last = buffer.length - 1
   const oldV = buffer[last]
@@ -359,10 +338,6 @@ export function packRelayUrlForRegistrar (parts: string[]): string {
       .replace(/(00)+$/g, ''), 'hex').toString()
 }
 
-function isBigNumber (object: Object): boolean {
-  return object?.constructor?.name === 'BigNumber' || object?.constructor?.name === 'BN'
-}
-
 export function toNumber (numberish: number | string | BN | BigInt): number {
   switch (typeof numberish) {
     case 'string':
@@ -383,22 +358,25 @@ export function toNumber (numberish: number | string | BN | BigInt): number {
 }
 
 export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString): PrefixedHexString {
-  const web3 = new Web3()
   const types = ['address', 'uint256', 'bytes']
   const parameters = [relayRequest.request.from, relayRequest.request.nonce, signature]
-  const hash = web3.utils.keccak256(web3.eth.abi.encodeParameters(types, parameters))
+  const abiCoder = new ethers.utils.AbiCoder()
+  const hash = keccak256(abiCoder.encode(types, parameters))
   const rawRelayRequestId = removeHexPrefix(hash).padStart(64, '0')
   const prefixSize = 8
   const prefixedRelayRequestId = rawRelayRequestId.replace(new RegExp(`^.{${prefixSize}}`), '0'.repeat(prefixSize))
   return `0x${prefixedRelayRequestId}`
 }
 
-export function getERC165InterfaceID (abi: AbiItem[]): string {
-  const web3 = new Web3()
+export function getERC165InterfaceID (abi: JsonFragment[]): string {
   let interfaceId =
     abi
-      .filter(it => it.type === 'function')
-      .map(web3.eth.abi.encodeFunctionSignature)
+      .filter(it => it.type === 'function' && it.name != null)
+      .map(it => {
+        const iface = new Interface([it])
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        return iface.getSighash(it.name!)
+      })
       .filter(it => it !== '0x01ffc9a7') // remove the IERC165 method itself
       .map((x) => parseInt(x, 16))
       .reduce((x, y) => x ^ y)
@@ -550,4 +528,11 @@ export function validateRelayUrl (relayUrl: string): boolean {
     return false
   }
   return url.protocol === 'http:' || url.protocol === 'https:'
+}
+
+export function wrapWeb3JsProvider (provider: any): JsonRpcProvider {
+  if (typeof provider === 'object' && typeof provider.getSigner !== 'function') {
+    return new Web3Provider(provider)
+  }
+  return provider
 }

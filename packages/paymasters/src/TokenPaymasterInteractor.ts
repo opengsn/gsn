@@ -1,4 +1,6 @@
-import { Address, Contract, TruffleContract, Web3ProviderBaseInterface } from '@opengsn/common/dist'
+import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
+
+import { Address, Contract, TruffleContract, wrapWeb3JsProvider } from '@opengsn/common/dist'
 import {
   PermitERC20UniswapV3PaymasterInstance,
   PermitInterfaceDAIInstance,
@@ -9,13 +11,13 @@ import PermitInterfaceDAI from './interfaces/PermitInterfaceDAI.json'
 import PermitInterfaceEIP2612 from './interfaces/PermitInterfaceEIP2612.json'
 
 export class TokenPaymasterInteractor {
-  private readonly provider: Web3ProviderBaseInterface
+  private readonly provider: JsonRpcProvider
   private readonly PermitInterfaceDAIToken: Contract<PermitInterfaceDAIInstance>
   private readonly PermitInterfaceEIP2612Token: Contract<PermitInterfaceEIP2612Instance>
   private readonly PermitERC20UniswapV3Paymaster: Contract<PermitERC20UniswapV3PaymasterInstance>
 
-  constructor (provider: Web3ProviderBaseInterface) {
-    this.provider = provider
+  constructor (provider: JsonRpcProvider | ExternalProvider) {
+    this.provider = wrapWeb3JsProvider(provider)
     this.PermitInterfaceDAIToken = TruffleContract({
       contractName: 'PermitInterfaceDAIToken',
       abi: PermitInterfaceDAI

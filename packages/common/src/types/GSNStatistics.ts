@@ -8,7 +8,7 @@ import {
 } from './GSNContractsDataTypes'
 import { PingResponse } from '../PingResponse'
 import { GSNContractsDeployment } from '../GSNContractsDeployment'
-import { EventData } from 'web3-eth-contract'
+type EventData = any
 
 export interface PingResult {
   pingResponse?: PingResponse

@@ -1,10 +1,9 @@
 import { Contract, providers } from 'ethers'
-import { Eip1193Bridge } from '@ethersproject/experimental'
-import { ExternalProvider } from '@ethersproject/providers'
+import { ExternalProvider, JsonRpcProvider } from '@ethersproject/providers'
 import { Signer } from '@ethersproject/abstract-signer'
 
 import { TokenPaymasterConfig, TokenPaymasterProvider } from './TokenPaymasterProvider'
-import { GSNDependencies, WrapBridge } from '@opengsn/provider/dist'
+import { GSNDependencies, GSNUnresolvedConstructorInput } from '@opengsn/provider'
 
 async function wrapContract (
   contract: Contract,
@@ -19,9 +18,12 @@ async function wrapSigner (
   signer: Signer,
   config: Partial<TokenPaymasterConfig>,
   overrideDependencies?: Partial<GSNDependencies>): Promise<Signer> {
-  const bridge = new WrapBridge(new Eip1193Bridge(signer, signer.provider))
-  const input = {
-    provider: bridge,
+  const provider = signer.provider
+  if (provider == null) {
+    throw new Error('GSN requires a Signer instance with a provider to wrap it')
+  }
+  const input: GSNUnresolvedConstructorInput = {
+    provider: provider as JsonRpcProvider,
     config,
     overrideDependencies
   }

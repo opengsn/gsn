@@ -1,10 +1,11 @@
 import { PrefixedHexString } from 'ethereumjs-util'
+import { JsonRpcProvider, Log } from '@ethersproject/providers'
+import { LogDescription } from '@ethersproject/abi'
+
 import { PingResponse } from '../PingResponse'
 import { RelayRequest } from '../EIP712/RelayRequest'
 import { GsnTransactionDetails } from './GsnTransactionDetails'
-import { PartialRelayInfo, RegistrarRelayInfo } from './RelayInfo'
-import { HttpProvider, IpcProvider, WebsocketProvider } from 'web3-core'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
+import { RegistrarRelayInfo, PartialRelayInfo } from './RelayInfo'
 import { TypedMessage } from '@metamask/eth-sig-util'
 import { Environment } from '../environments/Environments'
 
@@ -33,9 +34,11 @@ export type SignTypedDataCallback = (signedData: TypedMessage<any>, from: Addres
  * Note that both Relay Client and Relay Server must come to the same number.
  * Also, this value does include the base transaction cost (2100 on mainnet).
  */
-export type CalldataGasEstimation = (calldata: PrefixedHexString, environment: Environment, calldataEstimationSlackFactor: number, web3: Web3) => Promise<number>
+export type CalldataGasEstimation = (calldata: PrefixedHexString, environment: Environment, calldataEstimationSlackFactor: number, provider: JsonRpcProvider) => Promise<number>
 
 export type RelayFilter = (registrarRelayInfo: RegistrarRelayInfo) => boolean
+
+export type EventData = Log & LogDescription
 
 export function notNull<TValue> (value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined
@@ -46,11 +49,6 @@ export function notNull<TValue> (value: TValue | null | undefined): value is TVa
  */
 export type NpmLogLevel = 'error' | 'warn' | 'info' | 'debug'
 
-export type Web3Provider =
-  | HttpProvider
-  | IpcProvider
-  | WebsocketProvider
-
 export interface RelaySelectionResult {
   relayInfo: PartialRelayInfo
   maxDeltaPercent: number
@@ -60,16 +58,6 @@ export interface RelaySelectionResult {
 export interface EIP1559Fees {
   maxFeePerGas: PrefixedHexString
   maxPriorityFeePerGas: PrefixedHexString
-}
-
-/**
- * The only thing that is guaranteed a Web3 provider or a similar object is a {@link send} method.
- */
-export interface Web3ProviderBaseInterface {
-  send: (
-    payload: JsonRpcPayload,
-    callback: (error: Error | null, result?: JsonRpcResponse) => void
-  ) => void
 }
 
 export interface ObjectMap<T> {

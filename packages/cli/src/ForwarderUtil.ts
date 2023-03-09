@@ -1,7 +1,6 @@
-import { GsnDomainSeparatorType, GsnRequestType } from './TypedRequestData'
-import { IForwarderInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { Contract } from 'web3-eth-contract'
-import { LoggerInterface } from '../LoggerInterface'
+import { GsnDomainSeparatorType, GsnRequestType, LoggerInterface } from '@opengsn/common'
+import { IForwarderInstance } from '@opengsn/contracts/types/truffle-contracts'
 
 // register a forwarder for use with GSN: the request-type and domain separator we're using.
 export async function registerForwarderForGsn (domainSeparatorName: string, forwarderTruffleOrWeb3: IForwarderInstance | Contract, logger?: LoggerInterface, sendOptions: any = undefined): Promise<void> {

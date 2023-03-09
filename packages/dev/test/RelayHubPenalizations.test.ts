@@ -2,6 +2,7 @@
 // This rule seems to be flickering and buggy - does not understand async arrow functions correctly
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import BN from 'bn.js'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { Transaction, AccessListEIP2930Transaction, FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
 import Common from '@ethereumjs/common'
@@ -19,7 +20,6 @@ import {
   getDataAndSignature,
   getEip712Signature,
   getRawTxOptions,
-  registerForwarderForGsn,
   removeHexPrefix,
   signatureRSV2Hex
 } from '@opengsn/common'
@@ -35,6 +35,7 @@ import { deployHub, evmMineMany, hardhatNodeChainId, revert, snapshot } from './
 
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 import { defaultGsnConfig } from '@opengsn/provider'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')
@@ -66,6 +67,10 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
   const anotherRelayWorkerPrivateKey = Buffer.from('4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356', 'hex')
   const anotherRelayWorker = privateToAddress(anotherRelayWorkerPrivateKey).toString('hex')
   const stake = ether('1')
+
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   const encodedCallArgs = {
     sender,
@@ -634,7 +639,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             relayRequest
           )
           const signature = await getEip712Signature(
-            web3,
+            ethersProvider,
             dataToSign
           )
           await relayHub.depositFor(paymaster.address, {

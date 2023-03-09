@@ -1,6 +1,8 @@
+import Web3 from 'web3'
+import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 import { RelayClient, RelayProvider, GSNUnresolvedConstructorInput } from '@opengsn/provider'
 import { PrefixedHexString, toChecksumAddress } from 'ethereumjs-util'
-import { Address, removeHexPrefix, Web3ProviderBaseInterface } from '@opengsn/common/dist'
+import { Address, removeHexPrefix } from '@opengsn/common/dist'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
   PermitERC20UniswapV3PaymasterInstance,
@@ -18,7 +20,11 @@ import {
   signAndEncodeEIP2612Permit
 } from './PermitPaymasterUtils'
 import { constants } from '@opengsn/common/dist/Constants'
-import { EIP712Domain, EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import {
+  EIP712Domain,
+  EIP712DomainType,
+  EIP712DomainTypeWithoutVersion
+} from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { TokenPaymasterInteractor } from './TokenPaymasterInteractor'
 
 export interface TokenPaymasterConfig extends GSNConfig {
@@ -36,7 +42,7 @@ export class TokenPaymasterProvider extends RelayProvider {
   protected paymaster!: PermitERC20UniswapV3PaymasterInstance
   readonly tokenPaymasterInteractor: TokenPaymasterInteractor
 
-  constructor (relayClient: RelayClient, provider: Web3ProviderBaseInterface) {
+  constructor (relayClient: RelayClient, provider: JsonRpcProvider | ExternalProvider) {
     super(relayClient)
     this.tokenPaymasterInteractor = new TokenPaymasterInteractor(provider)
   }
@@ -66,6 +72,8 @@ export class TokenPaymasterProvider extends RelayProvider {
   }
 
   async _buildPaymasterData (relayRequest: RelayRequest): Promise<PrefixedHexString> {
+    const httpProvider = new Web3.providers.HttpProvider(this.origProvider.connection.url)
+    const web3 = new Web3(httpProvider)
     if (this.config.tokenPaymasterDomainSeparators == null) {
       throw new Error('TokenPaymasterProvider not initialized. Call init() first')
     }
@@ -83,7 +91,7 @@ export class TokenPaymasterProvider extends RelayProvider {
           relayRequest.relayData.paymaster,
           this.config.tokenAddress,
           constants.MAX_UINT256.toString(),
-          this.web3,
+          web3,
           domainSeparator
         )
       } else {
@@ -93,7 +101,7 @@ export class TokenPaymasterProvider extends RelayProvider {
           this.config.tokenAddress,
           constants.MAX_UINT256.toString(),
           constants.MAX_UINT256.toString(),
-          this.web3,
+          web3,
           domainSeparator,
           domainSeparator.version == null ? EIP712DomainTypeWithoutVersion : EIP712DomainType
         )

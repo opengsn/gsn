@@ -1,17 +1,20 @@
 import { PrefixedHexString } from 'ethereumjs-util'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
-import web3Utils from 'web3-utils'
+import { JsonRpcProvider } from '@ethersproject/providers'
+import { utils } from 'ethers'
 
 import { WrapperProviderBase } from './WrapperProviderBase'
-import { SendCallback } from './SendCallback'
-import { HttpProvider } from 'web3-core'
+
+interface DelayedSend {
+  method: string
+  params: any
+}
 
 export class NetworkSimulatingProvider extends WrapperProviderBase {
   private isDelayTransactionsOn = false
 
-  mempool = new Map<PrefixedHexString, JsonRpcPayload>()
+  mempool = new Map<PrefixedHexString, DelayedSend>()
 
-  public constructor (provider: HttpProvider) {
+  public constructor (provider: JsonRpcProvider) {
     super(provider)
   }
 
@@ -19,33 +22,28 @@ export class NetworkSimulatingProvider extends WrapperProviderBase {
     this.isDelayTransactionsOn = delayTransactions
   }
 
-  calculateTxHash (payload: JsonRpcPayload): PrefixedHexString {
-    const txHash = web3Utils.sha3(payload.params?.[0])
+  calculateTxHash (params?: any[]): PrefixedHexString {
+    const txHash = utils.keccak256(params?.[0])
     if (txHash == null) {
       throw new Error('Failed to hash transaction')
     }
     return txHash
   }
 
-  send (payload: JsonRpcPayload, callback: SendCallback): void {
-    let resp: JsonRpcResponse | undefined
-    switch (payload.method) {
+  async send (method: string, params: any[]): Promise<any> {
+    let txHash
+    switch (method) {
       case 'eth_sendRawTransaction':
         if (this.isDelayTransactionsOn) {
-          const txHash = this.calculateTxHash(payload)
-          resp = {
-            jsonrpc: '2.0',
-            id: castId(payload.id),
-            result: txHash
-          }
-          this.mempool.set(txHash, payload)
+          txHash = this.calculateTxHash(params)
+          this.mempool.set(txHash, { method, params })
         }
         break
     }
-    if (resp != null) {
-      callback(null, resp)
+    if (txHash != null) {
+      return txHash
     } else {
-      this.provider.send(payload, callback)
+      return await this.provider.send(method, params)
     }
   }
 
@@ -54,29 +52,11 @@ export class NetworkSimulatingProvider extends WrapperProviderBase {
   }
 
   async mineTransaction (txHash: PrefixedHexString): Promise<any> {
-    const txPayload: JsonRpcPayload | undefined = this.mempool.get(txHash)
+    const txPayload: DelayedSend | undefined = this.mempool.get(txHash)
     this.mempool.delete(txHash)
-    return await new Promise((resolve, reject) => {
-      if (txPayload == null) {
-        throw new Error(`Transaction ${txHash} is not in simulated mempool. It must be already mined`)
-      }
-      this.provider.send(txPayload, function (error: (Error | null), result?: JsonRpcResponse) {
-        if (error != null || result == null) {
-          reject(error)
-        } else {
-          resolve(result)
-        }
-      })
-    })
-  }
-}
-
-function castId (id: string | number | undefined): number {
-  if (typeof id === 'string') {
-    return parseInt(id)
-  } else if (typeof id === 'number') {
-    return id
-  } else {
-    return 0
+    if (txPayload == null) {
+      throw new Error(`Transaction ${txHash} is not in simulated mempool. It must be already mined`)
+    }
+    return await this.provider.send(txPayload.method, txPayload.params)
   }
 }

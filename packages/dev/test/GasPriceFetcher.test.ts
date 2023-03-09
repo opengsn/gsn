@@ -1,6 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { HttpProvider } from 'web3-core'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { ContractInteractor, LoggerInterface, defaultEnvironment } from '@opengsn/common'
 
@@ -15,6 +15,9 @@ context('GasPriceFetcher', function () {
   let errorlog: string
   let gasPriceFetcher: GasPriceFetcher
   let contractInteractor: ContractInteractor
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
 
   const logger = {
     error: (e: string) => {
@@ -32,7 +35,7 @@ context('GasPriceFetcher', function () {
     contractInteractor = new ContractInteractor({
       environment: defaultEnvironment,
       maxPageSize: Number.MAX_SAFE_INTEGER,
-      provider: web3.currentProvider as HttpProvider,
+      provider,
       logger
     })
 

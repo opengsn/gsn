@@ -19,20 +19,15 @@
   },
   "dependencies": {
     "@ethereumjs/tx": "^3.2.0",
-    "@ethersproject/abstract-provider": "^5.6.1",
-    "@ethersproject/abstract-signer": "^5.6.2",
-    "@ethersproject/experimental": "^5.6.3",
-    "@ethersproject/providers": "^5.6.5",
+    "@ethersproject/abi": "^5.7.0",
+    "@ethersproject/abstract-signer": "^5.7.0",
+    "@ethersproject/bignumber": "^5.7.0",
+    "@ethersproject/providers": "^5.7.2",
     "@metamask/eth-sig-util": "^4.0.1",
     "@opengsn/common": "^3.0.0-beta.3",
     "abi-decoder": "^2.4.0",
     "ethereumjs-util": "^7.1.0",
     "ethereumjs-wallet": "^1.0.2",
-    "ethers": "^5.6.5",
-    "web3": "^1.7.4",
-    "web3-core": "^1.7.4",
-    "web3-core-helpers": "^1.7.4",
-    "web3-eth-contract": "^1.7.4",
-    "web3-utils": "^1.7.4"
+    "ethers": "^5.7.2"
   }
 }

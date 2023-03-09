@@ -1,3 +1,4 @@
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { constants, ContractInteractor, defaultEnvironment } from '@opengsn/common'
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
@@ -7,8 +8,6 @@ import {
   ReputationManagerConfiguration
 } from '@opengsn/relay/dist/ReputationManager'
 import { evmMineMany } from './TestUtils'
-
-import { HttpProvider } from 'web3-core'
 
 /**
  * Attention: these tests are often order and timestamp-dependent! Use debugger with caution.
@@ -24,6 +23,10 @@ contract('ReputationManager', function () {
   let reputationStoreManager: ReputationStoreManager
   let saveNow: any
   let currentNow: number
+
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   function mockSleep (sleepTime: number): void {
     currentNow += sleepTime
@@ -50,7 +53,7 @@ contract('ReputationManager', function () {
     const maxPageSize = Number.MAX_SAFE_INTEGER
     contractInteractor = new ContractInteractor({
       environment: defaultEnvironment,
-      provider: web3.currentProvider as HttpProvider,
+      provider: ethersProvider,
       maxPageSize,
       logger
     })

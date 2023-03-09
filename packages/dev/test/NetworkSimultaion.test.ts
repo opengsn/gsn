@@ -1,6 +1,7 @@
 import { HttpProvider } from 'web3-core'
-import { TxOptions } from '@ethereumjs/tx'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { PrefixedHexString } from 'ethereumjs-util'
+import { TxOptions } from '@ethereumjs/tx'
 import { toBN, toHex } from 'web3-utils'
 
 import {
@@ -32,8 +33,11 @@ contract('Network Simulation for Relay Server', function (accounts) {
   let provider: NetworkSimulatingProvider
 
   before(async function () {
+    // @ts-ignore
+    const currentProviderHost = web3.currentProvider.host
+    const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
     logger = createClientLogger({ logLevel: 'error' })
-    provider = new NetworkSimulatingProvider(web3.currentProvider as HttpProvider)
+    provider = new NetworkSimulatingProvider(ethersProvider)
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
       const contractInteractor = new ContractInteractor({

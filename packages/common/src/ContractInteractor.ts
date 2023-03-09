@@ -1,13 +1,8 @@
 import BN from 'bn.js'
-import Web3 from 'web3'
-import { BlockTransactionString, FeeHistoryResult } from 'web3-eth'
-import { EventData, PastEventOptions } from 'web3-eth-contract'
+import { Contract as EthersContract, EventFilter, ethers } from 'ethers'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { TxOptions } from '@ethereumjs/tx'
-import { toBN, toHex } from 'web3-utils'
-import { BlockNumber, Transaction, TransactionReceipt } from 'web3-core'
 
-import abi from 'web3-eth-abi'
 import { RelayRequest } from './EIP712/RelayRequest'
 import paymasterAbi from './interfaces/IPaymaster.json'
 import relayHubAbi from './interfaces/IRelayHub.json'
@@ -27,10 +22,10 @@ import {
   decodeRevertReason,
   errorAsBoolean,
   event2topic,
-  formatTokenAmount, isSameAddress,
+  formatTokenAmount,
+  isSameAddress,
   packRelayUrlForRegistrar,
   PaymasterGasAndDataLimits,
-  splitRelayUrlForRegistrar,
   toNumber
 } from './Utils'
 import {
@@ -48,11 +43,11 @@ import {
 import {
   Address,
   CalldataGasEstimation,
+  EventData,
   EventName,
   IntString,
   ObjectMap,
-  SemVerString,
-  Web3ProviderBaseInterface
+  SemVerString
 } from './types/Aliases'
 import { GsnTransactionDetails } from './types/GsnTransactionDetails'
 
@@ -60,27 +55,29 @@ import { Contract, TruffleContract } from './LightTruffleContract'
 import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
-import {
-  ActiveManagerEvents,
-  RelayServerRegistered,
-  RelayWorkersAdded,
-  StakeInfo
-} from './types/GSNContractsDataTypes'
+import { ActiveManagerEvents, RelayServerRegistered, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
 import { Environment } from './environments/Environments'
 import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
-import { BigNumber } from 'bignumber.js'
+import { BigNumber } from '@ethersproject/bignumber'
 import { TransactionType } from './types/TransactionType'
 import { RegistrarRelayInfo } from './types/RelayInfo'
 import { constants, erc165Interfaces, RelayCallStatusCodes } from './Constants'
 import { MainnetCalldataGasEstimation } from './environments/MainnetCalldataGasEstimation'
 import { AsyncZeroAddressCalldataGasEstimation } from './environments/AsyncZeroAddressCalldataGasEstimation'
+import { toBN, toHex } from './web3js/Web3JSUtils'
+import { FeeHistoryResult } from './web3js/FeeHistoryResult'
+import { Network } from '@ethersproject/networks'
 
+import { Block, BlockTag, JsonRpcProvider, TransactionRequest, TransactionResponse } from '@ethersproject/providers'
+import { AbiCoder, Interface } from '@ethersproject/abi'
 import TransactionDetails = Truffle.TransactionDetails
 
+export type EventFilterBlocks = EventFilter & { fromBlock?: BlockTag, toBlock?: BlockTag }
+
 export interface ConstructorParams {
-  provider: Web3ProviderBaseInterface
+  provider: JsonRpcProvider
   logger: LoggerInterface
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
@@ -155,11 +152,10 @@ export class ContractInteractor {
   private erc2771RecipientInstance?: IERC2771RecipientInstance
   relayRegistrar!: IRelayRegistrarInstance
   erc20Token!: IERC20TokenInstance
-  private readonly relayCallMethod: any
 
-  readonly web3: Web3
   readonly calculateCalldataGasUsed: CalldataGasEstimation
-  private readonly provider: Web3ProviderBaseInterface
+  readonly provider: JsonRpcProvider
+  // private readonly provider: Web3ProviderBaseInterface
   private deployment: GSNContractsDeployment
   private readonly versionManager: VersionsManager
   private readonly logger: LoggerInterface
@@ -170,6 +166,7 @@ export class ContractInteractor {
 
   private rawTxOptions?: TxOptions
   chainId!: number
+  network!: Network
   private networkId?: number
   private paymasterVersion?: SemVerString
   readonly environment: Environment
@@ -192,7 +189,6 @@ export class ContractInteractor {
     this.maxPageCount = maxPageCount ?? Number.MAX_SAFE_INTEGER
     this.logger = logger
     this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
-    this.web3 = new Web3(provider as any)
     this.deployment = deployment
     this.provider = provider
     this.calldataEstimationSlackFactor = calldataEstimationSlackFactor ?? 1
@@ -243,8 +239,6 @@ export class ContractInteractor {
     this.IERC2771Recipient.setProvider(this.provider, undefined)
     this.IRelayRegistrar.setProvider(this.provider, undefined)
     this.IERC20Token.setProvider(this.provider, undefined)
-
-    this.relayCallMethod = this.IRelayHubContract.createContract('').methods.relayCall
   }
 
   async init (): Promise<ContractInteractor> {
@@ -253,8 +247,8 @@ export class ContractInteractor {
     if (this.rawTxOptions != null) {
       throw new Error('init was already called')
     }
-    const block = await this.web3.eth.getBlock('latest').catch((e: Error) => { throw new Error(`getBlock('latest') failed: ${e.message}\nCheck your internet/ethereum node connection`) })
-    if (block.baseFeePerGas != null) {
+    const block = await this.provider.getBlock('latest').catch((e: Error) => { throw new Error(`getBlock('latest') failed: ${e.message}\nCheck your internet/ethereum node connection`) })
+    if (block?.baseFeePerGas != null) {
       this.logger.info('Network supports Type 2 Transactions (EIP-1559). Checking RPC node \'eth_feeHistory\' method')
       try {
         await this.getFeeHistory('0x1', 'latest', [0.5])
@@ -277,8 +271,12 @@ export class ContractInteractor {
   }
 
   async _initializeNetworkParams (): Promise<void> {
-    this.chainId = await this.web3.eth.getChainId()
-    this.networkId = await this.web3.eth.net.getId()
+    this.network = await this.provider.getNetwork()
+    this.chainId = parseInt(this.network.chainId.toString())
+    this.networkId = await this.provider.send('net_version', [])
+    if (this.networkId == null) {
+      throw new Error('Failed to query "net_version" from the RPC endpoint')
+    }
     this.rawTxOptions = getRawTxOptions(this.chainId, this.networkId, 'private')
   }
 
@@ -515,8 +513,11 @@ export class ContractInteractor {
   }
 
   async getBlockGasLimit (): Promise<number> {
-    const latestBlock = await this.web3.eth.getBlock('latest')
-    return latestBlock.gasLimit
+    const latestBlock = await this.provider.getBlock('latest')
+    if (latestBlock == null) {
+      throw new Error('Failed to query "getBlock", crashing.')
+    }
+    return parseInt(latestBlock.gasLimit.toString())
   }
 
   _fixGasFees (relayRequest: RelayRequest): { gasPrice?: string, maxFeePerGas?: string, maxPriorityFeePerGas?: string } {
@@ -550,11 +551,8 @@ export class ContractInteractor {
       const encodedRelayCall = this.encodeABI(relayCallABIData)
       const res: string = await new Promise((resolve, reject) => {
         const gasFees = this._fixGasFees(relayCallABIData.relayRequest)
-        const rpcPayload = {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'eth_call',
-          params: [
+        const rpcPayload =
+          [
             {
               from,
               to: relayHub.address,
@@ -564,10 +562,10 @@ export class ContractInteractor {
             },
             'latest'
           ]
-        }
         this.logger.debug(`Sending in view mode: \n${JSON.stringify(rpcPayload)}\n encoded data: \n${JSON.stringify(relayCallABIData)}`)
-        // @ts-ignore
-        this.web3.currentProvider.send(rpcPayload, (err: Object | undefined, res: { result: string, error: any } | undefined) => {
+
+        // TODO: this does not seem right....
+        const unifiedResErrHandlerFromWeb3Times = (res: any, err: any): void => {
           if (res?.error != null) {
             err = res.error
           }
@@ -581,12 +579,20 @@ export class ContractInteractor {
           } else {
             resolve(res.result)
           }
-        })
+        }
+
+        this.provider.send('eth_call', rpcPayload)
+          .then(res => {
+            resolve(res)
+          })
+          .catch(err => {
+            // TODO: this function is not very necessary
+            unifiedResErrHandlerFromWeb3Times(undefined, err)
+          })
       })
       this.logger.debug('relayCall res=' + res)
 
-      // @ts-ignore
-      const decoded = abi.decodeParameters(['bool', 'uint256', 'uint256', 'bytes'], res)
+      const decoded = new AbiCoder().decode(['bool', 'uint256', 'uint256', 'bytes'], res)
       const paymasterAccepted: boolean = decoded[0]
       const relayCallStatus: number = parseInt(decoded[2])
       let returnValue: string = decoded[3]
@@ -621,10 +627,15 @@ export class ContractInteractor {
    */
   // decode revert from rpc response.
   //
-  _decodeRevertFromResponse (err?: { message?: string, data?: any } | undefined, res?: { error?: any, result?: string } | undefined): string | null {
+  _decodeRevertFromResponse (err?: { message?: string, data?: any, error?: any } | undefined, res?: { error?: any, result?: string } | undefined): string | null {
     let matchGanache = err?.data?.message?.toString().match(/: revert(?:ed)? (.*)/)
     if (matchGanache == null) {
       matchGanache = res?.error?.message?.toString().match(/: revert(?:ed)? (.*)/)
+    }
+    if (matchGanache == null) {
+      // TODO: investigate other RPC nodes with Ethers.js!
+      // ethers.js with hardhat
+      matchGanache = err?.error?.message?.toString().match(/: revert(?:ed)? (.*)/)
     }
     if (matchGanache == null) {
       // Infura and Alchemy revert message format
@@ -653,27 +664,28 @@ export class ContractInteractor {
   encodeABI (
     _: RelayCallABI
   ): PrefixedHexString {
-    return this.relayCallMethod(_.domainSeparatorName, _.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData).encodeABI()
+    const iface = new Interface(this.relayHubInstance.contract.interface.fragments)
+    return iface.encodeFunctionData('relayCall', [_.domainSeparatorName, _.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData])
   }
 
-  async getPastEventsForHub (extraTopics: Array<string[] | string | undefined>, options: PastEventOptions, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
+  async getPastEventsForHub (extraTopics: Array<string[] | string | null>, options: EventFilterBlocks, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
     return await this._getPastEventsPaginated(this.relayHubInstance.contract, names, extraTopics, options)
   }
 
-  async getPastEventsForRegistrar (extraTopics: Array<string[] | string | undefined>, options: PastEventOptions, names: EventName[] = [RelayServerRegistered]): Promise<EventData[]> {
+  async getPastEventsForRegistrar (extraTopics: Array<string[] | string | null>, options: EventFilterBlocks, names: EventName[] = [RelayServerRegistered]): Promise<EventData[]> {
     return await this._getPastEventsPaginated(this.relayRegistrar.contract, names, extraTopics, options)
   }
 
-  async getPastEventsForStakeManager (names: EventName[], extraTopics: Array<string[] | string | undefined>, options: PastEventOptions): Promise<EventData[]> {
+  async getPastEventsForStakeManager (names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
     const stakeManager = await this.stakeManagerInstance
     return await this._getPastEventsPaginated(stakeManager.contract, names, extraTopics, options)
   }
 
-  async getPastEventsForPenalizer (names: EventName[], extraTopics: Array<string[] | string | undefined>, options: PastEventOptions): Promise<EventData[]> {
+  async getPastEventsForPenalizer (names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
     return await this._getPastEventsPaginated(this.penalizerInstance.contract, names, extraTopics, options)
   }
 
-  getLogsPagesForRange (fromBlock: BlockNumber = 1, toBlock?: BlockNumber): {
+  getLogsPagesForRange (fromBlock: BlockTag = 1, toBlock?: BlockTag): {
     rangeSize: number
     pagesForRange: number
   } {
@@ -700,7 +712,7 @@ export class ContractInteractor {
     }
   }
 
-  splitRange (fromBlock: BlockNumber, toBlock: BlockNumber, parts: number): Array<{ fromBlock: BlockNumber, toBlock: BlockNumber }> {
+  splitRange (fromBlock: BlockTag, toBlock: BlockTag, parts: number): Array<{ fromBlock: BlockTag, toBlock: BlockTag }> {
     if (parts === 1) {
       return [{ fromBlock, toBlock }]
     }
@@ -723,7 +735,7 @@ export class ContractInteractor {
    * Splits requested range into pages to avoid fetching too many blocks at once.
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
-  async _getPastEventsPaginated (contract: any, names: EventName[], extraTopics: Array<string[] | string | undefined>, options: PastEventOptions): Promise<EventData[]> {
+  async _getPastEventsPaginated (contract: EthersContract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
@@ -804,8 +816,8 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return relayEventParts.flat()
   }
 
-  async _getPastEvents (contract: any, names: EventName[], extraTopics: Array<string[] | string | undefined>, options: PastEventOptions): Promise<EventData[]> {
-    const topics: Array<string[] | string | undefined> = []
+  async _getPastEvents (contract: EthersContract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
+    const topics: Array<string[] | string | null> = []
     const eventTopic = event2topic(contract, names)
     topics.push(eventTopic)
 
@@ -813,15 +825,22 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     if (extraTopics.length > 0) {
       topics.push(...extraTopics)
     }
-    return contract.getPastEvents('allEvents', Object.assign({}, options, { topics }))
+
+    const logs = await this.provider.getLogs({
+      fromBlock: options.fromBlock,
+      toBlock: options.toBlock,
+      address: contract.address,
+      topics: topics
+    })
+    return logs.map(it => { return Object.assign(it, contract.interface.parseLog(it)) })
   }
 
-  async getBalance (address: Address, defaultBlock: BlockNumber = 'latest'): Promise<string> {
-    return await this.web3.eth.getBalance(address, defaultBlock)
+  async getBalance (address: Address, defaultBlock: BlockTag = 'latest'): Promise<string> {
+    return (await this.provider.getBalance(address, defaultBlock)).toString()
   }
 
   async getBlockNumberRightNow (): Promise<number> {
-    return await this.web3.eth.getBlockNumber()
+    return await this.provider.getBlockNumber()
   }
 
   async getBlockNumber (): Promise<number> {
@@ -829,7 +848,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     let attempts = 0
     while (blockNumber < this.lastBlockNumber && attempts <= 10) {
       try {
-        blockNumber = await this.web3.eth.getBlockNumber()
+        blockNumber = await this.getBlockNumberRightNow()
       } catch (e) {
         this.logger.error(`getBlockNumber: ${(e as Error).message}`)
       }
@@ -846,19 +865,19 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return blockNumber
   }
 
-  async sendSignedTransaction (rawTx: string): Promise<TransactionReceipt> {
+  async sendSignedTransaction (rawTx: string): Promise<TransactionResponse> {
     // noinspection ES6RedundantAwait - PromiEvent makes lint less happy about this line
-    return await this.web3.eth.sendSignedTransaction(rawTx)
+    return await this.provider.sendTransaction(rawTx)
   }
 
-  async estimateGas (transactionDetails: TransactionConfig): Promise<number> {
-    let estimation = await this.web3.eth.estimateGas(transactionDetails)
+  async estimateGas (transactionDetails: TransactionRequest): Promise<number> {
+    let estimation: BigNumber | number = await this.provider.estimateGas(transactionDetails)
     // there is a bug that breaks tests that rely on exact gas limit:
     // https://ethereum.stackexchange.com/questions/20878/why-estimategas-return-21001-instead-21000
-    if (estimation === 21001) {
+    if (parseInt(estimation.toString()) === 21001) {
       estimation = 21000
     }
-    return estimation
+    return parseInt(estimation.toString())
   }
 
   /**
@@ -869,7 +888,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     const originalGasEstimation = await this.estimateGas(gsnTransactionDetails)
     // note: overriding 'calldataEstimationSlackFactor' here as this value is used for inner call gas limit
     // and therefore there is no need to add extra factor even in case of L2s
-    const calldataGasCost = await this.calculateCalldataGasUsed(gsnTransactionDetails.data, this.environment, 1, this.web3)
+    const calldataGasCost = await this.calculateCalldataGasUsed(gsnTransactionDetails.data, this.environment, 1, this.provider)
     const adjustedEstimation = originalGasEstimation - calldataGasCost
     this.logger.debug(
       `estimateGasWithoutCalldata: original estimation: ${originalGasEstimation}; calldata cost: ${calldataGasCost}; adjusted estimation: ${adjustedEstimation}`)
@@ -883,10 +902,13 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     try {
       const paymasterContract = await this._createPaymaster(paymaster)
       return await paymasterContract.getGasAndDataLimits()
-    } catch (e) {
+    } catch (e: any) {
       const error = e as Error
       let message = `unknown paymaster error: ${error.message}`
-      if (error.message.includes('Returned values aren\'t valid, did it run Out of Gas?')) {
+      if (
+        e?.code === 'CALL_EXCEPTION' || // ethers.js does not differentiate revert reasons
+        error.message.includes('Returned values aren\'t valid, did it run Out of Gas?')
+      ) {
         message = `not a valid paymaster contract: ${paymaster}`
       } else if (error.message.includes('no code at address')) {
         message = `'non-existent paymaster contract: ${paymaster}`
@@ -906,11 +928,11 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
       relayCallGasLimit: string
     }): Promise<number> {
     const msgDataLength = toBuffer(_.msgData).length
-    const msgDataGasCostInsideTransaction =
+    const msgDataGasCostInsideTransaction: number =
       toBN(this.environment.dataOnChainHandlingGasCostPerByte)
         .muln(msgDataLength)
         .toNumber()
-    const calldataCost = await this.calculateCalldataGasUsed(_.msgData, this.environment, this.calldataEstimationSlackFactor, this.web3)
+    const calldataCost: number = await this.calculateCalldataGasUsed(_.msgData, this.environment, this.calldataEstimationSlackFactor, this.provider)
     const result = toNumber(this.relayHubConfiguration.gasOverhead) +
       msgDataGasCostInsideTransaction +
       calldataCost +
@@ -958,7 +980,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
       approvalData,
       maxAcceptanceBudget
     })
-    const calculatedCalldataGasUsed = await this.calculateCalldataGasUsed(encodedData, this.environment, this.calldataEstimationSlackFactor, this.web3)
+    const calculatedCalldataGasUsed = await this.calculateCalldataGasUsed(encodedData, this.environment, this.calldataEstimationSlackFactor, this.provider)
     return `0x${calculatedCalldataGasUsed.toString(16)}`
   }
 
@@ -984,11 +1006,14 @@ calculateTransactionMaxPossibleGas: result: ${result}
     } = await this.calculateRequestLimits(relayTransactionRequest, gasAndDataLimits)
 
     const maxPossibleGasFactorReserve = gasReserve + Math.floor(maxPossibleGas * gasFactor)
+    // removing Ethers 'signer' to allow overriding 'from' address
+    // note that it will remove the mapping of types to BN!
+    const viewOnlyHub: EthersContract = this.relayHubInstance.contract.connect(this.provider)
     const maxPossibleCharge =
-      await this.relayHubInstance.calculateCharge(maxPossibleGasFactorReserve, relayTransactionRequest.relayRequest.relayData,
+      await viewOnlyHub.calculateCharge(maxPossibleGasFactorReserve, relayTransactionRequest.relayRequest.relayData,
         {
           from: viewCallFrom,
-          gas: viewCallGasLimit,
+          gasLimit: viewCallGasLimit,
           gasPrice: relayTransactionRequest.relayRequest.relayData.maxFeePerGas
         })
 
@@ -996,7 +1021,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
       paymasterAcceptanceBudget,
       effectiveAcceptanceBudget,
       transactionCalldataGasUsed,
-      maxPossibleCharge,
+      maxPossibleCharge: toBN(maxPossibleCharge.toString()),
       maxPossibleGas: maxPossibleGasFactorReserve
     }
   }
@@ -1013,7 +1038,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
       approvalData: relayTransactionRequest.metadata.approvalData
     }
     const msgData = this.encodeABI(relayCallAbiInput)
-    const transactionCalldataGasUsed = await this.calculateCalldataGasUsed(msgData, this.environment, this.calldataEstimationSlackFactor, this.web3)
+    const transactionCalldataGasUsed = await this.calculateCalldataGasUsed(msgData, this.environment, this.calldataEstimationSlackFactor, this.provider)
     const maxPossibleGas = await this.calculateTransactionMaxPossibleGas({
       msgData,
       gasAndDataLimits,
@@ -1029,9 +1054,11 @@ calculateTransactionMaxPossibleGas: result: ${result}
     }
   }
 
+  // TODO: !This method is not really necessary - only used for a fraction of transactions. Replace with 'getGasFees'.
   // TODO: cache response for some time to optimize. It doesn't make sense to optimize these requests in calling code.
   async getGasPrice (): Promise<IntString> {
-    const gasPriceFromNode = await this.web3.eth.getGasPrice()
+    // TODO: this still uses pre-1559 gas value which may be a problem.
+    const gasPriceFromNode = await this.provider.perform('getGasPrice', [])
     if (gasPriceFromNode == null) {
       throw new Error('getGasPrice: node returned null value')
     }
@@ -1047,7 +1074,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   async getFeeHistory (blockCount: number | BigNumber | BN | string, lastBlock: number | BigNumber | BN | string, rewardPercentiles: number[]): Promise<FeeHistoryResult> {
-    return await this.web3.eth.getFeeHistory(blockCount, lastBlock, rewardPercentiles)
+    return await this.provider.send('eth_feeHistory', [blockCount, lastBlock, rewardPercentiles])
   }
 
   async getGasFees (
@@ -1064,25 +1091,28 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return { baseFeePerGas, priorityFeePerGas }
   }
 
-  async getTransactionCount (address: string, defaultBlock?: BlockNumber): Promise<number> {
-    // @ts-ignore (web3 does not define 'defaultBlock' as optional)
-    return await this.web3.eth.getTransactionCount(address, defaultBlock)
+  async getTransactionCount (address: string, defaultBlock?: BlockTag): Promise<number> {
+    return await this.provider.getTransactionCount(address, defaultBlock)
   }
 
-  async getTransaction (transactionHash: string): Promise<Transaction> {
-    return await this.web3.eth.getTransaction(transactionHash)
+  async getTransaction (transactionHash: string): Promise<TransactionResponse | null> {
+    return await this.provider.getTransaction(transactionHash)
   }
 
-  async getBlock (blockHashOrBlockNumber: BlockNumber): Promise<BlockTransactionString> {
-    return await this.web3.eth.getBlock(blockHashOrBlockNumber)
+  async getBlock (blockHashOrBlockNumber: BlockTag): Promise<Block> {
+    const block = await this.provider.getBlock(blockHashOrBlockNumber)
+    if (block == null) {
+      throw new Error('Failed to getBlock!')
+    }
+    return block
   }
 
   validateAddress (address: string, exceptionTitle = 'invalid address:'): void {
-    if (!this.web3.utils.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
+    if (!ethers.utils.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
   }
 
   async getCode (address: string): Promise<string> {
-    return await this.web3.eth.getCode(address)
+    return await this.provider.getCode(address)
   }
 
   getNetworkId (): number {
@@ -1093,7 +1123,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   async isContractDeployed (address: Address): Promise<boolean> {
-    const code = await this.web3.eth.getCode(address)
+    const code = await this.getCode(address)
     return code !== '0x'
   }
 
@@ -1125,29 +1155,29 @@ calculateTransactionMaxPossibleGas: result: ${result}
 
   async isRelayManagerStakedOnHub (relayManager: Address): Promise<ManagerStakeStatus> {
     const res: ManagerStakeStatus = await new Promise((resolve) => {
-      const rpcPayload = {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'eth_call',
-        params: [
-          {
-            to: this.relayHubInstance.address,
-            data: this.relayHubInstance.contract.methods.verifyRelayManagerStaked(relayManager).encodeABI()
-          },
-          'latest'
-        ]
-      }
-      // @ts-ignore
-      this.web3.currentProvider.send(rpcPayload, (err: any, res: { result: string, error: any }) => {
-        if (res.error != null) {
-          err = res.error
-        }
-        const errorMessage = this._decodeRevertFromResponse(err, res)
-        resolve({
-          isStaked: res.result === '0x',
-          errorMessage
+      const iface = new Interface(this.relayHubInstance.contract.interface.fragments)
+      const data = iface.encodeFunctionData('verifyRelayManagerStaked', [relayManager])
+      const params = [
+        {
+          to: this.relayHubInstance.address,
+          data
+        },
+        'latest'
+      ]
+      this.provider.send('eth_call', params)
+        .then(res => {
+          resolve({
+            isStaked: res === '0x',
+            errorMessage: null
+          })
         })
-      })
+        .catch(err => {
+          const errorMessage = this._decodeRevertFromResponse(err)
+          resolve({
+            isStaked: false,
+            errorMessage
+          })
+        })
     })
     return res
   }
@@ -1164,74 +1194,13 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return this.deployment
   }
 
-  async withdrawHubBalanceEstimateGas (amount: BN, destination: Address, managerAddress: Address, gasPrice: IntString): Promise<{
-    gasCost: BN
-    gasLimit: number
-    method: any
-  }> {
-    const hub = this.relayHubInstance
-    const method = hub.contract.methods.withdraw(destination, amount.toString())
-    const withdrawTxGasLimit = await method.estimateGas(
-      {
-        from: managerAddress
-      })
-    const gasCost = toBN(withdrawTxGasLimit).mul(toBN(gasPrice))
-    return {
-      gasLimit: parseInt(withdrawTxGasLimit),
-      gasCost,
-      method
-    }
-  }
-
-  // TODO: a way to make a relay hub transaction with a specified nonce without exposing the 'method' abstraction
-  async getRegisterRelayMethod (relayHub: Address, url: string): Promise<any> {
-    const registrar = this.relayRegistrar
-    return registrar?.contract.methods.registerRelayServer(relayHub, splitRelayUrlForRegistrar(url))
-  }
-
-  async getAuthorizeHubByManagerMethod (): Promise<any> {
-    const hub = this.relayHubInstance.address
-    return this.stakeManagerInstance.contract.methods.authorizeHubByManager(hub)
-  }
-
-  async getAddRelayWorkersMethod (workers: Address[]): Promise<any> {
-    const hub = this.relayHubInstance
-    return hub.contract.methods.addRelayWorkers(workers)
-  }
-
-  async getSetRelayManagerMethod (owner: Address): Promise<any> {
-    const sm = this.stakeManagerInstance
-    return sm.contract.methods.setRelayManagerOwner(owner)
-  }
-
   /**
-   * Web3.js as of 1.2.6 (see web3-core-method::_confirmTransaction) does not allow
-   * broadcasting of a transaction without waiting for it to be mined.
+   * Broadcast the "raw" signed hex-encoded Ethereum transaction.
    * This method sends the RPC call directly
    * @param signedTransaction - the raw signed transaction to broadcast
    */
   async broadcastTransaction (signedTransaction: PrefixedHexString): Promise<PrefixedHexString> {
-    return await new Promise((resolve, reject) => {
-      if (this.provider == null) {
-        throw new Error('provider is not set')
-      }
-      this.provider.send({
-        jsonrpc: '2.0',
-        method: 'eth_sendRawTransaction',
-        params: [
-          signedTransaction
-        ],
-        id: Date.now()
-      }, (e: Error | null, r: any) => {
-        if (errorAsBoolean(e)) {
-          reject(e)
-        } else if (errorAsBoolean(r.error)) {
-          reject(r.error)
-        } else {
-          resolve(r.result)
-        }
-      })
-    })
+    return await this.provider.send('eth_sendRawTransaction', [signedTransaction])
   }
 
   async hubDepositFor (paymaster: Address, transactionDetails: TransactionDetails): Promise<any> {
@@ -1323,7 +1292,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
   async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {
     const topics = address2topic(managerAddress)
     const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])
-    return workersAddedEvents.map(it => it.returnValues.newRelayWorkers).flat()
+    return workersAddedEvents.map(it => it.args.newRelayWorkers).flat()
   }
 
   /**
@@ -1340,24 +1309,22 @@ calculateTransactionMaxPossibleGas: result: ${result}
     maxFeePerGas: BN,
     maxViewableGasLimit: BN,
     minViewableGasLimit: BN
-  ): Promise<IntString> {
-    const paymasterBalance = await this.hubBalanceOf(paymasterAddress)
+  ): Promise<BN> {
     let workerBalance = constants.MAX_UINT256 // skipping worker address balance check in dry-run
     if (!isSameAddress(workerAddress, constants.DRY_RUN_ADDRESS)) {
       const workerBalanceStr = await this.getBalance(workerAddress, 'pending')
       workerBalance = toBN(workerBalanceStr)
     }
-    const smallerBalance = BN.min(paymasterBalance, workerBalance)
     if (maxFeePerGas.eqn(0)) {
       // using base fee override to avoid division by zero
       maxFeePerGas = toBN((await this.getGasFees(5, 50)).baseFeePerGas)
     }
-    const smallerBalanceGasLimit = smallerBalance.div(maxFeePerGas)
+    const workerBalanceGasLimit = workerBalance.div(maxFeePerGas)
       .muln(9).divn(10) // hard-coded to use 90% of available worker/paymaster balance
     const blockGasLimitNum = await this.getBlockGasLimit()
     const blockGasLimit = toBN(blockGasLimitNum)
       .muln(3).divn(4) // hard-coded to use 75% of available block gas limit
-    return BN.max(minViewableGasLimit, BN.min(maxViewableGasLimit, BN.min(smallerBalanceGasLimit, blockGasLimit))).toString()
+    return BN.max(minViewableGasLimit, BN.min(maxViewableGasLimit, BN.min(workerBalanceGasLimit, blockGasLimit)))
   }
 }
 

@@ -1,8 +1,7 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
-import Web3 from 'web3'
+import { JsonRpcProvider } from '@ethersproject/providers'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { RLPEncodedTransaction } from 'web3-core'
 import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
 import {
   SignTypedDataVersion,
@@ -15,8 +14,8 @@ import {
 import {
   Address,
   RelayRequest,
+  RLPEncodedTransaction,
   TypedRequestData,
-  Web3ProviderBaseInterface,
   getEip712Signature,
   getRawTxOptions,
   isSameAddress,
@@ -36,13 +35,13 @@ function toAddress (privateKey: PrefixedHexString): Address {
 }
 
 export class AccountManager {
-  private readonly web3: Web3
+  private readonly provider: JsonRpcProvider
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
   readonly chainId: number
 
-  constructor (provider: Web3ProviderBaseInterface, chainId: number, config: GSNConfig) {
-    this.web3 = new Web3(provider as any)
+  constructor (provider: JsonRpcProvider, chainId: number, config: GSNConfig) {
+    this.provider = provider
     this.chainId = chainId
     this.config = config
   }
@@ -161,12 +160,12 @@ export class AccountManager {
     return signature
   }
 
-  // These methods is extracted to
+  // These methods are extracted to
   // a) allow different implementations in the future, and
   // b) allow spying on Account Manager in tests
   async _signWithProvider (signedData: any): Promise<string> {
     return await getEip712Signature(
-      this.web3,
+      this.provider,
       signedData,
       this.config.methodSuffix,
       this.config.jsonStringifyRequest

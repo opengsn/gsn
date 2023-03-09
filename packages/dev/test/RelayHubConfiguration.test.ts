@@ -1,6 +1,7 @@
 import BN from 'bn.js'
 import chai from 'chai'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { deployHub, evmMine, hardhatNodeChainId, setNextBlockTimestamp } from './TestUtils'
 
@@ -11,7 +12,6 @@ import {
   constants,
   defaultEnvironment,
   getEip712Signature,
-  registerForwarderForGsn,
   splitRelayUrlForRegistrar,
   toNumber
 } from '@opengsn/common/dist'
@@ -26,6 +26,7 @@ import {
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { cleanValue } from './utils/chaiHelper'
 import { defaultGsnConfig } from '@opengsn/provider'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 const { assert } = chai.use(chaiAsPromised)
 
@@ -54,6 +55,10 @@ contract('RelayHub Configuration',
     const maxAcceptanceBudget = 10e6
     const deprecationTimeInSeconds = 100
     const stake = ether('2')
+
+    // @ts-ignore
+    const currentProviderHost = web3.currentProvider.host
+    const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
     let relayHub: RelayHubInstance
     let relayRegistrar: RelayRegistrarInstance
@@ -130,7 +135,7 @@ contract('RelayHub Configuration',
         relayRequest
       )
       signature = await getEip712Signature(
-        web3,
+        ethersProvider,
         dataToSign
       )
 

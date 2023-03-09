@@ -1,3 +1,4 @@
+import { StaticJsonRpcProvider, Block } from '@ethersproject/providers'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import Mutex from 'async-mutex/lib/Mutex'
@@ -5,7 +6,6 @@ import * as ethUtils from 'ethereumjs-util'
 
 import { evmMine, evmMineMany, increaseTime } from './TestUtils'
 import { HttpProvider } from 'web3-core'
-import { BlockTransactionString } from 'web3-eth'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { SignedTransaction } from '@opengsn/relay/dist/KeyManager'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
@@ -15,6 +15,10 @@ contract('TransactionManager', function (accounts) {
   const dbPruneTxAfterSeconds = 100
   let transactionManager: TransactionManager
   let env: ServerTestEnvironment
+
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   before(async function () {
     env = new ServerTestEnvironment(web3.currentProvider as HttpProvider, accounts)
@@ -146,7 +150,7 @@ contract('TransactionManager', function (accounts) {
 
   describe('local storage maintenance', function () {
     let parsedTxHash: PrefixedHexString
-    let latestBlock: BlockTransactionString
+    let latestBlock: Block
 
     beforeEach(async function () {
       await transactionManager.txStoreManager.clearAll()
@@ -154,7 +158,7 @@ contract('TransactionManager', function (accounts) {
       const { signedTx } = await env.relayTransaction()
       parsedTxHash = ethUtils.bufferToHex((TransactionFactory.fromSerializedData(toBuffer(signedTx), transactionManager.rawTxOptions)).hash())
       await evmMine()
-      latestBlock = await env.web3.eth.getBlock('latest')
+      latestBlock = await ethersProvider.getBlock('latest')
       // important part is marking a transaction as mined
       await env.relayServer._worker(latestBlock)
     })

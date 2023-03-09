@@ -1,6 +1,8 @@
 import * as fs from 'fs'
 import parseArgs from 'minimist'
 
+import { JsonRpcProvider } from '@ethersproject/providers'
+
 import {
   Address,
   ContractInteractor,
@@ -21,6 +23,7 @@ import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
 
 import { toBN } from 'web3-utils'
+import { Web3MethodsBuilder } from './Web3MethodsBuilder'
 
 export enum LoggingProviderMode {
   NONE,
@@ -320,6 +323,7 @@ export interface ServerDependencies {
   managerKeyManager: KeyManager
   workersKeyManager: KeyManager
   contractInteractor: ContractInteractor
+  web3MethodsBuilder: Web3MethodsBuilder
   gasPriceFetcher: GasPriceFetcher
   txStoreManager: TxStoreManager
   reputationManager?: ReputationManager
@@ -535,7 +539,7 @@ export function parseServerConfig (args: string[], env: any): any {
 }
 
 // resolve params, and validate the resulting struct
-export async function resolveServerConfig (config: Partial<ServerConfigParams>, web3provider: any): Promise<{
+export async function resolveServerConfig (config: Partial<ServerConfigParams>, ethersProvider: JsonRpcProvider): Promise<{
   config: ServerConfigParams
   environment: Environment
 }> {
@@ -555,7 +559,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
   const contractInteractor: ContractInteractor = new ContractInteractor({
     maxPageSize: config.pastEventsQueryMaxPageSize ?? Number.MAX_SAFE_INTEGER,
     calldataEstimationSlackFactor: config.calldataEstimationSlackFactor ?? 1,
-    provider: web3provider,
+    provider: ethersProvider,
     logger,
     deployment: {
       relayHubAddress: config.relayHubAddress

@@ -3,9 +3,11 @@ import io from 'console-read-write'
 import BN from 'bn.js'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
-import { Contract } from 'web3-eth-contract'
-import { fromWei, toBN, toHex } from 'web3-utils'
 import ow from 'ow'
+import { Contract } from 'web3-eth-contract'
+import { Transaction, TypedTransaction } from '@ethereumjs/tx'
+import { Web3Provider } from '@ethersproject/providers'
+import { fromWei, toBN, toHex } from 'web3-utils'
 
 import {
   Address,
@@ -22,7 +24,6 @@ import {
   ether,
   formatTokenAmount,
   isSameAddress,
-  registerForwarderForGsn,
   sleep,
   toNumber
 } from '@opengsn/common'
@@ -38,8 +39,9 @@ import TestWrappedNativeToken from './compiled/TestWrappedNativeToken.json'
 
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
-import { Transaction, TypedTransaction } from '@ethereumjs/tx'
 import { defaultGsnConfig } from '@opengsn/provider'
+
+import { registerForwarderForGsn } from './ForwarderUtil'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -154,7 +156,14 @@ export class CommandsLogic {
     this.httpClient = new HttpClient(new HttpWrapper(), logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const environment = defaultEnvironment
-    this.contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+    const ethersProvider = new Web3Provider(provider)
+    this.contractInteractor = new ContractInteractor({
+      provider: ethersProvider,
+      logger,
+      deployment,
+      maxPageSize,
+      environment
+    })
     this.deployment = deployment
     this.web3 = new Web3(provider)
   }
@@ -229,7 +238,7 @@ export class CommandsLogic {
     const currentBalance = await this.contractInteractor.hubBalanceOf(paymaster)
     const targetAmount = new BN(amount)
     if (currentBalance.lt(targetAmount)) {
-      const value = targetAmount.sub(currentBalance)
+      const value = targetAmount.sub(currentBalance).toString()
       await this.contractInteractor.hubDepositFor(paymaster, {
         value,
         from
@@ -247,9 +256,9 @@ export class CommandsLogic {
 
       const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
       const sendOptions: any = {
-        chainId: toHex(await this.web3.eth.getChainId()),
+        // chainId: toHex(await this.web3.eth.getChainId()),
         from: options.from,
-        gas: 1e6,
+        gasLimit: 1e6,
         gasPrice
       }
       const response = await this.httpClient.getPingResponse(options.relayUrl)
@@ -310,7 +319,7 @@ export class CommandsLogic {
         const fundTx = await this.web3.eth.sendTransaction({
           ...sendOptions,
           to: relayAddress,
-          value: options.funds
+          value: options.funds.toString()
         })
         if (fundTx.transactionHash == null) {
           return {
@@ -365,32 +374,32 @@ export class CommandsLogic {
             depositTx = await stakingTokenContract.deposit({
               ...sendOptions,
               from: options.from,
-              value: stakeValue
+              value: stakeValue.toString()
             }) as any
           } catch (e) {
             throw new Error('No deposit() method on default token. is it wrapped ETH?')
           }
-          transactions.push(depositTx.transactionHash)
+          transactions.push(depositTx.hash)
         }
 
         const currentAllowance = await stakingTokenContract.allowance(options.from, stakeManager.address)
         console.log('Current allowance', formatToken(currentAllowance))
         if (currentAllowance.lt(stakeValue)) {
           console.log(`Approving ${formatToken(stakeValue)} to StakeManager`)
-          const approveTx = await stakingTokenContract.approve(stakeManager.address, stakeValue, {
+          const approveTx = await stakingTokenContract.approve(stakeManager.address, stakeValue.toString(), {
             ...sendOptions,
             from: options.from
           })
           // @ts-ignore
-          transactions.push(approveTx.transactionHash)
+          transactions.push(approveTx.hash)
         }
 
         const stakeTx = await stakeManager
-          .stakeForRelayManager(stakingToken, relayAddress, options.unstakeDelay.toString(), stakeValue, {
+          .stakeForRelayManager(stakingToken, relayAddress, options.unstakeDelay.toString(), stakeValue.toString(), {
             ...sendOptions
           })
         // @ts-ignore
-        transactions.push(stakeTx.transactionHash)
+        transactions.push(stakeTx.hash)
       }
 
       try {
@@ -405,7 +414,7 @@ export class CommandsLogic {
         const authorizeTx = await stakeManager
           .authorizeHubByOwner(relayAddress, relayHubAddress, sendOptions)
         // @ts-ignore
-        transactions.push(authorizeTx.transactionHash)
+        transactions.push(authorizeTx.hash)
       }
 
       await this.waitForRelay(options.relayUrl)
@@ -429,13 +438,13 @@ export class CommandsLogic {
     const fromBlock = await relayHub.getCreationBlock()
     const toBlock = Math.min(toNumber(fromBlock) + 5000, await this.contractInteractor.getBlockNumber())
     const tokens = await this.contractInteractor.getPastEventsForHub([], {
-      fromBlock,
-      toBlock
+      fromBlock: parseInt(fromBlock.toString()),
+      toBlock: parseInt(toBlock.toString())
     }, ['StakingTokenDataChanged'])
     if (tokens.length === 0) {
       throw new Error(`no registered staking tokens on RelayHub ${relayHubAddress}`)
     }
-    return tokens[0].returnValues.token
+    return tokens[0].args.token
   }
 
   async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
@@ -484,7 +493,7 @@ export class CommandsLogic {
           nonce
         }
         console.log('Calling in view mode', web3TxData)
-        await this.contractInteractor.web3.eth.call({ ...web3TxData })
+        await this.contractInteractor.provider.send('eth_sendTransaction', [{ ...web3TxData }])
         const txData = { ...web3TxData, gasLimit: web3TxData.gas }
         // @ts-ignore
         delete txData.gas

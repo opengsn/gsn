@@ -20,24 +20,23 @@
   "dependencies": {
     "@ethereumjs/common": "^2.6.5",
     "@ethereumjs/tx": "^3.2.0",
+    "@ethersproject/abi": "^5.7.0",
+    "@ethersproject/bignumber": "^5.7.0",
+    "@ethersproject/networks": "^5.7.1",
+    "@ethersproject/providers": "^5.7.2",
     "@metamask/eth-sig-util": "^4.0.1",
     "@opengsn/contracts": "^3.0.0-beta.3",
     "@types/bn.js": "^5.1.0",
     "@types/semver": "^7.3.4",
     "axios": "^0.21.1",
-    "bignumber.js": "^9.0.2",
     "bn.js": "^5.2.0",
     "chalk": "^4.1.2",
     "ethereumjs-util": "^7.1.0",
+    "ethers": "^5.7.2",
+    "ethjs-unit": "^0.1.6",
+    "number-to-bn": "^1.7.0",
     "ow": "^0.28.1",
     "rlp": "^2.2.6",
-    "semver": "^7.3.2",
-    "web3": "^1.7.3",
-    "web3-core": "^1.7.3",
-    "web3-core-helpers": "^1.7.3",
-    "web3-eth": "^1.7.3",
-    "web3-eth-abi": "^1.7.3",
-    "web3-eth-contract": "^1.7.3",
-    "web3-utils": "^1.7.3"
+    "semver": "^7.3.2"
   }
 }

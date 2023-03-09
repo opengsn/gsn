@@ -1,8 +1,8 @@
-import Web3 from 'web3'
 import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import BN from 'bn.js'
 import { toChecksumAddress } from 'ethereumjs-util'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   ContractInteractor,
@@ -32,6 +32,7 @@ import chai from 'chai'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 import { expectEvent } from '@openzeppelin/test-helpers'
+import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
 
 const TestRelayHub = artifacts.require('TestRelayHub')
 const TestToken = artifacts.require('TestToken')
@@ -44,6 +45,11 @@ chai.use(sinonChai)
 const workerIndex = 0
 
 const unstakeDelay = 15000
+
+// @ts-ignore
+const currentProviderHost = web3.currentProvider.host
+const provider = new StaticJsonRpcProvider(currentProviderHost)
+
 contract('RegistrationManager', function (accounts) {
   const relayOwner = accounts[4]
   const anotherRelayer = accounts[5]
@@ -69,7 +75,7 @@ contract('RegistrationManager', function (accounts) {
     //       It could expose the types of transactions it has broadcast to simplify logging, testing & debugging.
     //       This means these 2 tests cannot check what they used to and require refactoring.
     it('should wait for balance before setting owner on the StakeManager', async function () {
-      let latestBlock = await env.web3.eth.getBlock('latest')
+      let latestBlock = await provider.getBlock('latest')
       let transactionHashes = await relayServer._worker(latestBlock)
       assert.equal(transactionHashes.length, 0)
       const expectedBalance = env.web3.utils.toWei('2', 'ether')
@@ -80,7 +86,7 @@ contract('RegistrationManager', function (accounts) {
         from: relayOwner,
         value: expectedBalance
       })
-      latestBlock = await env.web3.eth.getBlock('latest')
+      latestBlock = await provider.getBlock('latest')
       managerBalance = await relayServer.getManagerBalance()
       assert.equal(managerBalance.cmp(toBN(expectedBalance)), 0, 'should have balance now')
       transactionHashes = await relayServer._worker(latestBlock)
@@ -93,7 +99,7 @@ contract('RegistrationManager', function (accounts) {
     })
 
     it('should wait for stake, register and fund workers', async function () {
-      let latestBlock = await env.web3.eth.getBlock('latest')
+      let latestBlock = await provider.getBlock('latest')
       const transactionHashes = await relayServer._worker(latestBlock)
       assert.equal(transactionHashes.length, 0)
       assert.equal(relayServer.isReady(), false, 'relay should not be ready yet')
@@ -107,14 +113,14 @@ contract('RegistrationManager', function (accounts) {
       assert.ok(res2.receipt.status, 'authorize hub failed')
       const workerBalanceBefore = await relayServer.getWorkerBalance(workerIndex)
       assert.equal(workerBalanceBefore.toString(), '0')
-      latestBlock = await env.web3.eth.getBlock('latest')
+      latestBlock = await provider.getBlock('latest')
       const receipts = await relayServer._worker(latestBlock)
       await evmMine()
-      latestBlock = await env.web3.eth.getBlock('latest')
+      latestBlock = await provider.getBlock('latest')
       await relayServer._worker(latestBlock)
       const workerBalanceAfter = await relayServer.getWorkerBalance(workerIndex)
       assert.equal(relayServer.lastScannedBlock, latestBlock.number)
-      assert.deepEqual(relayServer.registrationManager.stakeRequired.currentValue, oneEther)
+      assert.equal(relayServer.registrationManager.stakeRequired.currentValue.toString(), oneEther.toString())
       assert.equal(relayServer.registrationManager.ownerAddress, relayOwner)
       assert.equal(workerBalanceAfter.toString(), relayServer.config.workerTargetBalance.toString())
       assert.equal(relayServer.isReady(), true, 'relay not ready?')
@@ -125,7 +131,6 @@ contract('RegistrationManager', function (accounts) {
     let logger: LoggerInterface
     let managerKeyManager: KeyManager
     let txStoreManager: TxStoreManager
-    let serverWeb3provider: HttpProvider
     let contractInteractor: ContractInteractor
     let params: Partial<ServerConfigParams>
     let serverDependencies: ServerDependencies
@@ -143,10 +148,9 @@ contract('RegistrationManager', function (accounts) {
       managerKeyManager = new KeyManager(1, serverWorkdirs.managerWorkdir)
       const workersKeyManager = new KeyManager(1, serverWorkdirs.workersWorkdir)
       txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir }, logger)
-      serverWeb3provider = new Web3.providers.HttpProvider((web3.currentProvider as HttpProvider).host)
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: serverWeb3provider,
+        provider: provider,
         logger,
         maxPageSize,
         deployment: {
@@ -157,18 +161,22 @@ contract('RegistrationManager', function (accounts) {
       await contractInteractor.init()
       const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 
+      const resolvedDeployment = contractInteractor.getDeployment()
+      const web3MethodsBuilder = new Web3MethodsBuilder(web3, resolvedDeployment)
+
       serverDependencies = {
         logger,
         txStoreManager,
         managerKeyManager,
         workersKeyManager,
         contractInteractor,
+        web3MethodsBuilder,
         gasPriceFetcher
       }
       const transactionManager = new TransactionManager(serverDependencies, configureServer(params))
       const newRelayServer = new RelayServer(params, transactionManager, serverDependencies)
       await newRelayServer.init()
-      const latestBlock = await env.web3.eth.getBlock('latest')
+      const latestBlock = await provider.getBlock('latest')
       await newRelayServer._worker(latestBlock)
       assert.equal(relayServer.isReady(), true, 'relay not ready?')
     })
@@ -177,7 +185,7 @@ contract('RegistrationManager', function (accounts) {
       const relayHubInstance = await deployHub(env.stakeManager.address, env.penalizer.address, constants.ZERO_ADDRESS, env.testToken.address, '1')
       const newContractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: serverWeb3provider,
+        provider,
         logger,
         maxPageSize,
         deployment: {
@@ -204,7 +212,7 @@ contract('RegistrationManager', function (accounts) {
       })
       // worker will not send registrations for 10 blocks and these tests don't create enough transactions
       await evmMineMany(11)
-      let latestBlock = await env.web3.eth.getBlock('latest')
+      let latestBlock = await provider.getBlock('latest')
       const registrationSentTransactions = await newRelayServer._worker(latestBlock)
       assert.equal(registrationSentTransactions.length, 2)
       await expectEvent.inTransaction(registrationSentTransactions[0], relayHubInstance, 'RelayWorkersAdded', {
@@ -218,7 +226,7 @@ contract('RegistrationManager', function (accounts) {
         relayHub: toChecksumAddress(relayHubInstance.address)
       })
       await evmMine()
-      latestBlock = await env.web3.eth.getBlock('latest')
+      latestBlock = await provider.getBlock('latest')
       await newRelayServer._worker(latestBlock)
       assert.equal(newRelayServer.isReady(), true, 'relay not ready?')
     })
@@ -234,12 +242,12 @@ contract('RegistrationManager', function (accounts) {
 
     // TODO: separate this into 4 unit tests for 'isRegistrationValid' and 1 test for 'handlePastEvents'
     it('should re-register server with new configuration', async function () {
-      let latestBlock = await env.web3.eth.getBlock('latest')
+      let latestBlock = await provider.getBlock('latest')
       // const receipts = await relayServer._worker(latestBlock.number)
       // await assertRelayAdded(receipts, relayServer)
       // await relayServer._worker(latestBlock.number + 1)
 
-      const block = await env.web3.eth.getBlock(0)
+      const block = await provider.getBlock(0)
       let transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       assert.equal(transactionHashes.length, 0, 'should not re-register if already registered')
 
@@ -249,14 +257,14 @@ contract('RegistrationManager', function (accounts) {
       transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
-      latestBlock = await env.web3.eth.getBlock('latest')
+      latestBlock = await provider.getBlock('latest')
       await relayServer._worker(latestBlock)
 
       relayServer.config.url = relayServer.config.url + '1'
       transactionHashes = await relayServer.registrationManager.handlePastEvents([], latestBlock.number, block, toNumber(latestBlock.timestamp), false)
       await assertRelayAdded(transactionHashes, relayServer, false)
 
-      latestBlock = await env.web3.eth.getBlock('latest')
+      latestBlock = await provider.getBlock('latest')
       await relayServer._worker(latestBlock)
 
       relayServer.config.url = 'fakeUrl'
@@ -277,7 +285,7 @@ contract('RegistrationManager', function (accounts) {
         assert.equal(server.registrationManager.stakeRequired.currentValue.toString(), oneEther.toString())
         // TODO: assert on withdrawal block?
         // assert.equal(server.config.withdrawBlock?.toString(), '0')
-        const latestBlock = await env.web3.eth.getBlock('latest')
+        const latestBlock = await provider.getBlock('latest')
         const receipts = await server._worker(latestBlock)
         const totalTxCosts: BN = await getTotalTxCosts(receipts, gasPrice)
         const ownerBalanceAfter = toBN(await env.web3.eth.getBalance(server.registrationManager.ownerAddress!))
@@ -304,7 +312,7 @@ contract('RegistrationManager', function (accounts) {
         id = (await snapshot()).result
         await env.newServerInstance({ refreshStateTimeoutBlocks: 1 }, undefined, unstakeDelay)
         newServer = env.relayServer
-        const latestBlock = await env.web3.eth.getBlock('latest')
+        const latestBlock = await provider.getBlock('latest')
         await newServer._worker(latestBlock)
 
         await env.relayHub.depositFor(newServer.managerAddress, { value: 1e18.toString() })
@@ -366,7 +374,7 @@ contract('RegistrationManager', function (accounts) {
       })
 
       it('set hubAuthorized', async function () {
-        const latestBlock = await env.web3.eth.getBlock('latest')
+        const latestBlock = await provider.getBlock('latest')
         await newServer._worker(latestBlock)
         assert.isTrue(newServer.registrationManager.isHubAuthorized, 'Hub should be authorized in server')
       })
@@ -378,7 +386,7 @@ contract('RegistrationManager', function (accounts) {
         id = (await snapshot()).result
         await env.newServerInstance({ refreshStateTimeoutBlocks: 1 }, undefined, unstakeDelay)
         newServer = env.relayServer
-        const latestBlock = await env.web3.eth.getBlock('latest')
+        const latestBlock = await provider.getBlock('latest')
         await newServer._worker(latestBlock)
         await env.relayHub.depositFor(newServer.managerAddress, { value: 1e18.toString() })
       })
@@ -391,11 +399,11 @@ contract('RegistrationManager', function (accounts) {
         await env.stakeManager.unauthorizeHubByOwner(newServer.managerAddress, env.relayHub.address, { from: relayOwner })
         const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
 
-        let latestBlock = await env.web3.eth.getBlock('latest')
+        let latestBlock = await provider.getBlock('latest')
 
         const receipt = await newServer._worker(latestBlock)
         await evmMine()
-        latestBlock = await env.web3.eth.getBlock('latest')
+        latestBlock = await provider.getBlock('latest')
         const receipt2 = await newServer._worker(latestBlock)
 
         assert.equal(receipt.length, 0)
@@ -410,10 +418,10 @@ contract('RegistrationManager', function (accounts) {
         await env.stakeManager.unauthorizeHubByManager(env.relayHub.address, { from: anotherRelayer })
         const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
 
-        let latestBlock = await env.web3.eth.getBlock('latest')
+        let latestBlock = await provider.getBlock('latest')
         const receipts = await newServer._worker(latestBlock)
         await evmMine()
-        latestBlock = await env.web3.eth.getBlock('latest')
+        latestBlock = await provider.getBlock('latest')
         const receipts2 = await newServer._worker(latestBlock)
 
         const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
@@ -439,7 +447,7 @@ contract('RegistrationManager', function (accounts) {
 
         await setNextBlockTimestamp(withdrawalTime)
         await evmMine()
-        const latestBlock = await env.web3.eth.getBlock('latest')
+        const latestBlock = await provider.getBlock('latest')
         const receipts = await newServer._worker(latestBlock)
         assert.isFalse(newServer.registrationManager.isHubAuthorized, 'Hub should not be authorized in server')
         const gasPrice = await env.web3.eth.getGasPrice()
@@ -505,7 +513,7 @@ contract('RegistrationManager', function (accounts) {
         await env.relayServer.init()
         newServer = env.relayServer
         await env.fundServer()
-        const latestBlock = await env.web3.eth.getBlock('latest')
+        const latestBlock = await provider.getBlock('latest')
         await newServer._worker(latestBlock)
         // stake and authorize after '_worker' - so the relay only sets owner
         await env.stakeAndAuthorizeHub(ether('1'), unstakeDelay)
@@ -515,7 +523,7 @@ contract('RegistrationManager', function (accounts) {
         newServer.registrationManager.stakeRequired.requiredValue = toBN(0)
         newServer.registrationManager.balanceRequired.requiredValue = toBN(0)
         await newServer.registrationManager.refreshStake(latestBlock.number, latestBlock.hash, toNumber(latestBlock.timestamp))
-        assert.deepEqual(newServer.registrationManager.stakeRequired.currentValue, oneEther)
+        assert.equal(newServer.registrationManager.stakeRequired.currentValue.toString(), oneEther.toString())
         assert.equal(newServer.registrationManager.ownerAddress, relayOwner, 'owner should be set after refreshing stake')
       })
 

@@ -10,6 +10,9 @@ import {
 } from '@opengsn/relay/dist/ServerConfigParams'
 import * as fs from 'fs'
 import { expectRevert } from '@openzeppelin/test-helpers'
+
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
+
 import {
   RelayHubInstance
 } from '@opengsn/contracts/types/truffle-contracts'
@@ -193,15 +196,18 @@ context('#ServerConfigParams', () => {
   })
 
   context('#resolveServerConfig', () => {
-    const provider = web3.currentProvider
+    // @ts-ignore
+    const currentProviderHost = web3.currentProvider.host
+    const provider = new StaticJsonRpcProvider(currentProviderHost)
     it('should fail on missing hub/oracle', async () => {
       await expectRevert(resolveServerConfig({}, provider), 'missing param: must have relayHubAddress')
     })
 
     it('should fail on invalid relayhub address', async () => {
+      // ethers.js considers invalid addresses to be ENS names
       const config = { relayHubAddress: '123' }
       await expectRevert(resolveServerConfig(config, provider),
-        'Provided address 123 is invalid, the capitalization checksum test failed, or it\'s an indirect IBAN address which can\'t be converted')
+        'network does not support ENS')
     })
 
     it('should fail on no-contract relayhub address', async () => {

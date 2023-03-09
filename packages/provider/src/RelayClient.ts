@@ -1,9 +1,7 @@
-import Web3 from 'web3'
 import { EventEmitter } from 'events'
-import { Provider } from '@ethersproject/abstract-provider'
+import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
-import { toBN, toHex } from 'web3-utils'
 
 import {
   Address,
@@ -24,14 +22,16 @@ import {
   RelayRequest,
   RelayTransactionRequest,
   VersionsManager,
-  Web3ProviderBaseInterface,
   asRelayCallAbi,
   constants,
   decodeRevertReason,
   getRelayRequestID,
   gsnRequiredVersion,
   gsnRuntimeVersion,
-  removeNullValues
+  removeNullValues,
+  toBN,
+  toHex,
+  wrapWeb3JsProvider
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'
@@ -56,7 +56,6 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
-import { bridgeProvider } from './WrapContract'
 
 // forwarder requests are signed with expiration time.
 
@@ -81,8 +80,9 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
     throw new Error(`Proposed fee per gas: ${parseInt(gsnTransactionDetails.maxFeePerGas)}; relay's configured maxMaxFeePerGas: ${pingResponse.maxMaxFeePerGas}`)
   }
 }
+
 export interface GSNUnresolvedConstructorInput {
-  provider: Web3ProviderBaseInterface
+  provider: JsonRpcProvider | ExternalProvider
   config: Partial<GSNConfig>
   overrideDependencies?: Partial<GSNDependencies>
 }
@@ -125,18 +125,6 @@ export class RelayClient {
     }
     this.rawConstructorInput = rawConstructorInput
     this.logger = rawConstructorInput.overrideDependencies?.logger ?? console
-    this.wrapEthersJsProvider()
-  }
-
-  wrapEthersJsProvider (): void {
-    const provider = this.rawConstructorInput.provider as any
-    if (typeof provider.getSigner === 'function') {
-      this.rawConstructorInput.provider = bridgeProvider(provider)
-    } else if (provider instanceof Provider) {
-      throw new Error('Your "provider" instance appears to be an Ethers.js provider but it does not have a "getSigner" method. We recommend constructing JsonRpcProvider or Web3Provider yourself.')
-    } else if (typeof provider.send !== 'function' && typeof provider.sendAsync !== 'function') {
-      throw new Error('Your "provider" instance does not have neither "send" nor "sendAsync" method. This is not supported.')
-    }
   }
 
   async init (useTokenPaymaster = false): Promise<this> {
@@ -158,7 +146,7 @@ export class RelayClient {
     }
     this.dependencies = await this._resolveDependencies({
       config: this.config,
-      provider: this.rawConstructorInput.provider,
+      provider: this.getUnderlyingProvider(),
       overrideDependencies: this.rawConstructorInput.overrideDependencies
     })
     if (!this.config.skipErc165Check) {
@@ -223,9 +211,10 @@ export class RelayClient {
 
   async _isAlreadySubmitted (txHash: string): Promise<boolean> {
     const [txMinedReceipt, pendingBlock] = await Promise.all([
-      this.dependencies.contractInteractor.web3.eth.getTransactionReceipt(txHash),
+      this.dependencies.contractInteractor.provider.getTransactionReceipt(txHash),
       // mempool transactions
-      this.dependencies.contractInteractor.web3.eth.getBlock('pending')
+      // ethers.js does not really support 'pending' block yet
+      this.dependencies.contractInteractor.provider.send('eth_getBlockByNumber', ['pending', false])
     ])
 
     if (txMinedReceipt != null) {
@@ -362,8 +351,14 @@ export class RelayClient {
     await this.fillRelayInfo(relayRequest, relayInfo)
     const httpRequest = await this._prepareRelayHttpRequest(relayRequest, relayInfo)
     this.emit(new GsnValidateRequestEvent())
-
-    const error = await this._verifyViewCallSuccessful(relayInfo, asRelayCallAbi(httpRequest), false)
+    const viewCallGasLimit = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
+      relayRequest.relayData.paymaster,
+      relayRequest.relayData.relayWorker,
+      toBN(relayRequest.relayData.maxFeePerGas),
+      toBN(this.config.maxViewableGasLimit),
+      toBN(this.config.minViewableGasLimit)
+    )
+    const error = await this._verifyViewCallSuccessful(relayInfo, asRelayCallAbi(httpRequest), viewCallGasLimit, false)
     if (error != null) {
       return { error }
     }
@@ -564,16 +559,16 @@ export class RelayClient {
     }
   }
 
-  getUnderlyingProvider (): Web3ProviderBaseInterface {
-    return this.rawConstructorInput.provider
+  getUnderlyingProvider (): JsonRpcProvider {
+    return wrapWeb3JsProvider(this.rawConstructorInput.provider)
   }
 
   async _resolveConfiguration ({
-    provider,
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     let configFromServer = {}
-    const chainId = await new Web3(provider as any).eth.getChainId()
+    const network = await this.getUnderlyingProvider().getNetwork()
+    const chainId = network.chainId
     const useClientDefaultConfigUrl = config.useClientDefaultConfigUrl ?? defaultGsnConfig.useClientDefaultConfigUrl
     if (useClientDefaultConfigUrl) {
       this.logger.debug(`Reading default client config for chainId ${chainId.toString()}`)
@@ -633,7 +628,7 @@ export class RelayClient {
     config,
     overrideDependencies = {}
   }: {
-    provider: Web3ProviderBaseInterface
+    provider: JsonRpcProvider
     config: GSNConfig
     overrideDependencies?: Partial<GSNDependencies>
   }): Promise<GSNDependencies> {
@@ -731,7 +726,10 @@ export class RelayClient {
     }
     // TODO: clone?
     await this.fillRelayInfo(relayRequest, dryRunRelayInfo)
-    const maxAcceptanceBudget = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
+    const paymasterLimits =
+      await this.dependencies.contractInteractor.getGasAndDataLimitsFromPaymaster(relayRequest.relayData.paymaster)
+    const maxAcceptanceBudget = paymasterLimits.acceptanceBudget
+    const viewCallGasLimit = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
       relayRequest.relayData.paymaster,
       relayWorkerAddress,
       toBN(maxMaxFeePerGas),
@@ -746,18 +744,19 @@ export class RelayClient {
       approvalData: '0x',
       maxAcceptanceBudget: maxAcceptanceBudget.toString()
     }
-    return await this._verifyViewCallSuccessful(dryRunRelayInfo, relayCallABI, true)
+    return await this._verifyViewCallSuccessful(dryRunRelayInfo, relayCallABI, viewCallGasLimit, true)
   }
 
   async _verifyViewCallSuccessful (
     relayInfo: RelayInfo,
     relayCallABI: RelayCallABI,
+    viewCallGasLimit: BN,
     isDryRun: boolean
   ): Promise<Error | undefined> {
     const acceptRelayCallResult =
       await this.dependencies.contractInteractor.validateRelayCall(
         relayCallABI,
-        toBN(this.config.maxViewableGasLimit),
+        viewCallGasLimit,
         isDryRun)
     if (!acceptRelayCallResult.paymasterAccepted || acceptRelayCallResult.recipientReverted) {
       let message: string

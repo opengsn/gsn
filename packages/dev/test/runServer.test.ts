@@ -1,5 +1,4 @@
-import { HttpProvider } from 'web3-core'
-
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import {
   RelayHubInstance,
@@ -11,7 +10,8 @@ import {
 import { deployHub, emptyBalance, evmMineMany, serverWorkDir, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { registerForwarderForGsn, defaultEnvironment, constants, ether, Address } from '@opengsn/common'
+import { defaultEnvironment, constants, ether, Address } from '@opengsn/common'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import Web3 from 'web3'
 import fs from 'fs'
@@ -35,6 +35,10 @@ contract('runServer', function (accounts) {
   let relayClientConfig: Partial<GSNConfig>
   let relayProvider: RelayProvider
   const stake = 1e18.toString()
+
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   async function deployGsnContracts (): Promise<void> {
     testToken = await TestToken.new()
@@ -73,7 +77,7 @@ contract('runServer', function (accounts) {
 
     relayProvider = await RelayProvider.newProvider(
       {
-        provider: web3.currentProvider as HttpProvider,
+        provider: ethersProvider,
         config: relayClientConfig
       }).init()
 
@@ -96,7 +100,6 @@ contract('runServer', function (accounts) {
         stake,
         stakeTokenAddress: testToken.address,
         delay: 3600 * 24 * 7,
-        url: 'asd',
         relayOwner: accounts[0],
         // @ts-ignore
         ethereumNodeUrl: web3.currentProvider.host,

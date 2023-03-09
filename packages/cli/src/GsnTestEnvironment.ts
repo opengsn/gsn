@@ -9,6 +9,8 @@ import {
   isSameAddress
 } from '@opengsn/common'
 
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
+
 import { CommandsLogic, RegisterOptions } from './CommandsLogic'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 
@@ -31,6 +33,7 @@ import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManag
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 
 import { ChildProcess } from 'child_process'
+import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
 
 export interface TestEnvironment {
   contractsDeployment: GSNContractsDeployment
@@ -136,7 +139,7 @@ class GsnTestEnvironmentClass {
       preferredRelays: [relayUrl],
       paymasterAddress: deploymentResult.paymasterAddress
     }
-    const provider = new Web3.providers.HttpProvider(_host)
+    const provider = new StaticJsonRpcProvider(_host)
     const input: GSNUnresolvedConstructorInput = {
       provider,
       config
@@ -197,15 +200,19 @@ class GsnTestEnvironmentClass {
     const txStoreManager = new TxStoreManager({ inMemory: true }, logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const environment = defaultEnvironment
+    const provider = new StaticJsonRpcProvider(host)
     const contractInteractor = new ContractInteractor(
       {
-        provider: new Web3.providers.HttpProvider(host),
+        provider,
         logger,
         maxPageSize,
         environment,
         deployment: deploymentResult
       })
     await contractInteractor.init()
+    const resolvedDeployment = contractInteractor.getDeployment()
+    const httpProvider = new Web3.providers.HttpProvider(host)
+    const web3MethodsBuilder = new Web3MethodsBuilder(new Web3(httpProvider), resolvedDeployment)
     const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 
     const reputationStoreManager = new ReputationStoreManager({ inMemory: true }, logger)
@@ -214,6 +221,7 @@ class GsnTestEnvironmentClass {
     const relayServerDependencies: ServerDependencies = {
       logger,
       contractInteractor,
+      web3MethodsBuilder,
       gasPriceFetcher,
       txStoreManager,
       managerKeyManager,
@@ -254,9 +262,10 @@ class GsnTestEnvironmentClass {
     workdir = './build/gsn'
   ): Promise<GSNContractsDeployment> {
     const deployment = loadDeployment(workdir)
+    const provider = new StaticJsonRpcProvider(url)
     const contractInteractor = new ContractInteractor(
       {
-        provider: new Web3.providers.HttpProvider(url),
+        provider,
         logger: console,
         maxPageSize: Number.MAX_SAFE_INTEGER,
         environment: defaultEnvironment,

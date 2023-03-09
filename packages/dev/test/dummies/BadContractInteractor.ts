@@ -1,5 +1,4 @@
-import { TransactionReceipt } from 'web3-core'
-
+import { TransactionResponse } from '@ethersproject/providers'
 import { ContractInteractor, ConstructorParams, RelayCallABI } from '@opengsn/common'
 
 export class BadContractInteractor extends ContractInteractor {
@@ -26,7 +25,7 @@ export class BadContractInteractor extends ContractInteractor {
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async sendSignedTransaction (rawTx: string): Promise<TransactionReceipt> {
+  async sendSignedTransaction (rawTx: string): Promise<TransactionResponse> {
     throw new Error(BadContractInteractor.wrongNonceMessage)
   }
 }

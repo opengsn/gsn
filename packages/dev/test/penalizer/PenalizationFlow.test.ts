@@ -1,13 +1,14 @@
 import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { Transaction } from '@ethereumjs/tx'
 import { ether } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
 
 import { GsnTransactionDetails, HttpClient, HttpWrapper, Address, gsnRuntimeVersion, sleep, constants } from '@opengsn/common'
 
-import { LocalhostOne, ServerTestEnvironment } from '../ServerTestEnvironment'
+import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { GSNConfig, GSNDependencies } from '@opengsn/provider/dist/GSNConfigurator'
 
@@ -25,6 +26,9 @@ contract('PenalizationFlow', function (accounts) {
   let relayClient: RelayClient
 
   before(async function () {
+    // @ts-ignore
+    const currentProviderHost = web3.currentProvider.host
+    const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
     const currentProvider = web3.currentProvider as HttpProvider
     env = new ServerTestEnvironment(currentProvider, accounts)
     await env.init()
@@ -42,7 +46,8 @@ contract('PenalizationFlow', function (accounts) {
       // TODO: adding 'intervalHandler' to the PenalizationService made tests crash/hang with 10ms interval...
       checkInterval: 100,
       delay: 3600 * 24 * 7,
-      url: LocalhostOne,
+      // using IP instead of localhost to avoid being excluded from list
+      url: 'http://127.0.0.1:8090/',
       relayOwner: accounts[0],
       ethereumNodeUrl: currentProvider.host,
       refreshStateTimeoutBlocks: 1,
@@ -94,7 +99,7 @@ contract('PenalizationFlow', function (accounts) {
       httpClient
     }
 
-    relayClient = new RelayClient({ provider: currentProvider, config, overrideDependencies })
+    relayClient = new RelayClient({ provider: ethersProvider, config, overrideDependencies })
     await relayClient.init()
     const { maxFeePerGas, maxPriorityFeePerGas } = await relayClient.calculateGasFees()
     gsnTransactionDetails = {

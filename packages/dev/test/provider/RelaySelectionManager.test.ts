@@ -1,7 +1,7 @@
 import chaiAsPromised from 'chai-as-promised'
 import sinon, { SinonStub } from 'sinon'
-import { HttpProvider } from 'web3-core'
-import { toBN, toHex } from 'web3-utils'
+import { toBN } from 'web3-utils'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   Address,
@@ -17,7 +17,8 @@ import {
   RelayInfoUrl,
   WaitForSuccessResults,
   constants,
-  defaultEnvironment
+  defaultEnvironment,
+  toHex
 } from '@opengsn/common'
 
 import { RelaySelectionManager } from '@opengsn/provider/dist/RelaySelectionManager'
@@ -53,7 +54,7 @@ contract('RelaySelectionManager', function (accounts) {
     firstSeenTimestamp: toBN(0),
     lastSeenTimestamp: toBN(0),
     relayManager: '',
-    relayUrl: ''
+    relayUrl: 'http://relayUrl'
   }
   const pingResponse: PingResponse = {
     ownerAddress: '',
@@ -81,6 +82,10 @@ contract('RelaySelectionManager', function (accounts) {
     maxPriorityFeePerGas: '100'
   }
 
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
+
   let stubPingResponse: SinonStub
   describe('#selectNextRelay()', function () {
     let relaySelectionManager: RelaySelectionManager
@@ -91,7 +96,7 @@ contract('RelaySelectionManager', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       contractInteractor = await new ContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
+        provider: ethersProvider,
         maxPageSize,
         logger
       }).init()
@@ -237,7 +242,7 @@ contract('RelaySelectionManager', function (accounts) {
       const relayInfoGenerator = (e: RegistrarRelayInfo, i: number, a: RegistrarRelayInfo[]): RegistrarRelayInfo => {
         return {
           ...e,
-          relayUrl: `relay ${i} of ${a.length}`
+          relayUrl: `http://relay_${i}_of_${a.length}`
         }
       }
 
@@ -308,19 +313,19 @@ contract('RelaySelectionManager', function (accounts) {
     it('should return those who successfully resolved and all that rejected by that time', async function () {
       const slowRelay = {
         pingResponse,
-        relayInfo: Object.assign({}, eventInfo, { relayUrl: 'slowRelay' })
+        relayInfo: Object.assign({}, eventInfo, { relayUrl: 'http://slowRelay' })
       }
       const fastRelay = {
         pingResponse,
-        relayInfo: Object.assign({}, eventInfo, { relayUrl: 'fastRelay' })
+        relayInfo: Object.assign({}, eventInfo, { relayUrl: 'http://fastRelay' })
       }
       const fastFailRelay = {
         pingResponse,
-        relayInfo: Object.assign({}, eventInfo, { relayUrl: 'fastFailRelay' })
+        relayInfo: Object.assign({}, eventInfo, { relayUrl: 'http://fastFailRelay' })
       }
       const slowFailRelay = {
         pingResponse,
-        relayInfo: Object.assign({}, eventInfo, { relayUrl: 'slowFailRelay' })
+        relayInfo: Object.assign({}, eventInfo, { relayUrl: 'http://slowFailRelay' })
       }
       const slowPromise = new Promise<PingResponse>((resolve) => {
         setTimeout(() => { resolve(pingResponse) }, 1500)
@@ -358,17 +363,17 @@ contract('RelaySelectionManager', function (accounts) {
       const raceResults = await rsm._waitForSuccess(relays, relayHubAddress)
 
       assert.equal(raceResults.results.length, 2)
-      assert.equal(raceResults.results[0].relayInfo.relayUrl, 'fastRelay')
-      assert.equal(raceResults.results[1].relayInfo.relayUrl, 'slowRelay')
+      assert.equal(raceResults.results[0].relayInfo.relayUrl, 'http://fastRelay')
+      assert.equal(raceResults.results[1].relayInfo.relayUrl, 'http://slowRelay')
       assert.equal(raceResults.errors.size, 1)
-      assert.equal(raceResults.errors.get('fastFailRelay')?.message, fastFailedMessage)
+      assert.equal(raceResults.errors.get('http://fastFailRelay')?.message, fastFailedMessage)
     })
   })
 
   describe('#_handleRaceResults()', function () {
-    const winnerRelayUrl = 'winnerRelayUrl'
-    const failureRelayUrl = 'failureRelayUrl'
-    const otherRelayUrl = 'otherRelayUrl'
+    const winnerRelayUrl = 'http://winnerRelayUrl.com'
+    const failureRelayUrl = 'http://failureRelayUrl.com'
+    const otherRelayUrl = 'http://otherRelayUrl.com'
     const winner = {
       pingResponse,
       relayInfo: Object.assign({}, eventInfo, { relayUrl: winnerRelayUrl })

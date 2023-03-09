@@ -29,6 +29,7 @@ const commander = gsnCommander(['n', 'h'])
   const provider = new Web3.providers.HttpProvider(host)
   const maxPageSize = Number.MAX_SAFE_INTEGER
   const environment = defaultEnvironment
+  // @ts-ignore
   const contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
   await contractInteractor.init()
   const timeout = 1000

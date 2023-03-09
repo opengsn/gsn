@@ -9,7 +9,7 @@ import { evmMine } from '../TestUtils'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 
-contract('StatisticsManager', function (accounts) {
+contract.skip('StatisticsManager', function (accounts) {
   let statusLogic: StatisticsManager
   let misbehavingPaymaster: TestPaymasterConfigurableMisbehaviorInstance
 

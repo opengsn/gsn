@@ -1,5 +1,6 @@
 import BN from 'bn.js'
 import { ether, expectEvent } from '@openzeppelin/test-helpers'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   ArbRelayHubInstance,
@@ -15,13 +16,14 @@ import {
   defaultEnvironment,
   environments,
   getEip712Signature,
-  registerForwarderForGsn,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
 
 import { TransactionRelayed } from '@opengsn/contracts/types/truffle-contracts/RelayHub'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { defaultGsnConfig } from '@opengsn/provider'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
+
 import { hardhatNodeChainId } from '../TestUtils'
 
 const TestToken = artifacts.require('TestToken')
@@ -124,8 +126,12 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
         forwarder.address,
         relayRequest
       )
+
+      // @ts-ignore
+      const currentProviderHost = web3.currentProvider.host
+      const provider = new StaticJsonRpcProvider(currentProviderHost)
       signature = await getEip712Signature(
-        web3,
+        provider,
         dataToSign
       )
     })

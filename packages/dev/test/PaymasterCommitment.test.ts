@@ -1,7 +1,7 @@
 /* eslint-disable no-global-assign */
 
 import BN from 'bn.js'
-import { HttpProvider } from 'web3-core'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
 
@@ -15,7 +15,6 @@ import {
   constants,
   defaultEnvironment,
   getEip712Signature,
-  registerForwarderForGsn,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
 
@@ -29,6 +28,7 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import { deployHub, encodeRevertReason } from './TestUtils'
 import { defaultGsnConfig } from '@opengsn/provider'
@@ -73,14 +73,18 @@ async function makeRequest (
   const deployment: GSNContractsDeployment = {
     relayHubAddress: relayHubInstance.address
   }
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
   const contractInteractor = new ContractInteractor({
     domainSeparatorName: defaultGsnConfig.domainSeparatorName,
     environment: defaultEnvironment,
-    provider: web3.eth.currentProvider as HttpProvider,
+    provider,
     logger: createServerLogger('error', '', ''),
     deployment,
     maxPageSize: Number.MAX_SAFE_INTEGER
   })
+  await contractInteractor.init()
   filledRequest.relayData.transactionCalldataGasUsed =
     await contractInteractor.estimateCalldataCostForRequest(filledRequest, {
       maxApprovalDataLength: 0,
@@ -88,7 +92,7 @@ async function makeRequest (
     })
 
   const sig = await getEip712Signature(
-    web3,
+    provider,
     new TypedRequestData(
       defaultGsnConfig.domainSeparatorName,
       chainId,

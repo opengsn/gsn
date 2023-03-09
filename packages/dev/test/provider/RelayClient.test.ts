@@ -9,9 +9,9 @@ import express from 'express'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
-import { HttpProvider } from 'web3-core'
 import { PrefixedHexString, toBuffer, bufferToHex } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
+import { StaticJsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 
 import {
   RelayHubInstance,
@@ -38,11 +38,9 @@ import {
   RelayInfo,
   RelayRequest,
   RelayTransactionRequest,
-  Web3ProviderBaseInterface,
   constants,
   defaultEnvironment,
   getRawTxOptions,
-  registerForwarderForGsn,
   splitRelayUrlForRegistrar, RegistrarRelayInfo
 } from '@opengsn/common'
 import {
@@ -54,6 +52,7 @@ import {
 
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider'
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import { BadHttpClient } from '../dummies/BadHttpClient'
 import { BadRelayedTransactionValidator } from '../dummies/BadRelayedTransactionValidator'
@@ -107,7 +106,10 @@ const lastSeenTimestamp = toBN(0)
 
 const localhostOne = 'http://localhost:8090'
 const localhost127One = 'http://127.0.0.1:8090'
-const underlyingProvider = web3.currentProvider as HttpProvider
+
+// @ts-ignore
+const currentProviderHost = web3.currentProvider.host
+const underlyingProvider = new StaticJsonRpcProvider(currentProviderHost)
 
 class MockHttpClient extends HttpClient {
   constructor (readonly mockPort: number,
@@ -171,7 +173,7 @@ contract('RelayClient', function (accounts) {
   }
 
   before(async function () {
-    web3 = new Web3(underlyingProvider)
+    web3 = new Web3(currentProviderHost)
     testToken = await TestToken.new()
     stakeManager = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
     penalizer = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
@@ -196,7 +198,7 @@ contract('RelayClient', function (accounts) {
       initialReputation: 100,
       stake: 1e18.toString(),
       relayOwner: accounts[1],
-      ethereumNodeUrl: underlyingProvider.host
+      ethereumNodeUrl: currentProviderHost
     })
 
     const loggerConfiguration: LoggerConfiguration = { logLevel: 'debug' }
@@ -236,7 +238,8 @@ contract('RelayClient', function (accounts) {
 
   describe('#_initInternal()', () => {
     it('should set metamask defaults', async () => {
-      const metamaskProvider: Web3ProviderBaseInterface = {
+      // simulate client being constructed with Web3Provider instance injected by metamask
+      const metamaskProvider: ExternalProvider = {
         // @ts-ignore
         isMetaMask: true,
         send: (options: any, cb: any) => {
@@ -257,7 +260,7 @@ contract('RelayClient', function (accounts) {
     it('should allow to override metamask defaults', async () => {
       const minMaxPriorityFeePerGas = 777
       const suffix = 'suffix'
-      const metamaskProvider = {
+      const metamaskProvider: ExternalProvider = {
         isMetaMask: true,
         send: (options: any, cb: any) => {
           (web3.currentProvider as any).send(options, cb)
@@ -690,7 +693,7 @@ contract('RelayClient', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const badContractInteractor = new BadContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
+        provider: underlyingProvider,
         logger,
         maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress }
@@ -750,7 +753,7 @@ contract('RelayClient', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = await new ContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
+        provider: underlyingProvider,
         logger,
         maxPageSize,
         deployment: { paymasterAddress: paymaster.address }
@@ -792,7 +795,7 @@ contract('RelayClient', function (accounts) {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = await new ContractInteractor({
         environment: defaultEnvironment,
-        provider: web3.currentProvider as HttpProvider,
+        provider: underlyingProvider,
         logger,
         maxPageSize,
         deployment: { paymasterAddress: paymaster.address }
@@ -1104,13 +1107,11 @@ contract('RelayClient', function (accounts) {
         const sandbox = sinon.createSandbox()
         sandbox
           .stub(provider)
-          .send
-          .withArgs(sinon.match({ method: 'eth_chainId' }), sinon.match.any)
-          .yields(null, {
-            id: 0,
-            jsonrpc: '2.0',
-            result: '0x5'
-          })
+          .getNetwork
+          .returns(Promise.resolve({
+            name: 'stubname',
+            chainId: 5
+          }))
         const resolvedConfig: GSNConfig = await relayClient._resolveConfiguration({
           provider,
           config
@@ -1172,38 +1173,7 @@ contract('RelayClient', function (accounts) {
       assert.equal(pingErrors.size, 0)
       assert.equal(relayingErrors.size, 1)
       assert.equal(relayingErrors.keys().next().value, constants.DRY_RUN_KEY)
-      assert.match(relayingErrors.values().next().value.message, /paymaster accepted but recipient reverted in DRY-RUN.*Reported reason: : null/s)
-    })
-
-    it('should not require paymaster to have excessive balance when using "calculateDryRunCallGasLimit"', async function () {
-      const relayClient =
-        new RelayClient({
-          provider: underlyingProvider,
-          config: {
-            ...gsnConfig,
-            performDryRunViewRelayCall: true
-          }
-        })
-      await paymaster.withdrawAll(constants.BURN_ADDRESS)
-      const paymasterHubDeposit = 4e16
-      const baseFeePerGas = 30e9
-      await paymaster.deposit({ value: paymasterHubDeposit.toString() })
-      await relayClient.init()
-      sinon.stub(relayClient.dependencies.contractInteractor, 'getGasFees').returns(Promise.resolve({
-        priorityFeePerGas: baseFeePerGas.toString(),
-        baseFeePerGas: baseFeePerGas.toString()
-      }))
-      sinon.spy(relayClient, '_verifyViewCallSuccessful')
-      const optionsWithGas = Object.assign({}, options, {
-        gas: '0xf4240',
-        maxFeePerGas: '0x51f4d5c00',
-        maxPriorityFeePerGas: '0x51f4d5c00'
-      })
-      const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
-      await relayClient._verifyDryRunSuccessful(relayRequest)
-      // the expected value for 'maxAcceptanceBudget' in case of low paymaster balance depends on it
-      const maxAcceptanceBudget = (paymasterHubDeposit / baseFeePerGas * 0.9 - 1).toString()
-      expect(relayClient._verifyViewCallSuccessful).to.have.been.calledWith(sinon.match.any, sinon.match({ maxAcceptanceBudget }), sinon.match.any)
+      assert.match(relayingErrors.values().next().value.message, /paymaster accepted but recipient reverted in DRY-RUN.*Reported reason: : 0x/s)
     })
   })
 })

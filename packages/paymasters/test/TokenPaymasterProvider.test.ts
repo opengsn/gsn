@@ -1,5 +1,12 @@
-import { TokenPaymasterConfig, TokenPaymasterProvider } from '../src/TokenPaymasterProvider'
+import chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+import { ContractFactory } from 'ethers'
 import { HttpProvider } from 'web3-core'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
+import { TokenPaymasterConfig, TokenPaymasterProvider } from '../src/TokenPaymasterProvider'
+import { expectEvent } from '@openzeppelin/test-helpers'
+import { toWei } from 'web3-utils'
+
 import {
   GasAndEthConfig,
   PERMIT_SELECTOR_DAI,
@@ -19,12 +26,9 @@ import {
   TestTokenInstance
 } from '../types/truffle-contracts'
 import { deployHub, revert, snapshot, startRelay, stopRelay } from '@opengsn/dev/dist/test/TestUtils'
-import { registerForwarderForGsn } from '@opengsn/common/dist/EIP712/ForwarderUtil'
-import { expectEvent } from '@openzeppelin/test-helpers'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
-import { toWei } from 'web3-utils'
-import chai from 'chai'
-import chaiAsPromised from 'chai-as-promised'
+
 import {
   CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
@@ -51,7 +55,6 @@ import {
   UNI_ETH_POOL_FEE,
   USDC_ETH_POOL_FEE
 } from './ForkTestUtils'
-import { providers, ContractFactory } from 'ethers'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { TokenPaymasterEthersWrapper } from '../src/WrapContract'
 import { defaultGsnConfig } from '@opengsn/provider'
@@ -69,6 +72,10 @@ const TestToken = artifacts.require('TestToken')
 const { expect, assert } = chai.use(chaiAsPromised)
 
 contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const provider = new StaticJsonRpcProvider(currentProviderHost)
+
   let permitPaymaster: PermitERC20UniswapV3PaymasterInstance
   let daiPermittableToken: PermitInterfaceDAIInstance
   let uniPermittableToken: PermitInterfaceEIP2612Instance
@@ -163,7 +170,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
-        provider: web3.currentProvider as HttpProvider
+        provider
       })
       await tokenPaymasterProvider.init()
       assert.isTrue(tokenPaymasterProvider.config.tokenAddress == null)
@@ -183,7 +190,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
-        provider: web3.currentProvider as HttpProvider
+        provider
       })
       await tokenPaymasterProvider.init()
       assert.equal(tokenPaymasterProvider.config.tokenAddress, USDC_CONTRACT_ADDRESS)
@@ -203,7 +210,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
-        provider: web3.currentProvider as HttpProvider
+        provider
       })
       await tokenPaymasterProvider.init()
       const promise = tokenPaymasterProvider.setToken(owner)
@@ -221,7 +228,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
-        provider: web3.currentProvider as HttpProvider
+        provider
       })
       await tokenPaymasterProvider.init()
       await tokenPaymasterProvider.setToken(DAI_CONTRACT_ADDRESS)
@@ -241,7 +248,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
-        provider: web3.currentProvider as HttpProvider
+        provider
       })
       await tokenPaymasterProvider.init()
       const promise = tokenPaymasterProvider._buildPaymasterData(mergeRelayRequest(relayRequest, { paymaster: '0x' }))
@@ -258,7 +265,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
-        provider: web3.currentProvider as HttpProvider
+        provider
       })
       await tokenPaymasterProvider.init()
       await usdcPermittableToken.approve(permitPaymaster.address, constants.MAX_UINT256, { from: account0 })
@@ -277,7 +284,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         }
         tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
           config: gsnConfig,
-          provider: web3.currentProvider as HttpProvider
+          provider
         })
         await tokenPaymasterProvider.init()
         const paymasterData = await tokenPaymasterProvider._buildPaymasterData(relayRequest)
@@ -295,7 +302,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         }
         tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
           config: gsnConfig,
-          provider: web3.currentProvider as HttpProvider
+          provider
         })
         await tokenPaymasterProvider.init()
         const paymasterData = await tokenPaymasterProvider._buildPaymasterData(relayRequest)
@@ -313,7 +320,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         }
         tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
           config: gsnConfig,
-          provider: web3.currentProvider as HttpProvider
+          provider
         })
         await tokenPaymasterProvider.init()
         const paymasterData = await tokenPaymasterProvider._buildPaymasterData(relayRequest)
@@ -378,7 +385,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       await skipWithoutFork(this)
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
-        provider: web3.currentProvider as HttpProvider
+        provider
       })
       await tokenPaymasterProvider.init()
 
@@ -407,7 +414,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
     it('should wrap ethers.js Contract instance with TokenPaymasterProvider', async function () {
       await skipWithoutFork(this)
       this.timeout(60000)
-      const ethersProvider = new providers.JsonRpcProvider((web3.currentProvider as any).host)
+      const ethersProvider = new StaticJsonRpcProvider((web3.currentProvider as any).host)
       const signer = ethersProvider.getSigner()
       // @ts-ignores
       const factory = await new ContractFactory(SampleRecipient.abi, SampleRecipient.bytecode, signer)

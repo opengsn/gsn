@@ -2,6 +2,7 @@ import { balance, ether, expectEvent, expectRevert } from '@openzeppelin/test-he
 import BN from 'bn.js'
 import chai from 'chai'
 import { toBN } from 'web3-utils'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   RelayCallStatusCodes,
@@ -12,7 +13,6 @@ import {
   decodeRevertReason,
   defaultEnvironment,
   getEip712Signature,
-  registerForwarderForGsn,
   removeHexPrefix,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
@@ -34,6 +34,7 @@ import { deployHub, encodeRevertReason, hardhatNodeChainId, revert, snapshot } f
 import chaiAsPromised from 'chai-as-promised'
 import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { defaultGsnConfig } from '@opengsn/provider'
+import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 const { expect, assert } = chai.use(chaiAsPromised)
 
@@ -61,6 +62,10 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
 
   const chainId = hardhatNodeChainId
   const oneEther = ether('1')
+
+  // @ts-ignore
+  const currentProviderHost = web3.currentProvider.host
+  const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
 
   let relayHub: string
   let testToken: TestTokenInstance
@@ -419,7 +424,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           relayRequest
         )
         signatureWithPermissivePaymaster = await getEip712Signature(
-          web3,
+          ethersProvider,
           dataToSign
         )
 
@@ -569,7 +574,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           )
 
           signature = await getEip712Signature(
-            web3,
+            ethersProvider,
             dataToSign
           )
 
@@ -583,7 +588,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             relayRequestMisbehavingPaymaster
           )
           signatureWithMisbehavingPaymaster = await getEip712Signature(
-            web3,
+            ethersProvider,
             dataToSign
           )
 
@@ -596,7 +601,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             relayRequestPaymasterWithContext
           )
           signatureWithContextPaymaster = await getEip712Signature(
-            web3,
+            ethersProvider,
             dataToSign
           )
         })
@@ -656,7 +661,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             eip1559relayRequest
           )
           const signature = await getEip712Signature(
-            web3,
+            ethersProvider,
             dataToSign
           )
           const {
@@ -715,7 +720,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             relayRequestNoCallData
           )
           signature = await getEip712Signature(
-            web3,
+            ethersProvider,
             dataToSign
           )
           const { tx } = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequestNoCallData, signature, '0x', {
@@ -742,7 +747,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             relayRequestRevert
           )
           signature = await getEip712Signature(
-            web3,
+            ethersProvider,
             dataToSign
           )
           const { logs } = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequestRevert, signature, '0x', {
@@ -915,7 +920,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               relayRequestMisbehavingPaymaster
             )
             signature = await getEip712Signature(
-              web3,
+              ethersProvider,
               dataToSign
             )
           })
@@ -999,7 +1004,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               relayRequest
             )
             signatureWithPermissivePaymaster = await getEip712Signature(
-              web3,
+              ethersProvider,
               dataToSign
             )
             const {
@@ -1043,7 +1048,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               relayRequestWithNonce
             )
             signatureWithPermissivePaymaster = await getEip712Signature(
-              web3,
+              ethersProvider,
               dataToSign
             )
             const {

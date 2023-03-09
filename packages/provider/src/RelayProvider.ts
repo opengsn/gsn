@@ -1,21 +1,21 @@
 /* eslint-disable no-void */
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
-import Web3 from 'web3'
-import { HttpProvider } from 'web3-core'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
+
+import { BigNumber } from '@ethersproject/bignumber'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { EventData } from 'web3-eth-contract'
 import { TypedMessage } from '@metamask/eth-sig-util'
 
 import {
   Address,
+  EventData,
   GsnTransactionDetails,
+  JsonRpcPayload,
+  JsonRpcResponse,
   LoggerInterface,
   SignTypedDataCallback,
   TransactionRejectedByPaymaster,
   TransactionRelayed,
-  Web3ProviderBaseInterface,
   gsnRuntimeVersion,
   isSameAddress
 } from '@opengsn/common'
@@ -27,13 +27,11 @@ import { GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from './RelayClient'
 import { GSNConfig } from './GSNConfigurator'
 
+import { JsonRpcProvider, TransactionReceipt } from '@ethersproject/providers'
+
 abiDecoder.addABI(relayHubAbi)
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
-
-interface ISendAsync {
-  sendAsync?: any
-}
 
 /**
  * This data can later be used to optimize creation of Transaction Receipts
@@ -48,17 +46,18 @@ const TX_NOTFOUND = 'tx-notfound'
 
 const BLOCKS_FOR_LOOKUP = 5000
 
-// TODO: stop faking the HttpProvider implementation -  it won't work for any other 'origProvider' type
-export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
-  protected readonly origProvider: HttpProvider & ISendAsync
-  private readonly origProviderSend: any
+export class RelayProvider {
+  protected readonly origProvider: JsonRpcProvider
+  private readonly _origProviderSend: (method: string, params: any[]) => Promise<any>
   private asyncSignTypedData?: SignTypedDataCallback
-  protected readonly web3: Web3
   protected readonly submittedRelayRequests = new Map<string, SubmittedRelayRequestInfo>()
   protected config!: GSNConfig
 
   readonly relayClient: RelayClient
   logger!: LoggerInterface
+
+  host!: string
+  connected!: boolean
 
   static newProvider (input: GSNUnresolvedConstructorInput): RelayProvider {
     return new RelayProvider(new RelayClient(input))
@@ -71,38 +70,23 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       throw new Error('Using new RelayProvider() constructor directly is deprecated.\nPlease create provider using RelayProvider.newProvider({})')
     }
     this.relayClient = relayClient
-    this.web3 = new Web3(relayClient.getUnderlyingProvider() as HttpProvider)
-    // TODO: stop faking the HttpProvider implementation
-    this.origProvider = this.relayClient.getUnderlyingProvider() as HttpProvider
-    this.host = this.origProvider.host
-    this.connected = this.origProvider.connected
+    this.origProvider = this.relayClient.getUnderlyingProvider()
     this.logger = this.relayClient.logger
 
-    if (typeof this.origProvider.sendAsync === 'function') {
-      this.origProviderSend = this.origProvider.sendAsync.bind(this.origProvider)
-    } else {
-      this.origProviderSend = this.origProvider.send.bind(this.origProvider)
-    }
+    this._origProviderSend = this.origProvider.send.bind(this.origProvider)
     this._delegateEventsApi()
   }
 
-  sendId = 1000
-
-  // async wrapper for calling origSend
-  async origSend (method: string, params: any[]): Promise<any> {
-    return await new Promise((resolve, reject) => {
-      this.origProviderSend({
-        id: this.sendId++,
+  origProviderSend (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+    this._origProviderSend(payload.method, payload.params ?? []).then((it: any) => {
+      const response: JsonRpcResponse = {
         jsonrpc: '2.0',
-        method,
-        params
-      }, (error: Error | null, result?: JsonRpcResponse) => {
-        if (error != null) {
-          reject(error)
-        } else {
-          resolve(result?.result)
-        }
-      })
+        id: payload.id ?? 0,
+        result: it
+      }
+      callback(null, response)
+    }).catch((err: any) => {
+      callback(err)
     })
   }
 
@@ -171,9 +155,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       }
     }
 
-    this.origProviderSend(payload, (error: Error | null, result?: JsonRpcResponse) => {
-      callback(error, result)
-    })
+    this.origProviderSend(payload, callback)
   }
 
   _ethGetTransactionReceiptWithTransactionHash (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
@@ -226,7 +208,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     if (submissionDetails != null) {
       return submissionDetails
     }
-    const blockNumber = await this.web3.eth.getBlockNumber()
+    const blockNumber = await this.origProvider.getBlockNumber()
     const manyBlocksAgo = Math.max(1, blockNumber - BLOCKS_FOR_LOOKUP)
     this.logger.warn(`Looking up relayed transaction by its RelayRequestID(${relayRequestID}) from block ${manyBlocksAgo}`)
     return {
@@ -243,7 +225,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     if (!txHash.startsWith('0x')) {
       txHash = relayRequestID
     }
-    const tx = await this.origSend('eth_getTransactionByHash', [txHash])
+    const tx = await this._origProviderSend('eth_getTransactionByHash', [txHash])
     if (tx != null) {
       // must return exactly what was requested...
       tx.hash = relayRequestID
@@ -338,7 +320,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     relayRequestID: string,
     submissionDetails: SubmittedRelayRequestInfo
   ): Promise<string> {
-    const extraTopics = [undefined, undefined, [relayRequestID]]
+    const extraTopics = [null, null, [relayRequestID]]
     const events = await this.relayClient.dependencies.contractInteractor.getPastEventsForHub(
       extraTopics,
       { fromBlock: submissionDetails.submissionBlock },
@@ -367,7 +349,10 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
     if (transactionHash === TX_NOTFOUND) {
       return this._createTransactionRevertedReceipt()
     }
-    const originalTransactionReceipt = await this.web3.eth.getTransactionReceipt(transactionHash)
+    const originalTransactionReceipt = await this.origProvider.getTransactionReceipt(transactionHash)
+    if (originalTransactionReceipt == null) {
+      return null
+    }
     return this._getTranslatedGsnResponseResult(originalTransactionReceipt, relayRequestID)
   }
 
@@ -447,15 +432,15 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
 
   /* wrapping HttpProvider interface */
 
-  host: string
-  connected: boolean
+  // host: string
+  // connected: boolean
 
   supportsSubscriptions (): boolean {
-    return this.origProvider.supportsSubscriptions()
+    return false
   }
 
   disconnect (): boolean {
-    return this.origProvider.disconnect()
+    return false
   }
 
   newAccount (): AccountKeypair {
@@ -560,7 +545,7 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
    * If there is more than one successful {@link TransactionRelayed} throws as this is impossible for current Forwarder
    */
   _pickSingleEvent (events: EventData[], relayRequestID: string): EventData {
-    const successes = events.filter(it => it.event === TransactionRelayed)
+    const successes = events.filter(it => it.name === TransactionRelayed)
     if (successes.length === 0) {
       const sorted = events.sort((a: EventData, b: EventData) => b.blockNumber - a.blockNumber)
       return sorted[0]
@@ -590,6 +575,10 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
 
   _createTransactionRevertedReceipt (): TransactionReceipt {
     return {
+      // TODO: I am not sure about these two, these were not required in Web3.js
+      confirmations: 0,
+      byzantium: false,
+      type: 0,
       to: '',
       from: '',
       contractAddress: '',
@@ -597,12 +586,12 @@ export class RelayProvider implements HttpProvider, Web3ProviderBaseInterface {
       blockHash: '',
       transactionHash: '',
       transactionIndex: 0,
-      gasUsed: 0,
+      gasUsed: BigNumber.from(0),
       logs: [],
       blockNumber: 0,
-      cumulativeGasUsed: 0,
-      effectiveGasPrice: 0,
-      status: false // failure
+      cumulativeGasUsed: BigNumber.from(0),
+      effectiveGasPrice: BigNumber.from(0),
+      status: 0 // failure
     }
   }
 }

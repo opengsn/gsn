@@ -168,11 +168,43 @@ export class RelaySelectionManager {
   ): void {
     if (!this.isInitialized) { throw new Error('init() not called') }
     this.errors = new Map([...this.errors, ...raceResult.errors])
+    const totalRemainingRelaysBefore = this.remainingRelays
+      .map((relays) => {
+        return relays.length
+      })
+      .reduce((a, b) => { return a + b }, 0)
     this.remainingRelays = this.remainingRelays.map(relays =>
       relays
-        .filter(eventInfo => eventInfo.relayUrl !== winner?.relayInfo.relayUrl)
-        .filter(eventInfo => !Array.from(raceResult.errors.keys()).includes(eventInfo.relayUrl))
+        .filter(eventInfo => {
+          if (winner == null) {
+            return true
+          }
+          const eventUrl = new URL(eventInfo.relayUrl)
+          const winnerUrl = new URL(winner.relayInfo.relayUrl)
+          return eventUrl.toString() !== winnerUrl.toString()
+        })
+        .filter(eventInfo => {
+          const urls = Array.from(raceResult.errors.keys()).map(it => new URL(it).toString())
+          return !urls.includes(new URL(eventInfo.relayUrl).toString())
+        })
+        .filter(eventInfo => {
+          // if there is no 'winner' remove all 'results' - none is suitable
+          // TODO: report these as 'errors' as well - this code will make extra pings to overpriced relays
+          if (winner == null) {
+            return !raceResult.results
+              .map(it => new URL(it.relayInfo.relayUrl).toString())
+              .includes(new URL(eventInfo.relayUrl).toString())
+          }
+          return true
+        })
     )
+    const totalRemainingRelaysAfter = this.remainingRelays
+      .map((relays) => {
+        return relays.length
+      })
+      .reduce((a, b) => { return a + b }, 0)
+    const touched = raceResult.errors.size + (winner != null ? 1 : raceResult.results.length)
+    this.logger.debug(`_handleWaitForSuccessResults info ${totalRemainingRelaysBefore} ${totalRemainingRelaysAfter} ${touched}`)
   }
 
   selectWinnerFromResult (
