@@ -80,6 +80,9 @@ export function errorAsBoolean (err: any): boolean {
 export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError = false): string | null {
   if (revertBytes == null) { return null }
   if (!revertBytes.startsWith('0x08c379a0')) {
+    if (revertBytes.includes('without a reason string') || revertBytes.includes('FWD: insufficient gas')) {
+      revertBytes = 'Check Relay Worker balance - potentially Out Of Gas' + revertBytes
+    }
     if (throwOnError) {
       throw new Error('invalid revert bytes: ' + revertBytes)
     }
