@@ -18,7 +18,7 @@ function retypeItem (abiOutput: Partial<ParamType>, ret: any): any {
     return ret
   }
   if (abiOutput.type.includes('int')) {
-    return toBN(ret)
+    return toBN(ret.toString())
   } else if (abiOutput.type === 'tuple[]') {
     return ret.map((item: any) => retypeItem(
       { ...abiOutput, type: 'tuple' }, item

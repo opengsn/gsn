@@ -75,7 +75,7 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   })
   const paymasterName = 'Default'
 
-  showDeployment(deploymentResult, `Deployed GSN to network: ${network}`, paymasterName)
+  showDeployment(deploymentResult, `Deployed GSN to network: ${network}`, paymasterName, console)
   saveDeployment(deploymentResult, commander.workdir)
   process.exit(0)
 })().catch(

@@ -3,7 +3,7 @@ import commander, { CommanderStatic } from 'commander'
 import fs from 'fs'
 import path from 'path'
 
-import { Address, RelayHubConfiguration, GSNContractsDeployment } from '@opengsn/common'
+import { Address, RelayHubConfiguration, GSNContractsDeployment, LoggerInterface } from '@opengsn/common'
 
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 
@@ -127,11 +127,15 @@ export function saveDeployment (deploymentResult: GSNContractsDeployment, workdi
   saveContractToFile(deploymentResult.managerStakeTokenAddress, workdir, 'ManagerStakeTokenAddress.json')
 }
 
-export function showDeployment (deploymentResult: GSNContractsDeployment, title: string | undefined, paymasterTitle: string | undefined = undefined): void {
+export function showDeployment (
+  deploymentResult: GSNContractsDeployment,
+  title: string | undefined,
+  paymasterTitle: string | undefined = undefined,
+  logger: LoggerInterface): void {
   if (title != null) {
-    console.log(title)
+    logger.error(title)
   }
-  console.log(`
+  logger.error(`
   RelayHub: ${deploymentResult.relayHubAddress}
   RelayRegistrar: ${deploymentResult.relayRegistrarAddress}
   StakeManager: ${deploymentResult.stakeManagerAddress}
@@ -185,6 +189,6 @@ export function gsnCommander (options: GsnOption[]): CommanderStatic {
         break
     }
   })
-  commander.option('--loglevel <string>', 'error | warn | info | debug', 'debug')
+  commander.option('--loglevel <string>', 'silent | error | warn | info | debug', 'debug')
   return commander
 }
