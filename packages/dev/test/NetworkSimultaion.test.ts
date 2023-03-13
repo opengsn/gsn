@@ -9,7 +9,6 @@ import {
   GSNContractsDeployment,
   GsnTransactionDetails,
   LoggerInterface,
-  constants,
   defaultEnvironment,
   signedTransactionToHash
 } from '@opengsn/common'
@@ -19,11 +18,10 @@ import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { BoostingResult, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
-import { evmMine, evmMineMany, increaseTime, revert, snapshot } from './TestUtils'
+import { evmMine, increaseTime, revert, snapshot } from './TestUtils'
 
 import sinon from 'sinon'
 import chaiAsPromised from 'chai-as-promised'
-import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
