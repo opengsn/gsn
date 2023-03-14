@@ -130,8 +130,9 @@ export function saveDeployment (deploymentResult: GSNContractsDeployment, workdi
 export function showDeployment (
   deploymentResult: GSNContractsDeployment,
   title: string | undefined,
-  paymasterTitle: string | undefined = undefined,
-  logger: LoggerInterface): void {
+  logger: LoggerInterface,
+  paymasterTitle: string | undefined = undefined
+): void {
   if (title != null) {
     logger.error(title)
   }
