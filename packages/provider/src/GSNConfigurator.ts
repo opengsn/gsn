@@ -53,7 +53,7 @@ export const defaultGsnConfig: GSNConfig = {
   clientId: '1',
   requestValidSeconds: 172800, // 2 days
   maxViewableGasLimit: '12000000',
-  minViewableGasLimit: '50000',
+  minViewableGasLimit: '300000',
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,
   maxPaymasterDataLength: 0,
