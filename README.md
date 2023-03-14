@@ -166,4 +166,3 @@ include any support for meta-transactions and requires at least a single call to
 ## Live demo
 
 Make a transaction and capture the flag on-chain without paying for gas. [Try it now!](https://ctf-react.opengsn.org/)
-
