@@ -51,6 +51,25 @@ export interface SendTransactionDetails {
   creationBlockTimestamp: number
 }
 
+export interface BalanceRequiredDetails {
+  signer: Address
+  signerBalance: IntString
+  requiredBalance: IntString
+  isSufficient: boolean
+}
+
+export interface BoostingResult {
+  /**
+   * Mapping old transaction hashes to new ones for transactions that were successfully boosted
+   */
+  boostedTransactions: Map<PrefixedHexString, SignedTransactionDetails>
+
+  /**
+   * Details for the first transaction that could not be boosted due to insufficient balance
+   */
+  balanceRequiredDetails?: BalanceRequiredDetails
+}
+
 export class TransactionManager extends EventEmitter {
   nonceMutex = new Mutex()
   managerKeyManager: KeyManager
@@ -126,11 +145,24 @@ data                     | ${transaction.data}
 `)
   }
 
-  async validateBalance (signer: string, maxFeePerGas: number, gasLimit: number): Promise<void> {
+  async validateBalance (
+    signer: string,
+    maxFeePerGas: number,
+    gasLimit: number,
+    signerBalance: string
+  ): Promise<BalanceRequiredDetails> {
     const txCost = toBN(maxFeePerGas).mul(toBN(gasLimit))
-    const signerBalance = await this.contractInteractor.getBalance(signer)
-    if (txCost.gt(toBN(signerBalance))) {
-      throw new Error(`signer ${signer} balance ${signerBalance} too low: tx cost is ${txCost.toString()}`)
+    const isSufficient = txCost.lte(toBN(signerBalance))
+    if (!isSufficient) {
+      this.logger.warn(`signer ${signer} balance ${signerBalance} too low: tx cost is ${txCost.toString()}`)
+      this.logger.warn('Increase \'managerMinBalance\' or \'workerMinBalance\' to avoid this error.' +
+        'Warning: There is nothing the Relay Server can do if it does not have sufficient manager balance!')
+    }
+    return {
+      signer,
+      signerBalance,
+      isSufficient,
+      requiredBalance: txCost.toString()
     }
   }
 
@@ -175,7 +207,14 @@ data                     | ${transaction.data}
       })
       this.logger.debug(`sendTransaction: gasLimit from estimate: ${gasLimit}`)
     }
-    await this.validateBalance(txDetails.signer, maxFeePerGas, gasLimit)
+    const signerBalance = await this.contractInteractor.getBalance(txDetails.signer)
+    const {
+      requiredBalance,
+      isSufficient
+    } = await this.validateBalance(txDetails.signer, maxFeePerGas, gasLimit, signerBalance)
+    if (!isSufficient) {
+      throw new Error(`signer ${txDetails.signer} balance ${signerBalance} too low: tx cost is ${requiredBalance}`)
+    }
     if (isSameAddress(txDetails.destination, constants.ZERO_ADDRESS)) {
       const msg = `Preventing to send transaction with action id ${txDetails.serverAction} to address(0)! Validate your configuration!`
       this.logger.error(msg)
@@ -260,8 +299,16 @@ data                     | ${transaction.data}
     currentBlock: ShortBlockInfo,
     newMaxFee: number,
     newMaxPriorityFee: number,
-    isMaxGasPriceReached: boolean): Promise<SignedTransactionDetails> {
-    await this.validateBalance(tx.from, newMaxFee, tx.gas)
+    isMaxGasPriceReached: boolean): Promise<
+    {
+      signedTransactionDetails?: SignedTransactionDetails
+      balanceRequiredDetails: BalanceRequiredDetails
+    }> {
+    const signerBalance = await this.contractInteractor.getBalance(tx.from)
+    const balanceRequiredDetails = await this.validateBalance(tx.from, newMaxFee, tx.gas, signerBalance)
+    if (!balanceRequiredDetails.isSufficient) {
+      return { balanceRequiredDetails }
+    }
     let txToSign: TypedTransaction
     if (this.transactionType === TransactionType.TYPE_TWO) {
       txToSign = new FeeMarketEIP1559Transaction(
@@ -299,7 +346,8 @@ data                     | ${transaction.data}
     const currentNonce = await this.contractInteractor.getTransactionCount(tx.from)
     this.logger.debug(`Current account nonce for ${tx.from} is ${currentNonce}`)
 
-    return await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId, storedTx.nonce)
+    const signedTransactionDetails = await this.broadcastTransaction(signedTransaction.rawTx, storedTx.txId, storedTx.nonce)
+    return { signedTransactionDetails, balanceRequiredDetails }
   }
 
   _resolveNewGasPrice (oldMaxFee: number, oldMaxPriorityFee: number, minMaxPriorityFee: number, minMaxFee: number): { newMaxFee: number, newMaxPriorityFee: number, isMaxGasPriceReached: boolean } {
@@ -386,20 +434,20 @@ data                     | ${transaction.data}
     signer: string,
     currentBlock: ShortBlockInfo,
     minMaxPriorityFee: number
-  ): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+  ): Promise<BoostingResult> {
     const boostedTransactions = new Map<PrefixedHexString, SignedTransactionDetails>()
     const nonce = await this.contractInteractor.getTransactionCount(signer)
 
     // Load all transactions above currently mined nonce. If it is already mined, the boosting will not affect it.
     const pendingTxs = await this.txStoreManager.getTxsInNonceRange(signer, nonce)
     if (pendingTxs.length === 0) {
-      return boostedTransactions
+      return { boostedTransactions }
     }
     // Check if the tx was mined by comparing its nonce against the latest one
     const oldestPendingTx = pendingTxs[0]
     if (oldestPendingTx.nonce < nonce) {
       this.logger.debug(`${signer} : transaction is mined, awaiting confirmations. Account nonce: ${nonce}, oldest transaction: nonce: ${oldestPendingTx.nonce} txId: ${oldestPendingTx.txId}`)
-      return boostedTransactions
+      return { boostedTransactions }
     }
 
     // Sanity-check: the oldest tx.nonce immediately follows 'latest' nonce
@@ -411,7 +459,7 @@ data                     | ${transaction.data}
     // If the tx is still pending, check how long ago we sent it, and resend it if needed
     if (parseInt(currentBlock.timestamp.toString()) - lastSentAtBlockTimestamp < this.config.pendingTransactionTimeoutSeconds) {
       this.logger.debug(`${signer} : awaiting transaction with ID: ${oldestPendingTx.txId} to be mined. creationBlockNumber: ${oldestPendingTx.creationBlock.number} creationBlockHash: ${oldestPendingTx.creationBlock.hash} nonce: ${nonce}`)
-      return boostedTransactions
+      return { boostedTransactions }
     }
 
     // Calculate new gas price as a % increase over the previous one, with a minimum value
@@ -427,8 +475,12 @@ data                     | ${transaction.data}
     for (const transaction of pendingTxs) {
       // The tx is underpriced, boost it
       if (transaction.maxFeePerGas < newMaxFee || transaction.maxPriorityFeePerGas < newMaxPriorityFee) {
-        const boostedTransactionDetails =
+        const { signedTransactionDetails: boostedTransactionDetails, balanceRequiredDetails } =
           await this.resendTransaction(transaction, currentBlock, newMaxFee, newMaxPriorityFee, isMaxGasPriceReached)
+        if (boostedTransactionDetails == null) {
+          this.logger.warn('pausing boosting transactions until balance is replenished')
+          return { boostedTransactions, balanceRequiredDetails }
+        }
         boostedTransactions.set(transaction.txId, boostedTransactionDetails)
         this.logger.debug(`Replaced transaction: nonce: ${transaction.nonce} sender: ${signer} | ${transaction.txId} => ${boostedTransactionDetails.transactionHash}`)
       } else { // The tx is ok, just rebroadcast it
@@ -442,6 +494,6 @@ data                     | ${transaction.data}
         this.logger.debug(`resend ${signer}: Sent tx ${transaction.attempts} times already`)
       }
     }
-    return boostedTransactions
+    return { boostedTransactions }
   }
 }

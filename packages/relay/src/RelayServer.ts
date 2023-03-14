@@ -44,7 +44,11 @@ import {
 
 import { RegistrationManager } from './RegistrationManager'
 import { PaymasterStatus, ReputationManager } from './ReputationManager'
-import { SendTransactionDetails, SignedTransactionDetails, TransactionManager } from './TransactionManager'
+import {
+  BoostingResult,
+  SendTransactionDetails,
+  TransactionManager
+} from './TransactionManager'
 import { ServerAction, ShortBlockInfo } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
@@ -658,6 +662,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     } catch (e) {
       this.emit('error', e)
       const error = e as Error
+      // this is the catch that is reached eventually
       this.logger.error(`error in worker: ${error.message}`)
       this.setReadyState(false)
     } finally {
@@ -759,7 +764,16 @@ latestBlock timestamp   | ${latestBlock.timestamp}
         hubEventsSinceLastScan, this.lastScannedBlock, currentBlock, currentBlockTimestamp, shouldRegisterAgain))
     await this.transactionManager.fillMinedBlockDetailsForTransactions(currentBlock)
     await this.transactionManager.removeArchivedTransactions(currentBlock)
-    await this._boostStuckPendingTransactions(currentBlock)
+    const boostingResults = await this._boostStuckPendingTransactions(currentBlock)
+    if (boostingResults[0].balanceRequiredDetails != null && !boostingResults[0].balanceRequiredDetails.isSufficient) {
+      this.logger.error('Server configuration problem! Relay manager cannot afford boosting transactions and may become stuck soon.')
+    }
+    const requiredWorkerBalance = boostingResults[1].balanceRequiredDetails?.requiredBalance ?? '0'
+    if (boostingResults[1].balanceRequiredDetails != null &&
+      !boostingResults[1].balanceRequiredDetails?.isSufficient &&
+      toBN(requiredWorkerBalance).gt(toBN(this.config.workerTargetBalance.toString()))) {
+      this.logger.error(`Server configuration problem! Even after the worker is replenished (workerTargetBalance=${this.config.workerTargetBalance}) boosting the next transaction will fail (requiredWorkerBalance=${requiredWorkerBalance}).`)
+    }
     this.lastScannedBlock = currentBlock.number
     const isRegistered = await this.registrationManager.isRegistered()
     if (!isRegistered) {
@@ -897,27 +911,18 @@ latestBlock timestamp   | ${latestBlock.timestamp}
    * Resend all outgoing pending transactions with insufficient gas price by all signers (manager, workers)
    * @return the mapping of the previous transaction hash to details of a new boosted transaction
    */
-  async _boostStuckPendingTransactions (currentBlockInfo: ShortBlockInfo): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
-    const transactionDetails = new Map<PrefixedHexString, SignedTransactionDetails>()
-    // repeat separately for each signer (manager, all workers)
-    const managerBoostedTransactions = await this._boostStuckTransactionsForManager(currentBlockInfo)
-    for (const [txHash, boostedTxDetails] of managerBoostedTransactions) {
-      transactionDetails.set(txHash, boostedTxDetails)
-    }
-    for (const workerIndex of [0]) {
-      const workerBoostedTransactions = await this._boostStuckTransactionsForWorker(currentBlockInfo, workerIndex)
-      for (const [txHash, boostedTxDetails] of workerBoostedTransactions) {
-        transactionDetails.set(txHash, boostedTxDetails)
-      }
-    }
-    return transactionDetails
+  async _boostStuckPendingTransactions (currentBlockInfo: ShortBlockInfo): Promise<BoostingResult[]> {
+    const managerBoostingResult = await this._boostStuckTransactionsForManager(currentBlockInfo)
+    // TODO: get back to this "multiple workers" idea if necessary
+    const workerBoostingResult = await this._boostStuckTransactionsForWorker(currentBlockInfo, 0)
+    return [managerBoostingResult, workerBoostingResult]
   }
 
-  async _boostStuckTransactionsForManager (currentBlockInfo: ShortBlockInfo): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+  async _boostStuckTransactionsForManager (currentBlockInfo: ShortBlockInfo): Promise<BoostingResult> {
     return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(this.managerAddress, currentBlockInfo, this.minMaxPriorityFeePerGas)
   }
 
-  async _boostStuckTransactionsForWorker (currentBlockInfo: ShortBlockInfo, workerIndex: number): Promise<Map<PrefixedHexString, SignedTransactionDetails>> {
+  async _boostStuckTransactionsForWorker (currentBlockInfo: ShortBlockInfo, workerIndex: number): Promise<BoostingResult> {
     const signer = this.workerAddress
     return await this.transactionManager.boostUnderpricedPendingTransactionsForSigner(signer, currentBlockInfo, this.minMaxPriorityFeePerGas)
   }

@@ -952,6 +952,56 @@ contract('RelayClient', function (accounts) {
         relayClient.dependencies.asyncPaymasterData = EmptyDataCallback
       }
     })
+
+    context('#calculateDryRunCallGasLimit()', function () {
+      let id: string
+      before(async () => {
+        id = (await snapshot()).result
+        await registerCheapRelayer(testToken, relayHub)
+      })
+      after(async function () {
+        await revert(id)
+      })
+
+      it('should relay when selected worker balance is low but sufficient', async function () {
+        const relayRequest = await relayClient._prepareRelayRequest(Object.assign({}, optionsWithGas, { gas: '0x30D40' }))
+        const remainingWorkerGas = 650000
+        const estimatedRelayCallCost = remainingWorkerGas * parseInt(relayRequest.relayData.maxFeePerGas)
+        const workerBalance1 = await web3.eth.getBalance(relayWorkerAddress)
+        const value = toBN(workerBalance1).sub(toBN(estimatedRelayCallCost.toString()))
+        await web3.eth.sendTransaction({
+          value,
+          maxPriorityFeePerGas: 0,
+          maxFeePerGas: relayRequest.relayData.maxFeePerGas,
+          from: relayWorkerAddress,
+          to: accounts[0],
+          gas: 21000
+        })
+        const workerBalance2 = await web3.eth.getBalance(relayWorkerAddress)
+        console.log('workerBalance2', workerBalance2)
+        const attempt1 = await relayClient._attemptRelay(relayInfo, relayRequest)
+        // TODO: this test relies on order of checks!
+        //  we use a wrong worker address and this error is returned from the server which is after the local view call
+        assert.isTrue(attempt1.error?.message.includes('Got error response from relay: Wrong worker address:'))
+
+        // try again with even less worker balance
+        await web3.eth.sendTransaction({
+          value: estimatedRelayCallCost / 2,
+          maxPriorityFeePerGas: 0,
+          maxFeePerGas: relayRequest.relayData.maxFeePerGas,
+          from: relayWorkerAddress,
+          to: accounts[0],
+          gas: 21000
+        })
+        const workerBalance3 = await web3.eth.getBalance(relayWorkerAddress)
+        console.log('workerBalance3', workerBalance3)
+        const relayRequest2 = await relayClient._prepareRelayRequest(optionsWithGas)
+        const attempt2 = await relayClient._attemptRelay(relayInfo, relayRequest2)
+        assert.isTrue(attempt2.error?.message.includes('Check Relay Worker balance'))
+        // error is either 'FWD: insufficient gas' or 'without revert string'/'out-of-gas'
+        assert.isTrue(attempt2.error?.message.includes('FWD: insufficient gas'))
+      })
+    })
   })
 
   describe('#_broadcastRawTx()', function () {
