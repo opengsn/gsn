@@ -15,7 +15,7 @@ import {
 
 import { NetworkSimulatingProvider } from '@opengsn/common/dist/dev/NetworkSimulatingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
-import { SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
+import { BoostingResult, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { evmMine, increaseTime, revert, snapshot } from './TestUtils'
@@ -25,17 +25,29 @@ import chaiAsPromised from 'chai-as-promised'
 
 const { expect, assert } = require('chai').use(chaiAsPromised)
 
+function flattenBoostingResults (boostingResults: BoostingResult[]): Map<PrefixedHexString, SignedTransactionDetails> {
+  return boostingResults
+    .map(it => it.boostedTransactions)
+    .reduce((previousValue, currentValue) => {
+      for (const [key, value] of currentValue) {
+        previousValue.set(key, value)
+      }
+      return previousValue
+    }, new Map<PrefixedHexString, SignedTransactionDetails>())
+}
+
 contract('Network Simulation for Relay Server', function (accounts) {
   const pendingTransactionTimeoutSeconds = 50
 
   let logger: LoggerInterface
   let env: ServerTestEnvironment
   let provider: NetworkSimulatingProvider
+  let ethersProvider: StaticJsonRpcProvider
 
   before(async function () {
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
-    const ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
+    ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
     logger = createClientLogger({ logLevel: 'error' })
     provider = new NetworkSimulatingProvider(ethersProvider)
     const maxPageSize = Number.MAX_SAFE_INTEGER
@@ -117,7 +129,8 @@ contract('Network Simulation for Relay Server', function (accounts) {
 
       it('should not boost and resend transactions if not that many blocks passed since it was sent', async function () {
         const latestBlock = await env.web3.eth.getBlock('latest')
-        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock)
+        const boostingResults = await env.relayServer._boostStuckPendingTransactions(latestBlock)
+        const allBoostedTransactions = flattenBoostingResults(boostingResults)
         assert.equal(allBoostedTransactions.size, 0)
         const storedTxs = await env.relayServer.txStoreManager.getAll()
         assert.equal(storedTxs.length, stuckTransactionsCount)
@@ -131,7 +144,8 @@ contract('Network Simulation for Relay Server', function (accounts) {
         await increaseTime(pendingTransactionTimeoutSeconds)
 
         const latestBlock = await env.web3.eth.getBlock('latest')
-        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock)
+        const boostingResults = await env.relayServer._boostStuckPendingTransactions(latestBlock)
+        const allBoostedTransactions = flattenBoostingResults(boostingResults)
 
         // NOTE: this is needed for the 'repeated boosting' test
         for (const [originalTxHash, signedTransactionDetails] of allBoostedTransactions) {
@@ -152,14 +166,16 @@ contract('Network Simulation for Relay Server', function (accounts) {
       it('should not resend the transaction if not enough blocks passed since it was boosted', async function () {
         await increaseTime(pendingTransactionTimeoutSeconds - 1)
         const latestBlock = await env.web3.eth.getBlock('latest')
-        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock)
+        const boostingResults = await env.relayServer._boostStuckPendingTransactions(latestBlock)
+        const allBoostedTransactions = flattenBoostingResults(boostingResults)
         assert.equal(allBoostedTransactions.size, 0)
       })
 
       it('should boost transactions that are not mined after being boosted another time', async function () {
         await evmMine()
         const latestBlock = await env.web3.eth.getBlock('latest')
-        const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock)
+        const boostingResults = await env.relayServer._boostStuckPendingTransactions(latestBlock)
+        const allBoostedTransactions = flattenBoostingResults(boostingResults)
         assert.equal(allBoostedTransactions.size, stuckTransactionsCount - 1)
         await assertGasPrice(allBoostedTransactions, expectedGasPriceAfterSecondBoost)
       })
@@ -254,7 +270,9 @@ contract('Network Simulation for Relay Server', function (accounts) {
       const storedTxsBefore = await env.relayServer.txStoreManager.getAll()
       await increaseTime(pendingTransactionTimeoutSeconds)
       const latestBlock = await env.web3.eth.getBlock('latest')
-      const allBoostedTransactions = await env.relayServer._boostStuckPendingTransactions(latestBlock)
+      const boostingResults = await env.relayServer._boostStuckPendingTransactions(latestBlock)
+      const allBoostedTransactions = flattenBoostingResults(boostingResults)
+
       // NOTE: this is needed for the 'repeated boosting' test
       for (const [originalTxHash, signedTransactionDetails] of allBoostedTransactions) {
         overrideParamsPerTx.set(signedTransactionDetails.transactionHash, overrideParamsPerTx.get(originalTxHash)!)
