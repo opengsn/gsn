@@ -47,7 +47,7 @@ export function notNull<TValue> (value: TValue | null | undefined): value is TVa
 /**
  * This is an intersection of NPM log levels and 'loglevel' library methods.
  */
-export type NpmLogLevel = 'error' | 'warn' | 'info' | 'debug'
+export type NpmLogLevel = 'silent' | 'error' | 'warn' | 'info' | 'debug'
 
 export interface RelaySelectionResult {
   relayInfo: PartialRelayInfo

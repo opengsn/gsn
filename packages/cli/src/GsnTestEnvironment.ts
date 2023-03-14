@@ -3,6 +3,7 @@ import {
   Address,
   ContractInteractor,
   GSNContractsDeployment,
+  LoggerInterface,
   constants,
   defaultEnvironment,
   ether,
@@ -34,6 +35,7 @@ import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 
 import { ChildProcess } from 'child_process'
 import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
+import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 
 export interface TestEnvironment {
   contractsDeployment: GSNContractsDeployment
@@ -49,15 +51,16 @@ class GsnTestEnvironmentClass {
   /**
    *
    * @param host:
+   * @param logger
    * @return
    */
-  async deployGsn (host: string): Promise<GSNContractsDeployment> {
+  async deployGsn (host: string, logger?: LoggerInterface): Promise<GSNContractsDeployment> {
     const _host: string = getNetworkUrl(host)
     if (_host == null) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
     }
-    const logger = createServerLogger('error', '', '')
+    logger = logger ?? createServerLogger('error', '', '')
     const commandsLogic = new CommandsLogic(_host, logger, {})
     await commandsLogic.init()
     const from = await commandsLogic.findWealthyAccount()
@@ -74,11 +77,11 @@ class GsnTestEnvironmentClass {
       penalizerConfiguration: defaultEnvironment.penalizerConfiguration,
       relayHubConfiguration: defaultEnvironment.relayHubConfiguration
     })
-    console.log('Deployed GSN', JSON.stringify(deploymentResult))
+    logger?.info(`Deployed GSN\n${JSON.stringify(deploymentResult)}`)
 
     if (deploymentResult.paymasterAddress != null) {
       const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
-      console.log('Naive Paymaster successfully funded, balance:', Web3.utils.fromWei(balance))
+      logger?.info(`Naive Paymaster successfully funded, balance: ${Web3.utils.fromWei(balance)}`)
     }
 
     return deploymentResult
@@ -89,17 +92,23 @@ class GsnTestEnvironmentClass {
    * @param host - the Ethereum RPC node URL
    * @param localRelayUrl - the local GSN RelayServer URL for RelayRegistrar
    * @param port - the port for the RelayServer to listen to (optional)
+   * @param logger
    * @return
    */
-  async startGsn (host: string, localRelayUrl: string = 'http://127.0.0.1/', port?: number): Promise<TestEnvironment> {
+  async startGsn (
+    host: string,
+    localRelayUrl: string = 'http://127.0.0.1/',
+    port?: number,
+    logger?: LoggerInterface
+  ): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
     if (_host == null) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
     }
-    const deploymentResult = await this.deployGsn(host)
-    const logger = createServerLogger('error', '', '')
+    logger = logger ?? createCommandsLogger('error')
+    const deploymentResult = await this.deployGsn(host, logger)
     const commandsLogic = new CommandsLogic(_host, logger, {})
     await commandsLogic.init()
     const from = await commandsLogic.findWealthyAccount()
@@ -108,7 +117,7 @@ class GsnTestEnvironmentClass {
     const url = new URL(localRelayUrl)
     url.port = port.toString()
     const relayUrl = url.toString()
-    await this._runServer(_host, deploymentResult, from, relayUrl, port)
+    await this._runServer(_host, deploymentResult, from, relayUrl, port, logger)
     if (this.httpServer == null) {
       throw new Error('Failed to run a local Relay Server')
     }
@@ -127,7 +136,7 @@ class GsnTestEnvironmentClass {
     }
     const registrationResult = await commandsLogic.registerRelay(registerOptions)
     if (registrationResult.success) {
-      console.log('In-process relay successfully registered:', JSON.stringify(registrationResult))
+      logger?.info(`In-process relay successfully registered: ${JSON.stringify(registrationResult)}`)
     } else {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Failed to fund relay: ${registrationResult.error} : ${registrationResult?.transactions?.toString()}`)
@@ -141,11 +150,12 @@ class GsnTestEnvironmentClass {
     }
     const provider = new StaticJsonRpcProvider(_host)
     const input: GSNUnresolvedConstructorInput = {
+      overrideDependencies: { logger },
       provider,
       config
     }
     const relayProvider = await RelayProvider.newProvider(input).init()
-    console.error('== startGSN: ready.')
+    logger.error('== startGSN: ready.')
     return {
       contractsDeployment: deploymentResult,
       relayProvider,
@@ -188,13 +198,13 @@ class GsnTestEnvironmentClass {
     deploymentResult: GSNContractsDeployment,
     from: Address,
     relayUrl: string,
-    port: number
+    port: number,
+    logger: LoggerInterface
   ): Promise<void> {
     if (this.httpServer !== undefined) {
       return
     }
 
-    const logger = createServerLogger('error', '', '')
     const managerKeyManager = new KeyManager(1)
     const workersKeyManager = new KeyManager(1)
     const txStoreManager = new TxStoreManager({ inMemory: true }, logger)

@@ -116,6 +116,7 @@ export class CommandsLogic {
   private readonly contractInteractor: ContractInteractor
   private readonly httpClient: HttpClient
   private readonly web3: Web3
+  private readonly logger: LoggerInterface
 
   private deployment?: GSNContractsDeployment
 
@@ -128,6 +129,7 @@ export class CommandsLogic {
     derivationIndex: string = '0',
     privateKey?: string
   ) {
+    this.logger = logger
     let provider: any = new Web3.providers.HttpProvider(host, {
       keepAlive: true,
       timeout: 120000
@@ -151,7 +153,7 @@ export class CommandsLogic {
       }
       provider = new HDWalletProvider(hdWalletConstructorArguments)
       const hdWalletAddress: string = provider.getAddress()
-      console.log(`Using HDWalletProvider for address ${hdWalletAddress}`)
+      this.logger.warn(`Using HDWalletProvider for address ${hdWalletAddress}`)
     }
     this.httpClient = new HttpClient(new HttpWrapper(), logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
@@ -159,7 +161,7 @@ export class CommandsLogic {
     const ethersProvider = new Web3Provider(provider)
     this.contractInteractor = new ContractInteractor({
       provider: ethersProvider,
-      logger,
+      logger: this.logger,
       deployment,
       maxPageSize,
       environment
@@ -180,12 +182,12 @@ export class CommandsLogic {
       for (const account of accounts) {
         const balance = new BN(await this.web3.eth.getBalance(account))
         if (balance.gte(requiredBalance)) {
-          console.log(`Found funded account ${account}`)
+          this.logger.info(`Found funded account ${account}`)
           return account
         }
       }
-    } catch (error) {
-      console.error('Failed to retrieve accounts and balances:', error)
+    } catch (error: any) {
+      this.logger.error(`Failed to retrieve accounts and balances: ${error.toString() as string}`)
     }
     throw new Error(`could not find unlocked account with sufficient balance; all accounts:\n - ${accounts.join('\n - ')}`)
   }
@@ -196,7 +198,7 @@ export class CommandsLogic {
   }
 
   async waitForRelay (relayUrl: string, timeout = 60): Promise<void> {
-    console.error(`Will wait up to ${timeout}s for the relay to be ready`)
+    this.logger.warn(`Will wait up to ${timeout}s for the relay to be ready`)
 
     const endTime = Date.now() + timeout * 1000
     while (Date.now() < endTime) {
@@ -204,7 +206,7 @@ export class CommandsLogic {
       try {
         isReady = await this.isRelayReady(relayUrl)
       } catch (e: any) {
-        console.log(e.message)
+        this.logger.warn(e.message)
       }
       if (isReady) {
         return
@@ -252,7 +254,7 @@ export class CommandsLogic {
   async registerRelay (options: RegisterOptions): Promise<RegistrationResult> {
     const transactions: string[] = []
     try {
-      console.log(`Registering GSN relayer at ${options.relayUrl}`)
+      this.logger.info(`Registering GSN relayer at ${options.relayUrl}`)
 
       const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
       const sendOptions: any = {
@@ -263,7 +265,7 @@ export class CommandsLogic {
       }
       const response = await this.httpClient.getPingResponse(options.relayUrl)
         .catch((error: any) => {
-          console.error(error)
+          this.logger.error(error)
           throw new Error('could contact not relayer, is it running?')
         })
       if (response.ready) {
@@ -304,7 +306,7 @@ export class CommandsLogic {
 
       const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, stakingToken ?? '', tokenSymbol)
 
-      console.log('current stake= ', formatToken(stake))
+      this.logger.info(`current stake= ${formatToken(stake)}`)
 
       if (owner !== constants.ZERO_ADDRESS && !isSameAddress(owner, options.from)) {
         throw new Error(`Already owned by ${owner}, our account=${options.from}`)
@@ -312,9 +314,9 @@ export class CommandsLogic {
 
       const bal = await this.contractInteractor.getBalance(relayAddress)
       if (toBN(bal).gt(toBN(options.funds.toString()))) {
-        console.log('Relayer already funded')
+        this.logger.info('Relayer already funded')
       } else {
-        console.log('Funding relayer')
+        this.logger.info('Funding relayer')
 
         const fundTx = await this.web3.eth.sendTransaction({
           ...sendOptions,
@@ -333,11 +335,11 @@ export class CommandsLogic {
       if (owner === constants.ZERO_ADDRESS) {
         let i = 0
         while (true) {
-          console.debug(`Waiting ${options.sleepMs}ms ${i}/${options.sleepCount} for relayer to set ${options.from} as owner`)
+          this.logger.debug(`Waiting ${options.sleepMs}ms ${i}/${options.sleepCount} for relayer to set ${options.from} as owner`)
           await sleep(options.sleepMs)
           const newStakeInfo = (await stakeManager.getStakeInfo(relayAddress))[0]
           if (newStakeInfo.owner !== constants.ZERO_ADDRESS && isSameAddress(newStakeInfo.owner, options.from)) {
-            console.log('RelayServer successfully set its owner on the StakeManager')
+            this.logger.info('RelayServer successfully set its owner on the StakeManager')
             break
           }
           if (options.sleepCount === i++) {
@@ -348,7 +350,7 @@ export class CommandsLogic {
       if (unstakeDelay.gte(toBN(options.unstakeDelay)) &&
         stake.gte(stakeParam)
       ) {
-        console.log('Relayer already staked')
+        this.logger.info('Relayer already staked')
       } else {
         const config = await relayHub.getConfiguration()
         const minimumStakeForToken = await relayHub.getMinimumStakePerToken(stakingToken)
@@ -362,13 +364,13 @@ export class CommandsLogic {
           throw new Error(`Given minimum unstake delay ${options.unstakeDelay.toString()} too low for the given hub ${config.minimumUnstakeDelay.toString()}`)
         }
         const stakeValue = stakeParam.sub(stake)
-        console.log(`Staking relayer ${formatToken(stakeValue)}`,
+        this.logger.info(`Staking relayer ${formatToken(stakeValue)}` +
           stake.toString() === '0' ? '' : ` (already has ${formatToken(stake)})`)
 
         const tokenBalance = await stakingTokenContract.balanceOf(options.from)
         if (tokenBalance.lt(stakeValue) && options.wrap) {
           // default token is wrapped eth, so deposit eth to make then into tokens.
-          console.log(`Wrapping ${formatToken(stakeValue)}`)
+          this.logger.info(`Wrapping ${formatToken(stakeValue)}`)
           let depositTx: any
           try {
             depositTx = await stakingTokenContract.deposit({
@@ -383,9 +385,9 @@ export class CommandsLogic {
         }
 
         const currentAllowance = await stakingTokenContract.allowance(options.from, stakeManager.address)
-        console.log('Current allowance', formatToken(currentAllowance))
+        this.logger.info(`Current allowance: ${formatToken(currentAllowance)}`)
         if (currentAllowance.lt(stakeValue)) {
-          console.log(`Approving ${formatToken(stakeValue)} to StakeManager`)
+          this.logger.info(`Approving ${formatToken(stakeValue)} to StakeManager`)
           const approveTx = await stakingTokenContract.approve(stakeManager.address, stakeValue.toString(), {
             ...sendOptions,
             from: options.from
@@ -404,13 +406,13 @@ export class CommandsLogic {
 
       try {
         await relayHub.verifyRelayManagerStaked(relayAddress)
-        console.log('Relayer already authorized')
+        this.logger.info('Relayer already authorized')
       } catch (e: any) {
         // hide expected error
         if (e.message.match(/not authorized/) == null) {
-          console.log('verifyRelayManagerStaked reverted with:', e.message)
+          this.logger.info(`verifyRelayManagerStaked reverted with: ${e.message as string}`)
         }
-        console.log('Authorizing relayer for hub')
+        this.logger.info('Authorizing relayer for hub')
         const authorizeTx = await stakeManager
           .authorizeHubByOwner(relayAddress, relayHubAddress, sendOptions)
         // @ts-ignore
@@ -423,7 +425,7 @@ export class CommandsLogic {
         transactions
       }
     } catch (error: any) {
-      console.log(error)
+      this.logger.error(error)
       return {
         success: false,
         transactions,
@@ -449,19 +451,19 @@ export class CommandsLogic {
 
   async displayManagerBalances (config: ServerConfigParams, keyManager: KeyManager): Promise<void> {
     const relayManager = keyManager.getAddress(0)
-    console.log('relayManager is', relayManager)
+    this.logger.info(`relayManager is ${relayManager}`)
     const relayHub = await this.contractInteractor._createRelayHub(config.relayHubAddress)
     const accountBalance = toBN(await this.contractInteractor.getBalance(relayManager))
-    console.log(`Relay manager account balance is ${fromWei(accountBalance)}eth`)
+    this.logger.info(`Relay manager account balance is ${fromWei(accountBalance)}eth`)
     const hubBalance = await relayHub.balanceOf(relayManager)
-    console.log(`Relay manager hub balance is ${fromWei(hubBalance)}eth`)
+    this.logger.info(`Relay manager hub balance is ${fromWei(hubBalance)}eth`)
   }
 
   async withdrawToOwner (options: WithdrawOptions): Promise<WithdrawalResult> {
     const transactions: string[] = []
     try {
       const relayManager = options.keyManager.getAddress(0)
-      console.log('relayManager is', relayManager)
+      this.logger.info(`relayManager is ${relayManager}`)
       const relayHub = await this.contractInteractor._createRelayHub(options.config.relayHubAddress)
       const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
@@ -481,7 +483,7 @@ export class CommandsLogic {
       let txToSign: TypedTransaction
       if (options.useAccountBalance) {
         const balance = toBN(await this.contractInteractor.getBalance(relayManager))
-        console.log(`Relay manager account balance is ${fromWei(balance)}eth`)
+        this.logger.info(`Relay manager account balance is ${fromWei(balance)}eth`)
         if (balance.lt(options.withdrawAmount)) {
           throw new Error('Relay manager account balance lower than withdrawal amount')
         }
@@ -492,7 +494,7 @@ export class CommandsLogic {
           gasPrice,
           nonce
         }
-        console.log('Calling in view mode', web3TxData)
+        this.logger.info(`Calling in view mode: ${JSON.stringify(web3TxData)}`)
         await this.contractInteractor.provider.send('eth_sendTransaction', [{ ...web3TxData }])
         const txData = { ...web3TxData, gasLimit: web3TxData.gas }
         // @ts-ignore
@@ -500,7 +502,7 @@ export class CommandsLogic {
         txToSign = new Transaction(txData, this.contractInteractor.getRawTxOptions())
       } else {
         const balance = await relayHub.balanceOf(relayManager)
-        console.log(`Relay manager hub balance is ${fromWei(balance)}eth`)
+        this.logger.info(`Relay manager hub balance is ${fromWei(balance)}eth`)
         if (balance.lt(options.withdrawAmount)) {
           throw new Error('Relay manager hub balance lower than withdrawal amount')
         }
@@ -514,7 +516,7 @@ export class CommandsLogic {
           data: Buffer.from(encodedCall.slice(2), 'hex'),
           nonce
         }, this.contractInteractor.getRawTxOptions())
-        console.log('Calling in view mode')
+        this.logger.info('Calling in view mode')
         await method.call({
           from: relayManager,
           to: options.config.relayHubAddress,
@@ -523,11 +525,11 @@ export class CommandsLogic {
           gasPrice
         })
       }
-      console.log('Signing tx', txToSign.toJSON())
+      this.logger.info(`Signing tx: ${JSON.stringify(txToSign.toJSON())}`)
       const signedTx = options.keyManager.signTransaction(relayManager, txToSign)
-      console.log(`signed withdrawal hex tx: ${signedTx.rawTx}`)
+      this.logger.info(`signed withdrawal hex tx: ${signedTx.rawTx}`)
       if (options.broadcast) {
-        console.log('broadcasting tx')
+        this.logger.info('broadcasting tx')
         const txHash = await this.contractInteractor.broadcastTransaction(signedTx.rawTx)
         transactions.push(txHash)
       }
@@ -536,7 +538,7 @@ export class CommandsLogic {
         transactions
       }
     } catch (e: any) {
-      console.log(e)
+      this.logger.error(e)
       return {
         success: false,
         transactions,
@@ -595,14 +597,14 @@ export class CommandsLogic {
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, fInstance, deployOptions.skipConfirmation)
     }
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, fInstance, console, options)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, fInstance, this.logger, options)
 
     let stakingTokenAddress = deployOptions.stakingTokenAddress
 
     let ttInstance: Contract | undefined
     if (deployOptions.deployTestToken ?? false) {
       ttInstance = await this.getContractInstance(TestWrappedNativeToken, {}, undefined, { ...options }, deployOptions.skipConfirmation)
-      console.log('Setting minimum stake of 1 TestWeth on Hub')
+      this.logger.info('Setting minimum stake of 1 TestWeth on Hub')
       await rInstance.methods.setMinimumStakes([ttInstance.options.address], [1e18.toString()]).send({ ...options })
       stakingTokenAddress = ttInstance.options.address
     }
@@ -613,7 +615,7 @@ export class CommandsLogic {
 
     const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, stakingTokenAddress ?? '', tokenSymbol)
 
-    console.log(`Setting minimum stake of ${formatToken(deployOptions.minimumTokenStake)}`)
+    this.logger.info(`Setting minimum stake of ${formatToken(deployOptions.minimumTokenStake)}`)
     await rInstance.methods.setMinimumStakes([stakingTokenAddress], [deployOptions.minimumTokenStake]).send({ ...options })
     this.deployment = {
       relayHubAddress: rInstance.options.address,
@@ -638,24 +640,24 @@ export class CommandsLogic {
         .deploy(constructorArgs)
       const estimatedGasCost = await sendMethod.estimateGas()
       const maxCost = toBN(options.gasPrice.toString()).mul(toBN(options.gas.toString()))
-      console.log(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice.toString(), 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
+      this.logger.info(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice.toString(), 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
       if (!skipConfirmation) {
         await this.confirm()
       }
       // @ts-ignore - web3 refuses to accept string as gas limit, and max for a number in BN is 0x4000000 (~67M)
       const deployPromise = sendMethod.send({ ...options })
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      deployPromise.on('transactionHash', function (hash) {
-        console.log(`Transaction broadcast: ${hash}`)
+      deployPromise.on('transactionHash', (hash) => {
+        this.logger.info(`Transaction broadcast: ${hash}`)
       })
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      deployPromise.on('error', function (err: Error) {
-        console.debug(`tx error: ${err.message}`)
+      deployPromise.on('error', (err: Error) => {
+        this.logger.debug(`tx error: ${err.message}`)
       })
       contractInstance = await deployPromise
-      console.log(`Deployed ${contractName} at address ${contractInstance.options.address}\n\n`)
+      this.logger.info(`Deployed ${contractName} at address ${contractInstance.options.address}\n\n`)
     } else {
-      console.log(`Using ${contractName} at given address ${address}\n\n`)
+      this.logger.info(`Using ${contractName} at given address ${address}\n\n`)
       contractInstance = this.contract(json, address)
     }
     return contractInstance
@@ -683,7 +685,7 @@ export class CommandsLogic {
 
   async getGasPrice (): Promise<string> {
     const gasPrice = await this.contractInteractor.getGasPrice()
-    console.log(`Using network gas price of ${fromWei(gasPrice, 'gwei')}`)
+    this.logger.info(`Using network gas price of ${fromWei(gasPrice, 'gwei')}`)
     return gasPrice
   }
 }
