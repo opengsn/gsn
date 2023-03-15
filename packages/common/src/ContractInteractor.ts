@@ -1312,21 +1312,37 @@ calculateTransactionMaxPossibleGas: result: ${result}
   ): Promise<BN> {
     const paymasterBalance = await this.hubBalanceOf(paymasterAddress)
     let workerBalance = constants.MAX_UINT256 // skipping worker address balance check in dry-run
+    let workerBalanceMessage = ''
     if (!isSameAddress(workerAddress, constants.DRY_RUN_ADDRESS)) {
       const workerBalanceStr = await this.getBalance(workerAddress, 'pending')
       workerBalance = toBN(workerBalanceStr)
-    }
-    if (maxFeePerGas.eqn(0)) {
-      // using base fee override to avoid division by zero
-      maxFeePerGas = toBN((await this.getGasFees(5, 50)).baseFeePerGas)
+      workerBalanceMessage = `Worker balance: ${workerBalance.toString()}\n`
     }
     const smallerBalance = BN.min(paymasterBalance, workerBalance)
+    const pctRelayFeeDev = toBN(this.relayHubConfiguration.pctRelayFee.toString()).addn(100)
     const smallerBalanceGasLimit = smallerBalance.div(maxFeePerGas)
-      .muln(9).divn(10) // hard-coded to use 90% of available worker/paymaster balance
+      .muln(100)
+      .div(pctRelayFeeDev)
+      .muln(3).divn(4) // hard-coded to use 75% of available worker/paymaster balance
     const blockGasLimitNum = await this.getBlockGasLimit()
     const blockGasLimit = toBN(blockGasLimitNum)
       .muln(3).divn(4) // hard-coded to use 75% of available block gas limit
-    return BN.max(minViewableGasLimit, BN.min(maxViewableGasLimit, BN.min(smallerBalanceGasLimit, blockGasLimit)))
+
+    const warningMessage = workerBalanceMessage +
+      `Paymaster balance: ${paymasterBalance.toString()}\n` +
+      `This is only enough for ${smallerBalanceGasLimit.toString()} gas for a view call at ${maxFeePerGas.toString()} per gas.\n` +
+      `Also, block gas limit is: ${blockGasLimit.toString()}\n`
+    if (smallerBalanceGasLimit.lt(minViewableGasLimit)) {
+      this.logger.warn(
+        warningMessage +
+        `Limiting the view call to minViewableGasLimit (${minViewableGasLimit.toString()}) but successful relaying is not likely.`)
+      return minViewableGasLimit
+    }
+    const minimalLimit = BN.min(maxViewableGasLimit, BN.min(smallerBalanceGasLimit, blockGasLimit))
+    if (minimalLimit.eq(smallerBalanceGasLimit)) {
+      this.logger.warn(warningMessage)
+    }
+    return minimalLimit
   }
 }
 
