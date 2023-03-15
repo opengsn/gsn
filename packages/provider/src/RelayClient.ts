@@ -732,7 +732,7 @@ export class RelayClient {
     const viewCallGasLimit = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
       relayRequest.relayData.paymaster,
       relayWorkerAddress,
-      toBN(maxMaxFeePerGas),
+      toBN(relayRequest.relayData.maxFeePerGas),
       toBN(this.config.maxViewableGasLimit),
       toBN(this.config.minViewableGasLimit)
     )
