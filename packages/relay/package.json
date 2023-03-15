@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/relay",
-  "version": "3.0.0-beta.3",
+  "version": "3.0.0-beta.5",
   "license": "GPL-3.0-only",
   "main": "dist/runServer.js",
   "files": [
@@ -20,9 +20,9 @@
   "dependencies": {
     "@ethereumjs/tx": "^3.2.0",
     "@ethersproject/providers": "^5.7.2",
-    "@opengsn/common": "^3.0.0-beta.3",
-    "@opengsn/contracts": "^3.0.0-beta.3",
-    "@opengsn/logger": "^3.0.0-beta.3",
+    "@opengsn/common": "^3.0.0-beta.5",
+    "@opengsn/contracts": "^3.0.0-beta.5",
+    "@opengsn/logger": "^3.0.0-beta.5",
     "@seald-io/nedb": "^3.0.0",
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
