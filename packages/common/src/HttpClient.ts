@@ -8,6 +8,7 @@ import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { AuditRequest, AuditResponse } from './types/AuditRequest'
 import { ConfigResponse } from './ConfigResponse'
 import { Address, ObjectMap } from './types/Aliases'
+import { appendSlashTrim } from './Utils'
 
 export class HttpClient {
   private readonly httpWrapper: HttpWrapper
@@ -19,7 +20,7 @@ export class HttpClient {
   }
 
   async getPingResponse (relayUrl: string, paymaster?: string): Promise<PingResponse> {
-    const url = new URL('getaddr', relayUrl.trim())
+    const url = new URL('getaddr', appendSlashTrim(relayUrl))
     if (paymaster != null) {
       url.searchParams.set('paymaster', paymaster)
     }
@@ -32,7 +33,7 @@ export class HttpClient {
   }
 
   async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{ signedTx: PrefixedHexString, nonceGapFilled: ObjectMap<PrefixedHexString> }> {
-    const url = new URL('relay', relayUrl.trim())
+    const url = new URL('relay', appendSlashTrim(relayUrl))
     const {
       signedTx,
       nonceGapFilled,
@@ -49,7 +50,7 @@ export class HttpClient {
   }
 
   async auditTransaction (relayUrl: string, signedTx: PrefixedHexString): Promise<AuditResponse> {
-    const url = new URL('audit', relayUrl.trim())
+    const url = new URL('audit', appendSlashTrim(relayUrl))
     const auditRequest: AuditRequest = { signedTx }
     const auditResponse: AuditResponse = await this.httpWrapper.sendPromise(url, auditRequest)
     this.logger.info(`auditTransaction response: ${JSON.stringify(auditResponse)}`)
@@ -63,7 +64,7 @@ export class HttpClient {
   }
 
   async getVerifyingPaymasterAddress (verifierServerUrl: string, chainId: number): Promise<Address> {
-    const url = new URL('getPaymasterAddress', verifierServerUrl.trim())
+    const url = new URL('getPaymasterAddress', appendSlashTrim(verifierServerUrl))
     url.searchParams.set('chainId', chainId.toString())
     const { paymasterAddress } = await this.httpWrapper.sendPromise(url)
     this.logger.info(`VerifyingPaymaster address: ${JSON.stringify(paymasterAddress)}`)

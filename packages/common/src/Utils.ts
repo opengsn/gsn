@@ -539,3 +539,11 @@ export function wrapWeb3JsProvider (provider: any): JsonRpcProvider {
   }
   return provider
 }
+
+export function appendSlashTrim (urlInput: string): string {
+  urlInput = urlInput.trim()
+  if (urlInput[urlInput.length - 1] !== '/') {
+    urlInput += '/'
+  }
+  return urlInput
+}
