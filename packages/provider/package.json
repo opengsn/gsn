@@ -1,6 +1,6 @@
 {
   "name": "@opengsn/provider",
-  "version": "3.0.0-beta.5",
+  "version": "3.0.0-beta.6",
   "license": "Apache-2.0",
   "main": "dist/index.js",
   "scripts": {
@@ -24,7 +24,7 @@
     "@ethersproject/bignumber": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "@metamask/eth-sig-util": "^4.0.1",
-    "@opengsn/common": "^3.0.0-beta.5",
+    "@opengsn/common": "^3.0.0-beta.6",
     "abi-decoder": "^2.4.0",
     "ethereumjs-util": "^7.1.0",
     "ethereumjs-wallet": "^1.0.2",
