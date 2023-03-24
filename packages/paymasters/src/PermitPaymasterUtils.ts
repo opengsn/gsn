@@ -56,6 +56,7 @@ export interface UniswapConfig {
   uniswapPoolFees: number[] | BN[] | string[]
   permitMethodSignatures: string[]
   slippages: number[] | BN[] | string[]
+  reverseQuotes: boolean[]
 }
 
 export interface GasAndEthConfig {

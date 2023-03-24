@@ -125,7 +125,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
       priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS],
       uniswapPoolFees: [DAI_ETH_POOL_FEE, USDC_ETH_POOL_FEE, UNI_ETH_POOL_FEE],
       permitMethodSignatures: [PERMIT_SIGNATURE_DAI, PERMIT_SIGNATURE_EIP2612, PERMIT_SIGNATURE_EIP2612],
-      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE]
+      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE],
+      reverseQuotes: [false, false, false]
     }
     gasAndEthConfig = {
       gasUsedByPost: GAS_USED_BY_POST,
@@ -187,7 +188,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
     const priceQuote = await paymaster.toActualQuote(oracleFeed, priceDivisor)
     const decimals = await token.decimals()
     const preChargeMultiplier = toBN(10).pow(decimals)
-    const tokenDepositAmount = await paymaster.weiToToken(tokenAmount, priceQuote)
+    const tokenDepositAmount = await paymaster.weiToToken(tokenAmount, priceQuote, false)
     const tokenPreCharge = withPreCharge ? toBN(TOKEN_PRE_CHARGE).mul(preChargeMultiplier) : toBN(0)
 
     await token.approve(paymaster.address, constants.MAX_UINT256, { from: account0 })
@@ -198,7 +199,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
     const modifiedRequest = mergeRelayRequest(relayRequest, {
       paymasterData: token.address
     })
-    const tokenActualCharge = await paymaster.addPaymasterFee(await paymaster.weiToToken(ethActualCharge, priceQuote))
+    const tokenActualCharge = await paymaster.addPaymasterFee(await paymaster.weiToToken(ethActualCharge, priceQuote, false))
     const expectedRefund = tokenPreCharge.sub(tokenActualCharge)
     return { priceQuote, priceDivisor, tokenActualCharge, expectedRefund, pmContext, modifiedRequest, preBalance }
   }
@@ -536,7 +537,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
             assert.equal(paymasterBalance.toString(), scenario.value)
             assert.equal(paymasterHubBalance.toString(), MIN_HUB_BALANCE)
             const expectedDaiAmountIn = daiPaymasterInfo.preBalance.sub(daiPaymasterInfo.expectedRefund)
-            const expectedWethAmountOutMin = await permitPaymaster.addSlippage(await permitPaymaster.tokenToWei(expectedDaiAmountIn, daiPaymasterInfo.priceQuote), SLIPPAGE)
+            const expectedWethAmountOutMin = await permitPaymaster.addSlippage(await permitPaymaster.tokenToWei(expectedDaiAmountIn, daiPaymasterInfo.priceQuote, false), SLIPPAGE)
             const expectedWethAmountOut = await quoter.contract.methods.quoteExactInputSingle(
               DAI_CONTRACT_ADDRESS,
               WETH9_CONTRACT_ADDRESS,
@@ -669,7 +670,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           assert.equal(paymasterHubBalance.toString(), MIN_HUB_BALANCE)
 
           const expectedDaiAmountIn = daiPaymasterInfo.preBalance.sub(daiPaymasterInfo.expectedRefund)
-          const expectedWethAmountOutMin = await permitPaymaster.addSlippage(await permitPaymaster.tokenToWei(expectedDaiAmountIn, daiPaymasterInfo.priceQuote), SLIPPAGE)
+          const expectedWethAmountOutMin = await permitPaymaster.addSlippage(await permitPaymaster.tokenToWei(expectedDaiAmountIn, daiPaymasterInfo.priceQuote, false), SLIPPAGE)
           const newConfig: UniswapConfig = { ...uniswapConfig, minSwapAmount: expectedWethAmountOutMin.muln(2).toString() }
           await permitPaymaster.setUniswapConfig(newConfig, { from: owner })
           const res = await testRelayHub.callPostRC(permitPaymaster.address, daiPaymasterInfo.pmContext, gasUseWithoutPost, daiPaymasterInfo.modifiedRequest.relayData, { gasPrice: GAS_PRICE })
@@ -704,7 +705,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           const paymasterBalance = toBN(await web3.eth.getBalance(permitPaymaster.address))
           assert.equal(paymasterBalance.toString(), '0')
           const expectedDaiAmountIn = daiPaymasterInfo.preBalance.sub(daiPaymasterInfo.expectedRefund)
-          const expectedWethAmountOutMin = await permitPaymaster.addSlippage(await permitPaymaster.tokenToWei(expectedDaiAmountIn, daiPaymasterInfo.priceQuote), SLIPPAGE)
+          const expectedWethAmountOutMin = await permitPaymaster.addSlippage(await permitPaymaster.tokenToWei(expectedDaiAmountIn, daiPaymasterInfo.priceQuote, false), SLIPPAGE)
 
           const testUniswap = await TestUniswap.new(1, 1, { value: '1' })
           const newConfig: UniswapConfig = { ...uniswapConfig, uniswap: testUniswap.address }
@@ -888,7 +889,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
         priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS],
         uniswapPoolFees: [DAI_ETH_POOL_FEE],
         permitMethodSignatures: [PERMIT_SIGNATURE_DAI],
-        slippages: [SLIPPAGE]
+        slippages: [SLIPPAGE],
+        reverseQuotes: [false]
       }
       const gasAndEthConfig: GasAndEthConfig = {
         gasUsedByPost: 0,

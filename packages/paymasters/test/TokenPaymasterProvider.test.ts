@@ -116,7 +116,8 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS],
       uniswapPoolFees: [DAI_ETH_POOL_FEE, USDC_ETH_POOL_FEE, UNI_ETH_POOL_FEE],
       permitMethodSignatures: [PERMIT_SIGNATURE_DAI, PERMIT_SIGNATURE_EIP2612, PERMIT_SIGNATURE_EIP2612],
-      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE]
+      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE],
+      reverseQuotes: [false, false, false]
     }
     const gasAndEthConfig: GasAndEthConfig = {
       gasUsedByPost: GAS_USED_BY_POST,
