@@ -1,4 +1,3 @@
-import Web3 from 'web3'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { PrefixedHexString, fromRpcSig, bufferToHex, keccakFromString } from 'ethereumjs-util'
 import { getEip712Signature, TruffleContract, Address, IntString } from '@opengsn/common'
@@ -117,15 +116,13 @@ export async function signAndEncodeDaiPermit (
   spender: Address,
   token: Address,
   expiry: IntString,
-  web3Input: Web3,
+  provider: StaticJsonRpcProvider,
   domainSeparator: EIP712Domain,
+  methodSuffix: string,
+  jsonStringifyRequest: boolean,
   forceNonce?: number,
   skipValidation = false
 ): Promise<PrefixedHexString> {
-  const web3 = new Web3(web3Input.currentProvider)
-  // @ts-ignore
-  const currentProviderHost = web3.currentProvider.host
-  const provider = new StaticJsonRpcProvider(currentProviderHost)
   const DaiContract = TruffleContract({
     contractName: 'DAIPermitInterface',
     abi: daiPermitAbi
@@ -134,7 +131,7 @@ export async function signAndEncodeDaiPermit (
   DaiContract.setProvider(provider, undefined)
   const daiInstance = await DaiContract.at(token)
   const nonce = (forceNonce ?? await daiInstance.nonces(holder)).toString()
-  const chainId = await web3.eth.getChainId()
+  const chainId = parseInt((await provider.getNetwork()).chainId.toString())
   const permit: PermitInterfaceDAI = {
     // TODO: not include holder as 'from', not pass 'from'
     from: holder,
@@ -152,7 +149,9 @@ export async function signAndEncodeDaiPermit (
   )
   const signature = await getEip712Signature(
     provider,
-    dataToSign
+    dataToSign,
+    methodSuffix,
+    jsonStringifyRequest
   )
   const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)
@@ -168,16 +167,14 @@ export async function signAndEncodeEIP2612Permit (
   token: Address,
   value: string,
   deadline: string,
-  web3Input: Web3,
+  provider: StaticJsonRpcProvider,
   domainSeparator: EIP712Domain,
+  methodSuffix: string,
+  jsonStringifyRequest: boolean,
   domainType?: MessageTypeProperty[],
   forceNonce?: number,
   skipValidation = false
 ): Promise<PrefixedHexString> {
-  const web3 = new Web3(web3Input.currentProvider)
-  // @ts-ignore
-  const currentProviderHost = web3.currentProvider.host
-  const provider = new StaticJsonRpcProvider(currentProviderHost)
   const EIP2612Contract = TruffleContract({
     contractName: 'EIP2612Contract',
     abi: eip2612PermitAbi
@@ -186,7 +183,7 @@ export async function signAndEncodeEIP2612Permit (
   EIP2612Contract.setProvider(provider, undefined)
   const eip2612TokenInstance = await EIP2612Contract.at(token)
   const nonce = forceNonce ?? await eip2612TokenInstance.nonces(owner)
-  const chainId = await web3.eth.getChainId()
+  const chainId = parseInt((await provider.getNetwork()).chainId.toString())
   const permit: PermitInterfaceEIP2612 = {
     // TODO: not include holder as 'from', not pass 'from'
     from: owner,
@@ -205,7 +202,9 @@ export async function signAndEncodeEIP2612Permit (
   )
   const signature = await getEip712Signature(
     provider,
-    dataToSign
+    dataToSign,
+    methodSuffix,
+    jsonStringifyRequest
   )
   const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)

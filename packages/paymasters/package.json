@@ -3,6 +3,8 @@
   "license": "GPL-3.0-only",
   "version": "3.0.0-beta.6",
   "scripts": {
+    "deploy": "hardhat deploy",
+    "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
     "truffle-compile": "truffle compile --compile-all",
     "typechain-generate": "yarn truffle-compile && typechain --target truffle-v5 './build/contracts/**/*.json'",
     "tsc": "tsc",

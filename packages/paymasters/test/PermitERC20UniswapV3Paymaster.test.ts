@@ -22,7 +22,7 @@ import {
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { constants, RelayRequest, removeHexPrefix } from '@opengsn/common/dist'
+import { constants, RelayRequest, removeHexPrefix, wrapWeb3JsProvider } from '@opengsn/common/dist'
 import {
   CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
@@ -291,8 +291,10 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           permitPaymaster.address,
           daiPermittableToken.address,
           constants.MAX_UINT256.toString(),
-          web3,
+          wrapWeb3JsProvider(web3.currentProvider),
           domainSeparator,
+          '',
+          false,
           incorrectNonce,
           true
         )
@@ -343,8 +345,10 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           permitPaymaster.address,
           daiPermittableToken.address,
           constants.MAX_UINT256.toString(),
-          web3,
-          getDaiDomainSeparator()
+          wrapWeb3JsProvider(web3.currentProvider),
+          getDaiDomainSeparator(),
+          '',
+          false
         )
         const modifiedRequest = mergeRelayRequest(relayRequest, {
           paymasterData: concatHexStrings(DAI_CONTRACT_ADDRESS, encodedCallToPermit)
@@ -401,8 +405,10 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
               token.address,
               constants.MAX_UINT256.toString(),
               constants.MAX_UINT256.toString(),
-              web3,
+              wrapWeb3JsProvider(web3.currentProvider),
               domainSeparator,
+              '',
+              false,
               domainSeparator.version == null ? EIP712DomainTypeWithoutVersion : EIP712DomainType
             )
             const modifiedRequest = mergeRelayRequest(relayRequest, {
