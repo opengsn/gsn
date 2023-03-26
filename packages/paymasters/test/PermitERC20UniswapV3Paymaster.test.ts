@@ -293,7 +293,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           constants.MAX_UINT256.toString(),
           wrapWeb3JsProvider(web3.currentProvider),
           domainSeparator,
-          '',
+          '_v4',
           false,
           incorrectNonce,
           true
@@ -347,7 +347,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           constants.MAX_UINT256.toString(),
           wrapWeb3JsProvider(web3.currentProvider),
           getDaiDomainSeparator(),
-          '',
+          '_v4',
           false
         )
         const modifiedRequest = mergeRelayRequest(relayRequest, {
