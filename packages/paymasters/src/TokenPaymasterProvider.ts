@@ -14,7 +14,10 @@ import {
   PERMIT_SELECTOR_DAI,
   PERMIT_SELECTOR_EIP2612,
   PERMIT_SIGNATURE_DAI,
-  PERMIT_SIGNATURE_EIP2612,
+  PERMIT_SIGNATURE_EIP2612
+} from './constants/MainnetPermitERC20UniswapV3PaymasterConstants'
+
+import {
   signAndEncodeDaiPermit,
   signAndEncodeEIP2612Permit
 } from './PermitPaymasterUtils'

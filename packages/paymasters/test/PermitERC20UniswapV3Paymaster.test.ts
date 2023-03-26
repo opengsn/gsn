@@ -14,8 +14,6 @@ import {
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
 import {
   GasAndEthConfig,
-  PERMIT_SIGNATURE_DAI,
-  PERMIT_SIGNATURE_EIP2612,
   signAndEncodeDaiPermit,
   signAndEncodeEIP2612Permit, UniswapConfig
 } from '../src/PermitPaymasterUtils'
@@ -24,13 +22,12 @@ import { expectEvent } from '@openzeppelin/test-helpers'
 import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { constants, RelayRequest, removeHexPrefix, wrapWeb3JsProvider } from '@opengsn/common/dist'
 import {
+  PERMIT_SIGNATURE_DAI,
+  PERMIT_SIGNATURE_EIP2612,
   CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS,
   DAI_CONTRACT_ADDRESS,
-  getDaiDomainSeparator,
-  getUniDomainSeparator,
-  getUSDCDomainSeparator,
   GSN_FORWARDER_CONTRACT_ADDRESS,
   SWAP_ROUTER_CONTRACT_ADDRESS,
   UNI_CONTRACT_ADDRESS,
@@ -40,19 +37,25 @@ import {
   USDC_CONTRACT_ADDRESS,
   WETH9_CONTRACT_ADDRESS,
   DAI_ETH_POOL_FEE,
-  detectMainnet,
-  ETHER,
-  GAS_PRICE,
   GAS_USED_BY_POST,
-  impersonateAccount,
-  MAJOR_DAI_AND_UNI_HOLDER,
   MIN_HUB_BALANCE, MIN_SWAP_AMOUNT,
   MIN_WITHDRAWAL_AMOUNT,
-  skipWithoutFork,
   SLIPPAGE,
   TARGET_HUB_BALANCE,
   UNI_ETH_POOL_FEE,
   USDC_ETH_POOL_FEE
+} from '../src/constants/MainnetPermitERC20UniswapV3PaymasterConstants'
+
+import {
+  getDaiDomainSeparator,
+  getUniDomainSeparator,
+  getUSDCDomainSeparator,
+  detectMainnet,
+  ETHER,
+  GAS_PRICE,
+  impersonateAccount,
+  MAJOR_DAI_AND_UNI_HOLDER,
+  skipWithoutFork
 } from './ForkTestUtils'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
@@ -407,7 +410,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
               constants.MAX_UINT256.toString(),
               wrapWeb3JsProvider(web3.currentProvider),
               domainSeparator,
-              '',
+              '_v4',
               false,
               domainSeparator.version == null ? EIP712DomainTypeWithoutVersion : EIP712DomainType
             )
@@ -677,7 +680,10 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
 
           const expectedDaiAmountIn = daiPaymasterInfo.preBalance.sub(daiPaymasterInfo.expectedRefund)
           const expectedWethAmountOutMin = await permitPaymaster.addSlippage(await permitPaymaster.tokenToWei(expectedDaiAmountIn, daiPaymasterInfo.priceQuote, false), SLIPPAGE)
-          const newConfig: UniswapConfig = { ...uniswapConfig, minSwapAmount: expectedWethAmountOutMin.muln(2).toString() }
+          const newConfig: UniswapConfig = {
+            ...uniswapConfig,
+            minSwapAmount: expectedWethAmountOutMin.muln(2).toString()
+          }
           await permitPaymaster.setUniswapConfig(newConfig, { from: owner })
           const res = await testRelayHub.callPostRC(permitPaymaster.address, daiPaymasterInfo.pmContext, gasUseWithoutPost, daiPaymasterInfo.modifiedRequest.relayData, { gasPrice: GAS_PRICE })
           assert.equal(res.logs.length, 2)
