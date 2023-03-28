@@ -9,10 +9,7 @@ import { toWei } from 'web3-utils'
 
 import {
   GasAndEthConfig,
-  PERMIT_SELECTOR_DAI,
-  PERMIT_SELECTOR_EIP2612,
-  PERMIT_SIGNATURE_DAI,
-  PERMIT_SIGNATURE_EIP2612, UniswapConfig
+  UniswapConfig
 } from '../src/PermitPaymasterUtils'
 import { deployTestHub, mergeRelayRequest } from './TestUtils'
 import { constants } from '@opengsn/common/dist/Constants'
@@ -34,27 +31,35 @@ import {
   CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS,
   DAI_CONTRACT_ADDRESS,
-  GSN_FORWARDER_CONTRACT_ADDRESS,
   DAI_ETH_POOL_FEE,
-  SWAP_ROUTER_CONTRACT_ADDRESS,
-  UNI_CONTRACT_ADDRESS,
-  USDC_CONTRACT_ADDRESS,
-  WETH9_CONTRACT_ADDRESS,
-  detectMainnet,
-  ETHER,
-  GAS_PRICE,
   GAS_USED_BY_POST,
-  impersonateAccount,
-  MAJOR_DAI_AND_UNI_HOLDER,
+  GSN_FORWARDER_CONTRACT_ADDRESS,
   MIN_HUB_BALANCE,
   MIN_SWAP_AMOUNT,
   MIN_WITHDRAWAL_AMOUNT,
-  skipWithoutFork,
+  PERMIT_SELECTOR_DAI,
+  PERMIT_SELECTOR_EIP2612,
+  PERMIT_SIGNATURE_DAI,
+  PERMIT_SIGNATURE_EIP2612,
   SLIPPAGE,
+  SWAP_ROUTER_CONTRACT_ADDRESS,
   TARGET_HUB_BALANCE,
+  UNI_CONTRACT_ADDRESS,
   UNI_ETH_POOL_FEE,
-  USDC_ETH_POOL_FEE
+  USDC_CONTRACT_ADDRESS,
+  USDC_ETH_POOL_FEE,
+  WETH9_CONTRACT_ADDRESS
+} from '../src/constants/MainnetPermitERC20UniswapV3PaymasterConstants'
+
+import {
+  detectMainnet,
+  ETHER,
+  GAS_PRICE,
+  impersonateAccount,
+  MAJOR_DAI_AND_UNI_HOLDER,
+  skipWithoutFork
 } from './ForkTestUtils'
+
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { TokenPaymasterEthersWrapper } from '../src/WrapContract'
 import { defaultGsnConfig } from '@opengsn/provider'
@@ -116,7 +121,8 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       priceFeeds: [CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS, CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS],
       uniswapPoolFees: [DAI_ETH_POOL_FEE, USDC_ETH_POOL_FEE, UNI_ETH_POOL_FEE],
       permitMethodSignatures: [PERMIT_SIGNATURE_DAI, PERMIT_SIGNATURE_EIP2612, PERMIT_SIGNATURE_EIP2612],
-      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE]
+      slippages: [SLIPPAGE, SLIPPAGE, SLIPPAGE],
+      reverseQuotes: [false, false, false]
     }
     const gasAndEthConfig: GasAndEthConfig = {
       gasUsedByPost: GAS_USED_BY_POST,

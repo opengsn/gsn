@@ -1,4 +1,3 @@
-import Web3 from 'web3'
 import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 import { RelayClient, RelayProvider, GSNUnresolvedConstructorInput } from '@opengsn/provider'
 import { PrefixedHexString, toChecksumAddress } from 'ethereumjs-util'
@@ -15,7 +14,10 @@ import {
   PERMIT_SELECTOR_DAI,
   PERMIT_SELECTOR_EIP2612,
   PERMIT_SIGNATURE_DAI,
-  PERMIT_SIGNATURE_EIP2612,
+  PERMIT_SIGNATURE_EIP2612
+} from './constants/MainnetPermitERC20UniswapV3PaymasterConstants'
+
+import {
   signAndEncodeDaiPermit,
   signAndEncodeEIP2612Permit
 } from './PermitPaymasterUtils'
@@ -72,8 +74,6 @@ export class TokenPaymasterProvider extends RelayProvider {
   }
 
   async _buildPaymasterData (relayRequest: RelayRequest): Promise<PrefixedHexString> {
-    const httpProvider = new Web3.providers.HttpProvider(this.origProvider.connection.url)
-    const web3 = new Web3(httpProvider)
     if (this.config.tokenPaymasterDomainSeparators == null) {
       throw new Error('TokenPaymasterProvider not initialized. Call init() first')
     }
@@ -91,8 +91,10 @@ export class TokenPaymasterProvider extends RelayProvider {
           relayRequest.relayData.paymaster,
           this.config.tokenAddress,
           constants.MAX_UINT256.toString(),
-          web3,
-          domainSeparator
+          this.origProvider,
+          domainSeparator,
+          this.config.methodSuffix,
+          this.config.jsonStringifyRequest
         )
       } else {
         permitMethod = await signAndEncodeEIP2612Permit(
@@ -101,8 +103,10 @@ export class TokenPaymasterProvider extends RelayProvider {
           this.config.tokenAddress,
           constants.MAX_UINT256.toString(),
           constants.MAX_UINT256.toString(),
-          web3,
+          this.origProvider,
           domainSeparator,
+          this.config.methodSuffix,
+          this.config.jsonStringifyRequest,
           domainSeparator.version == null ? EIP712DomainTypeWithoutVersion : EIP712DomainType
         )
       }

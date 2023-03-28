@@ -1,6 +1,5 @@
-import Web3 from 'web3'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
-import { PrefixedHexString, fromRpcSig, bufferToHex, keccakFromString } from 'ethereumjs-util'
+import { PrefixedHexString, fromRpcSig } from 'ethereumjs-util'
 import { getEip712Signature, TruffleContract, Address, IntString } from '@opengsn/common'
 import { TypedMessage } from '@metamask/eth-sig-util'
 
@@ -14,13 +13,6 @@ import {
 import daiPermitAbi from './interfaces/PermitInterfaceDAI.json'
 import eip2612PermitAbi from './interfaces/PermitInterfaceEIP2612.json'
 import BN from 'bn.js'
-
-export const PERMIT_SIGNATURE_DAI = 'permit(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)'
-export const PERMIT_SIGNATURE_EIP2612 = 'permit(address,address,uint256,uint256,uint8,bytes32,bytes32)'
-export const PERMIT_CALLDATA_MAX_LEN = 280 // address + address + uint256 + uint256 + bool? + uint8 + bytes32 + bytes32 == at most 8 * 32 == 256
-export const MAX_PAYMASTERDATA_LENGTH = PERMIT_CALLDATA_MAX_LEN + 20 // optional permit calldata plus token address
-export const PERMIT_SELECTOR_DAI = bufferToHex(keccakFromString(PERMIT_SIGNATURE_DAI).slice(0, 4))
-export const PERMIT_SELECTOR_EIP2612 = bufferToHex(keccakFromString(PERMIT_SIGNATURE_EIP2612).slice(0, 4))
 
 interface Types extends MessageTypes {
   EIP712Domain: MessageTypeProperty[]
@@ -56,6 +48,7 @@ export interface UniswapConfig {
   uniswapPoolFees: number[] | BN[] | string[]
   permitMethodSignatures: string[]
   slippages: number[] | BN[] | string[]
+  reverseQuotes: boolean[]
 }
 
 export interface GasAndEthConfig {
@@ -116,15 +109,13 @@ export async function signAndEncodeDaiPermit (
   spender: Address,
   token: Address,
   expiry: IntString,
-  web3Input: Web3,
+  provider: StaticJsonRpcProvider,
   domainSeparator: EIP712Domain,
+  methodSuffix: string,
+  jsonStringifyRequest: boolean,
   forceNonce?: number,
   skipValidation = false
 ): Promise<PrefixedHexString> {
-  const web3 = new Web3(web3Input.currentProvider)
-  // @ts-ignore
-  const currentProviderHost = web3.currentProvider.host
-  const provider = new StaticJsonRpcProvider(currentProviderHost)
   const DaiContract = TruffleContract({
     contractName: 'DAIPermitInterface',
     abi: daiPermitAbi
@@ -133,7 +124,7 @@ export async function signAndEncodeDaiPermit (
   DaiContract.setProvider(provider, undefined)
   const daiInstance = await DaiContract.at(token)
   const nonce = (forceNonce ?? await daiInstance.nonces(holder)).toString()
-  const chainId = await web3.eth.getChainId()
+  const chainId = parseInt((await provider.getNetwork()).chainId.toString())
   const permit: PermitInterfaceDAI = {
     // TODO: not include holder as 'from', not pass 'from'
     from: holder,
@@ -151,7 +142,9 @@ export async function signAndEncodeDaiPermit (
   )
   const signature = await getEip712Signature(
     provider,
-    dataToSign
+    dataToSign,
+    methodSuffix,
+    jsonStringifyRequest
   )
   const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)
@@ -167,16 +160,14 @@ export async function signAndEncodeEIP2612Permit (
   token: Address,
   value: string,
   deadline: string,
-  web3Input: Web3,
+  provider: StaticJsonRpcProvider,
   domainSeparator: EIP712Domain,
+  methodSuffix: string,
+  jsonStringifyRequest: boolean,
   domainType?: MessageTypeProperty[],
   forceNonce?: number,
   skipValidation = false
 ): Promise<PrefixedHexString> {
-  const web3 = new Web3(web3Input.currentProvider)
-  // @ts-ignore
-  const currentProviderHost = web3.currentProvider.host
-  const provider = new StaticJsonRpcProvider(currentProviderHost)
   const EIP2612Contract = TruffleContract({
     contractName: 'EIP2612Contract',
     abi: eip2612PermitAbi
@@ -185,7 +176,7 @@ export async function signAndEncodeEIP2612Permit (
   EIP2612Contract.setProvider(provider, undefined)
   const eip2612TokenInstance = await EIP2612Contract.at(token)
   const nonce = forceNonce ?? await eip2612TokenInstance.nonces(owner)
-  const chainId = await web3.eth.getChainId()
+  const chainId = parseInt((await provider.getNetwork()).chainId.toString())
   const permit: PermitInterfaceEIP2612 = {
     // TODO: not include holder as 'from', not pass 'from'
     from: owner,
@@ -204,7 +195,9 @@ export async function signAndEncodeEIP2612Permit (
   )
   const signature = await getEip712Signature(
     provider,
-    dataToSign
+    dataToSign,
+    methodSuffix,
+    jsonStringifyRequest
   )
   const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)
