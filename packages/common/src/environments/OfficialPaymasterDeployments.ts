@@ -43,7 +43,7 @@ type PaymasterDeploymentsObject = {
   [key in PaymasterType]?: PaymasterDeployment
 }
 
-type DeploymentObject = { [chainId: number]: PaymasterDeploymentsObject | undefined }
+interface DeploymentObject { [chainId: number]: PaymasterDeploymentsObject | undefined }
 
 export const OfficialPaymasterDeployments: DeploymentObject = {
   1: {},

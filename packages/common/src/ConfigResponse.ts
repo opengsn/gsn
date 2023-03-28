@@ -5,7 +5,6 @@ import {
 } from './types/Aliases'
 import { Environment } from './environments/Environments'
 import { EIP712Domain } from './EIP712/TypedRequestData'
-import { PaymasterType } from './environments/OfficialPaymasterDeployments'
 
 export interface LoggerConfiguration {
   logLevel: NpmLogLevel
