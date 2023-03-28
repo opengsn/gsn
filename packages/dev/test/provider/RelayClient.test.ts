@@ -1168,7 +1168,7 @@ contract('RelayClient', function (accounts) {
         })
         sandbox.restore()
         assert.equal(resolvedConfig.paymasterAddress?.length, 42)
-        resolvedConfig.paymasterAddress = undefined // no need to resolve deployment
+        resolvedConfig.paymasterAddress = '' // no need to resolve deployment
         const resolvedDependencies = await relayClient._resolveDependencies({ provider, config: resolvedConfig })
         assert.equal(resolvedConfig.verifierServerApiKey, verifierServerApiKey)
         assert.equal(resolvedConfig.verifierServerUrl, DEFAULT_VERIFIER_SERVER_URL)

@@ -56,6 +56,7 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
+import { getAllTokenDomainSeparators } from '@opengsn/common/dist/environments/OfficialPaymasterDeployments'
 
 // forwarder requests are signed with expiration time.
 
@@ -127,23 +128,23 @@ export class RelayClient {
     this.logger = rawConstructorInput.overrideDependencies?.logger ?? console
   }
 
-  async init (useTokenPaymaster = false): Promise<this> {
+  async init (): Promise<this> {
     if (this.initialized) {
       throw new Error('init() already called')
     }
-    this.initializingPromise = this._initInternal(useTokenPaymaster)
+    this.initializingPromise = this._initInternal()
     await this.initializingPromise
     this.initialized = true
     return this
   }
 
-  async _initInternal (useTokenPaymaster = false): Promise<void> {
+  async _initInternal (): Promise<void> {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
-    if (useTokenPaymaster && this.config.tokenPaymasterAddress !== '') {
-      this.logger.debug(`Using token paymaster ${this.config.tokenPaymasterAddress}`)
-      this.config.paymasterAddress = this.config.tokenPaymasterAddress
-    }
+    // if (useTokenPaymaster && this.config.tokenPaymasterAddress !== '') {
+    //   this.logger.debug(`Using token paymaster ${this.config.tokenPaymasterAddress}`)
+    //   this.config.paymasterAddress = this.config.tokenPaymasterAddress
+    // }
     this.dependencies = await this._resolveDependencies({
       config: this.config,
       provider: this.getUnderlyingProvider(),
@@ -566,7 +567,7 @@ export class RelayClient {
   async _resolveConfiguration ({
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
-    let configFromServer = {}
+    let configFromServer: Partial<GSNConfig> = {}
     const network = await this.getUnderlyingProvider().getNetwork()
     const chainId = network.chainId
     const useClientDefaultConfigUrl = config.useClientDefaultConfigUrl ?? defaultGsnConfig.useClientDefaultConfigUrl
@@ -575,10 +576,18 @@ export class RelayClient {
       configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.clientDefaultConfigUrl)
     }
     await this._resolveVerifierConfig(config, chainId)
+
+    // // TODO: this is bad. better ideas?
+    let tokenPaymasterDomainSeparators = getAllTokenDomainSeparators(chainId)
+    tokenPaymasterDomainSeparators = { ...tokenPaymasterDomainSeparators, ...config.tokenPaymasterDomainSeparators }
+    const mergedArraysConfig: Partial<GSNConfig> = {
+      tokenPaymasterDomainSeparators
+    }
     return {
       ...defaultGsnConfig,
       ...configFromServer,
-      ...removeNullValues(config)
+      ...removeNullValues(config),
+      ...mergedArraysConfig
     }
   }
 

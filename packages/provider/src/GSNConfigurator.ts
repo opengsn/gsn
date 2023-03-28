@@ -61,7 +61,7 @@ export const defaultGsnConfig: GSNConfig = {
   useClientDefaultConfigUrl: true,
   performDryRunViewRelayCall: true,
   performEstimateGasFromRealSender: false,
-  tokenPaymasterAddress: '',
+  paymasterAddress: '',
   tokenPaymasterDomainSeparators: {},
   waitForSuccessSliceSize: 3,
   waitForSuccessPingGrace: 3000,

@@ -2,12 +2,12 @@ import { Contract, providers } from 'ethers'
 import { ExternalProvider, JsonRpcProvider } from '@ethersproject/providers'
 import { Signer } from '@ethersproject/abstract-signer'
 
-import { TokenPaymasterConfig, TokenPaymasterProvider } from './TokenPaymasterProvider'
-import { GSNDependencies, GSNUnresolvedConstructorInput } from '@opengsn/provider'
+import { TokenPaymasterProvider } from './TokenPaymasterProvider'
+import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput } from '@opengsn/provider'
 
 async function wrapContract (
   contract: Contract,
-  config: Partial<TokenPaymasterConfig>,
+  config: Partial<GSNConfig>,
   overrideDependencies?: Partial<GSNDependencies>
 ): Promise<Contract> {
   const signer = await wrapSigner(contract.signer, config, overrideDependencies)
@@ -16,7 +16,7 @@ async function wrapContract (
 
 async function wrapSigner (
   signer: Signer,
-  config: Partial<TokenPaymasterConfig>,
+  config: Partial<GSNConfig>,
   overrideDependencies?: Partial<GSNDependencies>): Promise<Signer> {
   const provider = signer.provider
   if (provider == null) {

@@ -5,6 +5,7 @@ import {
 } from './types/Aliases'
 import { Environment } from './environments/Environments'
 import { EIP712Domain } from './EIP712/TypedRequestData'
+import { PaymasterType } from './environments/OfficialPaymasterDeployments'
 
 export interface LoggerConfiguration {
   logLevel: NpmLogLevel
@@ -121,14 +122,10 @@ export interface GSNConfig {
   maxRelayNonceGap: number
 
   /**
-   * The address of the Payamster contract to be used.
+   * TODO: support just saying which paymaster we want and use one hard-coded for chain id.
+   * The address of the Paymaster contract to be used.
    */
-  paymasterAddress?: Address
-
-  /**
-  * The address of the token paymaster contract used by TokenPaymasterProvider
-  */
-  tokenPaymasterAddress: Address
+  paymasterAddress: Address // | PaymasterType
 
   /**
   * Fields required by TokenPaymasterProvider for the supported tokens

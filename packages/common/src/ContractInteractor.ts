@@ -286,7 +286,7 @@ export class ContractInteractor {
       return
     }
 
-    if (this.deployment.paymasterAddress != null) {
+    if (this.deployment.paymasterAddress != null && this.deployment.paymasterAddress !== '') {
       await this._resolveDeploymentFromPaymaster(this.deployment.paymasterAddress)
     } else if (this.deployment.relayHubAddress != null) {
       if (!await this.isContractDeployed(this.deployment.relayHubAddress)) {
