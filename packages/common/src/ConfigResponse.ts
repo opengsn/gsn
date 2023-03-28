@@ -3,6 +3,7 @@ import {
   IntString,
   NpmLogLevel
 } from './types/Aliases'
+import { PaymasterType } from './environments/OfficialPaymasterDeployments'
 import { Environment } from './environments/Environments'
 import { EIP712Domain } from './EIP712/TypedRequestData'
 
@@ -121,14 +122,13 @@ export interface GSNConfig {
   maxRelayNonceGap: number
 
   /**
-   * TODO: support just saying which paymaster we want and use one hard-coded for chain id.
-   * The address of the Paymaster contract to be used.
+   * The address or type of the Paymaster contract to be used.
    */
-  paymasterAddress: Address // | PaymasterType
+  paymasterAddress: Address | PaymasterType
 
   /**
-  * Fields required by TokenPaymasterProvider for the supported tokens
-  */
+   * Fields required by TokenPaymasterProvider for the supported tokens
+   */
   tokenPaymasterDomainSeparators: Record<Address, EIP712Domain>
 
   /**
@@ -216,6 +216,7 @@ export interface GSNConfig {
    */
   domainSeparatorName: string
 
+  // TODO: make sure the DevUX is consistent with enum paymasters selector
   /**
    * If {@link verifierServerApiKey} is configured the GSN Client will make an Approval Request to this URL.
    */

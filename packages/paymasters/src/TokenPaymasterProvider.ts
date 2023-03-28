@@ -1,4 +1,4 @@
-import { GSNUnresolvedConstructorInput, RelayClient, RelayProvider } from '@opengsn/provider'
+import { getPaymasterAddress, GSNUnresolvedConstructorInput, RelayClient, RelayProvider } from '@opengsn/provider'
 import { PrefixedHexString, toChecksumAddress, isValidChecksumAddress } from 'ethereumjs-util'
 import { Address, removeHexPrefix } from '@opengsn/common/dist'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
@@ -17,7 +17,7 @@ import {
 import { TokenPaymasterInteractor } from './TokenPaymasterInteractor'
 import {
   getTokenBySymbol,
-  SupportedERC20Tokens
+  SupportedTokenSymbols
 } from '@opengsn/common/dist/environments/OfficialPaymasterDeployments'
 
 export class TokenPaymasterProvider extends RelayProvider {
@@ -36,7 +36,7 @@ export class TokenPaymasterProvider extends RelayProvider {
    *
    * @param permitERC20TokenForGas
    */
-  async init (permitERC20TokenForGas?: Address | SupportedERC20Tokens): Promise<this> {
+  async init (permitERC20TokenForGas?: Address | SupportedTokenSymbols): Promise<this> {
     await super.init()
     this.relayClient.dependencies.asyncPaymasterData = this._buildPaymasterData.bind(this)
     if (permitERC20TokenForGas != null) {
@@ -87,13 +87,17 @@ export class TokenPaymasterProvider extends RelayProvider {
     return '0x' + removeHexPrefix(this.tokenPaymasterInteractor.token.address) + removeHexPrefix(permitMethod)
   }
 
-  async setToken (permitERC20TokenForGas: Address | SupportedERC20Tokens): Promise<void> {
+  async setToken (permitERC20TokenForGas: Address | SupportedTokenSymbols): Promise<void> {
     const chainId = this.origProvider.network.chainId
     const tokenAddress = getTokenBySymbol(permitERC20TokenForGas as any, chainId) ?? toChecksumAddress(permitERC20TokenForGas.toString())
     if (tokenAddress == null || !isValidChecksumAddress(tokenAddress)) {
       throw new Error(`Unable to find token with name/address ${permitERC20TokenForGas} on chainId ${chainId}`)
     }
-    this.tokenPaymasterInteractor = new TokenPaymasterInteractor(this.origProvider, this.config.paymasterAddress, tokenAddress)
+
+    // resolve paymaster address from enum type if needed
+    const paymasterAddress = getPaymasterAddress(this.config?.paymasterAddress as any, chainId) ?? this.config?.paymasterAddress
+
+    this.tokenPaymasterInteractor = new TokenPaymasterInteractor(this.origProvider, paymasterAddress as string, tokenAddress)
 
     const isSupported = await this.tokenPaymasterInteractor.isTokenSupported(tokenAddress)
     if (!isSupported) {

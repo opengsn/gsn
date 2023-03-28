@@ -696,7 +696,7 @@ contract('RelayClient', function (accounts) {
         provider: underlyingProvider,
         logger,
         maxPageSize,
-        deployment: { paymasterAddress: gsnConfig.paymasterAddress }
+        deployment: { paymasterAddress: gsnConfig.paymasterAddress as string }
       }, true)
       await badContractInteractor.init()
       const relayClient =
@@ -1013,7 +1013,7 @@ contract('RelayClient', function (accounts) {
         provider: underlyingProvider,
         logger,
         maxPageSize,
-        deployment: { paymasterAddress: gsnConfig.paymasterAddress }
+        deployment: { paymasterAddress: gsnConfig.paymasterAddress as string }
       }, true)
       const transaction = Transaction.fromSerializedTx(toBuffer('0xc6808080808080'))
       const relayClient =
@@ -1167,7 +1167,7 @@ contract('RelayClient', function (accounts) {
           config
         })
         sandbox.restore()
-        assert.equal(resolvedConfig.paymasterAddress?.length, 42)
+        assert.equal((resolvedConfig.paymasterAddress as string).length, 42)
         resolvedConfig.paymasterAddress = '' // no need to resolve deployment
         const resolvedDependencies = await relayClient._resolveDependencies({ provider, config: resolvedConfig })
         assert.equal(resolvedConfig.verifierServerApiKey, verifierServerApiKey)

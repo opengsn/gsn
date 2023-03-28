@@ -9,6 +9,7 @@ import {
   AuditResponse,
   ContractInteractor,
   EIP1559Fees,
+  EIP712Domain,
   GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
@@ -25,13 +26,15 @@ import {
   asRelayCallAbi,
   constants,
   decodeRevertReason,
+  getPaymasterAddress,
   getRelayRequestID,
+  getTokenDomainSeparators,
   gsnRequiredVersion,
   gsnRuntimeVersion,
   removeNullValues,
   toBN,
   toHex,
-  wrapWeb3JsProvider
+  wrapWeb3JsProvider, TokenDomainSeparators
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'
@@ -56,7 +59,6 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
-import { getAllTokenDomainSeparators } from '@opengsn/common/dist/environments/OfficialPaymasterDeployments'
 
 // forwarder requests are signed with expiration time.
 
@@ -577,17 +579,17 @@ export class RelayClient {
     }
     await this._resolveVerifierConfig(config, chainId)
 
-    // // TODO: this is bad. better ideas?
-    let tokenPaymasterDomainSeparators = getAllTokenDomainSeparators(chainId)
-    tokenPaymasterDomainSeparators = { ...tokenPaymasterDomainSeparators, ...config.tokenPaymasterDomainSeparators }
-    const mergedArraysConfig: Partial<GSNConfig> = {
-      tokenPaymasterDomainSeparators
+    // EIP-712 Domain Separators are not so much config as extra info and should be merged
+    const tokenPaymasterDomainSeparators: { [address: Address]: EIP712Domain } = {
+      ...TokenDomainSeparators[chainId],
+      ...configFromServer.tokenPaymasterDomainSeparators,
+      ...config.tokenPaymasterDomainSeparators
     }
     return {
       ...defaultGsnConfig,
       ...configFromServer,
       ...removeNullValues(config),
-      ...mergedArraysConfig
+      ...{ tokenPaymasterDomainSeparators }
     }
   }
 
@@ -642,6 +644,10 @@ export class RelayClient {
     overrideDependencies?: Partial<GSNDependencies>
   }): Promise<GSNDependencies> {
     const versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion)
+    const network = await provider.getNetwork()
+    const chainId = parseInt(network.chainId.toString())
+    // resolve paymaster address from enum type if needed
+    const paymasterAddress = getPaymasterAddress(config?.paymasterAddress as any, chainId) ?? config?.paymasterAddress
     const contractInteractor = overrideDependencies?.contractInteractor ??
       await new ContractInteractor({
         provider,
@@ -652,9 +658,8 @@ export class RelayClient {
         environment: this.config.environment,
         domainSeparatorName: this.config.domainSeparatorName,
         calldataEstimationSlackFactor: this.config.calldataEstimationSlackFactor,
-        deployment: { paymasterAddress: config?.paymasterAddress }
+        deployment: { paymasterAddress: paymasterAddress as any }
       }).init()
-    const chainId = contractInteractor.chainId
     const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, chainId, this.config)
 
     // TODO: accept HttpWrapper as a dependency - calling 'new' here is breaking the init flow.

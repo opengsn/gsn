@@ -48,7 +48,7 @@ export class TokenPaymasterInteractor {
     this.PermitERC20UniswapV3Paymaster.setProvider(this.provider, undefined)
   }
 
-  async init () {
+  async init (): Promise<void> {
     this.paymaster = await this._createPermitERC20UniswapV3Paymaster(this.paymasterAddress)
     this.token = await this._createPermitInterfaceDAIToken(this.tokenAddress)
   }
