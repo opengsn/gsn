@@ -28,7 +28,6 @@ import {
   decodeRevertReason,
   getPaymasterAddress,
   getRelayRequestID,
-  getTokenDomainSeparators,
   gsnRequiredVersion,
   gsnRuntimeVersion,
   removeNullValues,

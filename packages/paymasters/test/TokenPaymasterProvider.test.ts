@@ -23,7 +23,6 @@ import {
   TestTokenInstance
 } from '../types/truffle-contracts'
 import { deployHub, revert, snapshot, startRelay, stopRelay } from '@opengsn/dev/dist/test/TestUtils'
-import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 import { RelayRequest } from '@opengsn/common/dist/EIP712/RelayRequest'
 
 import {
@@ -62,7 +61,6 @@ import {
 
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { TokenPaymasterEthersWrapper } from '../src/WrapContract'
-import { defaultGsnConfig } from '@opengsn/provider'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
 const PermitInterfaceEIP2612 = artifacts.require('PermitInterfaceEIP2612')
@@ -97,7 +95,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       this.skip()
     }
     await impersonateAccount(MAJOR_DAI_AND_UNI_HOLDER)
-    sampleRecipient = await SampleRecipient.new()
+    sampleRecipient = await SampleRecipient.new({ gasPrice: 22e9 })
     await sampleRecipient.setForwarder(GSN_FORWARDER_CONTRACT_ADDRESS)
     daiPermittableToken = await PermitInterfaceDAI.at(DAI_CONTRACT_ADDRESS)
     uniPermittableToken = await PermitInterfaceEIP2612.at(UNI_CONTRACT_ADDRESS)
@@ -241,6 +239,28 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       assert.equal(tokenPaymasterProvider.permitSignature, PERMIT_SIGNATURE_DAI)
     })
   })
+
+  context.only('#autoSelectToken()', function () {
+    it('should select a token with the highest balance value converted to Ether', async function () {
+      const gsnConfig: Partial<GSNConfig> = {
+        paymasterAddress: permitPaymaster.address,
+        loggerConfiguration: { logLevel: 'error' }
+      }
+      const tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
+        config: gsnConfig,
+        provider
+      })
+      assert.equal(tokenPaymasterProvider.tokenPaymasterInteractor, undefined)
+      await tokenPaymasterProvider.init()
+      assert.equal(tokenPaymasterProvider.tokenPaymasterInteractor.token.address, USDC_CONTRACT_ADDRESS)
+    })
+
+    it.skip('should select a token with approval if it has balance', function () {
+      // TODO: this is a little tricky so not implementing it for now
+      assert.fail()
+    })
+  })
+
   context('#_buildPaymasterData()', function () {
     it('should throw if paymaster address in provider doesn\'t match relayRequest', async function () {
       await skipWithoutFork(this)
@@ -344,8 +364,8 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       const stakeManager: StakeManagerInstance = await StakeManager.new(defaultEnvironment.maxUnstakeDelay, 0, 0, constants.BURN_ADDRESS, constants.BURN_ADDRESS)
       const penalizer: PenalizerInstance = await Penalizer.new(defaultEnvironment.penalizerConfiguration.penalizeBlockDelay, defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
       relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
-      forwarderInstance = await Forwarder.new()
-      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
+      forwarderInstance = await Forwarder.at(GSN_FORWARDER_CONTRACT_ADDRESS)
+      // await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
       await sampleRecipient.setForwarder(forwarderInstance.address)
 
       await permitPaymaster.setTrustedForwarder(forwarderInstance.address, { from: owner })

@@ -2,69 +2,69 @@ import BN from 'bn.js'
 
 import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 
-import { Address, Contract, TruffleContract, wrapWeb3JsProvider } from '@opengsn/common/dist'
-import {
-  PermitERC20UniswapV3PaymasterInstance,
-  PermitInterfaceDAIInstance,
-  PermitInterfaceEIP2612Instance
-} from '../types/truffle-contracts'
+import { Address, Contract, TruffleContract, wrapWeb3JsProvider } from '@opengsn/common'
+import { IERC20Instance } from '@opengsn/contracts'
+import { IChainlinkOracleInstance, PermitERC20UniswapV3PaymasterInstance } from '../types/truffle-contracts'
+
+import IERC20TokenInterface from '@opengsn/common/dist/interfaces/IERC20Token.json'
 import PermitERC20UniswapV3Paymaster from './interfaces/PermitERC20UniswapV3Paymaster.json'
-import PermitInterfaceDAI from './interfaces/PermitInterfaceDAI.json'
-import PermitInterfaceEIP2612 from './interfaces/PermitInterfaceEIP2612.json'
+import IChainlinkOracle from './interfaces/IChainlinkOracle.json'
 
 export class TokenPaymasterInteractor {
   private readonly provider: JsonRpcProvider
-  private readonly PermitInterfaceDAIToken: Contract<PermitInterfaceDAIInstance>
-  private readonly PermitInterfaceEIP2612Token: Contract<PermitInterfaceEIP2612Instance>
+  private readonly ERC20Instance: Contract<IERC20Instance>
   private readonly PermitERC20UniswapV3Paymaster: Contract<PermitERC20UniswapV3PaymasterInstance>
+  private readonly ChainlinkOracle: Contract<IChainlinkOracleInstance>
   private readonly paymasterAddress: Address
-  private readonly tokenAddress: Address
+
+  private tokenAddress?: Address
 
   paymaster!: PermitERC20UniswapV3PaymasterInstance
-  token!: PermitInterfaceDAIInstance
+  token!: IERC20Instance
 
   constructor (
     provider: JsonRpcProvider | ExternalProvider,
-    paymasterAddress: Address,
-    tokenAddress: Address
+    paymasterAddress: Address
   ) {
     this.paymasterAddress = paymasterAddress
-    this.tokenAddress = tokenAddress
     this.provider = wrapWeb3JsProvider(provider)
-    this.PermitInterfaceDAIToken = TruffleContract({
-      contractName: 'PermitInterfaceDAIToken',
-      abi: PermitInterfaceDAI
-    })
-    this.PermitInterfaceEIP2612Token = TruffleContract({
-      contractName: 'PermitInterfaceEIP2612Token',
-      abi: PermitInterfaceEIP2612
+    this.ERC20Instance = TruffleContract({
+      contractName: 'ERC20Instance',
+      abi: IERC20TokenInterface
     })
     this.PermitERC20UniswapV3Paymaster = TruffleContract({
       contractName: 'PermitERC20UniswapV3Paymaster',
       abi: PermitERC20UniswapV3Paymaster
     })
-    this.PermitInterfaceDAIToken.setProvider(this.provider, undefined)
-    this.PermitInterfaceEIP2612Token.setProvider(this.provider, undefined)
+    this.ChainlinkOracle = TruffleContract({
+      contractName: 'IChainlinkOracle',
+      abi: IChainlinkOracle
+    })
+    this.ChainlinkOracle.setProvider(this.provider, undefined)
+    this.ERC20Instance.setProvider(this.provider, undefined)
     this.PermitERC20UniswapV3Paymaster.setProvider(this.provider, undefined)
   }
 
-  async init (): Promise<void> {
+  async init (): Promise<this> {
     this.paymaster = await this._createPermitERC20UniswapV3Paymaster(this.paymasterAddress)
-    this.token = await this._createPermitInterfaceDAIToken(this.tokenAddress)
+    return this
   }
 
-  // TODO: when would it matter what kind of token do we have?
-  async _createPermitInterfaceDAIToken (address: Address): Promise<PermitInterfaceDAIInstance> {
-    return await this.PermitInterfaceDAIToken.at(address)
+  async setToken (tokenAddress: Address): Promise<void> {
+    this.tokenAddress = tokenAddress
+    this.token = await this._createIERC20Instance(this.tokenAddress)
   }
 
-  //
-  // async _createPermitInterfaceEIP2612Token (address: Address): Promise<PermitInterfaceEIP2612Instance> {
-  //   return await this.PermitInterfaceEIP2612Token.at(address)
-  // }
+  async _createIERC20Instance (address: Address): Promise<IERC20Instance> {
+    return await this.ERC20Instance.at(address)
+  }
 
   async _createPermitERC20UniswapV3Paymaster (address: Address): Promise<PermitERC20UniswapV3PaymasterInstance> {
     return await this.PermitERC20UniswapV3Paymaster.at(address)
+  }
+
+  async _createChainlinkOracleInstance (address: Address): Promise<IChainlinkOracleInstance> {
+    return await this.ChainlinkOracle.at(address)
   }
 
   async getAllowance (owner: Address, spender: Address): Promise<BN> {
@@ -77,5 +77,28 @@ export class TokenPaymasterInteractor {
 
   async isTokenSupported (token: Address): Promise<boolean> {
     return await this.paymaster.isTokenSupported(token)
+  }
+
+  async tokenBalanceOf (owner: Address, tokenAddress: Address): Promise<BN> {
+    // TODO: cache instances of supported tokens
+    const tokenInstance = await this._createIERC20Instance(tokenAddress)
+    return await tokenInstance.balanceOf(owner)
+  }
+
+  async tokenPaymasterAllowance (owner: Address, tokenAddress: Address): Promise<BN> {
+    const tokenInstance = await this._createIERC20Instance(tokenAddress)
+    return await tokenInstance.allowance(owner, this.paymaster.address)
+  }
+
+  async tokenToWei (tokenAddress: Address, tokenBalance: BN): Promise<BN> {
+    const tokenSwapData = await this.paymaster.getTokenSwapData(tokenAddress)
+    const chainlinkInstance = await this._createChainlinkOracleInstance(tokenSwapData.priceFeed)
+    const quote = await chainlinkInstance.latestAnswer()
+    const actualQuote = await this.paymaster.toActualQuote(quote.toString(), tokenSwapData.priceDivisor.toString())
+    const wei = await this.paymaster.tokenToWei(tokenBalance.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
+
+    // TODO: remove log
+    console.log('tokenToWei:', tokenAddress, tokenBalance.toString(), wei.toString())
+    return wei
   }
 }

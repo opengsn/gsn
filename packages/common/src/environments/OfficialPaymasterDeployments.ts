@@ -3,12 +3,25 @@ import { EIP712Domain } from '../EIP712/TypedRequestData'
 import { gsnRuntimeVersion } from '../Version'
 
 export const enum PaymasterType {
+  /**
+   * This Paymaster will accept all transactions sent to it.
+   * This is only useful on testnets as it will be instantly drained on a mainnet.
+   * This Paymaster may not have any balance so funding it with testnet Ether is up to you.
+   */
   AcceptEverythingPaymaster,
+  /** not used */
   HashcashPaymaster,
+  /**
+   * This Paymaster will use the EIP-2612 'permit' method to charge the user for the transaction.
+   * The latest exchange rate on Chainlink Oracle will be used for price conversion.
+   */
   PermitERC20UniswapV3Paymaster,
+  /** not used */
   SingleRecipientPaymaster,
+  /** not used */
   TokenPaymasterLegacy,
   VerifyingPaymaster,
+  /** not used */
   WhitelistPaymaster
 }
 
