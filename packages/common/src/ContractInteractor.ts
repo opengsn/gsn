@@ -403,7 +403,7 @@ export class ContractInteractor {
     if (this.relayRegistrar == null && this.deployment.relayRegistrarAddress != null) {
       this.relayRegistrar = await this._createRelayRegistrar(this.deployment.relayRegistrarAddress)
     }
-    if (this.paymasterInstance == null && this.deployment.paymasterAddress != null) {
+    if (this.paymasterInstance == null && this.deployment.paymasterAddress != null && this.deployment.paymasterAddress !== '') {
       this.paymasterInstance = await this._createPaymaster(this.deployment.paymasterAddress)
     }
     if (this.deployment.forwarderAddress != null) {
