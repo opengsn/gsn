@@ -25,6 +25,16 @@ export enum PaymasterType {
   WhitelistPaymaster
 }
 
+export enum SupportedChains {
+  MAINNET = 1,
+  GOERLI = 5,
+  BSC_TESTNET = 97,
+  GOERLI_OPTIMISM = 420,
+  AVALANCHE_FUJI_TESTNET = 43113,
+  MUMBAI = 80001,
+  GOERLI_ARBITRUM = 421613
+}
+
 export enum SupportedTokenSymbols {
   DAI = 'DAI',
   USDC = 'USDC',
@@ -61,15 +71,22 @@ export const UNI_CONTRACT_ADDRESS = '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'
 export const USDC_CONTRACT_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 export const WETH9_CONTRACT_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 
-const ERC20_TOKEN_DAI_GOERLI_5 = '0x11fe4b6ae13d2a6055c8d9cf65c55bac32b5d844'
+const DAI_CONTRACT_ADDRESS_GOERLI = '0x11fe4b6ae13d2a6055c8d9cf65c55bac32b5d844'
 const PERMIT_ERC20_UNISWAP_V3_PAYMASTER_GOERLI_5 = '0xc7709b37c63e116cc973842ae902462580d76104'
+
+const ACCEPT_EVERYTHING_PAYMASTER_AVALANCHE_FUJI = '0x735719A8C5aF199ea5b93207083787a5B548C0e2'
+const ACCEPT_EVERYTHING_PAYMASTER_BSC_TESTNET = '0x735719A8C5aF199ea5b93207083787a5B548C0e2'
+const ACCEPT_EVERYTHING_PAYMASTER_GOERLI = '0x7e4123407707516bD7a3aFa4E3ebCeacfcbBb107'
+const ACCEPT_EVERYTHING_PAYMASTER_GOERLI_ARBITRUM = '0x9dC769B8cBD07131227b0815BEd3526b1f8ACD52'
+const ACCEPT_EVERYTHING_PAYMASTER_GOERLI_OPTIMISM = '0x735719A8C5aF199ea5b93207083787a5B548C0e2'
+const ACCEPT_EVERYTHING_PAYMASTER_MUMBAI = '0x086c11bd5A61ac480b326916656a33c474d1E4d8'
 
 /**
  * This object exists to allow using the enums instead of addresses on Relay Provider construction.
  */
 export const OfficialPaymasterDeployments: DeploymentObject = {
-  1: {},
-  5: {
+  [SupportedChains.MAINNET]: {},
+  [SupportedChains.GOERLI]: {
     [PaymasterType.PermitERC20UniswapV3Paymaster]:
       {
         type: PaymasterType.PermitERC20UniswapV3Paymaster,
@@ -80,11 +97,52 @@ export const OfficialPaymasterDeployments: DeploymentObject = {
               {
                 symbol: SupportedTokenSymbols.DAI,
                 displayedName: 'Dai Stablecoin @ Goerli',
-                address: ERC20_TOKEN_DAI_GOERLI_5
+                address: DAI_CONTRACT_ADDRESS_GOERLI
               }
           }
+      },
+    [PaymasterType.AcceptEverythingPaymaster]:
+      {
+        type: PaymasterType.AcceptEverythingPaymaster,
+        address: ACCEPT_EVERYTHING_PAYMASTER_GOERLI,
+        supportedTokensERC20: {}
       }
-  }
+  },
+  [SupportedChains.GOERLI_OPTIMISM]: [
+    {
+      type: PaymasterType.AcceptEverythingPaymaster,
+      address: ACCEPT_EVERYTHING_PAYMASTER_GOERLI_OPTIMISM,
+      supportedTokensERC20: {}
+    }
+  ],
+  [SupportedChains.AVALANCHE_FUJI_TESTNET]: [
+    {
+      type: PaymasterType.AcceptEverythingPaymaster,
+      address: ACCEPT_EVERYTHING_PAYMASTER_AVALANCHE_FUJI,
+      supportedTokensERC20: {}
+    }
+  ],
+  [SupportedChains.MUMBAI]: [
+    {
+      type: PaymasterType.AcceptEverythingPaymaster,
+      address: ACCEPT_EVERYTHING_PAYMASTER_MUMBAI,
+      supportedTokensERC20: {}
+    }
+  ],
+  [SupportedChains.GOERLI_ARBITRUM]: [
+    {
+      type: PaymasterType.AcceptEverythingPaymaster,
+      address: ACCEPT_EVERYTHING_PAYMASTER_GOERLI_ARBITRUM,
+      supportedTokensERC20: {}
+    }
+  ],
+  [SupportedChains.BSC_TESTNET]: [
+    {
+      type: PaymasterType.AcceptEverythingPaymaster,
+      address: ACCEPT_EVERYTHING_PAYMASTER_BSC_TESTNET,
+      supportedTokensERC20: {}
+    }
+  ]
 }
 
 /**
@@ -111,11 +169,11 @@ export const TokenDomainSeparators: { [chainId: number]: DomainSeparatorObject }
     }
   },
   5: {
-    [ERC20_TOKEN_DAI_GOERLI_5]: {
+    [DAI_CONTRACT_ADDRESS_GOERLI]: {
       name: 'Dai Stablecoin',
       version: '1',
       chainId: 5,
-      verifyingContract: ERC20_TOKEN_DAI_GOERLI_5
+      verifyingContract: DAI_CONTRACT_ADDRESS_GOERLI
     }
   }
 }
@@ -135,7 +193,11 @@ export function getPaymasterAddressByTypeAndChain (paymasterType: PaymasterType 
   if (typeof paymasterType === 'string') {
     return paymasterType
   }
-  const paymasterAddress = OfficialPaymasterDeployments[chainId]?.[paymasterType]?.address
+
+  const paymasterAddress = OfficialPaymasterDeployments[chainId]
+    ?.[paymasterType]
+    ?.address
+
   if (paymasterAddress == null) {
     throw new Error(`Paymaster type ${PaymasterType[paymasterType]}(${paymasterType}) has no known official deployed on chain ${chainId} as of publishing ver. ${gsnRuntimeVersion}`)
   }
