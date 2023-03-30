@@ -2,7 +2,7 @@ import { Address } from '../types/Aliases'
 import { EIP712Domain } from '../EIP712/TypedRequestData'
 import { gsnRuntimeVersion } from '../Version'
 
-export const enum PaymasterType {
+export enum PaymasterType {
   /**
    * This Paymaster will accept all transactions sent to it.
    * This is only useful on testnets as it will be instantly drained on a mainnet.
@@ -25,7 +25,7 @@ export const enum PaymasterType {
   WhitelistPaymaster
 }
 
-export const enum SupportedTokenSymbols {
+export enum SupportedTokenSymbols {
   DAI = 'DAI',
   USDC = 'USDC',
   UNI = 'UNI'
@@ -56,11 +56,16 @@ interface DomainSeparatorObject {[address: Address]: EIP712Domain}
 
 interface DeploymentObject {[chainId: number]: PaymasterDeploymentsObject}
 
+export const DAI_CONTRACT_ADDRESS = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
+export const UNI_CONTRACT_ADDRESS = '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'
+export const USDC_CONTRACT_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+export const WETH9_CONTRACT_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+
 const ERC20_TOKEN_DAI_GOERLI_5 = '0x11fe4b6ae13d2a6055c8d9cf65c55bac32b5d844'
 const PERMIT_ERC20_UNISWAP_V3_PAYMASTER_GOERLI_5 = '0xc7709b37c63e116cc973842ae902462580d76104'
 
 /**
- * This object exists to allow using the 'const enums' instead of addresses on Relay Provider construction.
+ * This object exists to allow using the enums instead of addresses on Relay Provider construction.
  */
 export const OfficialPaymasterDeployments: DeploymentObject = {
   1: {},
@@ -86,12 +91,30 @@ export const OfficialPaymasterDeployments: DeploymentObject = {
  * Using Address here as key to simplify merging object with the user-provided token data if necessary.
  */
 export const TokenDomainSeparators: { [chainId: number]: DomainSeparatorObject } = {
-  1: {},
-  5: {
-    ERC20_TOKEN_DAI_GOERLI_5: {
+  1: {
+    [DAI_CONTRACT_ADDRESS]: {
       name: 'Dai Stablecoin',
       version: '1',
       chainId: 1,
+      verifyingContract: DAI_CONTRACT_ADDRESS
+    },
+    [UNI_CONTRACT_ADDRESS]: {
+      name: 'Uniswap',
+      chainId: 1,
+      verifyingContract: UNI_CONTRACT_ADDRESS
+    },
+    [USDC_CONTRACT_ADDRESS]: {
+      name: 'USD Coin',
+      version: '2',
+      chainId: 1,
+      verifyingContract: USDC_CONTRACT_ADDRESS
+    }
+  },
+  5: {
+    [ERC20_TOKEN_DAI_GOERLI_5]: {
+      name: 'Dai Stablecoin',
+      version: '1',
+      chainId: 5,
       verifyingContract: ERC20_TOKEN_DAI_GOERLI_5
     }
   }
@@ -105,11 +128,8 @@ export function getTokenBySymbol (symbol: SupportedTokenSymbols, chainId: number
     ?.address
 }
 
-/**
- * Note: TypeScript removes all info of the 'const enum' type at runtime.
- */
 export function getPaymasterAddress (paymasterType: PaymasterType, chainId: number): Address | undefined {
-  const paymasterAddress = OfficialPaymasterDeployments[chainId][paymasterType]?.address
+  const paymasterAddress = OfficialPaymasterDeployments[chainId]?.[paymasterType]?.address
   // noinspection PointlessBooleanExpressionJS
   if (typeof paymasterType === 'number' && paymasterType == null) {
     throw new Error(`Paymaster type ${paymasterType as string} has no known official deployed on chain ${chainId} as of publishing ver. ${gsnRuntimeVersion}`)

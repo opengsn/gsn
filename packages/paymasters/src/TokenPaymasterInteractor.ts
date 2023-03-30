@@ -10,6 +10,16 @@ import IERC20TokenInterface from '@opengsn/common/dist/interfaces/IERC20Token.js
 import PermitERC20UniswapV3Paymaster from './interfaces/PermitERC20UniswapV3Paymaster.json'
 import IChainlinkOracle from './interfaces/IChainlinkOracle.json'
 
+export interface TokenSwapData {
+  priceFeed: string
+  reverseQuote: boolean
+  uniswapPoolFee: BN
+  slippage: BN
+  permitMethodSelector: string
+  priceDivisor: BN
+  validFromBlockNumber: BN
+}
+
 export class TokenPaymasterInteractor {
   private readonly provider: JsonRpcProvider
   private readonly ERC20Instance: Contract<IERC20Instance>
@@ -17,7 +27,8 @@ export class TokenPaymasterInteractor {
   private readonly ChainlinkOracle: Contract<IChainlinkOracleInstance>
   private readonly paymasterAddress: Address
 
-  private tokenAddress?: Address
+  tokenAddress?: Address
+  tokenSwapData?: TokenSwapData
 
   paymaster!: PermitERC20UniswapV3PaymasterInstance
   token!: IERC20Instance
@@ -53,6 +64,7 @@ export class TokenPaymasterInteractor {
   async setToken (tokenAddress: Address): Promise<void> {
     this.tokenAddress = tokenAddress
     this.token = await this._createIERC20Instance(this.tokenAddress)
+    this.tokenSwapData = await this.paymaster.getTokenSwapData(tokenAddress)
   }
 
   async _createIERC20Instance (address: Address): Promise<IERC20Instance> {
@@ -95,10 +107,6 @@ export class TokenPaymasterInteractor {
     const chainlinkInstance = await this._createChainlinkOracleInstance(tokenSwapData.priceFeed)
     const quote = await chainlinkInstance.latestAnswer()
     const actualQuote = await this.paymaster.toActualQuote(quote.toString(), tokenSwapData.priceDivisor.toString())
-    const wei = await this.paymaster.tokenToWei(tokenBalance.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
-
-    // TODO: remove log
-    console.log('tokenToWei:', tokenAddress, tokenBalance.toString(), wei.toString())
-    return wei
+    return await this.paymaster.tokenToWei(tokenBalance.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
   }
 }

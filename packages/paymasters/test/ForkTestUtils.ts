@@ -5,7 +5,7 @@ import {
   DAI_CONTRACT_ADDRESS,
   UNI_CONTRACT_ADDRESS,
   USDC_CONTRACT_ADDRESS
-} from '../src/constants/MainnetPermitERC20UniswapV3PaymasterConstants'
+} from '@opengsn/common'
 
 export function getDaiDomainSeparator (): EIP712Domain {
   return {

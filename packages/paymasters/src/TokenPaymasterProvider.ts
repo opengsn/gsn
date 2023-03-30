@@ -6,7 +6,7 @@ import { Address, RelayRequest, removeHexPrefix } from '@opengsn/common'
 
 import {
   MAX_PAYMASTERDATA_LENGTH,
-  PERMIT_SIGNATURE_DAI
+  PERMIT_SELECTOR_DAI
 } from './constants/MainnetPermitERC20UniswapV3PaymasterConstants'
 
 import { signAndEncodeDaiPermit, signAndEncodeEIP2612Permit } from './PermitPaymasterUtils'
@@ -33,7 +33,6 @@ interface TokenSelectionDetails {
 }
 
 export class TokenPaymasterProvider extends RelayProvider {
-  permitSignature!: string
   tokenPaymasterInteractor!: TokenPaymasterInteractor
 
   static newProvider (input: GSNUnresolvedConstructorInput): TokenPaymasterProvider {
@@ -79,7 +78,7 @@ export class TokenPaymasterProvider extends RelayProvider {
     if (allowance.eqn(0)) {
       const domainSeparator: EIP712Domain =
         this.config.tokenPaymasterDomainSeparators[this.tokenPaymasterInteractor.token.address]
-      if (this.permitSignature === PERMIT_SIGNATURE_DAI) {
+      if (this.tokenPaymasterInteractor.tokenSwapData?.permitMethodSelector === PERMIT_SELECTOR_DAI) {
         permitMethod = await signAndEncodeDaiPermit(
           relayRequest.request.from,
           relayRequest.relayData.paymaster,
