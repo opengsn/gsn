@@ -216,7 +216,6 @@ export interface GSNConfig {
    */
   domainSeparatorName: string
 
-  // TODO: make sure the DevUX is consistent with enum paymasters selector
   /**
    * If {@link verifierServerApiKey} is configured the GSN Client will make an Approval Request to this URL.
    */

@@ -92,7 +92,6 @@ export class TokenPaymasterInteractor {
   }
 
   async tokenBalanceOf (owner: Address, tokenAddress: Address): Promise<BN> {
-    // TODO: cache instances of supported tokens
     const tokenInstance = await this._createIERC20Instance(tokenAddress)
     return await tokenInstance.balanceOf(owner)
   }
@@ -102,11 +101,15 @@ export class TokenPaymasterInteractor {
     return await tokenInstance.allowance(owner, this.paymaster.address)
   }
 
-  async tokenToWei (tokenAddress: Address, tokenBalance: BN): Promise<BN> {
+  async tokenToWei (tokenAddress: Address, tokenAmount: BN): Promise<{
+    actualQuote: BN
+    amountInWei: BN
+  }> {
     const tokenSwapData = await this.paymaster.getTokenSwapData(tokenAddress)
     const chainlinkInstance = await this._createChainlinkOracleInstance(tokenSwapData.priceFeed)
     const quote = await chainlinkInstance.latestAnswer()
     const actualQuote = await this.paymaster.toActualQuote(quote.toString(), tokenSwapData.priceDivisor.toString())
-    return await this.paymaster.tokenToWei(tokenBalance.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
+    const amountInWei = await this.paymaster.tokenToWei(tokenAmount.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
+    return { actualQuote, amountInWei }
   }
 }

@@ -1,8 +1,24 @@
-import BN from 'bn.js'
-
-import { getPaymasterAddress, GSNUnresolvedConstructorInput, RelayClient, RelayProvider } from '@opengsn/provider'
 import { PrefixedHexString, toChecksumAddress, isValidChecksumAddress } from 'ethereumjs-util'
-import { Address, RelayRequest, removeHexPrefix } from '@opengsn/common'
+
+import {
+  GSNUnresolvedConstructorInput,
+  RelayClient,
+  RelayProvider,
+  getPaymasterAddressByTypeAndChain,
+  toBN
+} from '@opengsn/provider'
+
+import {
+  Address,
+  EIP712Domain,
+  EIP712DomainType,
+  EIP712DomainTypeWithoutVersion,
+  RelayRequest,
+  SupportedTokenSymbols,
+  constants,
+  getTokenBySymbol,
+  removeHexPrefix
+} from '@opengsn/common'
 
 import {
   MAX_PAYMASTERDATA_LENGTH,
@@ -10,26 +26,17 @@ import {
 } from './constants/MainnetPermitERC20UniswapV3PaymasterConstants'
 
 import { signAndEncodeDaiPermit, signAndEncodeEIP2612Permit } from './PermitPaymasterUtils'
-import { constants } from '@opengsn/common/dist/Constants'
-import {
-  EIP712Domain,
-  EIP712DomainType,
-  EIP712DomainTypeWithoutVersion
-} from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { TokenPaymasterInteractor } from './TokenPaymasterInteractor'
-import {
-  getTokenBySymbol,
-  SupportedTokenSymbols
-} from '@opengsn/common/dist/environments/OfficialPaymasterDeployments'
 
 interface TokenSelectionDetails {
   address: string
-  balance: BN
+  balance: string
+  chainlinkQuote: string
   // token balance converted to the native chain currency
-  balanceWei: BN
-  allowance: BN
+  balanceWei: string
+  allowance: string
   // token allowance converted to the native chain currency
-  allowanceWei: BN
+  allowanceWei: string
 }
 
 export class TokenPaymasterProvider extends RelayProvider {
@@ -51,9 +58,7 @@ export class TokenPaymasterProvider extends RelayProvider {
     await super.init()
     const chainId = this.origProvider.network.chainId
 
-    // TODO: this oneliner code is complex and repeated - refactor
-    // resolve paymaster address from enum type if needed
-    const paymasterAddress = getPaymasterAddress(this.config?.paymasterAddress as any, chainId) ?? this.config?.paymasterAddress
+    const paymasterAddress = getPaymasterAddressByTypeAndChain(this.config?.paymasterAddress, chainId)
     this.tokenPaymasterInteractor = new TokenPaymasterInteractor(this.origProvider, paymasterAddress as any)
     await this.tokenPaymasterInteractor.init()
     this.relayClient.dependencies.asyncPaymasterData = this._buildPaymasterData.bind(this)
@@ -117,23 +122,26 @@ export class TokenPaymasterProvider extends RelayProvider {
     for (const tokenAddress of supportedTokens) {
       const tokenBalance = await this.tokenPaymasterInteractor.tokenBalanceOf(account0, tokenAddress)
       const tokenAllowance = await this.tokenPaymasterInteractor.tokenPaymasterAllowance(account0, tokenAddress)
-      const tokenBalanceNativeWei = await this.tokenPaymasterInteractor.tokenToWei(tokenAddress, tokenBalance)
-      const tokenAllowanceNativeWei = await this.tokenPaymasterInteractor.tokenToWei(tokenAddress, tokenAllowance)
+      const { amountInWei: tokenBalanceNativeWei, actualQuote } =
+        await this.tokenPaymasterInteractor.tokenToWei(tokenAddress, tokenBalance)
+      const { amountInWei: tokenAllowanceNativeWei } =
+        await this.tokenPaymasterInteractor.tokenToWei(tokenAddress, tokenAllowance)
       tokenBalancesNativeWei.push({
         address: tokenAddress,
-        allowance: tokenAllowance,
-        allowanceWei: tokenAllowanceNativeWei,
-        balance: tokenBalance,
-        balanceWei: tokenBalanceNativeWei
+        chainlinkQuote: actualQuote.toString(),
+        allowance: tokenAllowance.toString(),
+        allowanceWei: tokenAllowanceNativeWei.toString(),
+        balance: tokenBalance.toString(),
+        balanceWei: tokenBalanceNativeWei.toString()
       })
     }
 
     const selectedToken = tokenBalancesNativeWei
       .sort((a, b) => {
-        return b.balanceWei.gte(a.balanceWei) ? 1 : -1
+        return toBN(b.balanceWei).gte(toBN(a.balanceWei)) ? 1 : -1
       })[0]
 
-    this.logger.info(`Automatically selected token: ${JSON.stringify(selectedToken)}`)
+    this.logger.debug(`TokenPaymasterProvider initialized with no token selected and automatically selected token: ${JSON.stringify(selectedToken)}`)
     await this.setToken(selectedToken.address)
   }
 

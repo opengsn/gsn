@@ -174,9 +174,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
 
       const gsnConfig: Partial<GSNConfig> = {
         paymasterAddress: permitPaymaster.address,
-        loggerConfiguration: { logLevel: 'error' },
-        // TODO remove this flag once testing against v3 test deployment
-        skipErc165Check: true
+        loggerConfiguration: { logLevel: 'error' }
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
@@ -193,9 +191,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
 
       const gsnConfig: Partial<GSNConfig> = {
         paymasterAddress: permitPaymaster.address,
-        loggerConfiguration: { logLevel: 'error' },
-        // TODO remove this flag once testing against v3 test deployment
-        skipErc165Check: true
+        loggerConfiguration: { logLevel: 'error' }
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
@@ -211,9 +207,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
 
       const gsnConfig: Partial<GSNConfig> = {
         paymasterAddress: permitPaymaster.address,
-        loggerConfiguration: { logLevel: 'error' },
-        // TODO remove this flag once testing against v3 test deployment
-        skipErc165Check: true
+        loggerConfiguration: { logLevel: 'error' }
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
@@ -257,9 +251,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       await skipWithoutFork(this)
       const gsnConfig: Partial<GSNConfig> = {
         paymasterAddress: permitPaymaster.address,
-        loggerConfiguration: { logLevel: 'error' },
-        // >>ALEXF - is this done? TODO remove this flag once testing against v3 test deployment
-        skipErc165Check: true
+        loggerConfiguration: { logLevel: 'error' }
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
@@ -274,9 +266,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       await skipWithoutFork(this)
       const gsnConfig: Partial<GSNConfig> = {
         paymasterAddress: permitPaymaster.address,
-        loggerConfiguration: { logLevel: 'error' },
-        // TODO remove this flag once testing against v3 test deployment
-        skipErc165Check: true
+        loggerConfiguration: { logLevel: 'error' }
       }
       tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
         config: gsnConfig,
@@ -293,9 +283,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         await skipWithoutFork(this)
         const gsnConfig: Partial<GSNConfig> = {
           paymasterAddress: permitPaymaster.address,
-          loggerConfiguration: { logLevel: 'error' },
-          // TODO remove this flag once testing against v3 test deployment
-          skipErc165Check: true
+          loggerConfiguration: { logLevel: 'error' }
         }
         tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
           config: gsnConfig,
@@ -311,9 +299,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         await skipWithoutFork(this)
         const gsnConfig: Partial<GSNConfig> = {
           paymasterAddress: permitPaymaster.address,
-          loggerConfiguration: { logLevel: 'error' },
-          // TODO remove this flag once testing against v3 test deployment
-          skipErc165Check: true
+          loggerConfiguration: { logLevel: 'error' }
         }
         tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
           config: gsnConfig,
@@ -329,9 +315,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
         await skipWithoutFork(this)
         const gsnConfig: Partial<GSNConfig> = {
           paymasterAddress: permitPaymaster.address,
-          loggerConfiguration: { logLevel: 'error' },
-          // TODO remove this flag once testing against v3 test deployment
-          skipErc165Check: true
+          loggerConfiguration: { logLevel: 'error' }
         }
         tokenPaymasterProvider = TokenPaymasterProvider.newProvider({
           config: gsnConfig,
@@ -376,11 +360,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       gsnConfig = {
         paymasterAddress: permitPaymaster.address,
         loggerConfiguration: { logLevel: 'error' },
-        // tokenAddress: UNI_CONTRACT_ADDRESS,
-        // methodSuffix: '',
-        jsonStringifyRequest: false,
-        // TODO remove this flag once testing against v3 test deployment
-        skipErc165Check: true
+        jsonStringifyRequest: false
       }
 
       await testToken.mint(stake, { from: owner })

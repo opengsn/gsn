@@ -22,18 +22,19 @@ import {
   RelayMetadata,
   RelayRequest,
   RelayTransactionRequest,
+  TokenDomainSeparators,
   VersionsManager,
   asRelayCallAbi,
   constants,
   decodeRevertReason,
-  getPaymasterAddress,
+  getPaymasterAddressByTypeAndChain,
   getRelayRequestID,
   gsnRequiredVersion,
   gsnRuntimeVersion,
   removeNullValues,
   toBN,
   toHex,
-  wrapWeb3JsProvider, TokenDomainSeparators
+  wrapWeb3JsProvider
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'
@@ -142,10 +143,6 @@ export class RelayClient {
   async _initInternal (): Promise<void> {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
-    // if (useTokenPaymaster && this.config.tokenPaymasterAddress !== '') {
-    //   this.logger.debug(`Using token paymaster ${this.config.tokenPaymasterAddress}`)
-    //   this.config.paymasterAddress = this.config.tokenPaymasterAddress
-    // }
     this.dependencies = await this._resolveDependencies({
       config: this.config,
       provider: this.getUnderlyingProvider(),
@@ -645,8 +642,7 @@ export class RelayClient {
     const versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion)
     const network = await provider.getNetwork()
     const chainId = parseInt(network.chainId.toString())
-    // resolve paymaster address from enum type if needed
-    const paymasterAddress = getPaymasterAddress(config?.paymasterAddress as any, chainId) ?? config?.paymasterAddress
+    const paymasterAddress = getPaymasterAddressByTypeAndChain(config?.paymasterAddress, chainId)
     const contractInteractor = overrideDependencies?.contractInteractor ??
       await new ContractInteractor({
         provider,

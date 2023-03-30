@@ -128,11 +128,16 @@ export function getTokenBySymbol (symbol: SupportedTokenSymbols, chainId: number
     ?.address
 }
 
-export function getPaymasterAddress (paymasterType: PaymasterType, chainId: number): Address | undefined {
+export function getPaymasterAddressByTypeAndChain (paymasterType: PaymasterType | Address | undefined, chainId: number): Address {
+  if (paymasterType == null) {
+    throw new Error('Configured paymaster address or type is undefined!')
+  }
+  if (typeof paymasterType === 'string') {
+    return paymasterType
+  }
   const paymasterAddress = OfficialPaymasterDeployments[chainId]?.[paymasterType]?.address
-  // noinspection PointlessBooleanExpressionJS
-  if (typeof paymasterType === 'number' && paymasterType == null) {
-    throw new Error(`Paymaster type ${paymasterType as string} has no known official deployed on chain ${chainId} as of publishing ver. ${gsnRuntimeVersion}`)
+  if (paymasterAddress == null) {
+    throw new Error(`Paymaster type ${PaymasterType[paymasterType]}(${paymasterType}) has no known official deployed on chain ${chainId} as of publishing ver. ${gsnRuntimeVersion}`)
   }
   return paymasterAddress
 }
