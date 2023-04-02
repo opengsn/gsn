@@ -581,12 +581,14 @@ export class RelayClient {
       ...configFromServer.tokenPaymasterDomainSeparators,
       ...config.tokenPaymasterDomainSeparators
     }
-    return {
+    const resolvedConfig = {
       ...defaultGsnConfig,
       ...configFromServer,
       ...removeNullValues(config),
       ...{ tokenPaymasterDomainSeparators }
     }
+    this.logger.debug(`Fully resolved GSN configuration: ${JSON.stringify(resolvedConfig)}`)
+    return resolvedConfig
   }
 
   async _resolveVerifyingPaymasterAddress (verifierUrl: string, chainId: number): Promise<Address> {

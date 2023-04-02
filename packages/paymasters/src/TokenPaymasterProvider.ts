@@ -1,4 +1,4 @@
-import { PrefixedHexString, toChecksumAddress, isValidChecksumAddress } from 'ethereumjs-util'
+import { PrefixedHexString, isValidAddress } from 'ethereumjs-util'
 
 import {
   GSNUnresolvedConstructorInput,
@@ -147,8 +147,8 @@ export class TokenPaymasterProvider extends RelayProvider {
 
   async setToken (permitERC20TokenForGas: Address | SupportedTokenSymbols): Promise<void> {
     const chainId = this.origProvider.network.chainId
-    const tokenAddress = getTokenBySymbol(permitERC20TokenForGas as any, chainId) ?? toChecksumAddress(permitERC20TokenForGas.toString())
-    if (tokenAddress == null || !isValidChecksumAddress(tokenAddress)) {
+    const tokenAddress = getTokenBySymbol(permitERC20TokenForGas as any, chainId) ?? permitERC20TokenForGas.toString().toLowerCase()
+    if (tokenAddress == null || !isValidAddress(tokenAddress)) {
       throw new Error(`Unable to find token with name/address ${permitERC20TokenForGas} on chainId ${chainId}`)
     }
 
