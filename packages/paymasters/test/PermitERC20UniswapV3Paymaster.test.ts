@@ -1,5 +1,6 @@
 import BN from 'bn.js'
 import { toBN, toWei } from 'web3-utils'
+import { toChecksumAddress } from 'ethereumjs-util'
 import {
   IChainlinkOracleInstance,
   IERC20MetadataInstance,
@@ -750,8 +751,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           expectEvent(res, 'TokensCharged')
 
           expectEvent(res, 'UniswapReverted', {
-            tokenIn: DAI_CONTRACT_ADDRESS,
-            tokenOut: WETH9_CONTRACT_ADDRESS,
+            tokenIn: toChecksumAddress(DAI_CONTRACT_ADDRESS),
+            tokenOut: toChecksumAddress(WETH9_CONTRACT_ADDRESS),
             amountIn: expectedDaiAmountIn.toString(),
             amountOutMin: expectedWethAmountOutMin
           })

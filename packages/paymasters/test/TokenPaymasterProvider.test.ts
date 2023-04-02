@@ -199,7 +199,7 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       })
       await tokenPaymasterProvider.init(USDC_CONTRACT_ADDRESS)
       const promise = tokenPaymasterProvider.setToken(owner)
-      await expect(promise).to.be.eventually.rejectedWith(`token ${owner} reported as not supported by paymaster ${permitPaymaster.address}`)
+      await expect(promise).to.be.eventually.rejectedWith(`token ${owner.toLowerCase()} reported as not supported by paymaster ${permitPaymaster.address}`)
     })
 
     it('should be able to change used token', async function () {
