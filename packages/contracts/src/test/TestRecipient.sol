@@ -86,4 +86,11 @@ contract TestRecipient is ERC2771Recipient {
         require(!doRevert);
     }
 
+    function withdrawFromSingletonWhitelistPaymaster(address payable singletonPaymaster) public {
+        TestRecipient(singletonPaymaster).withdrawBalance(1);
+    }
+
+    // only here for one method sig
+    // solhint-disable-next-line no-empty-blocks
+    function withdrawBalance(uint256 amount) public {}
 }
