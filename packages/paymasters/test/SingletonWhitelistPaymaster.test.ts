@@ -135,7 +135,7 @@ contract('SingletonWhitelistPaymaster',
 
         // adding configuration to pass the initial check
         await pm.whitelistSenders([from, from2], true, { from: owner1 })
-        await pm.setConfiguration(true, false, false, { from: owner1 })
+        await pm.setDappConfiguration(true, false, false, { from: owner1 })
         // TODO: this is lazy. Build the call to 'preRelayedCall' manually to control the inputs!
         await expectRevert(testRecipient1.emitMessageNoParams({ from }), 'insufficient balance for charge')
       })
@@ -182,7 +182,7 @@ contract('SingletonWhitelistPaymaster',
       it('should not allow dapp owner to withdraw during the relaying', async function () {
         // adding configuration to pass the initial check
         await pm.whitelistSenders([from, from2], true, { from: owner1 })
-        await pm.setConfiguration(true, false, false, { from: owner1 })
+        await pm.setDappConfiguration(true, false, false, { from: owner1 })
         await web3.eth.sendTransaction({ from: owner1, to: pm.address, value: 1e18 })
 
         await expectRevert(
@@ -233,7 +233,7 @@ contract('SingletonWhitelistPaymaster',
       before(async () => {
         await web3.eth.sendTransaction({ from: owner1, to: pm.address, value: 1e18 })
         await pm.whitelistSenders([from, from2], true, { from: owner1 })
-        await pm.setConfiguration(true, false, false, { from: owner1 })
+        await pm.setDappConfiguration(true, false, false, { from: owner1 })
       })
 
       it('should allow whitelisted sender, charge the dapp owner for gas and a paymaster fee', async () => {
