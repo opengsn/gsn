@@ -14,7 +14,7 @@ import "@opengsn/contracts/src/BasePaymaster.sol";
 /// - if at least one target is whitelisted, then ONLY whitelisted targets are allowed.
 contract SingletonWhitelistPaymaster is BasePaymaster {
 
-    struct TargetConfiguration {
+    struct DappInformation {
         uint256 balance;
         bool useSenderWhitelist;
         bool useTargetWhitelist;
@@ -30,17 +30,17 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
 
     event Received(address sender, uint256 amount, uint256 balance);
     event SharedConfigChanged(uint256 gasUsedByPost, uint256 paymasterFee);
+    event DappConfigChanged(address indexed dappOwner, bool useSenderWhitelist, bool useTargetWhitelist, bool useMethodWhitelist);
     event PostRelayedCall(address indexed dappOwner, uint256 gasUseWithoutPost, uint256 totalCharge, uint256 paymasterCharge);
 
-    // TODO: rename, this is dapp configuration!
-    mapping(address => TargetConfiguration) public relayingTargets;
+    mapping(address => DappInformation) public registeredDapps;
     uint256 public gasUsedByPost;
     uint256 public paymasterFee;
 
-    // Custom reentrancy guard as we want to cover 3 methods '_preRelayedCall', 'withdrawBalance' and '_postRelayedCall'
-    uint256 private constant _NOT_ENTERED = 1;
-    uint256 private constant _ENTERED = 2;
-    uint256 private _status = _NOT_ENTERED;
+    // Custom reentrancy guard as we want to cover 3 methods: 'preRelayedCall', 'withdrawBalance' and 'postRelayedCall'
+    uint256 private constant NOT_ENTERED = 1;
+    uint256 private constant ENTERED = 2;
+    uint256 private status = NOT_ENTERED;
 
     function versionPaymaster() external view override virtual returns (string memory){
         return "3.0.0-beta.3+opengsn.singleton-whitelist.ipaymaster";
@@ -49,7 +49,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
     function whitelistSenders(address[] memory senders, bool isAllowed) external {
         address dappOwner = msg.sender;
         for (uint i = 0; i < senders.length; i++) {
-            relayingTargets[dappOwner].senderWhitelist[senders[i]] = isAllowed;
+            registeredDapps[dappOwner].senderWhitelist[senders[i]] = isAllowed;
         }
         emit WhitelistedSenders(dappOwner, senders.length);
     }
@@ -57,7 +57,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
     function whitelistTargets(address[] memory targets, bool isAllowed) external {
         address dappOwner = msg.sender;
         for (uint i = 0; i < targets.length; i++) {
-            relayingTargets[dappOwner].targetWhitelist[targets[i]] = isAllowed;
+            registeredDapps[dappOwner].targetWhitelist[targets[i]] = isAllowed;
         }
         emit WhitelistedTargets(dappOwner, targets.length);
     }
@@ -65,7 +65,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
     function whitelistMethodsForTarget(address target, bytes4[] memory methods, bool isAllowed) external {
         address dappOwner = msg.sender;
         for (uint i = 0; i < methods.length; i++) {
-            relayingTargets[dappOwner].methodWhitelist[target][methods[i]] = isAllowed;
+            registeredDapps[dappOwner].methodWhitelist[target][methods[i]] = isAllowed;
         }
         emit WhitelistedMethodsForTarget(dappOwner, target, methods.length);
     }
@@ -76,14 +76,16 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
         emit SharedConfigChanged(gasUsedByPost, paymasterFee);
     }
 
-    function setConfiguration(
+    function setDappConfiguration(
         bool _useSenderWhitelist,
         bool _useTargetWhitelist,
         bool _useMethodWhitelist
     ) external {
-        relayingTargets[msg.sender].useSenderWhitelist = _useSenderWhitelist;
-        relayingTargets[msg.sender].useTargetWhitelist = _useTargetWhitelist;
-        relayingTargets[msg.sender].useMethodWhitelist = _useMethodWhitelist;
+        DappInformation storage dappInfo = registeredDapps[msg.sender];
+        dappInfo.useSenderWhitelist = _useSenderWhitelist;
+        dappInfo.useTargetWhitelist = _useTargetWhitelist;
+        dappInfo.useMethodWhitelist = _useMethodWhitelist;
+        emit DappConfigChanged(msg.sender, _useSenderWhitelist, _useTargetWhitelist, _useMethodWhitelist);
     }
 
     function _verifyPaymasterData(GsnTypes.RelayRequest calldata relayRequest) internal virtual override view {
@@ -101,10 +103,9 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
     virtual
     returns (bytes memory context, bool revertOnRecipientRevert) {
         (signature, approvalData, maxPossibleGas);
-        // Any calls to nonReentrant after this point will fail
-        _status = _ENTERED;
+        status = ENTERED;
         address dappOwner = abi.decode(relayRequest.relayData.paymasterData, (address));
-        TargetConfiguration storage targetConfiguration = relayingTargets[dappOwner];
+        DappInformation storage targetConfiguration = registeredDapps[dappOwner];
         if (!(targetConfiguration.useSenderWhitelist
         || targetConfiguration.useTargetWhitelist
         || targetConfiguration.useMethodWhitelist)
@@ -114,7 +115,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
 
         uint256 maxPossibleCharge = relayHub.calculateCharge(maxPossibleGas, relayRequest.relayData);
         uint256 totalMaxPossibleCharge = addPaymasterFee(maxPossibleCharge);
-        require(relayingTargets[dappOwner].balance >= totalMaxPossibleCharge, "insufficient balance for charge");
+        require(registeredDapps[dappOwner].balance >= totalMaxPossibleCharge, "insufficient balance for charge");
 
         if (targetConfiguration.useSenderWhitelist) {
             address sender = relayRequest.request.from;
@@ -141,7 +142,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
     view
     returns (bool)
     {
-        return relayingTargets[dappOwner].senderWhitelist[sender];
+        return registeredDapps[dappOwner].senderWhitelist[sender];
     }
 
     function isTargetWhitelistedForDappOwner(
@@ -152,7 +153,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
     view
     returns (bool)
     {
-        return relayingTargets[dappOwner].targetWhitelist[target];
+        return registeredDapps[dappOwner].targetWhitelist[target];
     }
 
     function isMethodWhitelistedForTargetAndDappOwner(
@@ -164,7 +165,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
     view
     returns (bool)
     {
-        return relayingTargets[dappOwner].methodWhitelist[target][method];
+        return registeredDapps[dappOwner].methodWhitelist[target][method];
     }
 
     function _postRelayedCall(
@@ -177,18 +178,16 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
     override
     virtual {
         (success);
+        status = NOT_ENTERED;
         address dappOwner = abi.decode(context, (address));
         uint256 gasUsed = gasUseWithoutPost + gasUsedByPost;
         uint256 actualCharge = relayHub.calculateCharge(gasUsed, relayData);
         uint256 totalCharge = addPaymasterFee(actualCharge);
         uint256 paymasterCharge = totalCharge - actualCharge;
-        require(relayingTargets[dappOwner].balance >= totalCharge, "insufficient balance for charge");
-        relayingTargets[dappOwner].balance -= totalCharge;
-        relayingTargets[owner()].balance += paymasterCharge;
+        require(registeredDapps[dappOwner].balance >= totalCharge, "insufficient balance for charge");
+        registeredDapps[dappOwner].balance -= totalCharge;
+        registeredDapps[owner()].balance += paymasterCharge;
         emit PostRelayedCall(dappOwner, gasUseWithoutPost, totalCharge, paymasterCharge);
-        // By storing the original value once again, a refund is triggered (see
-        // https://eips.ethereum.org/EIPS/eip-2200)
-        _status = _NOT_ENTERED;
     }
 
     // TODO: this is now a shared code. consider extracting to base / library.
@@ -198,16 +197,16 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
 
     receive() external override payable {
         require(address(relayHub) != address(0), "relay hub address not set");
-        relayingTargets[msg.sender].balance += msg.value;
+        registeredDapps[msg.sender].balance += msg.value;
         relayHub.depositFor{value : msg.value}(address(this));
-        emit Received(msg.sender, msg.value, relayingTargets[msg.sender].balance);
+        emit Received(msg.sender, msg.value, registeredDapps[msg.sender].balance);
     }
 
     function withdrawBalance(uint256 amount) external {
-        require(_status != _ENTERED, "withdrawBalance reentrant call");
+        require(status != ENTERED, "withdrawBalance reentrant call");
         require(address(relayHub) != address(0), "relay hub address not set");
-        require(relayingTargets[msg.sender].balance >= amount, "dapp owner balance insufficient");
-        relayingTargets[msg.sender].balance -= amount;
+        require(registeredDapps[msg.sender].balance >= amount, "dapp owner balance insufficient");
+        registeredDapps[msg.sender].balance -= amount;
         relayHub.withdraw(payable(msg.sender), amount);
     }
 }

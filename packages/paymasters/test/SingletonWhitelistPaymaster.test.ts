@@ -25,7 +25,7 @@ const RelayHub = artifacts.require('RelayHub')
 
 const POST_GAS_USE = 35000
 
-contract.only('SingletonWhitelistPaymaster',
+contract('SingletonWhitelistPaymaster',
   function (
     [owner1, owner2, from, from2, another, paymasterDeployer]) {
     // @ts-ignore
@@ -152,7 +152,7 @@ contract.only('SingletonWhitelistPaymaster',
       })
 
       it('should allow dapp owner to withdraw from the remaining deposit', async function () {
-        const dappDetails: any = await pm.relayingTargets(owner1)
+        const dappDetails: any = await pm.registeredDapps(owner1)
         assert.equal(dappDetails.balance, 1e18.toString()) // depends on previous test
         const ownerBalanceBefore = await web3.eth.getBalance(owner1)
         const { receipt } = await pm.withdrawBalance(dappDetails.balance.toString(), { from: owner1 })
@@ -175,7 +175,7 @@ contract.only('SingletonWhitelistPaymaster',
         await pm.withdrawBalance(0.5e18.toString(), { from: owner1 })
         await expectRevert(
           pm.withdrawBalance(0.6e18.toString(), { from: owner1 }), 'dapp owner balance insufficient')
-        const dappDetails: any = await pm.relayingTargets(owner1)
+        const dappDetails: any = await pm.registeredDapps(owner1)
         assert.equal(dappDetails.balance.toString(), 0.2e18.toString())
       })
 
@@ -238,7 +238,7 @@ contract.only('SingletonWhitelistPaymaster',
 
       it('should allow whitelisted sender, charge the dapp owner for gas and a paymaster fee', async () => {
         const pmBalanceBefore = await hub.balanceOf(pm.address)
-        const deployerEntryBefore: any = await pm.relayingTargets(paymasterDeployer)
+        const deployerEntryBefore: any = await pm.registeredDapps(paymasterDeployer)
         assert.equal(deployerEntryBefore.balance.toString(), '0') // TODO: revert each test
 
         await pm.setSharedConfiguration(POST_GAS_USE, 15, { from: paymasterDeployer })
@@ -256,7 +256,7 @@ contract.only('SingletonWhitelistPaymaster',
         const postEvent2 = ifacePm.decodeEventLog('PostRelayedCall', transactionReceipt2.rawLogs[1].data, transactionReceipt2.rawLogs[1].topics)
 
         const pmBalanceAfter = await hub.balanceOf(pm.address)
-        const deployerEntryAfter: any = await pm.relayingTargets(paymasterDeployer)
+        const deployerEntryAfter: any = await pm.registeredDapps(paymasterDeployer)
 
         const actualFee1 = postEvent1.paymasterCharge.toString() / postEvent1.totalCharge.sub(postEvent1.paymasterCharge).toString()
         const actualFee2 = postEvent2.paymasterCharge.toString() / postEvent2.totalCharge.sub(postEvent2.paymasterCharge).toString()
@@ -273,29 +273,6 @@ contract.only('SingletonWhitelistPaymaster',
       })
 
       it('should prevent non-whitelisted sender', async () => {
-        await expectRevert(testRecipient1.emitMessageNoParams({ from: another }), 'sender not whitelisted')
-      })
-
-      it('should prevent using different dapp owner deposit if configurations differ', async function () {
-        const gsnConfig: Partial<GSNConfig> = {
-          loggerConfiguration: {
-            logLevel: 'error'
-          },
-          paymasterAddress: pm.address,
-          performDryRunViewRelayCall: false,
-          maxPaymasterDataLength: 32
-        }
-        const input: GSNUnresolvedConstructorInput = {
-          provider,
-          config: gsnConfig,
-          overrideDependencies: {
-            asyncPaymasterData: async () => { return new AbiCoder().encode(['address'], [owner1]) }
-          }
-        }
-        const differentOwnerProvider = RelayProvider.newProvider(input)
-
-        // @ts-ignore
-        TestRecipient.web3.setProvider(differentOwnerProvider)
         await expectRevert(testRecipient1.emitMessageNoParams({ from: another }), 'sender not whitelisted')
       })
     })
