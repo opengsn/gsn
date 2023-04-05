@@ -1,3 +1,4 @@
+import { AbiCoder } from '@ethersproject/abi'
 import { EventEmitter } from 'events'
 import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
@@ -16,6 +17,7 @@ import {
   LoggerInterface,
   ObjectMap,
   PaymasterDataCallback,
+  PaymasterType,
   PingFilter,
   RelayCallABI,
   RelayInfo,
@@ -665,7 +667,7 @@ export class RelayClient {
     const pingFilter = overrideDependencies?.pingFilter ?? GasPricePingFilter
     const relayFilter = overrideDependencies?.relayFilter ?? DefaultRelayFilter
     const asyncApprovalData = await this._resolveVerifierApprovalDataCallback(config, httpWrapper, chainId, overrideDependencies?.asyncApprovalData)
-    const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
+    const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? this.resolveAsyncPaymasterCallback(config.paymasterAddress, config.dappOwner)
     const asyncSignTypedData = overrideDependencies?.asyncSignTypedData
     const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
     const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, this.logger, this.config)
@@ -783,6 +785,16 @@ export class RelayClient {
       }
       return new Error(`${message}: ${decodeRevertReason(acceptRelayCallResult.returnValue)}`)
     }
+  }
+
+  private resolveAsyncPaymasterCallback (
+    paymasterAddress: Address | PaymasterType | undefined,
+    dappOwner?: Address
+  ): PaymasterDataCallback {
+    if (dappOwner != null && paymasterAddress === PaymasterType.SingletonWhitelistPaymaster) {
+      return async () => { return new AbiCoder().encode(['address'], [dappOwner]) }
+    }
+    return EmptyDataCallback
   }
 }
 

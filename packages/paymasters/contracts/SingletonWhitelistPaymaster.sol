@@ -2,16 +2,14 @@
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
-// #if ENABLE_CONSOLE_LOG
-import "hardhat/console.sol";
-// #endif
-
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@opengsn/contracts/src/BasePaymaster.sol";
 
-/// A sample paymaster that has whitelists for senders, targets and methods.
-/// - if at least one sender is whitelisted, then ONLY whitelisted senders are allowed.
-/// - if at least one target is whitelisted, then ONLY whitelisted targets are allowed.
+/**
+ * This Paymaster allows the dapp owners to maintain a simple set of rules on-chain for their GSN integrations.
+ * Supports enabling specified target contracts (Recipients), senders and methods (per target) to be subsidized.
+ * Unlike 'VerifyingPaymaster' doesn't require any server-side code but also does not provide any additional protection.
+ */
 contract SingletonWhitelistPaymaster is BasePaymaster {
 
     struct DappInformation {

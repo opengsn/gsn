@@ -132,6 +132,11 @@ export interface GSNConfig {
   tokenPaymasterDomainSeparators: Record<Address, EIP712Domain>
 
   /**
+   * Field required by SingletonWhitelistPaymaster to select the dapp configuration
+   */
+  dappOwner?: Address
+
+  /**
    * If set to 'true' the Relay will not perform an ERC-165 interfaces check on the GSN contracts.
    */
   skipErc165Check: boolean

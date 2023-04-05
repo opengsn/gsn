@@ -22,7 +22,9 @@ export enum PaymasterType {
   TokenPaymasterLegacy,
   VerifyingPaymaster,
   /** not used */
-  WhitelistPaymaster
+  WhitelistPaymaster,
+  /** This Paymaster allows the dapp owners to maintain a simple set of rules on-chain for their GSN integrations. */
+  SingletonWhitelistPaymaster
 }
 
 export enum SupportedChains {
