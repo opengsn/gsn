@@ -4,7 +4,6 @@ import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { HttpProvider } from 'web3-core'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 import { TypedMessage } from '@metamask/eth-sig-util'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
@@ -27,6 +26,8 @@ import {
 } from '@opengsn/contracts/types/truffle-contracts'
 import {
   Address,
+  JsonRpcPayload,
+  JsonRpcResponse,
   RelayRequest,
   constants,
   defaultEnvironment,
