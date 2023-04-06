@@ -792,6 +792,8 @@ export class RelayClient {
     dappOwner?: Address
   ): PaymasterDataCallback {
     if (dappOwner != null && paymasterAddress === PaymasterType.SingletonWhitelistPaymaster) {
+      // TODO: refactor
+      this.config.maxPaymasterDataLength = 32
       return async () => { return new AbiCoder().encode(['address'], [dappOwner]) }
     }
     return EmptyDataCallback

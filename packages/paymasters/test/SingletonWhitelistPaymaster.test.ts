@@ -65,7 +65,6 @@ contract('SingletonWhitelistPaymaster',
         },
         gasPriceSlackPercent: 10000,
         paymasterAddress: pm.address,
-        performDryRunViewRelayCall: false,
         maxPaymasterDataLength: 32
       }
       const input: GSNUnresolvedConstructorInput = {
