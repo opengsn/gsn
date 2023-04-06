@@ -2,6 +2,7 @@ import { Contract as EthersContract } from 'ethers'
 
 import { JsonFragment, ParamType } from '@ethersproject/abi'
 import { JsonRpcProvider, JsonRpcSigner } from '@ethersproject/providers'
+import { constants } from './Constants'
 import { toBN } from './web3js/Web3JSUtils'
 
 function getComponent (key: string, components: readonly ParamType[]): JsonFragment | undefined {
@@ -71,8 +72,8 @@ export class Contract<T> {
   // is deployed at that address (and has that view function)
   async at (address: string): Promise<T> {
     // TODO: this is done to force cache the 'from' address to avoid Ethers making a call to 'eth_accounts' every time
-    const signerFromAddress = await this.signer.getAddress()
-    const addressAwareSigner = this.provider.getSigner(signerFromAddress)
+    // Note that signer does not control zero-address but will make view calls from it. Will see if this is a problem.
+    const addressAwareSigner = this.provider.getSigner(constants.ZERO_ADDRESS)
     const contract = this.createContract(address, addressAwareSigner)
     const obj = {
       address,
