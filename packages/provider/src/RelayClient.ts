@@ -9,6 +9,7 @@ import {
   AuditResponse,
   ContractInteractor,
   EIP1559Fees,
+  EIP712Domain,
   GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
@@ -21,10 +22,12 @@ import {
   RelayMetadata,
   RelayRequest,
   RelayTransactionRequest,
+  TokenDomainSeparators,
   VersionsManager,
   asRelayCallAbi,
   constants,
   decodeRevertReason,
+  getPaymasterAddressByTypeAndChain,
   getRelayRequestID,
   gsnRequiredVersion,
   gsnRuntimeVersion,
@@ -127,23 +130,19 @@ export class RelayClient {
     this.logger = rawConstructorInput.overrideDependencies?.logger ?? console
   }
 
-  async init (useTokenPaymaster = false): Promise<this> {
+  async init (): Promise<this> {
     if (this.initialized) {
       throw new Error('init() already called')
     }
-    this.initializingPromise = this._initInternal(useTokenPaymaster)
+    this.initializingPromise = this._initInternal()
     await this.initializingPromise
     this.initialized = true
     return this
   }
 
-  async _initInternal (useTokenPaymaster = false): Promise<void> {
+  async _initInternal (): Promise<void> {
     this.emit(new GsnInitEvent())
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
-    if (useTokenPaymaster && this.config.tokenPaymasterAddress !== '') {
-      this.logger.debug(`Using token paymaster ${this.config.tokenPaymasterAddress}`)
-      this.config.paymasterAddress = this.config.tokenPaymasterAddress
-    }
     this.dependencies = await this._resolveDependencies({
       config: this.config,
       provider: this.getUnderlyingProvider(),
@@ -566,7 +565,7 @@ export class RelayClient {
   async _resolveConfiguration ({
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
-    let configFromServer = {}
+    let configFromServer: Partial<GSNConfig> = {}
     const network = await this.getUnderlyingProvider().getNetwork()
     const chainId = network.chainId
     const useClientDefaultConfigUrl = config.useClientDefaultConfigUrl ?? defaultGsnConfig.useClientDefaultConfigUrl
@@ -575,11 +574,21 @@ export class RelayClient {
       configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.clientDefaultConfigUrl)
     }
     await this._resolveVerifierConfig(config, chainId)
-    return {
+
+    // EIP-712 Domain Separators are not so much config as extra info and should be merged
+    const tokenPaymasterDomainSeparators: { [address: Address]: EIP712Domain } = {
+      ...TokenDomainSeparators[chainId],
+      ...configFromServer.tokenPaymasterDomainSeparators,
+      ...config.tokenPaymasterDomainSeparators
+    }
+    const resolvedConfig = {
       ...defaultGsnConfig,
       ...configFromServer,
-      ...removeNullValues(config)
+      ...removeNullValues(config),
+      ...{ tokenPaymasterDomainSeparators }
     }
+    this.logger.debug(`Fully resolved GSN configuration: ${JSON.stringify(resolvedConfig)}`)
+    return resolvedConfig
   }
 
   async _resolveVerifyingPaymasterAddress (verifierUrl: string, chainId: number): Promise<Address> {
@@ -633,6 +642,9 @@ export class RelayClient {
     overrideDependencies?: Partial<GSNDependencies>
   }): Promise<GSNDependencies> {
     const versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion)
+    const network = await provider.getNetwork()
+    const chainId = parseInt(network.chainId.toString())
+    const paymasterAddress = getPaymasterAddressByTypeAndChain(config?.paymasterAddress, chainId)
     const contractInteractor = overrideDependencies?.contractInteractor ??
       await new ContractInteractor({
         provider,
@@ -643,9 +655,8 @@ export class RelayClient {
         environment: this.config.environment,
         domainSeparatorName: this.config.domainSeparatorName,
         calldataEstimationSlackFactor: this.config.calldataEstimationSlackFactor,
-        deployment: { paymasterAddress: config?.paymasterAddress }
+        deployment: { paymasterAddress: paymasterAddress as any }
       }).init()
-    const chainId = contractInteractor.chainId
     const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, chainId, this.config)
 
     // TODO: accept HttpWrapper as a dependency - calling 'new' here is breaking the init flow.

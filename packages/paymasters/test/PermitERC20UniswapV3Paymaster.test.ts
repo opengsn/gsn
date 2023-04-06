@@ -1,5 +1,6 @@
 import BN from 'bn.js'
 import { toBN, toWei } from 'web3-utils'
+import { toChecksumAddress } from 'ethereumjs-util'
 import {
   IChainlinkOracleInstance,
   IERC20MetadataInstance,
@@ -20,22 +21,28 @@ import {
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
-import { constants, RelayRequest, removeHexPrefix, wrapWeb3JsProvider } from '@opengsn/common/dist'
+import {
+  DAI_CONTRACT_ADDRESS,
+  RelayRequest,
+  UNI_CONTRACT_ADDRESS,
+  USDC_CONTRACT_ADDRESS,
+  WETH9_CONTRACT_ADDRESS,
+  constants,
+  removeHexPrefix,
+  wrapWeb3JsProvider
+} from '@opengsn/common'
+
 import {
   PERMIT_SIGNATURE_DAI,
   PERMIT_SIGNATURE_EIP2612,
   CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_USDC_ETH_FEED_CONTRACT_ADDRESS,
-  DAI_CONTRACT_ADDRESS,
   GSN_FORWARDER_CONTRACT_ADDRESS,
   SWAP_ROUTER_CONTRACT_ADDRESS,
-  UNI_CONTRACT_ADDRESS,
   UNISWAP_V3_DAI_WETH_2_POOL_CONTRACT_ADDRESS,
   UNISWAP_V3_QUOTER_CONTRACT_ADDRESS,
   UNISWAP_V3_USDC_WETH_POOL_CONTRACT_ADDRESS,
-  USDC_CONTRACT_ADDRESS,
-  WETH9_CONTRACT_ADDRESS,
   DAI_ETH_POOL_FEE,
   GAS_USED_BY_POST,
   MIN_HUB_BALANCE, MIN_SWAP_AMOUNT,
@@ -100,7 +107,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
       this.skip()
     }
     await impersonateAccount(MAJOR_DAI_AND_UNI_HOLDER)
-    sampleRecipient = await SampleRecipient.new()
+    sampleRecipient = await SampleRecipient.new({ gasPrice: 22e9 })
     await sampleRecipient.setForwarder(GSN_FORWARDER_CONTRACT_ADDRESS)
     quoter = await IQuoter.at(UNISWAP_V3_QUOTER_CONTRACT_ADDRESS)
     daiPermittableToken = await PermitInterfaceDAI.at(DAI_CONTRACT_ADDRESS)
@@ -744,8 +751,8 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           expectEvent(res, 'TokensCharged')
 
           expectEvent(res, 'UniswapReverted', {
-            tokenIn: DAI_CONTRACT_ADDRESS,
-            tokenOut: WETH9_CONTRACT_ADDRESS,
+            tokenIn: toChecksumAddress(DAI_CONTRACT_ADDRESS),
+            tokenOut: toChecksumAddress(WETH9_CONTRACT_ADDRESS),
             amountIn: expectedDaiAmountIn.toString(),
             amountOutMin: expectedWethAmountOutMin
           })

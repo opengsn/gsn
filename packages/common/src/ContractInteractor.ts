@@ -286,7 +286,7 @@ export class ContractInteractor {
       return
     }
 
-    if (this.deployment.paymasterAddress != null) {
+    if (this.deployment.paymasterAddress != null && this.deployment.paymasterAddress !== '') {
       await this._resolveDeploymentFromPaymaster(this.deployment.paymasterAddress)
     } else if (this.deployment.relayHubAddress != null) {
       if (!await this.isContractDeployed(this.deployment.relayHubAddress)) {
@@ -403,7 +403,7 @@ export class ContractInteractor {
     if (this.relayRegistrar == null && this.deployment.relayRegistrarAddress != null) {
       this.relayRegistrar = await this._createRelayRegistrar(this.deployment.relayRegistrarAddress)
     }
-    if (this.paymasterInstance == null && this.deployment.paymasterAddress != null) {
+    if (this.paymasterInstance == null && this.deployment.paymasterAddress != null && this.deployment.paymasterAddress !== '') {
       this.paymasterInstance = await this._createPaymaster(this.deployment.paymasterAddress)
     }
     if (this.deployment.forwarderAddress != null) {

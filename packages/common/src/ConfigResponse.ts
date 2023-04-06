@@ -3,6 +3,7 @@ import {
   IntString,
   NpmLogLevel
 } from './types/Aliases'
+import { PaymasterType } from './environments/OfficialPaymasterDeployments'
 import { Environment } from './environments/Environments'
 import { EIP712Domain } from './EIP712/TypedRequestData'
 
@@ -121,18 +122,13 @@ export interface GSNConfig {
   maxRelayNonceGap: number
 
   /**
-   * The address of the Payamster contract to be used.
+   * The address or type of the Paymaster contract to be used.
    */
-  paymasterAddress?: Address
+  paymasterAddress: Address | PaymasterType
 
   /**
-  * The address of the token paymaster contract used by TokenPaymasterProvider
-  */
-  tokenPaymasterAddress: Address
-
-  /**
-  * Fields required by TokenPaymasterProvider for the supported tokens
-  */
+   * Fields required by TokenPaymasterProvider for the supported tokens
+   */
   tokenPaymasterDomainSeparators: Record<Address, EIP712Domain>
 
   /**

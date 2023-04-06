@@ -90,8 +90,8 @@ export class RelayProvider {
     })
   }
 
-  async init (useTokenPaymaster = false): Promise<this> {
-    await this.relayClient.init(useTokenPaymaster)
+  async init (): Promise<this> {
+    await this.relayClient.init()
     this.config = this.relayClient.config
     this.asyncSignTypedData = this.relayClient.dependencies.asyncSignTypedData
     this.logger.info(`Created new RelayProvider ver.${gsnRuntimeVersion}`)
