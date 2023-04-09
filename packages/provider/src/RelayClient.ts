@@ -1,5 +1,6 @@
+import { AbiCoder } from '@ethersproject/abi'
 import { EventEmitter } from 'events'
-import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
+import { ExternalProvider, JsonRpcProvider } from '@ethersproject/providers'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 
@@ -16,6 +17,7 @@ import {
   LoggerInterface,
   ObjectMap,
   PaymasterDataCallback,
+  PaymasterType,
   PingFilter,
   RelayCallABI,
   RelayInfo,
@@ -41,9 +43,9 @@ import { AccountKeypair, AccountManager } from './AccountManager'
 import { DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
 import {
+  createVerifierApprovalDataCallback,
   DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH,
-  DEFAULT_VERIFIER_SERVER_URL,
-  createVerifierApprovalDataCallback
+  DEFAULT_VERIFIER_SERVER_URL
 } from './VerifierUtils'
 import { isTransactionValid, RelayedTransactionValidator } from './RelayedTransactionValidator'
 import { defaultGsnConfig, GSNConfig, GSNDependencies } from './GSNConfigurator'
@@ -613,7 +615,13 @@ export class RelayClient {
     }
     config.verifierServerUrl = config.verifierServerUrl ?? DEFAULT_VERIFIER_SERVER_URL
     this.logger.info(`Verifier server API Key is set - setting verifierServerUrl to ${config.verifierServerUrl}`)
-    if (config.paymasterAddress == null) {
+
+    // TODO: fetching Verifier Paymaster flow contradicts 'OfficialPaymasterDeployments' flow - choose one
+    if (
+      config.paymasterAddress == null ||
+      config.paymasterAddress === '' ||
+      config.paymasterAddress === PaymasterType.VerifyingPaymaster.valueOf()
+    ) {
       config.paymasterAddress = await this._resolveVerifyingPaymasterAddress(config.verifierServerUrl, chainId)
     }
   }
@@ -644,7 +652,7 @@ export class RelayClient {
     const versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion)
     const network = await provider.getNetwork()
     const chainId = parseInt(network.chainId.toString())
-    const paymasterAddress = getPaymasterAddressByTypeAndChain(config?.paymasterAddress, chainId)
+    const paymasterAddress = getPaymasterAddressByTypeAndChain(config?.paymasterAddress, chainId, this.logger)
     const contractInteractor = overrideDependencies?.contractInteractor ??
       await new ContractInteractor({
         provider,
@@ -665,7 +673,7 @@ export class RelayClient {
     const pingFilter = overrideDependencies?.pingFilter ?? GasPricePingFilter
     const relayFilter = overrideDependencies?.relayFilter ?? DefaultRelayFilter
     const asyncApprovalData = await this._resolveVerifierApprovalDataCallback(config, httpWrapper, chainId, overrideDependencies?.asyncApprovalData)
-    const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? EmptyDataCallback
+    const asyncPaymasterData = overrideDependencies?.asyncPaymasterData ?? this.resolveAsyncPaymasterCallback(config.paymasterAddress, config.dappOwner)
     const asyncSignTypedData = overrideDependencies?.asyncSignTypedData
     const knownRelaysManager = overrideDependencies?.knownRelaysManager ?? new KnownRelaysManager(contractInteractor, this.logger, this.config, relayFilter)
     const transactionValidator = overrideDependencies?.transactionValidator ?? new RelayedTransactionValidator(contractInteractor, this.logger, this.config)
@@ -783,6 +791,18 @@ export class RelayClient {
       }
       return new Error(`${message}: ${decodeRevertReason(acceptRelayCallResult.returnValue)}`)
     }
+  }
+
+  private resolveAsyncPaymasterCallback (
+    paymasterAddress: Address | PaymasterType | undefined,
+    dappOwner?: Address
+  ): PaymasterDataCallback {
+    if (dappOwner != null && paymasterAddress === PaymasterType.SingletonWhitelistPaymaster) {
+      // TODO: refactor
+      this.config.maxPaymasterDataLength = 32
+      return async () => { return new AbiCoder().encode(['address'], [dappOwner]) }
+    }
+    return EmptyDataCallback
   }
 }
 

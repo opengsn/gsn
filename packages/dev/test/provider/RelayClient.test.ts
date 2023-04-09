@@ -1,6 +1,5 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
-import { Transaction, FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
 import Web3 from 'web3'
 import axios from 'axios'
 import chai from 'chai'
@@ -9,19 +8,20 @@ import express from 'express'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { ChildProcessWithoutNullStreams } from 'child_process'
-import { PrefixedHexString, toBuffer, bufferToHex } from 'ethereumjs-util'
+import { ExternalProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
+import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
+import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { toBN, toHex } from 'web3-utils'
-import { StaticJsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 
 import {
-  RelayHubInstance,
   ForwarderInstance,
   PenalizerInstance,
-  TestTokenInstance,
+  RelayHubInstance,
   StakeManagerInstance,
+  TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance,
   TestRecipientWithoutFallbackInstance,
-  TestPaymasterEverythingAcceptedInstance
+  TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 
 import {
@@ -34,20 +34,22 @@ import {
   LoggerConfiguration,
   LoggerInterface,
   ObjectMap,
+  PaymasterType,
   PingResponse,
+  RegistrarRelayInfo,
   RelayInfo,
   RelayRequest,
   RelayTransactionRequest,
   constants,
   defaultEnvironment,
   getRawTxOptions,
-  splitRelayUrlForRegistrar, RegistrarRelayInfo
+  splitRelayUrlForRegistrar
 } from '@opengsn/common'
 import {
   _dumpRelayingResult,
+  EmptyDataCallback,
   GSNUnresolvedConstructorInput,
-  RelayClient,
-  EmptyDataCallback
+  RelayClient
 } from '@opengsn/provider/dist/RelayClient'
 
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider'
@@ -1151,6 +1153,7 @@ contract('RelayClient', function (accounts) {
         sinon.stub(relayClient, '_resolveConfigurationFromServer').returns(Promise.resolve({}))
         const verifierServerApiKey = 'HELLO-SERVER'
         const config: Partial<GSNConfig> = {
+          paymasterAddress: PaymasterType.VerifyingPaymaster,
           verifierServerApiKey
         }
         const provider = relayClient.getUnderlyingProvider()
@@ -1167,7 +1170,7 @@ contract('RelayClient', function (accounts) {
           config
         })
         sandbox.restore()
-        assert.equal((resolvedConfig.paymasterAddress as string).length, 42)
+        assert.equal(resolvedConfig.paymasterAddress.length, 42)
         resolvedConfig.paymasterAddress = '' // no need to resolve deployment
         const resolvedDependencies = await relayClient._resolveDependencies({ provider, config: resolvedConfig })
         assert.equal(resolvedConfig.verifierServerApiKey, verifierServerApiKey)

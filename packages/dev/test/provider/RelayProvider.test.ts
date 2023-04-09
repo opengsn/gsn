@@ -136,6 +136,7 @@ contract('RelayProvider', function (accounts) {
     await paymasterInstance.setTrustedForwarder(forwarderAddress)
     await paymasterInstance.setRelayHub(relayHub.address)
     await paymasterInstance.deposit({ value: web3.utils.toWei('2', 'ether') })
+    config.paymasterAddress = paymaster
     await testToken.mint(stake, { from: accounts[1] })
     await testToken.approve(stakeManager.address, stake, { from: accounts[1] })
     relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
