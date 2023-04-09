@@ -60,7 +60,7 @@ export class Contract<T> {
   constructor (readonly contractName: string, readonly abi: JsonFragment[]) {
   }
 
-  createContract (address: string, signer: JsonRpcSigner): EthersContract {
+  createContract (address: string, signer?: JsonRpcSigner): EthersContract {
     const ethersContract = new EthersContract(address, this.abi)
     return ethersContract.connect(signer ?? this.provider)
   }
@@ -71,9 +71,15 @@ export class Contract<T> {
   // is deployed at that address (and has that view function)
   async at (address: string): Promise<T> {
     // TODO: this is done to force cache the 'from' address to avoid Ethers making a call to 'eth_accounts' every time
-    const signerFromAddress = await this.signer.getAddress()
-    const addressAwareSigner = this.provider.getSigner(signerFromAddress)
-    const contract = this.createContract(address, addressAwareSigner)
+    //  the 'getAddress' may throw if the underlying provider does not return addresses.
+    let signer: JsonRpcSigner | undefined
+    try {
+      const signerFromAddress = await this.signer.getAddress()
+      signer = this.provider.getSigner(signerFromAddress)
+    } catch (e: any) {
+      // nothing to do here - signer does not have accounts and can only work with ephemeral keys
+    }
+    const contract = this.createContract(address, signer)
     const obj = {
       address,
       contract,
