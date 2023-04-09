@@ -147,7 +147,7 @@ contract('SingletonWhitelistPaymaster',
         const received = ifacePm.decodeEventLog('Received', res.logs[1].data, res.logs[1].topics)
         assert.equal(deposited.amount.toString(), received.amount.toString())
         assert.equal(deposited.paymaster.toLowerCase(), pm.address.toLowerCase())
-        assert.equal(received.sender.toLowerCase(), owner1.toLowerCase())
+        assert.equal(received.dappOwner.toLowerCase(), owner1.toLowerCase())
       })
 
       it('should allow dapp owner to withdraw from the remaining deposit', async function () {
@@ -159,6 +159,11 @@ contract('SingletonWhitelistPaymaster',
         const ownerBalanceAfter = await web3.eth.getBalance(owner1)
         const expectedBalance = toBN(ownerBalanceBefore).add(dappDetails.balance).sub(txCost)
         assert.equal(ownerBalanceAfter, expectedBalance.toString())
+        const ifacePm = new Interface(pm.abi as any)
+        const withdrawn = ifacePm.decodeEventLog('Withdrawn', receipt.rawLogs[1].data, receipt.rawLogs[1].topics)
+        assert.equal(withdrawn.balance.toString(), '0')
+        assert.equal(withdrawn.amount.toString(), dappDetails.balance.toString())
+        assert.equal(withdrawn.dappOwner.toLowerCase(), owner1.toLowerCase())
       })
 
       it('should not allow dapp owner to withdraw more than available', async function () {

@@ -62,7 +62,11 @@ const underlyingProvider = new StaticJsonRpcProvider(currentProviderHost)
 const paymasterData = '0x'
 const clientId = '1'
 
-const config: Partial<GSNConfig> = { loggerConfiguration: { logLevel: 'error' }, skipErc165Check: true }
+const config: Partial<GSNConfig> = {
+  loggerConfiguration: { logLevel: 'error' },
+  skipErc165Check: true,
+  paymasterAddress: constants.ZERO_ADDRESS
+}
 
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {

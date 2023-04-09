@@ -25,7 +25,8 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
     event WhitelistedSenders(address indexed dappOwner, uint256 count);
     event WhitelistedMethodsForTarget(address indexed dappOwner, address indexed target, uint256 count);
 
-    event Received(address sender, uint256 amount, uint256 balance);
+    event Received(address dappOwner, uint256 amount, uint256 balance);
+    event Withdrawn(address dappOwner, uint256 amount, uint256 balance);
     event SharedConfigChanged(uint256 gasUsedByPost, uint256 paymasterFee);
     event DappConfigChanged(address indexed dappOwner, bool useSenderWhitelist, bool useTargetWhitelist, bool useMethodWhitelist);
     event PostRelayedCall(address indexed dappOwner, uint256 gasUseWithoutPost, uint256 totalCharge, uint256 paymasterCharge);
@@ -205,5 +206,6 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
         require(registeredDapps[msg.sender].balance >= amount, "dapp owner balance insufficient");
         registeredDapps[msg.sender].balance -= amount;
         relayHub.withdraw(payable(msg.sender), amount);
+        emit Withdrawn(msg.sender, amount, registeredDapps[msg.sender].balance);
     }
 }
