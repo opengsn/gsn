@@ -58,7 +58,7 @@ export class TokenPaymasterProvider extends RelayProvider {
     await super.init()
     const chainId = this.origProvider.network.chainId
 
-    const paymasterAddress = getPaymasterAddressByTypeAndChain(this.config?.paymasterAddress, chainId)
+    const paymasterAddress = getPaymasterAddressByTypeAndChain(this.config?.paymasterAddress, chainId, this.logger)
     this.tokenPaymasterInteractor = new TokenPaymasterInteractor(this.origProvider, paymasterAddress as any)
     await this.tokenPaymasterInteractor.init()
     this.relayClient.dependencies.asyncPaymasterData = this._buildPaymasterData.bind(this)

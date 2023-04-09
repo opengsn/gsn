@@ -2,6 +2,7 @@ import { isValidAddress } from 'ethereumjs-util'
 
 import { Address } from '../types/Aliases'
 import { EIP712Domain } from '../EIP712/TypedRequestData'
+import { LoggerInterface } from '../LoggerInterface'
 import { gsnRuntimeVersion } from '../Version'
 
 export enum PaymasterType {
@@ -201,7 +202,11 @@ export function getTokenBySymbol (symbol: SupportedTokenSymbols, chainId: number
     ?.toLowerCase()
 }
 
-export function getPaymasterAddressByTypeAndChain (paymasterType: PaymasterType | Address | undefined, chainId: number): Address {
+export function getPaymasterAddressByTypeAndChain (
+  paymasterType: PaymasterType | Address | undefined,
+  chainId: number,
+  logger: LoggerInterface
+): Address {
   if (paymasterType == null) {
     throw new Error('Configured paymaster address or type is undefined!')
   }
@@ -214,6 +219,14 @@ export function getPaymasterAddressByTypeAndChain (paymasterType: PaymasterType 
   const paymasterAddress = OfficialPaymasterDeployments[chainId]
     ?.[_paymasterType]
     ?.address
+
+  if (
+    paymasterType === PaymasterType.VerifyingPaymaster ||
+    paymasterType === ''
+  ) {
+    logger.info(`VerifyingPaymaster address is not yet known for chain ${chainId} and will be fetched from the Verifier Server`)
+    return ''
+  }
 
   if (paymasterAddress == null) {
     throw new Error(`Paymaster type ${PaymasterType[_paymasterType]}(${paymasterType}) has no known official deployed on chain ${chainId} as of publishing ver. ${gsnRuntimeVersion}`)
