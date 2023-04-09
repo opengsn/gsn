@@ -313,6 +313,15 @@ export class ContractInteractor {
           return version
         })
     ])
+
+    if (
+      isSameAddress(relayHubAddress, constants.ZERO_ADDRESS) ||
+      isSameAddress(forwarderAddress, constants.ZERO_ADDRESS)
+    ) {
+      throw new Error(
+        `RelayHub or Forwarder addresses on the provided Paymaster (${paymasterAddress}) are not set. Please set them (for BasePaymaster subclasses use 'setRelayHub' and 'setTrustedForwarder' methods) first and try again.`)
+    }
+
     this.deployment.relayHubAddress = relayHubAddress
     this.deployment.forwarderAddress = forwarderAddress
     this.paymasterVersion = paymasterVersion

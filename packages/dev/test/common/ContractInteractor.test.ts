@@ -6,12 +6,14 @@ import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { BigNumber } from '@ethersproject/bignumber'
 import { PastEventOptions } from 'web3-eth-contract'
 import {
+  ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
+  TestDecimalsTokenInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
-  TestTokenInstance,
-  TestDecimalsTokenInstance, TestRelayHubForRegistrarInstance
+  TestRelayHubForRegistrarInstance,
+  TestTokenInstance
 } from '@opengsn/contracts/types/truffle-contracts'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
 import {
@@ -73,6 +75,7 @@ contract('ContractInteractor', function (accounts) {
   let pen: PenalizerInstance
   let tt: TestTokenInstance
   let pm: TestPaymasterConfigurableMisbehaviorInstance
+  let fw: ForwarderInstance
 
   before(async () => {
     tt = await TestToken.new()
@@ -81,8 +84,10 @@ contract('ContractInteractor', function (accounts) {
       defaultEnvironment.penalizerConfiguration.penalizeBlockDelay,
       defaultEnvironment.penalizerConfiguration.penalizeBlockExpiration)
     rh = await deployHub(sm.address, pen.address, constants.ZERO_ADDRESS, tt.address, stake.toString())
+    fw = await Forwarder.new()
     pm = await TestPaymasterConfigurableMisbehavior.new()
     await pm.setRelayHub(rh.address)
+    await pm.setTrustedForwarder(fw.address)
     const mgrAddress = accounts[1]
 
     await tt.mint(stake)
