@@ -1,3 +1,5 @@
+import { isValidAddress } from 'ethereumjs-util'
+
 import { Address } from '../types/Aliases'
 import { EIP712Domain } from '../EIP712/TypedRequestData'
 import { gsnRuntimeVersion } from '../Version'
@@ -8,23 +10,28 @@ export enum PaymasterType {
    * This is only useful on testnets as it will be instantly drained on a mainnet.
    * This Paymaster may not have any balance so funding it with testnet Ether is up to you.
    */
-  AcceptEverythingPaymaster,
-  /** not used */
-  HashcashPaymaster,
+  AcceptEverythingPaymaster = 'AcceptEverythingPaymaster',
+
   /**
    * This Paymaster will use the EIP-2612 'permit' method to charge the user for the transaction.
    * The latest exchange rate on Chainlink Oracle will be used for price conversion.
    */
-  PermitERC20UniswapV3Paymaster,
-  /** not used */
-  SingleRecipientPaymaster,
-  /** not used */
-  TokenPaymasterLegacy,
-  VerifyingPaymaster,
-  /** not used */
-  WhitelistPaymaster,
+  PermitERC20UniswapV3Paymaster = 'PermitERC20UniswapV3Paymaster',
+
+  /** This Paymaster allows the dapp owners to co-sign the Relay Request off-chain */
+  VerifyingPaymaster = 'VerifyingPaymaster',
+
   /** This Paymaster allows the dapp owners to maintain a simple set of rules on-chain for their GSN integrations. */
-  SingletonWhitelistPaymaster
+  SingletonWhitelistPaymaster = 'SingletonWhitelistPaymaster',
+
+  /** not used */
+  SingleRecipientPaymaster = 'SingleRecipientPaymaster',
+  /** not used */
+  TokenPaymasterLegacy = 'TokenPaymasterLegacy',
+  /** not used */
+  WhitelistPaymaster = 'WhitelistPaymaster',
+  /** not used */
+  HashcashPaymaster = 'HashcashPaymaster'
 }
 
 export enum SupportedChains {
@@ -110,41 +117,46 @@ export const OfficialPaymasterDeployments: DeploymentObject = {
         supportedTokensERC20: {}
       }
   },
-  [SupportedChains.GOERLI_OPTIMISM]: [
-    {
-      type: PaymasterType.AcceptEverythingPaymaster,
-      address: ACCEPT_EVERYTHING_PAYMASTER_GOERLI_OPTIMISM,
-      supportedTokensERC20: {}
-    }
-  ],
-  [SupportedChains.AVALANCHE_FUJI_TESTNET]: [
-    {
-      type: PaymasterType.AcceptEverythingPaymaster,
-      address: ACCEPT_EVERYTHING_PAYMASTER_AVALANCHE_FUJI,
-      supportedTokensERC20: {}
-    }
-  ],
-  [SupportedChains.MUMBAI]: [
-    {
-      type: PaymasterType.AcceptEverythingPaymaster,
-      address: ACCEPT_EVERYTHING_PAYMASTER_MUMBAI,
-      supportedTokensERC20: {}
-    }
-  ],
-  [SupportedChains.GOERLI_ARBITRUM]: [
-    {
-      type: PaymasterType.AcceptEverythingPaymaster,
-      address: ACCEPT_EVERYTHING_PAYMASTER_GOERLI_ARBITRUM,
-      supportedTokensERC20: {}
-    }
-  ],
-  [SupportedChains.BSC_TESTNET]: [
-    {
-      type: PaymasterType.AcceptEverythingPaymaster,
-      address: ACCEPT_EVERYTHING_PAYMASTER_BSC_TESTNET,
-      supportedTokensERC20: {}
-    }
-  ]
+  [SupportedChains.GOERLI_OPTIMISM]: {
+    [PaymasterType.AcceptEverythingPaymaster]:
+      {
+        type: PaymasterType.AcceptEverythingPaymaster,
+        address: ACCEPT_EVERYTHING_PAYMASTER_GOERLI_OPTIMISM,
+        supportedTokensERC20: {}
+      }
+  },
+  [SupportedChains.AVALANCHE_FUJI_TESTNET]: {
+    [PaymasterType.AcceptEverythingPaymaster]:
+      {
+        type: PaymasterType.AcceptEverythingPaymaster,
+        address: ACCEPT_EVERYTHING_PAYMASTER_AVALANCHE_FUJI,
+        supportedTokensERC20: {}
+      }
+  },
+  [SupportedChains.MUMBAI]: {
+    [PaymasterType.AcceptEverythingPaymaster]:
+      {
+        type: PaymasterType.AcceptEverythingPaymaster,
+        address: ACCEPT_EVERYTHING_PAYMASTER_MUMBAI,
+        supportedTokensERC20: {}
+      }
+  },
+  [SupportedChains.GOERLI_ARBITRUM]: {
+    [PaymasterType.AcceptEverythingPaymaster]:
+      {
+        type: PaymasterType.AcceptEverythingPaymaster,
+        address: ACCEPT_EVERYTHING_PAYMASTER_GOERLI_ARBITRUM,
+        supportedTokensERC20: {}
+      }
+  },
+  [SupportedChains.BSC_TESTNET]: {
+    [PaymasterType.AcceptEverythingPaymaster]:
+      {
+        type: PaymasterType.AcceptEverythingPaymaster,
+        address: ACCEPT_EVERYTHING_PAYMASTER_BSC_TESTNET,
+        supportedTokensERC20: {}
+      }
+  }
 }
 
 /**
@@ -193,16 +205,18 @@ export function getPaymasterAddressByTypeAndChain (paymasterType: PaymasterType 
   if (paymasterType == null) {
     throw new Error('Configured paymaster address or type is undefined!')
   }
-  if (typeof paymasterType === 'string') {
+  if (isValidAddress(paymasterType)) {
     return paymasterType
   }
 
+  const _paymasterType = paymasterType as PaymasterType
+
   const paymasterAddress = OfficialPaymasterDeployments[chainId]
-    ?.[paymasterType]
+    ?.[_paymasterType]
     ?.address
 
   if (paymasterAddress == null) {
-    throw new Error(`Paymaster type ${PaymasterType[paymasterType]}(${paymasterType}) has no known official deployed on chain ${chainId} as of publishing ver. ${gsnRuntimeVersion}`)
+    throw new Error(`Paymaster type ${PaymasterType[_paymasterType]}(${paymasterType}) has no known official deployed on chain ${chainId} as of publishing ver. ${gsnRuntimeVersion}`)
   }
   return paymasterAddress
 }

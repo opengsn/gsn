@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@opengsn/contracts/src/BasePaymaster.sol";
 
 /**
@@ -195,8 +194,8 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
 
     receive() external override payable {
         require(address(relayHub) != address(0), "relay hub address not set");
-        registeredDapps[msg.sender].balance += msg.value;
         relayHub.depositFor{value : msg.value}(address(this));
+        registeredDapps[msg.sender].balance += msg.value;
         emit Received(msg.sender, msg.value, registeredDapps[msg.sender].balance);
     }
 
