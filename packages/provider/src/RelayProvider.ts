@@ -5,10 +5,12 @@ import abiDecoder from 'abi-decoder'
 import { BigNumber } from '@ethersproject/bignumber'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { TypedMessage } from '@metamask/eth-sig-util'
+import { JsonRpcProvider, TransactionReceipt, ExternalProvider } from '@ethersproject/providers'
 
 import {
   Address,
   EventData,
+  GSNConfig,
   GsnTransactionDetails,
   JsonRpcPayload,
   JsonRpcResponse,
@@ -25,9 +27,6 @@ import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import { AccountKeypair } from './AccountManager'
 import { GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from './RelayClient'
-import { GSNConfig } from './GSNConfigurator'
-
-import { JsonRpcProvider, TransactionReceipt } from '@ethersproject/providers'
 
 abiDecoder.addABI(relayHubAbi)
 
@@ -46,7 +45,7 @@ const TX_NOTFOUND = 'tx-notfound'
 
 const BLOCKS_FOR_LOOKUP = 5000
 
-export class RelayProvider {
+export class RelayProvider implements ExternalProvider {
   protected readonly origProvider: JsonRpcProvider
   private readonly _origProviderSend: (method: string, params: any[]) => Promise<any>
   private asyncSignTypedData?: SignTypedDataCallback
@@ -118,7 +117,7 @@ export class RelayProvider {
     })
   }
 
-  send (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+  send (payload: JsonRpcPayload | any, callback: JsonRpcCallback): void {
     if (this._useGSN(payload)) {
       if (payload.method === 'eth_sendTransaction') {
         // @ts-ignore

@@ -1,12 +1,12 @@
 import * as bip39 from 'ethereum-cryptography/bip39'
+
+import Web3 from 'web3'
 import commander from 'commander'
 import fs from 'fs'
-import Web3 from 'web3'
+import { PrefixedHexString } from 'ethereumjs-util'
+import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { hdkey as EthereumHDKey } from 'ethereumjs-wallet'
 import { toHex, toWei } from 'web3-utils'
-
-import { StaticJsonRpcProvider } from '@ethersproject/providers'
-
 import { HttpProvider } from 'web3-core'
 
 import {
@@ -15,11 +15,10 @@ import {
 } from '@opengsn/common'
 
 import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput, RelayProvider } from '@opengsn/provider'
+import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 
 import { getMnemonic, getNetworkUrl, gsnCommander } from '../utils'
 import { CommandsLogic } from '../CommandsLogic'
-import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
-import { PrefixedHexString } from 'ethereumjs-util'
 
 function commaSeparatedList (value: string, _dummyPrevious: string[]): string[] {
   return value.split(',')
