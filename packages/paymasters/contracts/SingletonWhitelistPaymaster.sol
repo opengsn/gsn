@@ -27,6 +27,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
 
     event Received(address dappOwner, uint256 amount, uint256 balance);
     event Withdrawn(address dappOwner, uint256 amount, uint256 balance);
+    event AdminOverrideWithdrawn(address destination, uint256 amount);
     event SharedConfigChanged(uint256 gasUsedByPost, uint256 paymasterFee);
     event DappConfigChanged(address indexed dappOwner, bool useSenderWhitelist, bool useTargetWhitelist, bool useMethodWhitelist);
     event PostRelayedCall(address indexed dappOwner, uint256 gasUseWithoutPost, uint256 totalCharge, uint256 paymasterCharge);
@@ -207,5 +208,13 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
         registeredDapps[msg.sender].balance -= amount;
         relayHub.withdraw(payable(msg.sender), amount);
         emit Withdrawn(msg.sender, amount, registeredDapps[msg.sender].balance);
+    }
+
+    /// @notice Allows the 'owner' of this Paymaster to extract funds from the RelayHub overriding the depositors.
+    /// @notice This is necessary in case there is a security vulnerability discovered.
+    /// @notice If 'totalCharge' calculation diverges from the RelayHub it would lead to funds being stuck as well.
+    function adminOverrideWithdraw(address destination, uint256 amount) external onlyOwner {
+        relayHub.withdraw(payable(destination), amount);
+        emit AdminOverrideWithdrawn(destination, amount);
     }
 }
