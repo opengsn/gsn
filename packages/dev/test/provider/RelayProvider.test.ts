@@ -62,11 +62,7 @@ const underlyingProvider = new StaticJsonRpcProvider(currentProviderHost)
 const paymasterData = '0x'
 const clientId = '1'
 
-const config: Partial<GSNConfig> = {
-  loggerConfiguration: { logLevel: 'error' },
-  skipErc165Check: true,
-  paymasterAddress: constants.ZERO_ADDRESS
-}
+const config: Partial<GSNConfig> = { loggerConfiguration: { logLevel: 'error' }, skipErc165Check: true }
 
 // TODO: once Utils.js is translated to TypeScript, move to Utils.ts
 export async function prepareTransaction (testRecipient: TestRecipientInstance, account: Address, relayWorker: Address, paymaster: Address, web3: Web3): Promise<{ relayRequest: RelayRequest, signature: string }> {
@@ -140,6 +136,7 @@ contract('RelayProvider', function (accounts) {
     await paymasterInstance.setTrustedForwarder(forwarderAddress)
     await paymasterInstance.setRelayHub(relayHub.address)
     await paymasterInstance.deposit({ value: web3.utils.toWei('2', 'ether') })
+    config.paymasterAddress = paymaster
     await testToken.mint(stake, { from: accounts[1] })
     await testToken.approve(stakeManager.address, stake, { from: accounts[1] })
     relayProcess = await startRelay(relayHub.address, testToken, stakeManager, {
