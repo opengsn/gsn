@@ -139,6 +139,14 @@ async function deploySingletonWhitelistPaymaster (
   await deploy(deployments, paymasterName, {
     from: deployer
   })
+  // TODO: read it from the file!
+  await deployments.execute(
+    paymasterName,
+    { from: deployer, log: true },
+    'setSharedConfiguration',
+    30000,
+    15
+  )
   await deployments.execute(
     paymasterName,
     { from: deployer, log: true },
