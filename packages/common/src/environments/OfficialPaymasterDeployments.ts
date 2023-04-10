@@ -83,6 +83,7 @@ export const WETH9_CONTRACT_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc
 
 const DAI_CONTRACT_ADDRESS_GOERLI = '0x11fe4b6ae13d2a6055c8d9cf65c55bac32b5d844'
 const PERMIT_ERC20_UNISWAP_V3_PAYMASTER_GOERLI_5 = '0xc7709b37c63e116cc973842ae902462580d76104'
+const SINGLETON_WHITELIST_PAYMASTER_GOERLI_5 = '0xfc9d2357570b0b2b87be4ac7461a082daaf19f4b'
 
 const ACCEPT_EVERYTHING_PAYMASTER_AVALANCHE_FUJI = '0x735719a8c5af199ea5b93207083787a5b548c0e2'
 const ACCEPT_EVERYTHING_PAYMASTER_BSC_TESTNET = '0x735719a8c5af199ea5b93207083787a5b548c0e2'
@@ -111,6 +112,11 @@ export const OfficialPaymasterDeployments: DeploymentObject = {
               }
           }
       },
+    [PaymasterType.SingletonWhitelistPaymaster]: {
+      type: PaymasterType.SingletonWhitelistPaymaster,
+      address: SINGLETON_WHITELIST_PAYMASTER_GOERLI_5,
+      supportedTokensERC20: {}
+    },
     [PaymasterType.AcceptEverythingPaymaster]:
       {
         type: PaymasterType.AcceptEverythingPaymaster,
