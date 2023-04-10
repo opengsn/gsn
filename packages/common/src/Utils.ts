@@ -34,6 +34,7 @@ import { ethers } from 'ethers'
 import { keccak256 } from 'ethers/lib/utils'
 import { RelayRequest } from './EIP712/RelayRequest'
 import { PartialRelayInfo } from './types/RelayInfo'
+import { LoggerInterface } from './LoggerInterface'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -494,17 +495,27 @@ export function adjustGasCostParameterUp (
  */
 export function adjustRelayRequestForPingResponse (
   feesIn: EIP1559Fees,
-  relayInfo: PartialRelayInfo
+  relayInfo: PartialRelayInfo,
+  logger: LoggerInterface
 ): RelaySelectionResult {
   const maxPriorityFeePerGas = adjustGasCostParameterUp(
     parseInt(feesIn.maxPriorityFeePerGas),
     parseInt(relayInfo.pingResponse.minMaxPriorityFeePerGas)
   )
 
-  const maxFeePerGas = adjustGasCostParameterUp(
+  let maxFeePerGas = adjustGasCostParameterUp(
     parseInt(feesIn.maxFeePerGas),
     parseInt(relayInfo.pingResponse.minMaxFeePerGas)
   )
+
+  if (maxPriorityFeePerGas.newValue > maxFeePerGas.newValue) {
+    logger.warn(`Attention: for relay ${relayInfo.relayInfo.relayUrl} had to adjust 'maxFeePerGas' to be equal 'maxPriorityFeePerGas' (from ${maxFeePerGas.newValue} to ${maxPriorityFeePerGas.newValue}) to avoid RPC error.`)
+    // reusing 'adjustGasCostParameterUp' but with new priority fee as minimum to get correct 'deltaPercent' calculation for the sorting
+    maxFeePerGas = adjustGasCostParameterUp(
+      parseInt(feesIn.maxFeePerGas),
+      maxPriorityFeePerGas.newValue
+    )
+  }
 
   const updatedGasFees: EIP1559Fees = {
     maxPriorityFeePerGas: toHex(maxPriorityFeePerGas.newValue),
