@@ -124,7 +124,7 @@ export class TokenPaymasterInteractor {
     try {
       const actualQuote = await this.paymaster.toActualQuote(quote.toString(), tokenSwapData.priceDivisor.toString())
       this.logger.debug(`actualQuote=${actualQuote.toString()}`)
-      if (tokenAmount.gt(toBN(1e30.toString()))) {
+      if (tokenAmount.gt(toBN(10).pow(toBN(30)))) {
         this.logger.debug(`Amount to convert is > 1e30 which is infinity in most cases (tokenAddress=${tokenAddress})`)
         return {
           actualQuote: toBN(0),
