@@ -55,7 +55,6 @@ function retype (outputs?: readonly JsonFragment[], ret?: any): any {
 
 export class Contract<T> {
   provider!: JsonRpcProvider
-  signer!: JsonRpcSigner
 
   constructor (readonly contractName: string, readonly abi: JsonFragment[]) {
   }
@@ -74,7 +73,8 @@ export class Contract<T> {
     //  the 'getAddress' may throw if the underlying provider does not return addresses.
     let signer: JsonRpcSigner | undefined
     try {
-      const signerFromAddress = await this.signer.getAddress()
+      const noAddressSetSigner: JsonRpcSigner = this.provider.getSigner()
+      const signerFromAddress = await noAddressSetSigner.getAddress()
       signer = this.provider.getSigner(signerFromAddress)
     } catch (e: any) {
       // nothing to do here - signer does not have accounts and can only work with ephemeral keys
@@ -129,7 +129,6 @@ export class Contract<T> {
 
   setProvider (provider: JsonRpcProvider, _: unknown): void {
     this.provider = provider
-    this.signer = provider.getSigner()
   }
 }
 

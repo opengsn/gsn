@@ -2,7 +2,15 @@ import BN from 'bn.js'
 
 import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 
-import { Address, Contract, TruffleContract, wrapWeb3JsProvider } from '@opengsn/common'
+import {
+  Address,
+  Contract,
+  LoggerInterface,
+  TruffleContract,
+  constants,
+  toBN,
+  wrapWeb3JsProvider
+} from '@opengsn/common'
 import { IERC20Instance } from '@opengsn/contracts'
 import { IChainlinkOracleInstance, PermitERC20UniswapV3PaymasterInstance } from '../types/truffle-contracts'
 
@@ -26,6 +34,7 @@ export class TokenPaymasterInteractor {
   private readonly PermitERC20UniswapV3Paymaster: Contract<PermitERC20UniswapV3PaymasterInstance>
   private readonly ChainlinkOracle: Contract<IChainlinkOracleInstance>
   private readonly paymasterAddress: Address
+  private readonly logger: LoggerInterface
 
   tokenAddress?: Address
   tokenSwapData?: TokenSwapData
@@ -35,9 +44,11 @@ export class TokenPaymasterInteractor {
 
   constructor (
     provider: JsonRpcProvider | ExternalProvider,
-    paymasterAddress: Address
+    paymasterAddress: Address,
+    logger: LoggerInterface
   ) {
     this.paymasterAddress = paymasterAddress
+    this.logger = logger
     this.provider = wrapWeb3JsProvider(provider)
     this.ERC20Instance = TruffleContract({
       contractName: 'ERC20Instance',
@@ -108,8 +119,28 @@ export class TokenPaymasterInteractor {
     const tokenSwapData = await this.paymaster.getTokenSwapData(tokenAddress)
     const chainlinkInstance = await this._createChainlinkOracleInstance(tokenSwapData.priceFeed)
     const quote = await chainlinkInstance.latestAnswer()
-    const actualQuote = await this.paymaster.toActualQuote(quote.toString(), tokenSwapData.priceDivisor.toString())
-    const amountInWei = await this.paymaster.tokenToWei(tokenAmount.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
-    return { actualQuote, amountInWei }
+    const description = `(tokenAddress=${tokenAddress} tokenAmount=${tokenAmount.toString()} priceFeed=${tokenSwapData.priceFeed} quote=${quote.toString()} priceDivisor=${tokenSwapData.priceDivisor.toString()} reverseQuote=${tokenSwapData.reverseQuote})`
+    this.logger.debug(`Converting token balance to Ether quote ${description}`)
+    try {
+      const actualQuote = await this.paymaster.toActualQuote(quote.toString(), tokenSwapData.priceDivisor.toString())
+      this.logger.debug(`actualQuote=${actualQuote.toString()}`)
+      if (tokenAmount.gt(toBN(10).pow(toBN(30)))) {
+        this.logger.debug(`Amount to convert is > 1e30 which is infinity in most cases (tokenAddress=${tokenAddress})`)
+        return {
+          actualQuote: toBN(0),
+          amountInWei: constants.MAX_UINT256
+        }
+      }
+      const amountInWei = await this.paymaster.tokenToWei(tokenAmount.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
+      this.logger.debug(`amountInWei=${amountInWei.toString()}`)
+      return { actualQuote, amountInWei }
+    } catch (error: any) {
+      this.logger.error(`Failed to convert token balance to Ether quote ${description}`)
+      this.logger.error(error)
+      return {
+        actualQuote: toBN(0),
+        amountInWei: toBN(0)
+      }
+    }
   }
 }
