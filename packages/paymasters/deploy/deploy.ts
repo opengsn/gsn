@@ -10,7 +10,7 @@ import { HttpNetworkConfig } from 'hardhat/src/types/config'
 import { ethers } from 'hardhat'
 import { formatEther } from 'ethers/lib/utils'
 
-import { Address } from '@opengsn/common'
+import { Address, PaymasterType } from '@opengsn/common'
 
 // TODO: extract duplicated code to utils
 // helper: nicer logging view fo deployed contracts
@@ -94,8 +94,11 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
   const paymasterToDeploy = process.env.PAYMASTER_TO_DEPLOY
   const chainId = parseInt(await hre.getChainId())
   switch (paymasterToDeploy) {
-    case 'PermitERC20UniswapV3Paymaster':
+    case PaymasterType.PermitERC20UniswapV3Paymaster:
       await deployPermitERC20UniswapV3Paymaster(deployments, deployer, chainId)
+      break
+    case PaymasterType.SingletonWhitelistPaymaster:
+      await deploySingletonWhitelistPaymaster(deployments, deployer, chainId)
       break
     default:
       throw new Error(`Unknown PAYMASTER_TO_DEPLOY env variable: ${paymasterToDeploy}`)
@@ -121,4 +124,39 @@ async function deployPermitERC20UniswapV3Paymaster (
   const paymasterBalance = await hub.balanceOf(deployedPm.address)
   console.log('current paymaster balance=', formatEther(paymasterBalance))
   // TODO: support depositing based on paymaster type
+}
+
+async function deploySingletonWhitelistPaymaster (
+  deployments: DeploymentsExtension,
+  deployer: Address,
+  chainId: number
+): Promise<void> {
+  // TODO: Hub and Forwarder address are shared across Paymasters - refactor
+  const allConfigurations = require(deploymentConfigFile()) as PaymasterDeploymentConfig
+  const config = allConfigurations[chainId]?.PermitERC20UniswapV3Paymaster
+  console.log('Will deploy SingletonWhitelistPaymaster')
+  const paymasterName = 'SingletonWhitelistPaymaster'
+  await deploy(deployments, paymasterName, {
+    from: deployer
+  })
+  // TODO: read it from the file!
+  await deployments.execute(
+    paymasterName,
+    { from: deployer, log: true },
+    'setSharedConfiguration',
+    30000,
+    15
+  )
+  await deployments.execute(
+    paymasterName,
+    { from: deployer, log: true },
+    'setRelayHub',
+    config.GSN_HUB_CONTRACT_ADDRESS
+  )
+  await deployments.execute(
+    paymasterName,
+    { from: deployer, log: true },
+    'setTrustedForwarder',
+    config.GSN_FORWARDER_CONTRACT_ADDRESS
+  )
 }
