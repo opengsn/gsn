@@ -2,7 +2,7 @@ import BN from 'bn.js'
 
 import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 
-import { Address, Contract, TruffleContract, wrapWeb3JsProvider } from '@opengsn/common'
+import { Address, Contract, LoggerInterface, TruffleContract, wrapWeb3JsProvider, toBN } from '@opengsn/common'
 import { IERC20Instance } from '@opengsn/contracts'
 import { IChainlinkOracleInstance, PermitERC20UniswapV3PaymasterInstance } from '../types/truffle-contracts'
 
@@ -26,6 +26,7 @@ export class TokenPaymasterInteractor {
   private readonly PermitERC20UniswapV3Paymaster: Contract<PermitERC20UniswapV3PaymasterInstance>
   private readonly ChainlinkOracle: Contract<IChainlinkOracleInstance>
   private readonly paymasterAddress: Address
+  private readonly logger: LoggerInterface
 
   tokenAddress?: Address
   tokenSwapData?: TokenSwapData
@@ -35,9 +36,11 @@ export class TokenPaymasterInteractor {
 
   constructor (
     provider: JsonRpcProvider | ExternalProvider,
-    paymasterAddress: Address
+    paymasterAddress: Address,
+    logger: LoggerInterface
   ) {
     this.paymasterAddress = paymasterAddress
+    this.logger = logger
     this.provider = wrapWeb3JsProvider(provider)
     this.ERC20Instance = TruffleContract({
       contractName: 'ERC20Instance',
@@ -108,6 +111,13 @@ export class TokenPaymasterInteractor {
     const tokenSwapData = await this.paymaster.getTokenSwapData(tokenAddress)
     const chainlinkInstance = await this._createChainlinkOracleInstance(tokenSwapData.priceFeed)
     const quote = await chainlinkInstance.latestAnswer()
+    if (quote.toString() === '0' || tokenSwapData.priceDivisor.toString() === '0') {
+      this.logger.error(`Failed to convert token balance to Ether quote (tokenAmount=${tokenAddress} priceFeed=${tokenSwapData.priceFeed} quote=${quote.toString()} priceDivisor=${tokenSwapData.priceDivisor.toString()} reverseQuote=${tokenSwapData.reverseQuote})`)
+      return {
+        actualQuote: toBN(0),
+        amountInWei: toBN(0)
+      }
+    }
     const actualQuote = await this.paymaster.toActualQuote(quote.toString(), tokenSwapData.priceDivisor.toString())
     const amountInWei = await this.paymaster.tokenToWei(tokenAmount.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
     return { actualQuote, amountInWei }

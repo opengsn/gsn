@@ -59,7 +59,7 @@ export class TokenPaymasterProvider extends RelayProvider {
     const chainId = this.origProvider.network.chainId
 
     const paymasterAddress = getPaymasterAddressByTypeAndChain(this.config?.paymasterAddress, chainId, this.logger)
-    this.tokenPaymasterInteractor = new TokenPaymasterInteractor(this.origProvider, paymasterAddress as any)
+    this.tokenPaymasterInteractor = new TokenPaymasterInteractor(this.origProvider, paymasterAddress as any, this.logger)
     await this.tokenPaymasterInteractor.init()
     this.relayClient.dependencies.asyncPaymasterData = this._buildPaymasterData.bind(this)
     if (permitERC20TokenForGas == null) {
