@@ -28,18 +28,21 @@ import {
   Address,
   ConfigResponse,
   ContractInteractor,
+  EIP1559Fees,
   GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
   LoggerConfiguration,
   LoggerInterface,
   ObjectMap,
+  PartialRelayInfo,
   PaymasterType,
   PingResponse,
   RegistrarRelayInfo,
   RelayInfo,
   RelayRequest,
   RelayTransactionRequest,
+  adjustRelayRequestForPingResponse,
   constants,
   defaultEnvironment,
   getRawTxOptions,
@@ -638,6 +641,26 @@ contract('RelayClient', function (accounts) {
 
       const calculatedGasPrice = await relayClient.calculateGasFees()
       assert.equal(calculatedGasPrice.maxPriorityFeePerGas, `0x${minMaxPriorityFeePerGas.toString(16)}`)
+    })
+
+    it('should avoid setting adjusted max priority fee above max fee', async function () {
+      const feesIn: EIP1559Fees = {
+        maxFeePerGas: '40',
+        maxPriorityFeePerGas: '80'
+      }
+      const relayInfo: PartialRelayInfo = {
+        // @ts-ignore
+        relayInfo: {},
+        // @ts-ignore
+        pingResponse: {
+          minMaxFeePerGas: '300',
+          minMaxPriorityFeePerGas: '440'
+        }
+      }
+      const result = adjustRelayRequestForPingResponse(feesIn, relayInfo, console)
+      assert.equal(parseInt(result.updatedGasFees.maxFeePerGas), 440)
+      assert.equal(parseInt(result.updatedGasFees.maxPriorityFeePerGas), 440)
+      assert.equal(result.maxDeltaPercent, 1000)
     })
   })
 
