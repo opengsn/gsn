@@ -111,15 +111,20 @@ export class TokenPaymasterInteractor {
     const tokenSwapData = await this.paymaster.getTokenSwapData(tokenAddress)
     const chainlinkInstance = await this._createChainlinkOracleInstance(tokenSwapData.priceFeed)
     const quote = await chainlinkInstance.latestAnswer()
-    if (quote.toString() === '0' || tokenSwapData.priceDivisor.toString() === '0') {
+    this.logger.debug(`Converting token balance to Ether quote (tokenAmount=${tokenAddress} priceFeed=${tokenSwapData.priceFeed} quote=${quote.toString()} priceDivisor=${tokenSwapData.priceDivisor.toString()} reverseQuote=${tokenSwapData.reverseQuote})`)
+    try {
+      const actualQuote = await this.paymaster.toActualQuote(quote.toString(), tokenSwapData.priceDivisor.toString())
+      this.logger.debug(`actualQuote=${actualQuote.toString()}`)
+      const amountInWei = await this.paymaster.tokenToWei(tokenAmount.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
+      this.logger.debug(`amountInWei=${amountInWei.toString()}`)
+      return { actualQuote, amountInWei }
+    } catch (error: any) {
       this.logger.error(`Failed to convert token balance to Ether quote (tokenAmount=${tokenAddress} priceFeed=${tokenSwapData.priceFeed} quote=${quote.toString()} priceDivisor=${tokenSwapData.priceDivisor.toString()} reverseQuote=${tokenSwapData.reverseQuote})`)
+      this.logger.error(error)
       return {
         actualQuote: toBN(0),
         amountInWei: toBN(0)
       }
     }
-    const actualQuote = await this.paymaster.toActualQuote(quote.toString(), tokenSwapData.priceDivisor.toString())
-    const amountInWei = await this.paymaster.tokenToWei(tokenAmount.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
-    return { actualQuote, amountInWei }
   }
 }
