@@ -33,7 +33,6 @@ import { GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClien
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 
-import { ChildProcess } from 'child_process'
 import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
 import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 
@@ -42,7 +41,6 @@ export interface TestEnvironment {
   relayProvider: RelayProvider
   httpServer: HttpServer
   relayUrl: string
-  hardhatNode?: ChildProcess
 }
 
 class GsnTestEnvironmentClass {

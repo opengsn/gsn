@@ -149,9 +149,9 @@ export class AccountManager {
         signature,
         version: SignTypedDataVersion.V4
       })
-    } catch (error) {
+    } catch (error: any) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Failed to sign relayed transaction for ${relayRequest.request.from}: ${error}`)
+      throw new Error(`Failed to sign relayed transaction for ${relayRequest.request.from}: ${error.message}`)
     }
     if (!isSameAddress(relayRequest.request.from.toLowerCase(), rec)) {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
