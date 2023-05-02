@@ -17,6 +17,7 @@ import {
   ObjectMap,
   PingResponse,
   ReadinessInfo,
+  RelayCallGasLimitCalculationHelper,
   RelayRequest,
   RelayRequestLimits,
   RelayTransactionRequest,
@@ -54,20 +55,6 @@ import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { Web3MethodsBuilder } from './Web3MethodsBuilder'
 
-/**
- * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
- * the 63/64th rule is applied to gas limit.
- * As we have to pass enough gas to a transaction to pass 'relayRequest.request.gas' to the recipient,
- * and this check is at stack depth of 3, we have to oversupply gas to an outermost ('relayCall') transaction
- * by approximately 1/(63/64)^3 times.
- */
-const GAS_FACTOR = 1.1
-
-/**
- * A constant oversupply of gas to each 'relayCall' transaction.
- */
-const GAS_RESERVE = 100000
-
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
   lastScannedBlock = 0
@@ -83,6 +70,7 @@ export class RelayServer extends EventEmitter {
   initialized: boolean = false
   shouldRefreshBalances = true
   readonly contractInteractor: ContractInteractor
+  readonly gasLimitCalculator: RelayCallGasLimitCalculationHelper
   readonly web3MethodsBuilder: Web3MethodsBuilder
   readonly gasPriceFetcher: GasPriceFetcher
   private readonly versionManager: VersionsManager
@@ -114,6 +102,7 @@ export class RelayServer extends EventEmitter {
     this.versionManager = new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.config = configureServer(config)
     this.contractInteractor = dependencies.contractInteractor
+    this.gasLimitCalculator = dependencies.gasLimitCalculator
     this.web3MethodsBuilder = dependencies.web3MethodsBuilder
     this.environment = this.contractInteractor.environment
     this.gasPriceFetcher = dependencies.gasPriceFetcher
@@ -294,33 +283,33 @@ export class RelayServer extends EventEmitter {
   }
 
   async calculateAndValidatePaymasterGasAndDataLimits (relayTransactionRequest: RelayTransactionRequest): Promise<number> {
-    const trustedPaymasterGasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(relayTransactionRequest.relayRequest.relayData.paymaster)
-    const workerBalance = await this.getWorkerBalance(0)
-    const viewCallGasLimit = workerBalance.div(toBN(relayTransactionRequest.relayRequest.relayData.maxFeePerGas))
-      .muln(9).divn(10)
-      .toString()
+    let gasAndDataLimits = this.trustedPaymastersGasAndDataLimits.get(relayTransactionRequest.relayRequest.relayData.paymaster)
+    if (gasAndDataLimits == null) {
+      gasAndDataLimits = await this.contractInteractor.getGasAndDataLimitsFromPaymaster(relayTransactionRequest.relayRequest.relayData.paymaster)
+    }
 
-    const relayRequestLimits = await this.contractInteractor.calculatePaymasterGasAndDataLimits(
+    const relayRequestLimits = await this.gasLimitCalculator.calculateRelayRequestLimits(
       relayTransactionRequest,
-      trustedPaymasterGasAndDataLimits,
-      GAS_RESERVE,
-      GAS_FACTOR,
-      this.workerAddress,
-      viewCallGasLimit
+      gasAndDataLimits
     )
-    await this.validatePaymasterGasAndDataLimits(relayTransactionRequest, relayRequestLimits)
-    return relayRequestLimits.maxPossibleGas
+    await this.validatePaymasterGasAndDataLimits(
+      relayTransactionRequest,
+      relayRequestLimits,
+      gasAndDataLimits
+    )
+    return relayRequestLimits.maxPossibleGasUsed.toNumber()
   }
 
   async validatePaymasterGasAndDataLimits (
     relayTransactionRequest: RelayTransactionRequest,
-    relayRequestLimits: RelayRequestLimits
+    relayRequestLimits: RelayRequestLimits,
+    gasAndDataLimits: PaymasterGasAndDataLimits
   ): Promise<void> {
     const paymaster = relayTransactionRequest.relayRequest.relayData.paymaster
     this.verifyTransactionCalldataGasUsed(relayTransactionRequest, relayRequestLimits.transactionCalldataGasUsed)
-    this.verifyEffectiveAcceptanceBudget(relayRequestLimits.paymasterAcceptanceBudget, relayRequestLimits.effectiveAcceptanceBudget, parseInt(relayTransactionRequest.metadata.maxAcceptanceBudget), paymaster)
-    this.verifyMaxPossibleGas(relayRequestLimits.maxPossibleGas)
-    await this.verifyPaymasterBalance(relayRequestLimits.maxPossibleCharge, relayRequestLimits.maxPossibleGas, paymaster)
+    this.verifyEffectiveAcceptanceBudget(gasAndDataLimits.acceptanceBudget.toNumber(), relayRequestLimits.effectiveAcceptanceBudgetGasUsed, parseInt(relayTransactionRequest.metadata.maxAcceptanceBudget), paymaster)
+    this.verifyMaxPossibleGas(relayRequestLimits.maxPossibleGasUsed.toNumber())
+    await this.verifyPaymasterBalance(relayRequestLimits.maxPossibleCharge, relayRequestLimits.maxPossibleGasUsed.toNumber(), paymaster)
   }
 
   verifyTransactionCalldataGasUsed (req: RelayTransactionRequest, transactionCalldataGasUsed: number): void {
@@ -403,7 +392,10 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
   }
 
-  async createRelayTransaction (req: RelayTransactionRequest): Promise<{ signedTx: PrefixedHexString, nonceGapFilled: ObjectMap<PrefixedHexString> }> {
+  async createRelayTransaction (req: RelayTransactionRequest): Promise<{
+    signedTx: PrefixedHexString
+    nonceGapFilled: ObjectMap<PrefixedHexString>
+  }> {
     this.logger.debug(`dump request params: ${JSON.stringify(req)}`)
     if (!this.isReady()) {
       throw new Error('relay not ready')

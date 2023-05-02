@@ -1,6 +1,8 @@
 {
   "extends": "solhint:recommended",
   "rules": {
+    "no-global-import": ["off"],
+    "no-console": ["off"],
     "compiler-version": ["error",">=0.6"],
     "func-visibility": ["off",{"ignoreConstructors":true}],
     "mark-callable-contracts": ["off"]

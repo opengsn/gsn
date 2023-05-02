@@ -4,6 +4,7 @@ import {
   ContractInteractor,
   GSNContractsDeployment,
   LoggerInterface,
+  RelayCallGasLimitCalculationHelper,
   constants,
   defaultEnvironment,
   ether,
@@ -23,7 +24,12 @@ import { HttpServer } from '@opengsn/relay/dist/HttpServer'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import Web3 from 'web3'
 
-import { configureServer, ServerConfigParams, ServerDependencies } from '@opengsn/relay/dist/ServerConfigParams'
+import {
+  configureServer,
+  ServerConfigParams,
+  serverDefaultConfiguration,
+  ServerDependencies
+} from '@opengsn/relay/dist/ServerConfigParams'
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
@@ -208,6 +214,7 @@ class GsnTestEnvironmentClass {
     const txStoreManager = new TxStoreManager({ inMemory: true }, logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const environment = defaultEnvironment
+    const calldataEstimationSlackFactor = 1
     const provider = new StaticJsonRpcProvider(host)
     const contractInteractor = new ContractInteractor(
       {
@@ -218,6 +225,9 @@ class GsnTestEnvironmentClass {
         deployment: deploymentResult
       })
     await contractInteractor.init()
+    const gasLimitCalculator = new RelayCallGasLimitCalculationHelper(
+      logger, contractInteractor, calldataEstimationSlackFactor, serverDefaultConfiguration.maxAcceptanceBudget
+    )
     const resolvedDeployment = contractInteractor.getDeployment()
     const httpProvider = new Web3.providers.HttpProvider(host)
     const web3MethodsBuilder = new Web3MethodsBuilder(new Web3(httpProvider), resolvedDeployment)
@@ -229,6 +239,7 @@ class GsnTestEnvironmentClass {
     const relayServerDependencies: ServerDependencies = {
       logger,
       contractInteractor,
+      gasLimitCalculator,
       web3MethodsBuilder,
       gasPriceFetcher,
       txStoreManager,

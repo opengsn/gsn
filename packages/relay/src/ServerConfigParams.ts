@@ -10,6 +10,7 @@ import {
   EnvironmentsKeys,
   LoggerInterface,
   NpmLogLevel,
+  RelayCallGasLimitCalculationHelper,
   constants,
   defaultEnvironment,
   environments
@@ -323,6 +324,7 @@ export interface ServerDependencies {
   managerKeyManager: KeyManager
   workersKeyManager: KeyManager
   contractInteractor: ContractInteractor
+  gasLimitCalculator: RelayCallGasLimitCalculationHelper
   web3MethodsBuilder: Web3MethodsBuilder
   gasPriceFetcher: GasPriceFetcher
   txStoreManager: TxStoreManager

@@ -7,6 +7,7 @@ import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import {
   ContractInteractor,
   LoggerInterface,
+  RelayCallGasLimitCalculationHelper,
   constants,
   defaultEnvironment,
   ether,
@@ -16,7 +17,12 @@ import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { RegistrationManager } from '@opengsn/relay/dist/RegistrationManager'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
-import { configureServer, ServerConfigParams, ServerDependencies } from '@opengsn/relay/dist/ServerConfigParams'
+import {
+  ServerConfigParams,
+  ServerDependencies,
+  configureServer,
+  serverDefaultConfiguration
+} from '@opengsn/relay/dist/ServerConfigParams'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 
 import { deployHub, evmMine, evmMineMany, revert, setNextBlockTimestamp, snapshot } from './TestUtils'
@@ -159,6 +165,9 @@ contract('RegistrationManager', function (accounts) {
         }
       })
       await contractInteractor.init()
+      const gasLimitCalculator = new RelayCallGasLimitCalculationHelper(
+        logger, contractInteractor, 1, serverDefaultConfiguration.maxAcceptanceBudget
+      )
       const gasPriceFetcher = new GasPriceFetcher('', '', contractInteractor, logger)
 
       const resolvedDeployment = contractInteractor.getDeployment()
@@ -170,6 +179,7 @@ contract('RegistrationManager', function (accounts) {
         managerKeyManager,
         workersKeyManager,
         contractInteractor,
+        gasLimitCalculator,
         web3MethodsBuilder,
         gasPriceFetcher
       }

@@ -1,6 +1,6 @@
 import BN from 'bn.js'
-import { Contract as EthersContract, EventFilter, ethers } from 'ethers'
-import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { Contract as EthersContract, ethers, EventFilter } from 'ethers'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { TxOptions } from '@ethereumjs/tx'
 
 import { RelayRequest } from './EIP712/RelayRequest'
@@ -25,8 +25,7 @@ import {
   formatTokenAmount,
   isSameAddress,
   packRelayUrlForRegistrar,
-  PaymasterGasAndDataLimits,
-  toNumber
+  PaymasterGasAndDataLimits
 } from './Utils'
 import {
   IERC165Instance,
@@ -94,14 +93,6 @@ export interface RelayCallABI {
   relayRequest: RelayRequest
   approvalData: PrefixedHexString
   maxAcceptanceBudget: PrefixedHexString
-}
-
-export interface RelayRequestLimits {
-  paymasterAcceptanceBudget: number
-  effectiveAcceptanceBudget: number
-  maxPossibleCharge: BN
-  maxPossibleGas: number
-  transactionCalldataGasUsed: number
 }
 
 export function asRelayCallAbi (r: RelayTransactionRequest): RelayCallABI {
@@ -529,7 +520,11 @@ export class ContractInteractor {
     return parseInt(latestBlock.gasLimit.toString())
   }
 
-  _fixGasFees (relayRequest: RelayRequest): { gasPrice?: string, maxFeePerGas?: string, maxPriorityFeePerGas?: string } {
+  _fixGasFees (relayRequest: RelayRequest): {
+    gasPrice?: string
+    maxFeePerGas?: string
+    maxPriorityFeePerGas?: string
+  } {
     if (this.transactionType === TransactionType.LEGACY) {
       return { gasPrice: toHex(relayRequest.relayData.maxFeePerGas) }
     } else {
@@ -549,7 +544,7 @@ export class ContractInteractor {
    */
   async validateRelayCall (
     relayCallABIData: RelayCallABI,
-    viewCallGasLimit: BN,
+    viewCallGasLimit: BN | number,
     isDryRun: boolean): Promise<ViewCallVerificationResult> {
     if (viewCallGasLimit == null || relayCallABIData.relayRequest.relayData.maxFeePerGas == null || relayCallABIData.relayRequest.relayData.maxPriorityFeePerGas == null) {
       throw new Error('validateRelayCall: invalid input')
@@ -636,7 +631,10 @@ export class ContractInteractor {
    */
   // decode revert from rpc response.
   //
-  _decodeRevertFromResponse (err?: { message?: string, data?: any, error?: any } | undefined, res?: { error?: any, result?: string } | undefined): string | null {
+  _decodeRevertFromResponse (err?: { message?: string, data?: any, error?: any } | undefined, res?: {
+    error?: any
+    result?: string
+  } | undefined): string | null {
     let matchGanache = err?.data?.message?.toString().match(/: revert(?:ed)? (.*)/)
     if (matchGanache == null) {
       matchGanache = res?.error?.message?.toString().match(/: revert(?:ed)? (.*)/)
@@ -721,7 +719,10 @@ export class ContractInteractor {
     }
   }
 
-  splitRange (fromBlock: BlockTag, toBlock: BlockTag, parts: number): Array<{ fromBlock: BlockTag, toBlock: BlockTag }> {
+  splitRange (fromBlock: BlockTag, toBlock: BlockTag, parts: number): Array<{
+    fromBlock: BlockTag
+    toBlock: BlockTag
+  }> {
     if (parts === 1) {
       return [{ fromBlock, toBlock }]
     }
@@ -927,40 +928,6 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
   }
 
   /**
-   * @returns result - maximum possible gas consumption by this relayed call
-   * (calculated on chain by RelayHub.verifyGasAndDataLimits)
-   */
-  async calculateTransactionMaxPossibleGas (
-    _: {
-      msgData: PrefixedHexString
-      gasAndDataLimits: PaymasterGasAndDataLimits
-      relayCallGasLimit: string
-    }): Promise<number> {
-    const msgDataLength = toBuffer(_.msgData).length
-    const msgDataGasCostInsideTransaction: number =
-      toBN(this.environment.dataOnChainHandlingGasCostPerByte)
-        .muln(msgDataLength)
-        .toNumber()
-    const calldataCost: number = await this.calculateCalldataGasUsed(_.msgData, this.environment, this.calldataEstimationSlackFactor, this.provider)
-    const result = toNumber(this.relayHubConfiguration.gasOverhead) +
-      msgDataGasCostInsideTransaction +
-      calldataCost +
-      parseInt(_.relayCallGasLimit) +
-      toNumber(_.gasAndDataLimits.preRelayedCallGasLimit) +
-      toNumber(_.gasAndDataLimits.postRelayedCallGasLimit)
-    this.logger.debug(`
-input:\n${JSON.stringify(_)}
-msgDataLength: ${msgDataLength}
-calldataCost: ${calldataCost}
-msgDataGasCostInsideTransaction: ${msgDataGasCostInsideTransaction}
-environment: ${JSON.stringify(this.environment)}
-relayHubConfiguration: ${JSON.stringify(this.relayHubConfiguration)}
-calculateTransactionMaxPossibleGas: result: ${result}
-`)
-    return result
-  }
-
-  /**
    * Only used by the RelayClient.
    * @param relayRequestOriginal request input of the 'relayCall' method with some fields not yet initialized
    * @param variableFieldSizes configurable sizes of 'relayCall' parameters with variable size types
@@ -993,74 +960,22 @@ calculateTransactionMaxPossibleGas: result: ${result}
     return `0x${calculatedCalldataGasUsed.toString(16)}`
   }
 
-  // note: when passing 'gasPrice' to a view call, the sender balance is checked to have sufficient balance
-  // we must set 'from' and 'gas' parameters as well to avoid failing a view call with 'insufficient gas'
-  async calculatePaymasterGasAndDataLimits (
-    relayTransactionRequest: RelayTransactionRequest,
-    gasAndDataLimits: PaymasterGasAndDataLimits | undefined,
-    gasReserve: number,
-    gasFactor: number,
-    viewCallFrom: Address,
-    viewCallGasLimit: IntString
-  ): Promise<RelayRequestLimits> {
-    if (gasAndDataLimits == null) {
-      gasAndDataLimits = await this.getGasAndDataLimitsFromPaymaster(relayTransactionRequest.relayRequest.relayData.paymaster)
-    }
-
-    const {
-      paymasterAcceptanceBudget,
-      effectiveAcceptanceBudget,
-      transactionCalldataGasUsed,
-      maxPossibleGas
-    } = await this.calculateRequestLimits(relayTransactionRequest, gasAndDataLimits)
-
-    const maxPossibleGasFactorReserve = gasReserve + Math.floor(maxPossibleGas * gasFactor)
+  /**
+   * In order to keep the charge calculation logic in one place, we make it through an on-chain view call.
+   * Note: I don't think this is necessary any more as the code is pretty stable.
+   * TODO: replace with local calculation.
+   * @param gas
+   * @param relayData
+   * @param txDetails
+   */
+  async calculateChargeWithRelayHub (
+    gas: any,
+    relayData: any,
+    txDetails: any): Promise<any> {
     // removing Ethers 'signer' to allow overriding 'from' address
     // note that it will remove the mapping of types to BN!
-    const viewOnlyHub: EthersContract = this.relayHubInstance.contract.connect(this.provider)
-    const maxPossibleCharge =
-      await viewOnlyHub.calculateCharge(maxPossibleGasFactorReserve, relayTransactionRequest.relayRequest.relayData,
-        {
-          from: viewCallFrom,
-          gasLimit: viewCallGasLimit,
-          gasPrice: relayTransactionRequest.relayRequest.relayData.maxFeePerGas
-        })
-
-    return {
-      paymasterAcceptanceBudget,
-      effectiveAcceptanceBudget,
-      transactionCalldataGasUsed,
-      maxPossibleCharge: toBN(maxPossibleCharge.toString()),
-      maxPossibleGas: maxPossibleGasFactorReserve
-    }
-  }
-
-  async calculateRequestLimits (
-    relayTransactionRequest: RelayTransactionRequest,
-    gasAndDataLimits: PaymasterGasAndDataLimits
-  ): Promise<{ paymasterAcceptanceBudget: number, effectiveAcceptanceBudget: number, transactionCalldataGasUsed: number, maxPossibleGas: number }> {
-    const relayCallAbiInput: RelayCallABI = {
-      domainSeparatorName: relayTransactionRequest.metadata.domainSeparatorName,
-      maxAcceptanceBudget: '0xffffffff',
-      relayRequest: relayTransactionRequest.relayRequest,
-      signature: relayTransactionRequest.metadata.signature,
-      approvalData: relayTransactionRequest.metadata.approvalData
-    }
-    const msgData = this.encodeABI(relayCallAbiInput)
-    const transactionCalldataGasUsed = await this.calculateCalldataGasUsed(msgData, this.environment, this.calldataEstimationSlackFactor, this.provider)
-    const maxPossibleGas = await this.calculateTransactionMaxPossibleGas({
-      msgData,
-      gasAndDataLimits,
-      relayCallGasLimit: relayTransactionRequest.relayRequest.request.gas
-    })
-    const paymasterAcceptanceBudget = gasAndDataLimits.acceptanceBudget.toNumber()
-    const effectiveAcceptanceBudget = paymasterAcceptanceBudget + transactionCalldataGasUsed + transactionCalldataGasUsed
-    return {
-      transactionCalldataGasUsed,
-      maxPossibleGas,
-      paymasterAcceptanceBudget,
-      effectiveAcceptanceBudget
-    }
+    const viewOnlyHub: IRelayHubInstance = this.relayHubInstance.contract.connect(this.provider)
+    return await viewOnlyHub.calculateCharge(gas, relayData, txDetails)
   }
 
   // TODO: !This method is not really necessary - only used for a fraction of transactions. Replace with 'getGasFees'.
@@ -1302,56 +1217,6 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const topics = address2topic(managerAddress)
     const workersAddedEvents = await this.getPastEventsForHub([topics], { fromBlock: 1 }, [RelayWorkersAdded])
     return workersAddedEvents.map(it => it.args.newRelayWorkers).flat()
-  }
-
-  /**
-   *
-   * @param paymasterAddress
-   * @param workerAddress
-   * @param maxFeePerGas
-   * @param maxViewableGasLimit
-   * @param minViewableGasLimit
-   */
-  async calculateDryRunCallGasLimit (
-    paymasterAddress: Address,
-    workerAddress: Address,
-    maxFeePerGas: BN,
-    maxViewableGasLimit: BN,
-    minViewableGasLimit: BN
-  ): Promise<BN> {
-    const paymasterBalance = await this.hubBalanceOf(paymasterAddress)
-    let workerBalance = constants.MAX_UINT256 // skipping worker address balance check in dry-run
-    let workerBalanceMessage = ''
-    if (!isSameAddress(workerAddress, constants.DRY_RUN_ADDRESS)) {
-      const workerBalanceStr = await this.getBalance(workerAddress, 'pending')
-      workerBalance = toBN(workerBalanceStr)
-      workerBalanceMessage = `Worker balance: ${workerBalance.toString()}\n`
-    }
-    const smallerBalance = BN.min(paymasterBalance, workerBalance)
-    const pctRelayFeeDev = toBN(this.relayHubConfiguration.pctRelayFee.toString()).addn(100)
-    const smallerBalanceGasLimit = smallerBalance.div(maxFeePerGas)
-      .muln(100)
-      .div(pctRelayFeeDev)
-      .muln(3).divn(4) // hard-coded to use 75% of available worker/paymaster balance
-    const blockGasLimitNum = await this.getBlockGasLimit()
-    const blockGasLimit = toBN(blockGasLimitNum)
-      .muln(3).divn(4) // hard-coded to use 75% of available block gas limit
-
-    const warningMessage = workerBalanceMessage +
-      `Paymaster balance: ${paymasterBalance.toString()}\n` +
-      `This is only enough for ${smallerBalanceGasLimit.toString()} gas for a view call at ${maxFeePerGas.toString()} per gas.\n` +
-      `Also, block gas limit is: ${blockGasLimit.toString()}\n`
-    if (smallerBalanceGasLimit.lt(minViewableGasLimit)) {
-      this.logger.warn(
-        warningMessage +
-        `Limiting the view call to minViewableGasLimit (${minViewableGasLimit.toString()}) but successful relaying is not likely.`)
-      return minViewableGasLimit
-    }
-    const minimalLimit = BN.min(maxViewableGasLimit, BN.min(smallerBalanceGasLimit, blockGasLimit))
-    if (minimalLimit.eq(smallerBalanceGasLimit)) {
-      this.logger.warn(warningMessage)
-    }
-    return minimalLimit
   }
 }
 
