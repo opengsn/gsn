@@ -9,13 +9,13 @@ import {
   GSNContractsDeployment,
   GsnTransactionDetails,
   LoggerInterface,
-  defaultEnvironment,
-  signedTransactionToHash
+  defaultEnvironment
 } from '@opengsn/common'
 
 import { NetworkSimulatingProvider } from '@opengsn/common/dist/dev/NetworkSimulatingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
 import { BoostingResult, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
+import { signedTransactionToHash } from '@opengsn/relay/dist/penalizer/PenalizerUtils'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { evmMine, increaseTime, revert, snapshot } from './TestUtils'
