@@ -23,6 +23,7 @@
     "@ethersproject/bignumber": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "@ethersproject/transactions": "^5.7.0",
+    "@ethersproject/wallet": "^5.7.0",
     "@metamask/eth-sig-util": "^4.0.1",
     "@opengsn/common": "^3.0.0-beta.7",
     "abi-decoder": "^2.4.0",
