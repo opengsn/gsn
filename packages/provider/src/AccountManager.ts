@@ -94,7 +94,14 @@ export class AccountManager {
 
     const wallet = new Wallet(privateKeyBuf)
 
-    const raw = await wallet.signTransaction(transactionConfig)
+    // if called from Web3.js Provider, the 'transactionConfig' object will have 'gas' field instead of 'gasLimit'
+    const gasLimit = transactionConfig.gasLimit ?? (transactionConfig as any).gas
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    const type: number = transactionConfig.type ?? (transactionConfig.maxFeePerGas == null) ? 0 : 2
+    const chainId = transactionConfig.chainId ?? this.chainId
+    const transactionRequest = Object.assign({}, transactionConfig, { gasLimit, type, chainId })
+    delete (transactionRequest as any).gas
+    const raw = await wallet.signTransaction(transactionRequest)
     const transaction = parse(raw)
     // even more annoying is that 'RLPEncodedTransaction', which is expected return type here, is not yet 1559-ready
     // @ts-ignore
