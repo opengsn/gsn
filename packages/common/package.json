@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@ethereumjs/common": "^2.6.5",
-    "@ethereumjs/tx": "^3.2.0",
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/bignumber": "^5.7.0",
     "@ethersproject/networks": "^5.7.1",
