@@ -5,7 +5,7 @@ import abiDecoder from 'abi-decoder'
 import { BigNumber } from '@ethersproject/bignumber'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { TypedMessage } from '@metamask/eth-sig-util'
-import { JsonRpcProvider, TransactionReceipt, ExternalProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, TransactionReceipt, ExternalProvider, TransactionRequest } from '@ethersproject/providers'
 
 import {
   Address,
@@ -145,7 +145,7 @@ export class RelayProvider implements ExternalProvider {
         return
       }
       if (payload.method === 'eth_signTransaction') {
-        this._signTransaction(payload, callback)
+        void this._signTransaction(payload, callback)
         return
       }
       if (payload.method === 'eth_signTypedData') {
@@ -475,12 +475,12 @@ export class RelayProvider implements ExternalProvider {
     this.origProviderSend(payload, callback)
   }
 
-  _signTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+  async _signTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
-    const transactionConfig: TransactionConfig = payload.params?.[0]
+    const transactionConfig: TransactionRequest = payload.params?.[0]
     const from = transactionConfig?.from as string
     if (from != null && this.isEphemeralAccount(from)) {
-      const result = this.relayClient.dependencies.accountManager.signTransaction(transactionConfig, from)
+      const result = await this.relayClient.dependencies.accountManager.signTransaction(transactionConfig, from)
       const rpcResponse = {
         id,
         result,

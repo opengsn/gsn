@@ -18,7 +18,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@ethereumjs/tx": "^3.2.0",
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/abstract-signer": "^5.7.0",
     "@ethersproject/bignumber": "^5.7.0",

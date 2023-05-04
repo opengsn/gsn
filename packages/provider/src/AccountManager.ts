@@ -1,8 +1,9 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, TransactionRequest } from '@ethersproject/providers'
+import { Wallet } from '@ethersproject/wallet'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
+import { parse } from '@ethersproject/transactions'
 import {
   SignTypedDataVersion,
   TypedMessage,
@@ -17,7 +18,6 @@ import {
   RLPEncodedTransaction,
   TypedRequestData,
   getEip712Signature,
-  getRawTxOptions,
   isSameAddress,
   removeHexPrefix
 } from '@opengsn/common'
@@ -86,23 +86,16 @@ export class AccountManager {
     return personalSign({ privateKey, data: message })
   }
 
-  signTransaction (transactionConfig: TransactionConfig, from: Address): RLPEncodedTransaction {
-    let transaction: Transaction | FeeMarketEIP1559Transaction
+  async signTransaction (transactionConfig: TransactionRequest, from: Address): Promise<RLPEncodedTransaction> {
     if (transactionConfig.chainId != null && transactionConfig.chainId !== this.chainId) {
       throw new Error(`This provider is initialized for chainId ${this.chainId} but transaction targets chainId ${transactionConfig.chainId}`)
     }
-    const commonTxOptions = getRawTxOptions(this.chainId, 0)
-    const fixGasLimitName = { ...transactionConfig, gasLimit: transactionConfig.gas }
-    if (transactionConfig.gasPrice != null) {
-      // annoying - '@ethereumjs/tx' imports BN.js@^4.x.x while we use ^5.x.x
-      // @ts-ignore
-      transaction = new Transaction(fixGasLimitName, commonTxOptions)
-    } else {
-      // @ts-ignore
-      transaction = new FeeMarketEIP1559Transaction(fixGasLimitName, commonTxOptions)
-    }
     const privateKeyBuf = Buffer.from(removeHexPrefix(this.findPrivateKey(from)), 'hex')
-    const raw = '0x' + transaction.sign(privateKeyBuf).serialize().toString('hex')
+
+    const wallet = new Wallet(privateKeyBuf)
+
+    const raw = await wallet.signTransaction(transactionConfig)
+    const transaction = parse(raw)
     // even more annoying is that 'RLPEncodedTransaction', which is expected return type here, is not yet 1559-ready
     // @ts-ignore
     return { raw, tx: transaction }
