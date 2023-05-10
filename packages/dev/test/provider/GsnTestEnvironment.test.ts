@@ -20,8 +20,25 @@ contract('GsnTestEnvironment', function (accounts: string[]) {
   describe('#startGsn()', function () {
     it('should create a valid test environment for other tests to rely on', async function () {
       const host = (web3.currentProvider as HttpProvider).host
-      const testEnv = await GsnTestEnvironment.startGsn(host)
+      let testEnv = await GsnTestEnvironment.startGsn(host)
       assert.equal(testEnv.contractsDeployment.relayHubAddress!.length, 42)
+      const worker1 = testEnv.workerAddress
+      const manager1 = testEnv.managerAddress
+      const hub1 = testEnv.contractsDeployment.relayHubAddress
+      testEnv = await GsnTestEnvironment.startGsn(host)
+      const worker2 = testEnv.workerAddress
+      const manager2 = testEnv.managerAddress
+      const hub2 = testEnv.contractsDeployment.relayHubAddress
+      assert.equal(worker1, worker2)
+      assert.equal(manager1, manager2)
+      assert.notEqual(hub1, hub2)
+      testEnv = await GsnTestEnvironment.startGsn(
+        host, undefined, undefined, undefined, false
+      )
+      const worker3 = testEnv.workerAddress
+      const manager3 = testEnv.managerAddress
+      assert.notEqual(worker1, worker3)
+      assert.notEqual(manager1, manager3)
     })
 
     after(async function () {
