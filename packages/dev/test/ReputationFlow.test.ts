@@ -36,13 +36,13 @@ contract('ReputationFlow', function () {
     await misbehavingPaymaster.setRelayHub(relayHub.address)
     await misbehavingPaymaster.deposit({ value: web3.utils.toWei('1', 'ether') })
 
-    relayProvider = await RelayProvider.newProvider({
+    relayProvider = await RelayProvider.newWeb3Provider({
       provider: ethersProvider,
       config: {
         loggerConfiguration: { logLevel: 'error' },
         paymasterAddress: misbehavingPaymaster.address
       }
-    }).init()
+    })
     // @ts-ignore
     TestRecipient.web3.setProvider(relayProvider)
   })

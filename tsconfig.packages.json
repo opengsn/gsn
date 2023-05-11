@@ -12,7 +12,7 @@
     "target": "es2017",
     "module": "commonjs",
     "strict": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "noImplicitThis": true,
     "alwaysStrict": true,
     "declaration": true,

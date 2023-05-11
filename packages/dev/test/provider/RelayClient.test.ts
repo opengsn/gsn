@@ -1130,13 +1130,13 @@ contract('RelayClient', function (accounts) {
         methodSuffix: 'test suffix from arg'
       }
       let resolvedConfig = await relayClient._resolveConfiguration({
-        provider: relayClient.getUnderlyingProvider(),
+        provider: relayClient.wrappedUnderlyingProvider,
         config
       })
       assert.equal(resolvedConfig.methodSuffix, 'test suffix from arg')
 
       resolvedConfig = await relayClient._resolveConfiguration({
-        provider: relayClient.getUnderlyingProvider(),
+        provider: relayClient.wrappedUnderlyingProvider,
         config: {}
       })
       assert.equal(resolvedConfig.methodSuffix, 'test suffix from _resolveConfigurationFromServer')
@@ -1144,7 +1144,7 @@ contract('RelayClient', function (accounts) {
       sinon.restore()
       sinon.stub(relayClient, '_resolveConfigurationFromServer').returns(Promise.resolve({}))
       resolvedConfig = await relayClient._resolveConfiguration({
-        provider: relayClient.getUnderlyingProvider(),
+        provider: relayClient.wrappedUnderlyingProvider,
         config: {}
       })
       assert.equal(resolvedConfig.methodSuffix, defaultGsnConfig.methodSuffix)
@@ -1156,7 +1156,7 @@ contract('RelayClient', function (accounts) {
         useClientDefaultConfigUrl: false
       }
       const resolvedConfig = await relayClient._resolveConfiguration({
-        provider: relayClient.getUnderlyingProvider(),
+        provider: relayClient.wrappedUnderlyingProvider,
         config
       })
       assert.equal(resolvedConfig.methodSuffix, defaultGsnConfig.methodSuffix)
@@ -1195,7 +1195,7 @@ contract('RelayClient', function (accounts) {
           paymasterAddress: PaymasterType.VerifyingPaymaster,
           verifierServerApiKey
         }
-        const provider = relayClient.getUnderlyingProvider()
+        const provider = relayClient.wrappedUnderlyingProvider
         const sandbox = sinon.createSandbox()
         sandbox
           .stub(provider)
@@ -1211,7 +1211,11 @@ contract('RelayClient', function (accounts) {
         sandbox.restore()
         assert.equal(resolvedConfig.paymasterAddress.length, 42)
         resolvedConfig.paymasterAddress = '' // no need to resolve deployment
-        const resolvedDependencies = await relayClient._resolveDependencies({ provider, config: resolvedConfig })
+        const resolvedDependencies = await relayClient._resolveDependencies({
+          provider,
+          signer: provider.getSigner(),
+          config: resolvedConfig
+        })
         assert.equal(resolvedConfig.verifierServerApiKey, verifierServerApiKey)
         assert.equal(resolvedConfig.verifierServerUrl, DEFAULT_VERIFIER_SERVER_URL)
         assert.equal(resolvedConfig.maxApprovalDataLength, DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH)

@@ -24,6 +24,7 @@ const StakeManager = artifacts.require('StakeManager')
 const Penalizer = artifacts.require('Penalizer')
 const Forwarder = artifacts.require('Forwarder')
 const TestToken = artifacts.require('TestToken')
+
 contract('runServer', function (accounts) {
   let sr: TestRecipientInstance
   let paymaster: TestPaymasterEverythingAcceptedInstance
@@ -75,11 +76,11 @@ contract('runServer', function (accounts) {
       maxPaymasterDataLength: 4
     }
 
-    relayProvider = await RelayProvider.newProvider(
+    relayProvider = await RelayProvider.newWeb3Provider(
       {
         provider: ethersProvider,
         config: relayClientConfig
-      }).init()
+      })
 
     // @ts-ignore
     TestRecipient.web3.setProvider(relayProvider)

@@ -177,7 +177,7 @@ class GsnTestEnvironmentClass {
       provider,
       config
     }
-    const relayProvider = await RelayProvider.newProvider(input).init()
+    const relayProvider = await RelayProvider.newWeb3Provider(input)
     logger.error('== startGSN: ready.')
     return new TestEnvironment(
       deploymentResult,

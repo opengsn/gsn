@@ -156,7 +156,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       relayRequest
     )
     signature = await getEip712Signature(
-      ethersProvider,
+      ethersProvider.getSigner(),
       dataToSign
     )
 
@@ -257,7 +257,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
         relayRequestMisbehaving
       )
       const signature = await getEip712Signature(
-        ethersProvider,
+        ethersProvider.getSigner(),
         dataToSign
       )
       const viewRelayCallResponse =
@@ -376,7 +376,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             relayRequest
           )
           const signature = await getEip712Signature(
-            ethersProvider,
+            ethersProvider.getSigner(),
             dataToSign
           )
           const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
@@ -467,7 +467,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
             relayRequest
           )
           const signature = await getEip712Signature(
-            ethersProvider,
+            ethersProvider.getSigner(),
             dataToSign
           )
           const relayCall = relayHub.contract.methods.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, approvalData)
@@ -557,7 +557,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                     relayRequest
                   )
                   const signature = await getEip712Signature(
-                    ethersProvider,
+                    ethersProvider.getSigner(),
                     dataToSign
                   )
                   const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {

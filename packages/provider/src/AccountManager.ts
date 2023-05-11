@@ -1,6 +1,6 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
-import { JsonRpcProvider, TransactionRequest } from '@ethersproject/providers'
+import { JsonRpcProvider, JsonRpcSigner, TransactionRequest } from '@ethersproject/providers'
 import { Wallet } from '@ethersproject/wallet'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { parse } from '@ethersproject/transactions'
@@ -19,7 +19,7 @@ import {
   TypedRequestData,
   getEip712Signature,
   isSameAddress,
-  removeHexPrefix
+  removeHexPrefix, SignTypedDataCallback
 } from '@opengsn/common'
 
 import { GSNConfig } from './GSNConfigurator'
@@ -35,13 +35,14 @@ function toAddress (privateKey: PrefixedHexString): Address {
 }
 
 export class AccountManager {
-  private readonly provider: JsonRpcProvider
+  // private readonly provider: JsonRpcProvider
+  private readonly signer: JsonRpcSigner
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
   readonly chainId: number
 
-  constructor (provider: JsonRpcProvider, chainId: number, config: GSNConfig) {
-    this.provider = provider
+  constructor (signer: JsonRpcSigner, chainId: number, config: GSNConfig) {
+    this.signer = signer
     this.chainId = chainId
     this.config = config
   }
@@ -164,11 +165,13 @@ export class AccountManager {
   // a) allow different implementations in the future, and
   // b) allow spying on Account Manager in tests
   async _signWithProvider (signedData: any): Promise<string> {
+    const clone = JSON.parse(JSON.stringify(signedData))
+    delete clone.types.EIP712Domain
     return await getEip712Signature(
-      this.provider,
-      signedData,
-      this.config.methodSuffix,
-      this.config.jsonStringifyRequest
+      this.signer,
+      clone
+      // this.config.methodSuffix,
+      // this.config.jsonStringifyRequest
     )
   }
 

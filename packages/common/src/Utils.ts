@@ -1,7 +1,7 @@
 import BN from 'bn.js'
 import chalk from 'chalk'
 
-import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
+import { JsonRpcProvider, JsonRpcSigner, Web3Provider } from '@ethersproject/providers'
 
 import { AbiCoder, Interface, JsonFragment } from '@ethersproject/abi'
 import { TypedMessage } from '@metamask/eth-sig-util'
@@ -92,26 +92,27 @@ export async function getDefaultMethodSuffix (provider: JsonRpcProvider): Promis
 }
 
 export async function getEip712Signature<T extends MessageTypes> (
-  provider: JsonRpcProvider,
-  typedRequestData: TypedMessage<T>,
-  methodSuffix: string | null = null,
-  jsonStringifyRequest = false
+  signer: JsonRpcSigner,
+  typedRequestData: TypedMessage<T>
+  // methodSuffix: string | null = null,
+  // jsonStringifyRequest = false
 ): Promise<PrefixedHexString> {
   const senderAddress = typedRequestData.message.from
   let dataToSign: TypedMessage<T> | string
-  if (jsonStringifyRequest) {
-    dataToSign = JSON.stringify(typedRequestData)
-  } else {
+  // if (jsonStringifyRequest) {
+  //   dataToSign = JSON.stringify(typedRequestData)
+  // } else {
     dataToSign = typedRequestData
-  }
-  methodSuffix = methodSuffix ?? await getDefaultMethodSuffix(provider)
-  const paramBlock = {
-    method: `eth_signTypedData${methodSuffix}`,
-    params: [senderAddress, dataToSign],
-    jsonrpc: '2.0',
-    id: Date.now()
-  }
-  return await provider.send(paramBlock.method, paramBlock.params)
+  // }
+  // methodSuffix = methodSuffix ?? await getDefaultMethodSuffix(provider)
+  // const paramBlock = {
+  //   method: `eth_signTypedData${methodSuffix}`,
+  //   params: [senderAddress, dataToSign],
+  //   jsonrpc: '2.0',
+  //   id: Date.now()
+  // }
+  // return await provider.send(paramBlock.method, paramBlock.params)
+  return signer._signTypedData(dataToSign.domain as any, dataToSign.types, dataToSign.message)
 }
 
 export function correctV (result: PrefixedHexString): PrefixedHexString {
@@ -488,13 +489,6 @@ export function validateRelayUrl (relayUrl: string): boolean {
     return false
   }
   return url.protocol === 'http:' || url.protocol === 'https:'
-}
-
-export function wrapWeb3JsProvider (provider: any): JsonRpcProvider {
-  if (typeof provider === 'object' && typeof provider.getSigner !== 'function') {
-    return new Web3Provider(provider)
-  }
-  return provider
 }
 
 export function appendSlashTrim (urlInput: string): string {

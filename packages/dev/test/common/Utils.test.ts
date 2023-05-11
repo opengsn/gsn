@@ -161,7 +161,7 @@ contract('Utils', function (accounts) {
       )
 
       const sig = await getEip712Signature(
-        provider,
+        provider.getSigner(),
         dataToSign
       )
 
@@ -179,7 +179,7 @@ contract('Utils', function (accounts) {
       it('should return revert result', async function () {
         relayRequest.request.data = await recipient.contract.methods.testRevert().encodeABI()
         const sig = await getEip712Signature(
-          provider,
+          provider.getSigner(),
           new TypedRequestData(
             defaultGsnConfig.domainSeparatorName,
             chainId,
@@ -198,7 +198,7 @@ contract('Utils', function (accounts) {
         relayRequest.request.nonce = (await forwarderInstance.getNonce(relayRequest.request.from)).toString()
 
         const sig = await getEip712Signature(
-          provider,
+          provider.getSigner(),
           new TypedRequestData(
             defaultGsnConfig.domainSeparatorName,
             chainId,

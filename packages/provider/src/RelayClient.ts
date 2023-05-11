@@ -1,6 +1,8 @@
 import { AbiCoder } from '@ethersproject/abi'
 import { EventEmitter } from 'events'
-import { ExternalProvider, JsonRpcProvider } from '@ethersproject/providers'
+import { ExternalProvider, JsonRpcProvider, JsonRpcSigner, Web3Provider } from '@ethersproject/providers'
+import { Signer } from '@ethersproject/abstract-signer'
+import { type JsonRpcApiProvider as ProviderEthersV6, type Signer as SignerEthersV6 } from 'ethers-v6'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { Transaction, parse, serialize } from '@ethersproject/transactions'
 
@@ -36,8 +38,7 @@ import {
   gsnRuntimeVersion,
   removeNullValues,
   toBN,
-  toHex,
-  wrapWeb3JsProvider
+  toHex, SignTypedDataCallback
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'
@@ -63,6 +64,7 @@ import {
   GsnValidateRequestEvent
 } from './GsnEvents'
 import { RelayCallGasLimitCalculationHelper } from '@opengsn/common/dist/RelayCallGasLimitCalculationHelper'
+import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
 // forwarder requests are signed with expiration time.
 
@@ -89,7 +91,7 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
 }
 
 export interface GSNUnresolvedConstructorInput {
-  provider: JsonRpcProvider | ExternalProvider
+  provider: SupportedProviderLikeType
   config: Partial<GSNConfig>
   overrideDependencies?: Partial<GSNDependencies>
 }
@@ -113,6 +115,64 @@ export interface RelayingResult {
   auditPromises?: Array<Promise<AuditResponse>>
 }
 
+type sendWeb3js = (payload: JsonRpcPayload, callback: (error: Error | null, result?: JsonRpcResponse) => unknown) => void
+
+interface Web3JsProvider {send: sendWeb3js}
+
+type SupportedProviderLikeType =
+  JsonRpcProvider
+  | Signer
+  | ProviderEthersV6
+  | SignerEthersV6
+  | ExternalProvider
+  | Web3JsProvider
+
+// TODO: not even sure v6 provider will work if forced, not wrapped - and wrapping is PITA
+export function wrapInputProviderLike (input: SupportedProviderLikeType): {
+  provider: JsonRpcProvider
+  signer: JsonRpcSigner
+} {
+  // 1. detect Ethers.js signer
+  if (typeof input === 'object' && typeof (input as any).signTransaction === 'function') {
+    const providerFromSigner = (input as any).provider
+    if (JsonRpcProvider.isProvider(providerFromSigner)) {
+      return {
+        provider: providerFromSigner as any,
+        signer: input as any
+      }
+    } else if (providerFromSigner == null) { throw new Error('signer not connected') } else {
+      throw new Error('THIS IS V6 SIGNER! NOT HANDLED')
+      // providerFromSigner._isProvider = true
+      // return providerFromSigner
+    }
+  }
+
+  // // 3. detect Ethers.js v6 provider
+  if (
+    typeof input === 'object' &&
+    typeof (input as any).getSigner === 'function' &&
+    !JsonRpcProvider.isProvider(input)
+  ) {
+    (input as any)._isProvider = true
+    return input as any
+  }
+
+  // 4. probably a Web3.js Provider - wrap it with Ethers.js
+  if (typeof input === 'object' && typeof (input as any).getSigner !== 'function') {
+    const provider = new Web3Provider(input as any)
+    return {
+      provider,
+      signer: provider.getSigner()
+    }
+  }
+
+  // this is an Ethers.js V5 provider - we can use it as-is
+  return {
+    provider: input as any,
+    signer: (input as any).getSigner()
+  }
+}
+
 export class RelayClient {
   readonly emitter = new EventEmitter()
   config!: GSNConfig
@@ -122,6 +182,8 @@ export class RelayClient {
   private initialized = false
   logger!: LoggerInterface
   initializingPromise?: Promise<void>
+  wrappedUnderlyingProvider!: JsonRpcProvider
+  wrappedUnderlyingSigner!: JsonRpcSigner
 
   constructor (
     rawConstructorInput: GSNUnresolvedConstructorInput
@@ -145,11 +207,16 @@ export class RelayClient {
   }
 
   async _initInternal (): Promise<void> {
-    this.emit(new GsnInitEvent())
+    this.emit(new GsnInitEvent());
+    ({
+      provider: this.wrappedUnderlyingProvider,
+      signer: this.wrappedUnderlyingSigner
+    } = wrapInputProviderLike(this.rawConstructorInput.provider))
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
     this.dependencies = await this._resolveDependencies({
       config: this.config,
-      provider: this.getUnderlyingProvider(),
+      provider: this.wrappedUnderlyingProvider,
+      signer: this.wrappedUnderlyingSigner,
       overrideDependencies: this.rawConstructorInput.overrideDependencies
     })
     if (!this.config.skipErc165Check) {
@@ -578,15 +645,18 @@ export class RelayClient {
     }
   }
 
-  getUnderlyingProvider (): JsonRpcProvider {
-    return wrapWeb3JsProvider(this.rawConstructorInput.provider)
-  }
+  // getUnderlyingProvider (): JsonRpcProvider {
+  //   if (this.wrappedUnderlyingProvider == null) {
+  //
+  //   }
+  //   return this.wrappedUnderlyingProvider
+  // }
 
   async _resolveConfiguration ({
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     let configFromServer: Partial<GSNConfig> = {}
-    const network = await this.getUnderlyingProvider().getNetwork()
+    const network = await this.wrappedUnderlyingProvider.getNetwork()
     const chainId = network.chainId
     const useClientDefaultConfigUrl = config.useClientDefaultConfigUrl ?? defaultGsnConfig.useClientDefaultConfigUrl
     if (useClientDefaultConfigUrl) {
@@ -660,10 +730,12 @@ export class RelayClient {
 
   async _resolveDependencies ({
     provider,
+    signer,
     config,
     overrideDependencies = {}
   }: {
     provider: JsonRpcProvider
+    signer: JsonRpcSigner
     config: GSNConfig
     overrideDependencies?: Partial<GSNDependencies>
   }): Promise<GSNDependencies> {
@@ -689,7 +761,7 @@ export class RelayClient {
       this.config.calldataEstimationSlackFactor,
       this.config.maxViewableGasLimit.toString()
     )
-    const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, chainId, this.config)
+    const accountManager = overrideDependencies?.accountManager ?? new AccountManager(signer, chainId, this.config)
 
     // TODO: accept HttpWrapper as a dependency - calling 'new' here is breaking the init flow.
     const httpWrapper = new HttpWrapper()

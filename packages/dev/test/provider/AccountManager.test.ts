@@ -27,7 +27,7 @@ contract('AccountManager', function (accounts) {
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
     ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
-    accountManager = new AccountManager(ethersProvider, hardhatNodeChainId, config)
+    accountManager = new AccountManager(ethersProvider.getSigner(), hardhatNodeChainId, config)
     sinon.spy(accountManager)
   })
   const config = configureGSN({
@@ -56,9 +56,8 @@ contract('AccountManager', function (accounts) {
   })
 
   describe('#newAccount()', function () {
-    const accountManager = new AccountManager(ethersProvider, hardhatNodeChainId, config)
-
     it('should create a new keypair, return it and save it internally', function () {
+      const accountManager = new AccountManager(ethersProvider.getSigner(), hardhatNodeChainId, config)
       const keypair = accountManager.newAccount()
       // @ts-ignore
       assert.equal(accountManager.accounts[0].privateKey.toString(), keypair.privateKey.toString())
