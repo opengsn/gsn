@@ -20,10 +20,16 @@ function retypeItem (abiOutput: Partial<ParamType>, ret: any): any {
   if (abiOutput.type.includes('int')) {
     return toBN(ret.toString())
   } else if (abiOutput.type === 'tuple[]') {
+    if (typeof ret.toArray === 'function') { // ethers.js v6 Contract treats all arrays as 'proxy' breaking our 'retype'
+      ret = ret.toArray().map((it: any) => { return it[0] })
+    }
     return ret.map((item: any) => retypeItem(
       { ...abiOutput, type: 'tuple' }, item
     ))
   } else if (abiOutput.type.includes('tuple') && abiOutput.components != null) {
+    if (typeof ret.toObject === 'function') { // ethers.js v6 Contract
+      ret = ret.toObject()
+    }
     const keys = Object.keys(ret)
     const newRet: any = {}
     for (let i = 0; i < keys.length; i++) {
@@ -56,11 +62,21 @@ function retype (outputs?: readonly JsonFragment[], ret?: any): any {
 export class Contract<T> {
   provider!: JsonRpcProvider
 
-  constructor (readonly contractName: string, readonly abi: JsonFragment[]) {
+  constructor (
+    readonly contractName: string,
+    readonly abi: JsonFragment[],
+    readonly useEthersV6: boolean
+  ) {
   }
 
   createContract (address: string, signer?: JsonRpcSigner): EthersContract {
     const ethersContract = new EthersContract(address, this.abi)
+    return ethersContract.connect(signer ?? this.provider)
+  }
+
+  async createContractEthersV6 (address: string, signer?: any): Promise<any> {
+    const { Contract: ContractV6 } = await import('ethers-v6/contract')
+    const ethersContract = new ContractV6(address, this.abi)
     return ethersContract.connect(signer ?? this.provider)
   }
 
@@ -79,7 +95,12 @@ export class Contract<T> {
     } catch (e: any) {
       // nothing to do here - signer does not have accounts and can only work with ephemeral keys
     }
-    const contract = this.createContract(address, signer)
+    let contract: any
+    if (this.useEthersV6) {
+      contract = await this.createContractEthersV6(address, signer)
+    } else {
+      contract = this.createContract(address, signer)
+    }
     const obj = {
       address,
       contract,
@@ -96,6 +117,7 @@ export class Contract<T> {
       const methodName: string = m.name ?? ''
       const nArgs = m.inputs?.length ?? 0
       const isViewFunction = m.stateMutability === 'view' || m.stateMutability === 'pure'
+      const useEthersV6 = this.useEthersV6
       obj[methodName] = async function () {
         let args = Array.from(arguments)
         let options = {}
@@ -110,7 +132,11 @@ export class Contract<T> {
           methodCall = contract.functions[methodName]
           return methodCall(...args, options)
         } else {
-          methodCall = contract.callStatic[methodName]
+          if (useEthersV6) {
+            methodCall = contract[methodName].staticCall.bind(contract[methodName])
+          } else {
+            methodCall = contract.callStatic[methodName]
+          }
           return methodCall(...args, options)
             .then((res: any) => {
               return retype(m.outputs, res)
@@ -132,6 +158,10 @@ export class Contract<T> {
   }
 }
 
-export function TruffleContract ({ contractName, abi }: { contractName: string, abi: any[] }): any {
-  return new Contract(contractName, abi)
+export function TruffleContract ({ contractName, abi, useEthersV6 = false }: {
+  contractName: string
+  abi: any[]
+  useEthersV6: boolean
+}): any {
+  return new Contract(contractName, abi, useEthersV6)
 }

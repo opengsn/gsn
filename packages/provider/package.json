@@ -17,8 +17,18 @@
   "publishConfig": {
     "access": "public"
   },
+  "peerDependencies": {
+    "ethers-v6": "npm:ethers@6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ethers-v6": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "ethers-v6": "npm:ethers@6.0.0"
+  },
   "dependencies": {
-    "ethers-v6": "npm:ethers@6.0.0",
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/abstract-signer": "^5.7.0",
     "@ethersproject/bignumber": "^5.7.0",

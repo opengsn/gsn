@@ -1,6 +1,6 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
-import { JsonRpcProvider, JsonRpcSigner, TransactionRequest } from '@ethersproject/providers'
+import { JsonRpcSigner, TransactionRequest } from '@ethersproject/providers'
 import { Wallet } from '@ethersproject/wallet'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { parse } from '@ethersproject/transactions'
@@ -19,7 +19,7 @@ import {
   TypedRequestData,
   getEip712Signature,
   isSameAddress,
-  removeHexPrefix, SignTypedDataCallback
+  removeHexPrefix
 } from '@opengsn/common'
 
 import { GSNConfig } from './GSNConfigurator'

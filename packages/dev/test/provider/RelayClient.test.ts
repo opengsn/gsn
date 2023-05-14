@@ -1212,8 +1212,6 @@ contract('RelayClient', function (accounts) {
         assert.equal(resolvedConfig.paymasterAddress.length, 42)
         resolvedConfig.paymasterAddress = '' // no need to resolve deployment
         const resolvedDependencies = await relayClient._resolveDependencies({
-          provider,
-          signer: provider.getSigner(),
           config: resolvedConfig
         })
         assert.equal(resolvedConfig.verifierServerApiKey, verifierServerApiKey)

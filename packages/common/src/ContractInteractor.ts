@@ -76,6 +76,7 @@ import TransactionDetails = Truffle.TransactionDetails
 export type EventFilterBlocks = EventFilter & { fromBlock?: BlockTag, toBlock?: BlockTag }
 
 export interface ConstructorParams {
+  useEthersV6?: boolean
   provider: JsonRpcProvider
   logger: LoggerInterface
   versionManager?: VersionsManager
@@ -166,6 +167,7 @@ export class ContractInteractor {
 
   constructor (
     {
+      useEthersV6 = false,
       maxPageSize,
       maxPageCount,
       provider,
@@ -191,34 +193,42 @@ export class ContractInteractor {
         : MainnetCalldataGasEstimation
     this.domainSeparatorName = domainSeparatorName ?? ''
     this.IPaymasterContract = TruffleContract({
+      useEthersV6,
       contractName: 'IPaymaster',
       abi: paymasterAbi
     })
     this.IRelayHubContract = TruffleContract({
+      useEthersV6,
       contractName: 'IRelayHub',
       abi: relayHubAbi
     })
     this.IForwarderContract = TruffleContract({
+      useEthersV6,
       contractName: 'IForwarder',
       abi: forwarderAbi
     })
     this.IStakeManager = TruffleContract({
+      useEthersV6,
       contractName: 'IStakeManager',
       abi: stakeManagerAbi
     })
     this.IPenalizer = TruffleContract({
+      useEthersV6,
       contractName: 'IPenalizer',
       abi: penalizerAbi
     })
     this.IERC2771Recipient = TruffleContract({
+      useEthersV6,
       contractName: 'IERC2771Recipient',
       abi: gsnRecipientAbi
     })
     this.IRelayRegistrar = TruffleContract({
+      useEthersV6,
       contractName: 'IRelayRegistrar',
       abi: relayRegistrarAbi
     })
     this.IERC20Token = TruffleContract({
+      useEthersV6,
       contractName: 'IERC20Token',
       abi: iErc20TokenAbi
     })
@@ -839,7 +849,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     const logs = await this.provider.getLogs({
       fromBlock: options.fromBlock,
       toBlock: options.toBlock,
-      address: contract.address,
+      address: (contract as any).target ?? contract.address,
       topics: topics
     })
     return logs.map(it => { return Object.assign(it, contract.interface.parseLog(it)) })

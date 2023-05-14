@@ -128,7 +128,7 @@ class GsnTestEnvironmentClass {
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`startGsn: expected network (${supportedNetworks().join('|')}) or url`)
     }
-    logger = logger ?? createCommandsLogger('error')
+    logger = logger ?? createCommandsLogger('silent')
     const deploymentResult = await this.deployGsn(host, logger)
     const commandsLogic = new CommandsLogic(_host, logger, {})
     await commandsLogic.init()

@@ -96,17 +96,27 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
     gsnSigner: Signer
   }> {
     const relayProvider = await RelayProvider.newWeb3Provider(input)
+    if (relayProvider.relayClient.isUsingEthersV6()) {
+      throw new Error('Creating Ethers v5 GSN Provider with Ethers v6 input is forbidden!')
+    }
     const gsnProvider = new Web3Provider(relayProvider)
     const gsnSigner = gsnProvider.getSigner()
     return { gsnProvider, gsnSigner }
   }
 
+  /**
+   * @experimental support for Ethers.js v6 in GSN is highly experimental!
+   * Create a GSN Provider and Signer that are compatible with {@link BrowserProvider} and {@link SignerV6} interfaces
+   */
   static async newEthersV6Provider (input: GSNUnresolvedConstructorInput): Promise<{
     gsnProvider: BrowserProvider
     gsnSigner: SignerV6
   }> {
     const { BrowserProvider } = await import('ethers-v6/providers')
     const relayProvider = await RelayProvider.newWeb3Provider(input)
+    if (!relayProvider.relayClient.isUsingEthersV6()) {
+      throw new Error('Creating Ethers v6 GSN provider with Ethers v5 input is forbidden!')
+    }
     // Warning: types imported from 'ethers-v6' are not technically "same" as types of dynamically imported libraries
     const gsnProvider: any = new BrowserProvider(relayProvider)
     const gsnSigner = await gsnProvider.getSigner()
@@ -431,9 +441,22 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
 
   _getTranslatedGsnResponseResult (respResult: TransactionReceipt, relayRequestID?: string): TransactionReceipt {
     const fixedTransactionReceipt = Object.assign({}, respResult)
+    const isUsingEthersV6 = this.relayClient.isUsingEthersV6()
+    if (isUsingEthersV6) {
+      // @ts-ignore
+      fixedTransactionReceipt.confirmations = () => {
+        return 77777
+      }
+    }
     // adding non declared field to receipt object - can be used in tests
     // @ts-ignore
     fixedTransactionReceipt.actualTransactionHash = fixedTransactionReceipt.transactionHash
+    fixedTransactionReceipt.transactionIndex = respResult.transactionIndex ?? 7777
+    fixedTransactionReceipt.logs = respResult.logs ?? []
+    fixedTransactionReceipt.logs.forEach((it) => {
+      // @ts-ignore
+      it.logIndex = it.logIndex ?? it.index
+    })
     fixedTransactionReceipt.transactionHash = relayRequestID ?? fixedTransactionReceipt.transactionHash
 
     // older Web3.js versions require 'status' to be an integer. Will be set to '0' if needed later in this method.
@@ -610,24 +633,30 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
     this.origProviderSend(payload, callback)
   }
 
-  // TODO: this is a nightmare! refactor ASAP!
   _getAccounts (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+    const isConnectedWithSigner = this.relayClient.isConnectedWithSigner()
+    if (isConnectedWithSigner) {
+      // if we are connected with a signer that has an address, we only return this address
+      void this.origSigner.getAddress()
+        .then((it) => {
+          const rpcResponse: JsonRpcResponse = {
+            id: payload.id ?? Date.now(),
+            jsonrpc: payload.jsonrpc,
+            result: [it]
+          }
+          callback(null, rpcResponse)
+        })
+        .catch((error) => {
+          callback(error)
+        })
+      return
+    }
     this.origProviderSend(payload, (error: Error | null, rpcResponse?: JsonRpcResponse): void => {
       if (rpcResponse != null && Array.isArray(rpcResponse.result)) {
         const ephemeralAccounts = this.relayClient.dependencies.accountManager.getAccounts()
         rpcResponse.result = rpcResponse.result.concat(ephemeralAccounts)
-
-        // if we are connected with a signer that has an address, we want to use this address by default
-        // TODO: avoid duplicate
-        void this.origSigner.getAddress()
-          .then((it) => {
-            rpcResponse.result = [it, ...rpcResponse.result]
-            callback(error, rpcResponse)
-          })
-          .catch(() => {
-            callback(error, rpcResponse)
-          })
       }
+      callback(error, rpcResponse)
     })
   }
 
@@ -667,9 +696,16 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
   }
 
   _createTransactionRevertedReceipt (): TransactionReceipt {
+    let confirmations: any = 0
+    const isUsingEthersV6 = this.relayClient.isUsingEthersV6()
+    if (isUsingEthersV6) {
+      confirmations = () => {
+        return 77777
+      }
+    }
     return {
       // TODO: I am not sure about these two, these were not required in Web3.js
-      confirmations: 0,
+      confirmations,
       byzantium: false,
       type: 0,
       to: '',
