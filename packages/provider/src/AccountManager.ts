@@ -36,7 +36,7 @@ function toAddress (privateKey: PrefixedHexString): Address {
 
 export class AccountManager {
   // private readonly provider: JsonRpcProvider
-  private readonly signer: JsonRpcSigner
+  private signer: JsonRpcSigner
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
   readonly chainId: number
@@ -165,13 +165,9 @@ export class AccountManager {
   // a) allow different implementations in the future, and
   // b) allow spying on Account Manager in tests
   async _signWithProvider (signedData: any): Promise<string> {
-    const clone = JSON.parse(JSON.stringify(signedData))
-    delete clone.types.EIP712Domain
     return await getEip712Signature(
       this.signer,
-      clone
-      // this.config.methodSuffix,
-      // this.config.jsonStringifyRequest
+      signedData
     )
   }
 
@@ -185,5 +181,9 @@ export class AccountManager {
 
   getAccounts (): string[] {
     return this.accounts.map(it => it.address)
+  }
+
+  switchSigner (signer: JsonRpcSigner) {
+    this.signer = signer
   }
 }

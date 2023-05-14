@@ -74,8 +74,7 @@ contract('SingletonWhitelistPaymaster',
           asyncPaymasterData: async () => { return new AbiCoder().encode(['address'], [owner1]) }
         }
       }
-      gsnProvider = RelayProvider.newProvider(input)
-      await gsnProvider.init()
+      gsnProvider = await RelayProvider.newWeb3Provider(input)
       // @ts-ignore
       TestRecipient.web3.setProvider(gsnProvider)
 

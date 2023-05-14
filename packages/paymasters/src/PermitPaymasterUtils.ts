@@ -117,6 +117,7 @@ export async function signAndEncodeDaiPermit (
   skipValidation = false
 ): Promise<PrefixedHexString> {
   const DaiContract = TruffleContract({
+    useEthersV6: false,
     contractName: 'DAIPermitInterface',
     abi: daiPermitAbi
   })
@@ -169,6 +170,7 @@ export async function signAndEncodeEIP2612Permit (
   skipValidation = false
 ): Promise<PrefixedHexString> {
   const EIP2612Contract = TruffleContract({
+    useEthersV6: false,
     contractName: 'EIP2612Contract',
     abi: eip2612PermitAbi
   })

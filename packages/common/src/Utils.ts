@@ -108,7 +108,8 @@ export async function getEip712Signature<T extends MessageTypes> (
   signer: JsonRpcSigner,
   typedRequestData: TypedMessage<T>
 ): Promise<PrefixedHexString> {
-  const dataToSign: TypedMessage<T> | string = typedRequestData
+  const dataToSign = JSON.parse(JSON.stringify(typedRequestData))
+  delete dataToSign.types.EIP712Domain
   // ethers v5 vs v6
   const signFunction = signer._signTypedData?.bind(signer) ?? (signer as any).signTypedData.bind(signer)
   return await signFunction(dataToSign.domain as any, dataToSign.types, dataToSign.message)

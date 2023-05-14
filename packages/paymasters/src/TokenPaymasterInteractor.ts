@@ -8,8 +8,7 @@ import {
   LoggerInterface,
   TruffleContract,
   constants,
-  toBN,
-  wrapWeb3JsProvider
+  toBN
 } from '@opengsn/common'
 import { IERC20Instance } from '@opengsn/contracts'
 import { IChainlinkOracleInstance, PermitERC20UniswapV3PaymasterInstance } from '../types/truffle-contracts'
@@ -17,6 +16,7 @@ import { IChainlinkOracleInstance, PermitERC20UniswapV3PaymasterInstance } from 
 import IERC20TokenInterface from '@opengsn/common/dist/interfaces/IERC20Token.json'
 import PermitERC20UniswapV3Paymaster from './interfaces/PermitERC20UniswapV3Paymaster.json'
 import IChainlinkOracle from './interfaces/IChainlinkOracle.json'
+import { wrapInputProviderLike } from '@opengsn/provider'
 
 export interface TokenSwapData {
   priceFeed: string
@@ -29,12 +29,12 @@ export interface TokenSwapData {
 }
 
 export class TokenPaymasterInteractor {
-  private readonly provider: JsonRpcProvider
-  private readonly ERC20Instance: Contract<IERC20Instance>
-  private readonly PermitERC20UniswapV3Paymaster: Contract<PermitERC20UniswapV3PaymasterInstance>
-  private readonly ChainlinkOracle: Contract<IChainlinkOracleInstance>
-  private readonly paymasterAddress: Address
-  private readonly logger: LoggerInterface
+  private provider: JsonRpcProvider
+  private ERC20Instance!: Contract<IERC20Instance>
+  private PermitERC20UniswapV3Paymaster!: Contract<PermitERC20UniswapV3PaymasterInstance>
+  private ChainlinkOracle!: Contract<IChainlinkOracleInstance>
+  private paymasterAddress: Address
+  private logger: LoggerInterface
 
   tokenAddress?: Address
   tokenSwapData?: TokenSwapData
@@ -49,25 +49,29 @@ export class TokenPaymasterInteractor {
   ) {
     this.paymasterAddress = paymasterAddress
     this.logger = logger
-    this.provider = wrapWeb3JsProvider(provider)
+    this.provider = provider as any
+  }
+
+  async init (): Promise<this> {
+    this.provider = (await wrapInputProviderLike(this.provider)).provider
     this.ERC20Instance = TruffleContract({
+      useEthersV6: false,
       contractName: 'ERC20Instance',
       abi: IERC20TokenInterface
     })
     this.PermitERC20UniswapV3Paymaster = TruffleContract({
+      useEthersV6: false,
       contractName: 'PermitERC20UniswapV3Paymaster',
       abi: PermitERC20UniswapV3Paymaster
     })
     this.ChainlinkOracle = TruffleContract({
+      useEthersV6: false,
       contractName: 'IChainlinkOracle',
       abi: IChainlinkOracle
     })
     this.ChainlinkOracle.setProvider(this.provider, undefined)
     this.ERC20Instance.setProvider(this.provider, undefined)
     this.PermitERC20UniswapV3Paymaster.setProvider(this.provider, undefined)
-  }
-
-  async init (): Promise<this> {
     this.paymaster = await this._createPermitERC20UniswapV3Paymaster(this.paymasterAddress)
     return this
   }

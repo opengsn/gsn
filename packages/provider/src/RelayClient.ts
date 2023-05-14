@@ -36,6 +36,7 @@ import {
   getRelayRequestID,
   gsnRequiredVersion,
   gsnRuntimeVersion,
+  isSameAddress,
   removeNullValues,
   toBN,
   toHex
@@ -343,6 +344,7 @@ export class RelayClient {
     const gsnTransactionDetails = { ..._gsnTransactionDetails }
     // TODO: should have a better strategy to decide how often to refresh known relays
     this.emit(new GsnRefreshRelaysEvent())
+    this.switchSigner(_gsnTransactionDetails)
     await this.dependencies.knownRelaysManager.refresh()
     gsnTransactionDetails.maxFeePerGas = toHex(gsnTransactionDetails.maxFeePerGas)
     gsnTransactionDetails.maxPriorityFeePerGas = toHex(gsnTransactionDetails.maxPriorityFeePerGas)
@@ -966,6 +968,17 @@ export class RelayClient {
       return async () => { return new AbiCoder().encode(['address'], [dappOwner]) }
     }
     return EmptyDataCallback
+  }
+
+  // TODO: this is very ugly, but Web3.js allowed overriding 'from' and we are not ready to abandon support for it yet
+  async switchSigner (_gsnTransactionDetails: GsnTransactionDetails): Promise<void> {
+    const currentSignerAddress = await this.wrappedUnderlyingSigner.getAddress()
+    const from = _gsnTransactionDetails.from
+    if (from != null && !isSameAddress(from, currentSignerAddress)) {
+      this.logger.warn('Warning: Passing "from" parameter override in transaction details is not supported in Ethers.js, may cause various bugs and support will be removed from GSN in the next major version.')
+      this.wrappedUnderlyingSigner = this.wrappedUnderlyingProvider.getSigner(from)
+      this.dependencies.accountManager.switchSigner(this.wrappedUnderlyingSigner)
+    }
   }
 }
 

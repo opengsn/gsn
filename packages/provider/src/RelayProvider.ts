@@ -72,14 +72,14 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
    * See: {@link newWeb3Provider},  {@link newEthersV5Provider}, {@link newEthersV6Provider}
    * @deprecated
    */
-  // static newProvider (...args: any[]): any {
-  //   throw new Error(
-  //     'This method has been deprecated to avoid confusion. Please use one of the following:\n' +
-  //     'newWeb3Provider - to create an EIP-1193 Provider compatible with Web3.js\n' +
-  //     'newEthersV5Provider - to create a pair of Provider and Signer objects compatible with Ethers.js v5\n' +
-  //     'newEthersV6Provider - to create a pair of Provider and Signer objects compatible with Ethers.js v6'
-  //   )
-  // }
+  static newProvider (...args: any[]): any {
+    throw new Error(
+      'This method has been deprecated to avoid confusion. Please use one of the following:\n' +
+      'newWeb3Provider - to create an EIP-1193 Provider compatible with Web3.js\n' +
+      'newEthersV5Provider - to create a pair of Provider and Signer objects compatible with Ethers.js v5\n' +
+      'newEthersV6Provider - to create a pair of Provider and Signer objects compatible with Ethers.js v6'
+    )
+  }
 
   /**
    * Create a GSN Provider that is compatible with both {@link ExternalProvider} and {@link Eip1193Provider} interfaces
