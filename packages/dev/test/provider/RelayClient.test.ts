@@ -963,6 +963,7 @@ contract('RelayClient', function (accounts) {
         await relayClient.init()
 
         const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+        await relayClient.fillRelayInfo(relayRequest, relayInfo)
         const httpRequest = await relayClient._prepareRelayHttpRequest(relayRequest, relayInfo)
         assert.equal(httpRequest.metadata.approvalData, '0x1234567890')
         assert.equal(httpRequest.relayRequest.relayData.paymasterData, '0xabcd')

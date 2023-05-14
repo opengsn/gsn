@@ -183,7 +183,7 @@ export class AccountManager {
     return this.accounts.map(it => it.address)
   }
 
-  switchSigner (signer: JsonRpcSigner) {
+  switchSigner (signer: JsonRpcSigner): void {
     this.signer = signer
   }
 }

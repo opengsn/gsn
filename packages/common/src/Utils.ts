@@ -112,7 +112,7 @@ export async function getEip712Signature<T extends MessageTypes> (
   delete dataToSign.types.EIP712Domain
   // ethers v5 vs v6
   const signFunction = signer._signTypedData?.bind(signer) ?? (signer as any).signTypedData.bind(signer)
-  return await signFunction(dataToSign.domain as any, dataToSign.types, dataToSign.message)
+  return await signFunction(dataToSign.domain, dataToSign.types, dataToSign.message)
 }
 
 export function correctV (result: PrefixedHexString): PrefixedHexString {
