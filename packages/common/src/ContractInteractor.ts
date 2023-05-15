@@ -1,7 +1,7 @@
 import BN from 'bn.js'
 import { Contract as EthersContract, ethers, EventFilter } from 'ethers'
 import { PrefixedHexString } from 'ethereumjs-util'
-import { TxOptions } from '@ethereumjs/tx'
+import { TxOptions } from './ethereumjstx/TxOptions'
 
 import { RelayRequest } from './EIP712/RelayRequest'
 import paymasterAbi from './interfaces/IPaymaster.json'

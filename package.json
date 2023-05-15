@@ -69,7 +69,7 @@
     "create-all-deps": "jq '.dependencies,.devDependencies' packages/*/package.json |sort  -u > all.deps"
   },
   "devDependencies": {
-    "@metamask/eth-sig-util": "^4.0.1",
+    "@metamask/eth-sig-util": "^5.1.0",
     "@openzeppelin/test-helpers": "^0.5.15",
     "@truffle/hdwallet-provider": "^2.0.10",
     "@typechain/truffle-v5": "^6.0.0",

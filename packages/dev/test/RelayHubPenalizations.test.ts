@@ -17,7 +17,6 @@ import {
   TypedRequestData,
   constants,
   defaultEnvironment,
-  getDataAndSignature,
   getEip712Signature,
   getRawTxOptions,
   removeHexPrefix,
@@ -36,6 +35,7 @@ import { deployHub, evmMineMany, hardhatNodeChainId, revert, snapshot } from './
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'
 import { defaultGsnConfig } from '@opengsn/provider'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
+import { getDataAndSignature } from '@opengsn/relay/dist/penalizer/PenalizerUtils'
 
 const RelayHub = artifacts.require('RelayHub')
 const StakeManager = artifacts.require('StakeManager')

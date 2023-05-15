@@ -11,6 +11,7 @@ import { ChildProcessWithoutNullStreams } from 'child_process'
 import { ExternalProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
 import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
 import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { parse } from '@ethersproject/transactions'
 import { toBN, toHex } from 'web3-utils'
 
 import {
@@ -327,8 +328,7 @@ contract('RelayClient', function (accounts) {
         assert.fail(`validTransaction is null: ${JSON.stringify(relayingResult, replaceErrors)}`)
         return
       }
-      const validTransactionHash: string = validTransaction.hash().toString('hex')
-      const txHash = `0x${validTransactionHash}`
+      const txHash: string = validTransaction.hash!
       const res = await web3.eth.getTransactionReceipt(txHash)
 
       // validate we've got the "SampleRecipientEmitted" event
@@ -336,7 +336,7 @@ contract('RelayClient', function (accounts) {
       const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256,uint256,uint256)') ?? ''
       assert.ok(res.logs.find(log => log.topics.includes(topic)), 'log not found')
 
-      const destination: string = validTransaction.to!.toString()
+      const destination: string = validTransaction.to!.toString().toLowerCase()
       assert.equal(destination, relayHub.address.toString().toLowerCase())
     })
 
@@ -354,7 +354,7 @@ contract('RelayClient', function (accounts) {
         maxPriorityFeePerGas: '50000000000'
       }))
       assert.isNotNull(relayingResult.transaction, 'missing transaction')
-      const validTransactionHash: string = `0x${relayingResult.transaction!.hash().toString('hex')}`
+      const validTransactionHash: string = relayingResult.transaction!.hash!
       const res = await web3.eth.getTransactionReceipt(validTransactionHash)
       const topic: string = web3.utils.sha3('SampleRecipientEmitted(string,address,address,address,uint256,uint256,uint256)') ?? ''
       assert.ok(res.logs.find(log => log.topics.includes(topic)), 'log not found')
@@ -1052,7 +1052,11 @@ contract('RelayClient', function (accounts) {
         deployment: { paymasterAddress: gsnConfig.paymasterAddress as string }
       }, true)
       await badContractInteractor.init()
-      const transaction = Transaction.fromSerializedTx(toBuffer('0xc6808080808080'))
+
+      const wallet = ethWallet.generate()
+      const txOptions = getRawTxOptions(1337, 0)
+      const transactionEth = bufferToHex(Transaction.fromSerializedTx(toBuffer('0xc6808080808080'), txOptions).sign(wallet.getPrivateKey()).serialize())
+      const transaction = parse(transactionEth)
       const relayClient =
         new RelayClient({
           provider: underlyingProvider,

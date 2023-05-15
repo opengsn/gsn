@@ -31,7 +31,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@metamask/eth-sig-util": "^4.0.1",
+    "@metamask/eth-sig-util": "^5.1.0",
     "@opengsn/common": "^3.0.0-beta.7",
     "@opengsn/contracts": "^3.0.0-beta.7",
     "@opengsn/dev": "^3.0.0-beta.7",

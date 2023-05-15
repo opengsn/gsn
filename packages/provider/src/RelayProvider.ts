@@ -1,11 +1,11 @@
 /* eslint-disable no-void */
 // @ts-ignore
-import abiDecoder from 'abi-decoder'
 
 import { BigNumber } from '@ethersproject/bignumber'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { TypedMessage } from '@metamask/eth-sig-util'
-import { JsonRpcProvider, TransactionReceipt, ExternalProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, TransactionReceipt, ExternalProvider, TransactionRequest } from '@ethersproject/providers'
+import { Interface, LogDescription } from '@ethersproject/abi'
 
 import {
   Address,
@@ -27,8 +27,6 @@ import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import { AccountKeypair } from './AccountManager'
 import { GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from './RelayClient'
-
-abiDecoder.addABI(relayHubAbi)
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
 
@@ -145,7 +143,7 @@ export class RelayProvider implements ExternalProvider {
         return
       }
       if (payload.method === 'eth_signTransaction') {
-        this._signTransaction(payload, callback)
+        void this._signTransaction(payload, callback)
         return
       }
       if (payload.method === 'eth_signTypedData') {
@@ -368,13 +366,22 @@ export class RelayProvider implements ExternalProvider {
     if (respResult.logs.length === 0) {
       return fixedTransactionReceipt
     }
-    const logs = abiDecoder.decodeLogs(respResult.logs)
-    const paymasterRejectedEvents = logs.find((e: any) => e != null && e.name === 'TransactionRejectedByPaymaster')
+    const iface = new Interface(relayHubAbi)
+    const logs: Array<LogDescription | undefined> = respResult.logs.map(
+      it => {
+        try {
+          return iface.parseLog(it)
+        } catch (e) {
+          return undefined
+        }
+      }
+    )
+    const paymasterRejectedEvents = logs.find((e) => e != null && e.name === 'TransactionRejectedByPaymaster')
 
     if (paymasterRejectedEvents !== null && paymasterRejectedEvents !== undefined) {
-      const paymasterRejectionReason: { value: string } = paymasterRejectedEvents.events.find((e: any) => e.name === 'reason')
+      const paymasterRejectionReason: string = paymasterRejectedEvents.args.reason
       if (paymasterRejectionReason !== undefined) {
-        this.logger.info(`Paymaster rejected on-chain: ${paymasterRejectionReason.value}. changing status to zero`)
+        this.logger.info(`Paymaster rejected on-chain: ${paymasterRejectionReason}. changing status to zero`)
         // @ts-ignore
         fixedTransactionReceipt.status = '0'
       }
@@ -383,9 +390,9 @@ export class RelayProvider implements ExternalProvider {
 
     const transactionRelayed = logs.find((e: any) => e != null && e.name === 'TransactionRelayed')
     if (transactionRelayed != null) {
-      const transactionRelayedStatus = transactionRelayed.events.find((e: any) => e.name === 'status')
+      const transactionRelayedStatus: number = transactionRelayed.args.status
       if (transactionRelayedStatus !== undefined) {
-        const status: string = transactionRelayedStatus.value.toString()
+        const status: string = transactionRelayedStatus.toString()
         // 0 signifies success
         if (status !== '0') {
           this.logger.info(`reverted relayed transaction, status code ${status}. changing status to zero`)
@@ -475,12 +482,12 @@ export class RelayProvider implements ExternalProvider {
     this.origProviderSend(payload, callback)
   }
 
-  _signTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+  async _signTransaction (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     const id = (typeof payload.id === 'string' ? parseInt(payload.id) : payload.id) ?? -1
-    const transactionConfig: TransactionConfig = payload.params?.[0]
+    const transactionConfig: TransactionRequest = payload.params?.[0]
     const from = transactionConfig?.from as string
     if (from != null && this.isEphemeralAccount(from)) {
-      const result = this.relayClient.dependencies.accountManager.signTransaction(transactionConfig, from)
+      const result = await this.relayClient.dependencies.accountManager.signTransaction(transactionConfig, from)
       const rpcResponse = {
         id,
         result,

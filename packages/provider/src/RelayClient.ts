@@ -1,8 +1,8 @@
 import { AbiCoder } from '@ethersproject/abi'
 import { EventEmitter } from 'events'
 import { ExternalProvider, JsonRpcProvider } from '@ethersproject/providers'
-import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
-import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { Transaction, parse, serialize } from '@ethersproject/transactions'
 
 import {
   Address,
@@ -97,7 +97,7 @@ export interface GSNUnresolvedConstructorInput {
 interface RelayingAttempt {
   relayRequestID?: PrefixedHexString
   validUntilTime?: string
-  transaction?: TypedTransaction
+  transaction?: Transaction
   isRelayError?: boolean
   error?: Error
   auditPromise?: Promise<AuditResponse>
@@ -107,7 +107,7 @@ export interface RelayingResult {
   relayRequestID?: PrefixedHexString
   submissionBlock?: number
   validUntilTime?: string
-  transaction?: TypedTransaction
+  transaction?: Transaction
   pingErrors: Map<string, Error>
   relayingErrors: Map<string, Error>
   auditPromises?: Array<Promise<AuditResponse>>
@@ -186,13 +186,25 @@ export class RelayClient {
    *
    * @param {*} transaction - actual Ethereum transaction, signed by a relay
    */
-  async _broadcastRawTx (transaction: TypedTransaction): Promise<{
+  async _broadcastRawTx (transaction: Transaction): Promise<{
     hasReceipt: boolean
     broadcastError?: Error
     wrongNonce?: boolean
   }> {
-    const rawTx = '0x' + transaction.serialize().toString('hex')
-    const txHash = '0x' + transaction.hash().toString('hex')
+    const strippedTransaction = Object.assign({}, transaction)
+    delete strippedTransaction.from
+    delete strippedTransaction.hash
+    delete strippedTransaction.r
+    delete strippedTransaction.s
+    delete strippedTransaction.v
+
+    const signature = {
+      r: transaction.r ?? '',
+      s: transaction.s,
+      v: transaction.v
+    }
+    const rawTx = serialize(strippedTransaction, signature)
+    const txHash = transaction.hash ?? ''
     try {
       if (await this._isAlreadySubmitted(txHash)) {
         this.logger.debug('Not broadcasting raw transaction as our RPC endpoint already sees it')
@@ -371,17 +383,17 @@ export class RelayClient {
     }
     let signedTx: PrefixedHexString
     let nonceGapFilled: ObjectMap<PrefixedHexString>
-    let transaction: TypedTransaction
+    let transaction: Transaction
     let auditPromise: Promise<AuditResponse>
     this.emit(new GsnSendToRelayerEvent(relayInfo.relayInfo.relayUrl))
     try {
       ({ signedTx, nonceGapFilled } =
         await this.dependencies.httpClient.relayTransaction(relayInfo.relayInfo.relayUrl, httpRequest))
-      transaction = TransactionFactory.fromSerializedData(toBuffer(signedTx), this.dependencies.contractInteractor.getRawTxOptions())
+      transaction = parse(signedTx)
       auditPromise = this.auditTransaction(signedTx, relayInfo.relayInfo.relayUrl)
         .then((penalizeResponse) => {
           if (penalizeResponse.commitTxHash != null) {
-            const txHash = bufferToHex(transaction.hash())
+            const txHash = transaction.hash
             this.logger.error(`The transaction with id: ${txHash} was penalized! Penalization commitment tx id: ${penalizeResponse.commitTxHash}`)
           }
           return penalizeResponse

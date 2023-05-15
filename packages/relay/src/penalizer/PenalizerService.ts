@@ -19,7 +19,6 @@ import {
   VersionsManager,
   address2topic,
   constants,
-  getDataAndSignature,
   gsnRequiredVersion,
   gsnRuntimeVersion,
   removeHexPrefix,
@@ -29,6 +28,7 @@ import {
 
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
 import { BlockExplorerInterface } from './BlockExplorerInterface'
+import { getDataAndSignature } from './PenalizerUtils'
 
 import { ServerAction } from '../StoredTransaction'
 import { TransactionManager } from '../TransactionManager'
