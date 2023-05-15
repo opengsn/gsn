@@ -72,7 +72,7 @@ contract('AccountManager', function (accounts) {
     const relayRequest: RelayRequest = {
       request: {
         to: constants.ZERO_ADDRESS,
-        data: '0x123',
+        data: '0x0123',
         from: '',
         nonce: '1',
         value: '0',
@@ -117,6 +117,7 @@ contract('AccountManager', function (accounts) {
       expect(accountManager._signWithControlledKey).to.have.been.calledWith(privateKey, signedData)
       expect(accountManager._signWithProvider).to.have.not.been.called
     })
+
     it('should ask provider to sign if key is not controlled', async function () {
       relayRequest.request.from = accounts[0]
       const signedData = new TypedRequestData(

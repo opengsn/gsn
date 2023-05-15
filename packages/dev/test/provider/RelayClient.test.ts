@@ -692,9 +692,9 @@ contract('RelayClient', function (accounts) {
         relayWorkerAddress: relayWorkerAddress,
         relayManagerAddress: relayManager,
         relayHubAddress: relayManager,
-        minMaxFeePerGas: '',
-        maxMaxFeePerGas: '',
-        minMaxPriorityFeePerGas: '',
+        minMaxFeePerGas: '0',
+        maxMaxFeePerGas: 1e18.toString(),
+        minMaxPriorityFeePerGas: '0',
         maxAcceptanceBudget: 1e10.toString(),
         ready: true,
         version: ''
@@ -977,11 +977,13 @@ contract('RelayClient', function (accounts) {
         }
         relayClient.dependencies.asyncApprovalData = getLongData
         const relayRequest1 = await relayClient._prepareRelayRequest(optionsWithGas)
+        await relayClient.fillRelayInfo(relayRequest1, relayInfo)
         await expect(relayClient._prepareRelayHttpRequest(relayRequest1, relayInfo))
           .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
 
         relayClient.dependencies.asyncPaymasterData = getLongData
         const relayRequest2 = await relayClient._prepareRelayRequest(optionsWithGas)
+        await relayClient.fillRelayInfo(relayRequest2, relayInfo)
         await expect(relayClient._prepareRelayHttpRequest(relayRequest2, relayInfo))
           .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
       } finally {
