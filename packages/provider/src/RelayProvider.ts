@@ -4,8 +4,16 @@
 import { BigNumber } from '@ethersproject/bignumber'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { TypedMessage } from '@metamask/eth-sig-util'
-import { JsonRpcProvider, TransactionReceipt, ExternalProvider, TransactionRequest } from '@ethersproject/providers'
+import {
+  JsonRpcProvider,
+  TransactionReceipt,
+  ExternalProvider,
+  TransactionRequest,
+  Web3Provider, JsonRpcSigner
+} from '@ethersproject/providers'
 import { Interface, LogDescription } from '@ethersproject/abi'
+
+import { type Eip1193Provider, type BrowserProvider, type Signer as SignerV6 } from 'ethers-v6/providers'
 
 import {
   Address,
@@ -27,6 +35,7 @@ import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import { AccountKeypair } from './AccountManager'
 import { GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from './RelayClient'
+import { Signer } from '@ethersproject/abstract-signer'
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
 
@@ -43,9 +52,10 @@ const TX_NOTFOUND = 'tx-notfound'
 
 const BLOCKS_FOR_LOOKUP = 5000
 
-export class RelayProvider implements ExternalProvider {
-  protected readonly origProvider: JsonRpcProvider
-  private readonly _origProviderSend: (method: string, params: any[]) => Promise<any>
+export class RelayProvider implements ExternalProvider, Eip1193Provider {
+  protected origProvider!: JsonRpcProvider
+  protected origSigner!: JsonRpcSigner
+  private _origProviderSend!: (method: string, params: any[]) => Promise<any>
   private asyncSignTypedData?: SignTypedDataCallback
   protected readonly submittedRelayRequests = new Map<string, SubmittedRelayRequestInfo>()
   protected config!: GSNConfig
@@ -56,8 +66,61 @@ export class RelayProvider implements ExternalProvider {
   host!: string
   connected!: boolean
 
-  static newProvider (input: GSNUnresolvedConstructorInput): RelayProvider {
-    return new RelayProvider(new RelayClient(input))
+  /**
+   * Warning. This method has been deprecated due to ambiguity of the term 'Provider'.
+   * Library-specific methods are created instead.
+   * See: {@link newWeb3Provider},  {@link newEthersV5Provider}, {@link newEthersV6Provider}
+   * @deprecated
+   */
+  static newProvider (...args: any[]): any {
+    throw new Error(
+      'This method has been deprecated to avoid confusion. Please use one of the following:\n' +
+      'newWeb3Provider - to create an EIP-1193 Provider compatible with Web3.js\n' +
+      'newEthersV5Provider - to create a pair of Provider and Signer objects compatible with Ethers.js v5\n' +
+      'newEthersV6Provider - to create a pair of Provider and Signer objects compatible with Ethers.js v6'
+    )
+  }
+
+  /**
+   * Create a GSN Provider that is compatible with both {@link ExternalProvider} and {@link Eip1193Provider} interfaces
+   */
+  static async newWeb3Provider (input: GSNUnresolvedConstructorInput): Promise<RelayProvider> {
+    return await new RelayProvider(new RelayClient(input)).init()
+  }
+
+  /**
+   * Create a GSN Provider and Signer that are compatible with {@link Web3Provider} and {@link Signer} interfaces
+   */
+  static async newEthersV5Provider (input: GSNUnresolvedConstructorInput): Promise<{
+    gsnProvider: Web3Provider
+    gsnSigner: Signer
+  }> {
+    const relayProvider = await RelayProvider.newWeb3Provider(input)
+    if (relayProvider.relayClient.isUsingEthersV6()) {
+      throw new Error('Creating Ethers v5 GSN Provider with Ethers v6 input is forbidden!')
+    }
+    const gsnProvider = new Web3Provider(relayProvider)
+    const gsnSigner = gsnProvider.getSigner()
+    return { gsnProvider, gsnSigner }
+  }
+
+  /**
+   * @experimental support for Ethers.js v6 in GSN is highly experimental!
+   * Create a GSN Provider and Signer that are compatible with {@link BrowserProvider} and {@link SignerV6} interfaces
+   */
+  static async newEthersV6Provider (input: GSNUnresolvedConstructorInput): Promise<{
+    gsnProvider: BrowserProvider
+    gsnSigner: SignerV6
+  }> {
+    const { BrowserProvider } = await import('ethers-v6/providers')
+    const relayProvider = await RelayProvider.newWeb3Provider(input)
+    if (!relayProvider.relayClient.isUsingEthersV6()) {
+      throw new Error('Creating Ethers v6 GSN provider with Ethers v5 input is forbidden!')
+    }
+    // Warning: types imported from 'ethers-v6' are not technically "same" as types of dynamically imported libraries
+    const gsnProvider: any = new BrowserProvider(relayProvider)
+    const gsnSigner = await gsnProvider.getSigner()
+    return { gsnProvider, gsnSigner }
   }
 
   constructor (
@@ -67,11 +130,7 @@ export class RelayProvider implements ExternalProvider {
       throw new Error('Using new RelayProvider() constructor directly is deprecated.\nPlease create provider using RelayProvider.newProvider({})')
     }
     this.relayClient = relayClient
-    this.origProvider = this.relayClient.getUnderlyingProvider()
     this.logger = this.relayClient.logger
-
-    this._origProviderSend = this.origProvider.send.bind(this.origProvider)
-    this._delegateEventsApi()
   }
 
   origProviderSend (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
@@ -87,10 +146,14 @@ export class RelayProvider implements ExternalProvider {
     })
   }
 
-  async init (): Promise<this> {
+  protected async init (): Promise<this> {
     await this.relayClient.init()
+    this.origProvider = this.relayClient.wrappedUnderlyingProvider
+    this.origSigner = this.relayClient.wrappedUnderlyingSigner
+    this._origProviderSend = this.origProvider.send.bind(this.origProvider)
     this.config = this.relayClient.config
     this.asyncSignTypedData = this.relayClient.dependencies.asyncSignTypedData
+    this._delegateEventsApi()
     this.logger.info(`Created new RelayProvider ver.${gsnRuntimeVersion}`)
     return this
   }
@@ -112,6 +175,29 @@ export class RelayProvider implements ExternalProvider {
         // @ts-ignore
         this[func] = this.origProvider[func].bind(this.origProvider)
       }
+    })
+  }
+
+  /**
+   * Wrapping legacy 'send()' function with EIP-1193 'request()' function
+   * @param method
+   * @param params
+   */
+  async request ({ method, params }: { method: string, params?: any[] }): Promise<any> {
+    const paramBlock = {
+      method,
+      params,
+      jsonrpc: '2.0',
+      id: Date.now()
+    }
+    return await new Promise<any>((resolve, reject) => {
+      this.send(paramBlock, (error?: Error | null, result?: JsonRpcResponse): void => {
+        if (error != null) {
+          reject(error)
+        } else {
+          resolve(result?.result)
+        }
+      })
     })
   }
 
@@ -146,7 +232,7 @@ export class RelayProvider implements ExternalProvider {
         void this._signTransaction(payload, callback)
         return
       }
-      if (payload.method === 'eth_signTypedData') {
+      if (payload.method.includes('eth_signTypedData') === true) {
         this._signTypedData(payload, callback)
         return
       }
@@ -355,9 +441,22 @@ export class RelayProvider implements ExternalProvider {
 
   _getTranslatedGsnResponseResult (respResult: TransactionReceipt, relayRequestID?: string): TransactionReceipt {
     const fixedTransactionReceipt = Object.assign({}, respResult)
+    const isUsingEthersV6 = this.relayClient.isUsingEthersV6()
+    if (isUsingEthersV6) {
+      // @ts-ignore
+      fixedTransactionReceipt.confirmations = () => {
+        return 77777
+      }
+    }
     // adding non declared field to receipt object - can be used in tests
     // @ts-ignore
     fixedTransactionReceipt.actualTransactionHash = fixedTransactionReceipt.transactionHash
+    fixedTransactionReceipt.transactionIndex = respResult.transactionIndex ?? 7777
+    fixedTransactionReceipt.logs = respResult.logs ?? []
+    fixedTransactionReceipt.logs.forEach((it) => {
+      // @ts-ignore
+      it.logIndex = it.logIndex ?? it.index
+    })
     fixedTransactionReceipt.transactionHash = relayRequestID ?? fixedTransactionReceipt.transactionHash
 
     // older Web3.js versions require 'status' to be an integer. Will be set to '0' if needed later in this method.
@@ -535,6 +634,23 @@ export class RelayProvider implements ExternalProvider {
   }
 
   _getAccounts (payload: JsonRpcPayload, callback: JsonRpcCallback): void {
+    const isConnectedWithSigner = this.relayClient.isConnectedWithSigner()
+    if (isConnectedWithSigner) {
+      // if we are connected with a signer that has an address, we only return this address
+      void this.origSigner.getAddress()
+        .then((it) => {
+          const rpcResponse: JsonRpcResponse = {
+            id: payload.id ?? Date.now(),
+            jsonrpc: payload.jsonrpc,
+            result: [it]
+          }
+          callback(null, rpcResponse)
+        })
+        .catch((error) => {
+          callback(error)
+        })
+      return
+    }
     this.origProviderSend(payload, (error: Error | null, rpcResponse?: JsonRpcResponse): void => {
       if (rpcResponse != null && Array.isArray(rpcResponse.result)) {
         const ephemeralAccounts = this.relayClient.dependencies.accountManager.getAccounts()
@@ -580,9 +696,16 @@ export class RelayProvider implements ExternalProvider {
   }
 
   _createTransactionRevertedReceipt (): TransactionReceipt {
+    let confirmations: any = 0
+    const isUsingEthersV6 = this.relayClient.isUsingEthersV6()
+    if (isUsingEthersV6) {
+      confirmations = () => {
+        return 77777
+      }
+    }
     return {
       // TODO: I am not sure about these two, these were not required in Web3.js
-      confirmations: 0,
+      confirmations,
       byzantium: false,
       type: 0,
       to: '',

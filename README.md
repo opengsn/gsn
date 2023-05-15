@@ -72,6 +72,12 @@ In order to install the GSN client library
 yarn add @opengsn/provider
 ```
 
+Note: Since version `3.0.0-beta.8` you also need to add an alias to Ethers.js v6 types as a dev dependency if your project is using TypeScript:<br/>
+```
+"devDependencies": {
+  "ethers-v6": "npm:ethers@6.3.0"
+}
+```
 Using it within your application:
 ```JavaScript
 const { RelayProvider } = require('@opengsn/provider')
@@ -84,9 +90,15 @@ async function getProvider() {
       logLevel: 'debug'
     }
   }
-  const provider = await RelayProvider.newProvider({ provider: window.ethereum, config }).init()
+  // to create a Web3.js Provider object:
+  const gsnProvider = await RelayProvider.newWeb3Provider({ provider: window.ethereum, config })
+  // to create a pair of Ethers.js Provider and Signer:
+  const { gsnProvider, gsnSigner } = await RelayProvider.newEthersV5Provider({ provider: new JsonRpcProvider(url), config})
 }
 ```
+> **_NOTE:_**   You can pass `window.ethereum`, Web3.js Provider, Ethers.js Signer or Provider (both v5 or v6), in the `provider` parameter.<br/>
+> Use `newEthersV5Provider` or `newEthersV6Provider` instead of `newWeb3Provider` to create a pair of Ethers.js Provider and Signer.<br/>
+> You can also connect a single `ERC2771Recipient` contract like this: ``` const gsnContract = await connectContractToGSN(contract, config) ```
 
 Adding `ERC2771Recipient` to your target smart contract:
 ```solidity

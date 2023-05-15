@@ -67,8 +67,7 @@ contract('HashcashPaymaster', ([from]) => {
       provider,
       config: gsnConfig
     }
-    const p = RelayProvider.newProvider(input)
-    await p.init()
+    const p = await RelayProvider.newWeb3Provider(input)
     // @ts-ignore
     SampleRecipient.web3.setProvider(p)
     await expectRevert(s.something(), 'approvalData: invalid length for hash and nonce')
@@ -83,8 +82,7 @@ contract('HashcashPaymaster', ([from]) => {
           asyncApprovalData: async () => '0x'.padEnd(2 + 64 * 2, '0')
         }
     }
-    const p = RelayProvider.newProvider(input)
-    await p.init()
+    const p = await RelayProvider.newWeb3Provider(input)
     // @ts-ignore
     SampleRecipient.web3.setProvider(p)
 
@@ -100,8 +98,7 @@ contract('HashcashPaymaster', ([from]) => {
           asyncApprovalData: createHashcashAsyncApproval(1)
         }
     }
-    const p = RelayProvider.newProvider(input)
-    await p.init()
+    const p = await RelayProvider.newWeb3Provider(input)
     // @ts-ignore
     SampleRecipient.web3.setProvider(p)
 
@@ -119,8 +116,7 @@ contract('HashcashPaymaster', ([from]) => {
           asyncApprovalData: createHashcashAsyncApproval(15)
         }
     }
-    const p = RelayProvider.newProvider(input)
-    await p.init()
+    const p = await RelayProvider.newWeb3Provider(input)
     // @ts-ignore
     SampleRecipient.web3.setProvider(p)
 
@@ -155,8 +151,7 @@ contract('HashcashPaymaster', ([from]) => {
         }
       }
     }
-    const p = RelayProvider.newProvider(input)
-    await p.init()
+    const p = await RelayProvider.newWeb3Provider(input)
     // @ts-ignore
     SampleRecipient.web3.setProvider(p)
 
@@ -179,8 +174,7 @@ contract('HashcashPaymaster', ([from]) => {
           }
         }
     }
-    const p = RelayProvider.newProvider(input)
-    await p.init()
+    const p = await RelayProvider.newWeb3Provider(input)
     // @ts-ignore
     SampleRecipient.web3.setProvider(p)
     await s.something()
@@ -193,8 +187,7 @@ contract('HashcashPaymaster', ([from]) => {
           asyncApprovalData: async (req: RelayRequest) => saveret
         }
     }
-    const p1 = RelayProvider.newProvider(input1)
-    await p1.init()
+    const p1 = await RelayProvider.newWeb3Provider(input1)
     // @ts-ignore
     SampleRecipient.web3.setProvider(p1)
     return expectRevert(s.something(), 'wrong hash')

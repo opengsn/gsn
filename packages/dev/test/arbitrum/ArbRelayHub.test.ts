@@ -131,7 +131,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
       const currentProviderHost = web3.currentProvider.host
       const provider = new StaticJsonRpcProvider(currentProviderHost)
       signature = await getEip712Signature(
-        provider,
+        provider.getSigner(),
         dataToSign
       )
     })

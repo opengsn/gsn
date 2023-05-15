@@ -81,7 +81,7 @@ async function getProvider (
       config,
       overrideDependencies
     }
-    const relayProvider = await RelayProvider.newProvider(input).init()
+    const relayProvider = await RelayProvider.newWeb3Provider(input)
     if (privateKey != null) {
       relayProvider.addAccount(privateKey)
     }

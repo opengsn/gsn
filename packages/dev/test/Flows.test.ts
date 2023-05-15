@@ -128,11 +128,11 @@ options.forEach(params => {
           maxPaymasterDataLength: 4
         }
 
-        relayProvider = await RelayProvider.newProvider(
+        relayProvider = await RelayProvider.newWeb3Provider(
           {
             provider,
             config: relayClientConfig
-          }).init()
+          })
 
         // web3.setProvider(relayProvider)
 
@@ -201,11 +201,11 @@ options.forEach(params => {
        */
       describe('with different gas limits', function () {
         before(async function () {
-          relayProvider = await RelayProvider.newProvider(
+          relayProvider = await RelayProvider.newWeb3Provider(
             {
               provider,
               config: relayClientConfig
-            }).init()
+            })
         });
         // note: cannot set 'innerGasLimit' too close to 'maxViewableGasLimit' and expect it to pass
         [1e4, 1e5, 1e6, 1e7]
@@ -235,22 +235,22 @@ options.forEach(params => {
           await approvalPaymaster.setTrustedForwarder(await sr.getTrustedForwarder())
           await rhub.depositFor(approvalPaymaster.address, { value: (1e18).toString() })
           relayClientConfig = { ...relayClientConfig, ...{ paymasterAddress: approvalPaymaster.address }, performDryRunViewRelayCall: false }
-          const relayProvider = await RelayProvider.newProvider(
+          const relayProvider = await RelayProvider.newWeb3Provider(
             {
               provider,
               config: relayClientConfig
-            }).init()
+            })
           // @ts-ignore
           TestRecipient.web3.setProvider(relayProvider)
         })
 
         const setRecipientProvider = async function (asyncApprovalData: ApprovalDataCallback): Promise<void> {
           const relayProvider =
-            await RelayProvider.newProvider({
+            await RelayProvider.newWeb3Provider({
               provider,
               config: relayClientConfig,
               overrideDependencies: { asyncApprovalData }
-            }).init()
+            })
           // @ts-ignore
           TestRecipient.web3.setProvider(relayProvider)
         }

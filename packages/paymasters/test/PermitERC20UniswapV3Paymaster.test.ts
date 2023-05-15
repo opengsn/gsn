@@ -28,8 +28,7 @@ import {
   USDC_CONTRACT_ADDRESS,
   WETH9_CONTRACT_ADDRESS,
   constants,
-  removeHexPrefix,
-  wrapWeb3JsProvider
+  removeHexPrefix
 } from '@opengsn/common'
 
 import {
@@ -64,6 +63,7 @@ import {
   MAJOR_DAI_AND_UNI_HOLDER,
   skipWithoutFork
 } from './ForkTestUtils'
+import { wrapInputProviderLike } from '@opengsn/provider'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
 const PermitInterfaceEIP2612 = artifacts.require('PermitInterfaceEIP2612')
@@ -301,7 +301,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           permitPaymaster.address,
           daiPermittableToken.address,
           constants.MAX_UINT256.toString(),
-          wrapWeb3JsProvider(web3.currentProvider),
+          (await wrapInputProviderLike(web3.currentProvider as any)).provider,
           domainSeparator,
           '_v4',
           false,
@@ -355,7 +355,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
           permitPaymaster.address,
           daiPermittableToken.address,
           constants.MAX_UINT256.toString(),
-          wrapWeb3JsProvider(web3.currentProvider),
+          (await wrapInputProviderLike(web3.currentProvider as any)).provider,
           getDaiDomainSeparator(),
           '_v4',
           false
@@ -415,7 +415,7 @@ contract('PermitERC20UniswapV3Paymaster', function ([account0, account1, relay, 
               token.address,
               constants.MAX_UINT256.toString(),
               constants.MAX_UINT256.toString(),
-              wrapWeb3JsProvider(web3.currentProvider),
+              (await wrapInputProviderLike(web3.currentProvider as any)).provider,
               domainSeparator,
               '_v4',
               false,

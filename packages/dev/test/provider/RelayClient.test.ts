@@ -692,9 +692,9 @@ contract('RelayClient', function (accounts) {
         relayWorkerAddress: relayWorkerAddress,
         relayManagerAddress: relayManager,
         relayHubAddress: relayManager,
-        minMaxFeePerGas: '',
-        maxMaxFeePerGas: '',
-        minMaxPriorityFeePerGas: '',
+        minMaxFeePerGas: '0',
+        maxMaxFeePerGas: 1e18.toString(),
+        minMaxPriorityFeePerGas: '0',
         maxAcceptanceBudget: 1e10.toString(),
         ready: true,
         version: ''
@@ -963,6 +963,7 @@ contract('RelayClient', function (accounts) {
         await relayClient.init()
 
         const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
+        await relayClient.fillRelayInfo(relayRequest, relayInfo)
         const httpRequest = await relayClient._prepareRelayHttpRequest(relayRequest, relayInfo)
         assert.equal(httpRequest.metadata.approvalData, '0x1234567890')
         assert.equal(httpRequest.relayRequest.relayData.paymasterData, '0xabcd')
@@ -976,11 +977,13 @@ contract('RelayClient', function (accounts) {
         }
         relayClient.dependencies.asyncApprovalData = getLongData
         const relayRequest1 = await relayClient._prepareRelayRequest(optionsWithGas)
+        await relayClient.fillRelayInfo(relayRequest1, relayInfo)
         await expect(relayClient._prepareRelayHttpRequest(relayRequest1, relayInfo))
           .to.eventually.be.rejectedWith('actual approvalData larger than maxApprovalDataLength')
 
         relayClient.dependencies.asyncPaymasterData = getLongData
         const relayRequest2 = await relayClient._prepareRelayRequest(optionsWithGas)
+        await relayClient.fillRelayInfo(relayRequest2, relayInfo)
         await expect(relayClient._prepareRelayHttpRequest(relayRequest2, relayInfo))
           .to.eventually.be.rejectedWith('actual paymasterData larger than maxPaymasterDataLength')
       } finally {
@@ -1130,13 +1133,13 @@ contract('RelayClient', function (accounts) {
         methodSuffix: 'test suffix from arg'
       }
       let resolvedConfig = await relayClient._resolveConfiguration({
-        provider: relayClient.getUnderlyingProvider(),
+        provider: relayClient.wrappedUnderlyingProvider,
         config
       })
       assert.equal(resolvedConfig.methodSuffix, 'test suffix from arg')
 
       resolvedConfig = await relayClient._resolveConfiguration({
-        provider: relayClient.getUnderlyingProvider(),
+        provider: relayClient.wrappedUnderlyingProvider,
         config: {}
       })
       assert.equal(resolvedConfig.methodSuffix, 'test suffix from _resolveConfigurationFromServer')
@@ -1144,7 +1147,7 @@ contract('RelayClient', function (accounts) {
       sinon.restore()
       sinon.stub(relayClient, '_resolveConfigurationFromServer').returns(Promise.resolve({}))
       resolvedConfig = await relayClient._resolveConfiguration({
-        provider: relayClient.getUnderlyingProvider(),
+        provider: relayClient.wrappedUnderlyingProvider,
         config: {}
       })
       assert.equal(resolvedConfig.methodSuffix, defaultGsnConfig.methodSuffix)
@@ -1156,7 +1159,7 @@ contract('RelayClient', function (accounts) {
         useClientDefaultConfigUrl: false
       }
       const resolvedConfig = await relayClient._resolveConfiguration({
-        provider: relayClient.getUnderlyingProvider(),
+        provider: relayClient.wrappedUnderlyingProvider,
         config
       })
       assert.equal(resolvedConfig.methodSuffix, defaultGsnConfig.methodSuffix)
@@ -1195,7 +1198,7 @@ contract('RelayClient', function (accounts) {
           paymasterAddress: PaymasterType.VerifyingPaymaster,
           verifierServerApiKey
         }
-        const provider = relayClient.getUnderlyingProvider()
+        const provider = relayClient.wrappedUnderlyingProvider
         const sandbox = sinon.createSandbox()
         sandbox
           .stub(provider)
@@ -1211,7 +1214,9 @@ contract('RelayClient', function (accounts) {
         sandbox.restore()
         assert.equal(resolvedConfig.paymasterAddress.length, 42)
         resolvedConfig.paymasterAddress = '' // no need to resolve deployment
-        const resolvedDependencies = await relayClient._resolveDependencies({ provider, config: resolvedConfig })
+        const resolvedDependencies = await relayClient._resolveDependencies({
+          config: resolvedConfig
+        })
         assert.equal(resolvedConfig.verifierServerApiKey, verifierServerApiKey)
         assert.equal(resolvedConfig.verifierServerUrl, DEFAULT_VERIFIER_SERVER_URL)
         assert.equal(resolvedConfig.maxApprovalDataLength, DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH)

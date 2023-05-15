@@ -1,6 +1,6 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
-import { JsonRpcProvider, TransactionRequest } from '@ethersproject/providers'
+import { JsonRpcSigner, TransactionRequest } from '@ethersproject/providers'
 import { Wallet } from '@ethersproject/wallet'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { parse } from '@ethersproject/transactions'
@@ -35,13 +35,14 @@ function toAddress (privateKey: PrefixedHexString): Address {
 }
 
 export class AccountManager {
-  private readonly provider: JsonRpcProvider
+  // private readonly provider: JsonRpcProvider
+  private signer: JsonRpcSigner
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
   readonly chainId: number
 
-  constructor (provider: JsonRpcProvider, chainId: number, config: GSNConfig) {
-    this.provider = provider
+  constructor (signer: JsonRpcSigner, chainId: number, config: GSNConfig) {
+    this.signer = signer
     this.chainId = chainId
     this.config = config
   }
@@ -165,10 +166,8 @@ export class AccountManager {
   // b) allow spying on Account Manager in tests
   async _signWithProvider (signedData: any): Promise<string> {
     return await getEip712Signature(
-      this.provider,
-      signedData,
-      this.config.methodSuffix,
-      this.config.jsonStringifyRequest
+      this.signer,
+      signedData
     )
   }
 
@@ -182,5 +181,9 @@ export class AccountManager {
 
   getAccounts (): string[] {
     return this.accounts.map(it => it.address)
+  }
+
+  switchSigner (signer: JsonRpcSigner): void {
+    this.signer = signer
   }
 }

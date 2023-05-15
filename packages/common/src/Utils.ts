@@ -1,7 +1,7 @@
 import BN from 'bn.js'
 import chalk from 'chalk'
 
-import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
+import { JsonRpcProvider, JsonRpcSigner } from '@ethersproject/providers'
 
 import { AbiCoder, Interface, JsonFragment } from '@ethersproject/abi'
 import { TypedMessage } from '@metamask/eth-sig-util'
@@ -50,7 +50,14 @@ export function event2topic (contract: any, names: string[]): any {
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!contract.filters) { return names }
   return names
-    .map(name => { return contract.filters[name]().topics[0] })
+    .map(name => {
+      let topic = contract.filters[name]().topics?.[0]
+      if (topic == null) {
+        // maybe this is Ethers.js v6 contract?
+        topic = contract.filters.TransactionRelayed.fragment.topicHash
+      }
+      return topic
+    })
 }
 
 export function addresses2topics (addresses: string[]): string[] {
@@ -91,27 +98,21 @@ export async function getDefaultMethodSuffix (provider: JsonRpcProvider): Promis
   return '_v4'
 }
 
+/* eslint-disable no-extend-native */
+// @ts-expect-error 🚧 ETHERS 6.1.0 IS BROKEN. THIS IS A WORKAROUND. FIXED IN 6.3.0 but 6.3.0 breaks CommonJS interop
+BigInt.prototype.toJSON = function () {
+  return this.toString()
+}
+
 export async function getEip712Signature<T extends MessageTypes> (
-  provider: JsonRpcProvider,
-  typedRequestData: TypedMessage<T>,
-  methodSuffix: string | null = null,
-  jsonStringifyRequest = false
+  signer: JsonRpcSigner,
+  typedRequestData: TypedMessage<T>
 ): Promise<PrefixedHexString> {
-  const senderAddress = typedRequestData.message.from
-  let dataToSign: TypedMessage<T> | string
-  if (jsonStringifyRequest) {
-    dataToSign = JSON.stringify(typedRequestData)
-  } else {
-    dataToSign = typedRequestData
-  }
-  methodSuffix = methodSuffix ?? await getDefaultMethodSuffix(provider)
-  const paramBlock = {
-    method: `eth_signTypedData${methodSuffix}`,
-    params: [senderAddress, dataToSign],
-    jsonrpc: '2.0',
-    id: Date.now()
-  }
-  return await provider.send(paramBlock.method, paramBlock.params)
+  const dataToSign = JSON.parse(JSON.stringify(typedRequestData))
+  delete dataToSign.types.EIP712Domain
+  // ethers v5 vs v6
+  const signFunction = signer._signTypedData?.bind(signer) ?? (signer as any).signTypedData.bind(signer)
+  return await signFunction(dataToSign.domain, dataToSign.types, dataToSign.message)
 }
 
 export function correctV (result: PrefixedHexString): PrefixedHexString {
@@ -297,7 +298,7 @@ export function toNumber (numberish: number | string | BN | BigInt): number {
     case 'bigint':
       return Number(numberish)
     case 'object':
-      if (isBigNumber(numberish)) {
+      if (isBigNumber(numberish) || typeof (numberish as any).toNumber === 'function') {
         // @ts-ignore
         return numberish.toNumber()
       }
@@ -488,13 +489,6 @@ export function validateRelayUrl (relayUrl: string): boolean {
     return false
   }
   return url.protocol === 'http:' || url.protocol === 'https:'
-}
-
-export function wrapWeb3JsProvider (provider: any): JsonRpcProvider {
-  if (typeof provider === 'object' && typeof provider.getSigner !== 'function') {
-    return new Web3Provider(provider)
-  }
-  return provider
 }
 
 export function appendSlashTrim (urlInput: string): string {

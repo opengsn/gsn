@@ -117,6 +117,7 @@ export async function signAndEncodeDaiPermit (
   skipValidation = false
 ): Promise<PrefixedHexString> {
   const DaiContract = TruffleContract({
+    useEthersV6: false,
     contractName: 'DAIPermitInterface',
     abi: daiPermitAbi
   })
@@ -141,10 +142,10 @@ export async function signAndEncodeDaiPermit (
     permit
   )
   const signature = await getEip712Signature(
-    provider,
-    dataToSign,
-    methodSuffix,
-    jsonStringifyRequest
+    provider.getSigner(),
+    dataToSign
+    // methodSuffix,
+    // jsonStringifyRequest
   )
   const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)
@@ -169,6 +170,7 @@ export async function signAndEncodeEIP2612Permit (
   skipValidation = false
 ): Promise<PrefixedHexString> {
   const EIP2612Contract = TruffleContract({
+    useEthersV6: false,
     contractName: 'EIP2612Contract',
     abi: eip2612PermitAbi
   })
@@ -194,10 +196,10 @@ export async function signAndEncodeEIP2612Permit (
     domainType
   )
   const signature = await getEip712Signature(
-    provider,
-    dataToSign,
-    methodSuffix,
-    jsonStringifyRequest
+    provider.getSigner(),
+    dataToSign
+    // methodSuffix,
+    // jsonStringifyRequest
   )
   const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)

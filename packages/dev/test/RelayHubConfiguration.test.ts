@@ -135,7 +135,7 @@ contract('RelayHub Configuration',
         relayRequest
       )
       signature = await getEip712Signature(
-        ethersProvider,
+        ethersProvider.getSigner(senderAddress),
         dataToSign
       )
 

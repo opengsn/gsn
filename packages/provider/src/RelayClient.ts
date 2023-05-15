@@ -1,6 +1,8 @@
 import { AbiCoder } from '@ethersproject/abi'
 import { EventEmitter } from 'events'
-import { ExternalProvider, JsonRpcProvider } from '@ethersproject/providers'
+import { ExternalProvider, JsonRpcProvider, JsonRpcSigner, Web3Provider } from '@ethersproject/providers'
+import { Signer } from '@ethersproject/abstract-signer'
+import { type JsonRpcApiProvider as ProviderEthersV6, type Signer as SignerEthersV6 } from 'ethers-v6'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { Transaction, parse, serialize } from '@ethersproject/transactions'
 
@@ -14,6 +16,8 @@ import {
   GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
+  JsonRpcPayload,
+  JsonRpcResponse,
   LoggerInterface,
   ObjectMap,
   PaymasterDataCallback,
@@ -34,10 +38,10 @@ import {
   getRelayRequestID,
   gsnRequiredVersion,
   gsnRuntimeVersion,
+  isSameAddress,
   removeNullValues,
   toBN,
-  toHex,
-  wrapWeb3JsProvider
+  toHex
 } from '@opengsn/common'
 
 import { AccountKeypair, AccountManager } from './AccountManager'
@@ -64,8 +68,6 @@ import {
 } from './GsnEvents'
 import { RelayCallGasLimitCalculationHelper } from '@opengsn/common/dist/RelayCallGasLimitCalculationHelper'
 
-// forwarder requests are signed with expiration time.
-
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
 // approvalData is created after request is filled and signed.
@@ -89,7 +91,7 @@ export const GasPricePingFilter: PingFilter = (pingResponse, gsnTransactionDetai
 }
 
 export interface GSNUnresolvedConstructorInput {
-  provider: JsonRpcProvider | ExternalProvider
+  provider: SupportedProviderLikeType
   config: Partial<GSNConfig>
   overrideDependencies?: Partial<GSNDependencies>
 }
@@ -113,6 +115,89 @@ export interface RelayingResult {
   auditPromises?: Array<Promise<AuditResponse>>
 }
 
+type sendWeb3js = (payload: JsonRpcPayload, callback: (error: Error | null, result?: JsonRpcResponse) => unknown) => void
+
+interface Web3JsProvider {send: sendWeb3js}
+
+type SupportedProviderLikeType =
+  JsonRpcProvider
+  | Signer
+  | ProviderEthersV6
+  | SignerEthersV6
+  | ExternalProvider
+  | Web3JsProvider
+
+export enum InputProviderType {
+  Web3JsProvider,
+  ProviderEthersV5,
+  SignerEthersV5,
+  ProviderEthersV6,
+  SignerEthersV6
+}
+
+// TODO: not even sure v6 provider will work if forced, not wrapped - and wrapping is PITA
+export async function wrapInputProviderLike (input: SupportedProviderLikeType): Promise<{
+  provider: JsonRpcProvider
+  signer: JsonRpcSigner
+  inputProviderType: InputProviderType
+}> {
+  // 1. detect Ethers.js Signer
+  if (
+    typeof input === 'object' &&
+    typeof (input as any).signTransaction === 'function'
+  ) {
+    const providerFromSigner = (input as any).provider
+    if (providerFromSigner == null) {
+      throw new Error('signer not connected')
+    }
+    if (JsonRpcProvider.isProvider(providerFromSigner)) {
+      return {
+        inputProviderType: InputProviderType.SignerEthersV5,
+        provider: providerFromSigner as any,
+        signer: input as any
+      }
+    } else {
+      return {
+        inputProviderType: InputProviderType.SignerEthersV6,
+        provider: (input as any).provider,
+        signer: input as any
+      }
+    }
+  }
+
+  // 2. detect Ethers.js Provider
+  if (
+    typeof input === 'object' &&
+    typeof (input as any).getSigner === 'function'
+  ) {
+    if (JsonRpcProvider.isProvider(input)) {
+      return {
+        inputProviderType: InputProviderType.ProviderEthersV5,
+        provider: input as any,
+        signer: (input as any).getSigner()
+      }
+    } else {
+      return {
+        inputProviderType: InputProviderType.ProviderEthersV6,
+        provider: input as any,
+        signer: await (input as any).getSigner()
+      }
+    }
+  }
+
+  // 3. probably a "window.ethereum" or "Web3.js" Provider - wrap it with Ethers.js
+  if (typeof input === 'object') {
+    const provider = new Web3Provider(input as any)
+    return {
+      inputProviderType: InputProviderType.Web3JsProvider,
+      provider,
+      signer: provider.getSigner()
+    }
+  }
+
+  throw new Error('wrapInputProviderLike: input provider type is not detected.')
+}
+
 export class RelayClient {
   readonly emitter = new EventEmitter()
   config!: GSNConfig
@@ -122,6 +207,9 @@ export class RelayClient {
   private initialized = false
   logger!: LoggerInterface
   initializingPromise?: Promise<void>
+  inputProviderType!: InputProviderType
+  wrappedUnderlyingProvider!: JsonRpcProvider
+  wrappedUnderlyingSigner!: JsonRpcSigner
 
   constructor (
     rawConstructorInput: GSNUnresolvedConstructorInput
@@ -145,11 +233,15 @@ export class RelayClient {
   }
 
   async _initInternal (): Promise<void> {
-    this.emit(new GsnInitEvent())
+    this.emit(new GsnInitEvent());
+    ({
+      inputProviderType: this.inputProviderType,
+      provider: this.wrappedUnderlyingProvider,
+      signer: this.wrappedUnderlyingSigner
+    } = await wrapInputProviderLike(this.rawConstructorInput.provider))
     this.config = await this._resolveConfiguration(this.rawConstructorInput)
     this.dependencies = await this._resolveDependencies({
       config: this.config,
-      provider: this.getUnderlyingProvider(),
       overrideDependencies: this.rawConstructorInput.overrideDependencies
     })
     if (!this.config.skipErc165Check) {
@@ -253,6 +345,7 @@ export class RelayClient {
     const gsnTransactionDetails = { ..._gsnTransactionDetails }
     // TODO: should have a better strategy to decide how often to refresh known relays
     this.emit(new GsnRefreshRelaysEvent())
+    await this.switchSigner(_gsnTransactionDetails.from)
     await this.dependencies.knownRelaysManager.refresh()
     gsnTransactionDetails.maxFeePerGas = toHex(gsnTransactionDetails.maxFeePerGas)
     gsnTransactionDetails.maxPriorityFeePerGas = toHex(gsnTransactionDetails.maxPriorityFeePerGas)
@@ -504,6 +597,7 @@ export class RelayClient {
     relayInfo: RelayInfo
   ): Promise<RelayTransactionRequest> {
     this.emit(new GsnSignRequestEvent())
+    await this.switchSigner(relayRequest.request.from) // TODO: this redundant call is needed only for the tests that don't call to 'relayTransaction' - refactor
     const signature = await this.dependencies.accountManager.sign(this.config.domainSeparatorName, relayRequest)
     const relayRequestId = this._getRelayRequestID(relayRequest, signature)
     const approvalData = await this.dependencies.asyncApprovalData(relayRequest, relayRequestId)
@@ -578,15 +672,18 @@ export class RelayClient {
     }
   }
 
-  getUnderlyingProvider (): JsonRpcProvider {
-    return wrapWeb3JsProvider(this.rawConstructorInput.provider)
-  }
+  // getUnderlyingProvider (): JsonRpcProvider {
+  //   if (this.wrappedUnderlyingProvider == null) {
+  //
+  //   }
+  //   return this.wrappedUnderlyingProvider
+  // }
 
   async _resolveConfiguration ({
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
     let configFromServer: Partial<GSNConfig> = {}
-    const network = await this.getUnderlyingProvider().getNetwork()
+    const network = await this.wrappedUnderlyingProvider.getNetwork()
     const chainId = network.chainId
     const useClientDefaultConfigUrl = config.useClientDefaultConfigUrl ?? defaultGsnConfig.useClientDefaultConfigUrl
     if (useClientDefaultConfigUrl) {
@@ -659,21 +756,21 @@ export class RelayClient {
   }
 
   async _resolveDependencies ({
-    provider,
     config,
     overrideDependencies = {}
   }: {
-    provider: JsonRpcProvider
     config: GSNConfig
     overrideDependencies?: Partial<GSNDependencies>
   }): Promise<GSNDependencies> {
     const versionManager = new VersionsManager(gsnRuntimeVersion, config.requiredVersionRange ?? gsnRequiredVersion)
-    const network = await provider.getNetwork()
+    const network = await this.wrappedUnderlyingProvider.getNetwork()
     const chainId = parseInt(network.chainId.toString())
     const paymasterAddress = getPaymasterAddressByTypeAndChain(config?.paymasterAddress, chainId, this.logger)
+    const useEthersV6 = this.isUsingEthersV6()
     const contractInteractor = overrideDependencies?.contractInteractor ??
       await new ContractInteractor({
-        provider,
+        useEthersV6,
+        provider: this.wrappedUnderlyingProvider,
         versionManager,
         logger: this.logger,
         maxPageSize: this.config.pastEventsQueryMaxPageSize,
@@ -689,7 +786,7 @@ export class RelayClient {
       this.config.calldataEstimationSlackFactor,
       this.config.maxViewableGasLimit.toString()
     )
-    const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, chainId, this.config)
+    const accountManager = overrideDependencies?.accountManager ?? new AccountManager(this.wrappedUnderlyingSigner, chainId, this.config)
 
     // TODO: accept HttpWrapper as a dependency - calling 'new' here is breaking the init flow.
     const httpWrapper = new HttpWrapper()
@@ -716,6 +813,20 @@ export class RelayClient {
       asyncPaymasterData,
       asyncSignTypedData
     }
+  }
+
+  isUsingEthersV6 (): boolean {
+    return (
+      this.inputProviderType === InputProviderType.ProviderEthersV6 ||
+      this.inputProviderType === InputProviderType.SignerEthersV6
+    )
+  }
+
+  isConnectedWithSigner (): boolean {
+    return (
+      this.inputProviderType === InputProviderType.SignerEthersV5 ||
+      this.inputProviderType === InputProviderType.SignerEthersV6
+    )
   }
 
   async _resolveVerifierApprovalDataCallback (
@@ -859,6 +970,16 @@ export class RelayClient {
       return async () => { return new AbiCoder().encode(['address'], [dappOwner]) }
     }
     return EmptyDataCallback
+  }
+
+  // TODO: this is very ugly, but Web3.js allowed overriding 'from' and we are not ready to abandon support for it yet
+  async switchSigner (from?: string): Promise<void> {
+    const currentSignerAddress = await this.wrappedUnderlyingSigner.getAddress()
+    if (from != null && !isSameAddress(from, currentSignerAddress)) {
+      this.logger.warn('Warning: Passing "from" parameter override in transaction details is not supported in Ethers.js, may cause various bugs and support will be removed from GSN in the next major version.')
+      this.wrappedUnderlyingSigner = this.wrappedUnderlyingProvider.getSigner(from)
+      this.dependencies.accountManager.switchSigner(this.wrappedUnderlyingSigner)
+    }
   }
 }
 

@@ -1,7 +1,7 @@
 import { StaticJsonRpcProvider, Block } from '@ethersproject/providers'
 import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
 import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
-import Mutex from 'async-mutex/lib/Mutex'
+import { Mutex } from 'async-mutex'
 import * as ethUtils from 'ethereumjs-util'
 
 import { evmMine, evmMineMany, increaseTime } from './TestUtils'

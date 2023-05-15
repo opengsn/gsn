@@ -115,8 +115,7 @@ contract('VerifyingPaymaster', ([from]) => {
           asyncApprovalData: mockGetApprovalData
         }
       }
-      const p = RelayProvider.newProvider(input)
-      await p.init()
+      const p = await RelayProvider.newWeb3Provider(input)
       // @ts-ignore
       SampleRecipient.web3.setProvider(p)
     })

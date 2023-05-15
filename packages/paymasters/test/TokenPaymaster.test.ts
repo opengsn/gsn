@@ -128,7 +128,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
       relayRequest
     )
     signature = await getEip712Signature(
-      provider,
+      provider.getSigner(),
       dataToSign
     )
   })
@@ -152,13 +152,13 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
 
       it('should reject if unknown paymasterData', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: '0x1234' })
-        const signature = await getEip712Signature(provider, new TypedRequestData(defaultGsnConfig.domainSeparatorName, 1, forwarder.address, req))
+        const signature = await getEip712Signature(provider.getSigner(), new TypedRequestData(defaultGsnConfig.domainSeparatorName, 1, forwarder.address, req))
         assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /paymasterData: invalid length for Uniswap v3 exchange address/)
       })
 
       it('should reject if unsupported uniswap in paymasterData', async () => {
         const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', nonUniswap) })
-        const signature = await getEip712Signature(provider, new TypedRequestData(defaultGsnConfig.domainSeparatorName, 1, forwarder.address, req))
+        const signature = await getEip712Signature(provider.getSigner(), new TypedRequestData(defaultGsnConfig.domainSeparatorName, 1, forwarder.address, req))
         assert.match(await revertReason(testHub.callPreRC(req, signature, '0x', 1e6)), /unsupported token uniswap/)
       })
     })
@@ -189,7 +189,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
 
         it('callPreRC should succeed with specific token/uniswap', async () => {
           const req = mergeRelayRequest(relayRequest, { paymasterData: web3.eth.abi.encodeParameter('address', uniswap.address) })
-          const signature = await getEip712Signature(provider, new TypedRequestData(defaultGsnConfig.domainSeparatorName, 1, forwarder.address, req))
+          const signature = await getEip712Signature(provider.getSigner(), new TypedRequestData(defaultGsnConfig.domainSeparatorName, 1, forwarder.address, req))
           const ret: any = await testHub.callPreRC.call(req, signature, '0x', 1e6)
           const decoded = web3.eth.abi.decodeParameters(['address', 'address', 'address', 'address'], ret.context) as any
           assert.equal(decoded[2], token.address)
@@ -211,7 +211,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
 
     it('should reject if incorrect signature', async () => {
       const wrongSignature = await getEip712Signature(
-        provider,
+        provider.getSigner(),
         new TypedRequestData(
           defaultGsnConfig.domainSeparatorName,
           222,
@@ -252,7 +252,7 @@ contract('TokenPaymaster', ([from, relay, relayOwner, nonUniswap, burnAddress]) 
         _relayRequest
       )
       const signature = await getEip712Signature(
-        provider,
+        provider.getSigner(),
         dataToSign
       )
 

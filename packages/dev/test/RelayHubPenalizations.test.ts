@@ -639,7 +639,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
             relayRequest
           )
           const signature = await getEip712Signature(
-            ethersProvider,
+            ethersProvider.getSigner(),
             dataToSign
           )
           await relayHub.depositFor(paymaster.address, {

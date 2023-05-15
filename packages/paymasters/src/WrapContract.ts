@@ -29,7 +29,7 @@ async function wrapSigner (
   }
 
   // types have a very small conflict about whether "jsonrpc" field is actually required so not worth wrapping again
-  const gsnProvider = await TokenPaymasterProvider.newProvider(input).init() as any as ExternalProvider
+  const gsnProvider = await TokenPaymasterProvider.newWeb3Provider(input) as any as ExternalProvider
   const ethersProvider = new providers.Web3Provider(gsnProvider)
   const address = await signer.getAddress()
   return ethersProvider.getSigner(address)
