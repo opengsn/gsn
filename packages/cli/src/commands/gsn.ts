@@ -13,5 +13,4 @@ commander
   .command('paymaster-fund', 'fund a paymaster contract so it can pay for relayed calls')
   .command('paymaster-balance', 'query a paymaster GSN balance')
   .command('send-request', 'send a GSN meta-transaction request to a server using a GSN provider')
-  .command('status', 'status of the GSN network')
   .parse(process.argv)

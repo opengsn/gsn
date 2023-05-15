@@ -14,6 +14,7 @@ import {
   GsnTransactionDetails,
   PingResponse,
   RegistrarRelayInfo,
+  RelayCallGasLimitCalculationHelper,
   RelayHubConfiguration,
   RelayInfo,
   RelayTransactionRequest,
@@ -107,6 +108,7 @@ export class ServerTestEnvironment {
    * Note: do not call methods of contract interactor inside Test Environment. It may affect Profiling Test.
    */
   contractInteractor!: ContractInteractor
+  gasLimitCalculator!: RelayCallGasLimitCalculationHelper
   web3MethodsBuilder!: Web3MethodsBuilder
 
   relayClient!: RelayClient
@@ -150,8 +152,8 @@ export class ServerTestEnvironment {
       loggerConfiguration: { logLevel: 'error' },
       paymasterAddress: this.paymaster.address
     }
+    const logger = createServerLogger('error', '', '')
     if (contractFactory == null) {
-      const logger = createServerLogger('error', '', '')
       const maxPageSize = Number.MAX_SAFE_INTEGER
       this.contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
@@ -170,6 +172,7 @@ export class ServerTestEnvironment {
         managerStakeTokenAddress: this.testToken.address
       })
     }
+    this.gasLimitCalculator = new RelayCallGasLimitCalculationHelper(logger, this.contractInteractor, serverDefaultConfiguration.calldataEstimationSlackFactor, serverDefaultConfiguration.maxAcceptanceBudget)
     const resolvedDeployment = this.contractInteractor.getDeployment()
     this.web3MethodsBuilder = new Web3MethodsBuilder(web3, resolvedDeployment)
 
@@ -251,6 +254,7 @@ export class ServerTestEnvironment {
 
     const serverDependencies: ServerDependencies = {
       contractInteractor: this.contractInteractor,
+      gasLimitCalculator: this.gasLimitCalculator,
       web3MethodsBuilder: this.web3MethodsBuilder,
       gasPriceFetcher,
       logger,

@@ -11,8 +11,7 @@ contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
   const callsPerStateRefresh = 13
   const callsPerBlock = 0
-  // one of the calls is 'get manager balance' which is not really necessary
-  const callsPerTransaction = 11
+  const callsPerTransaction = 10
 
   let ethersProvider: JsonRpcProvider
   let provider: ProfilingProvider

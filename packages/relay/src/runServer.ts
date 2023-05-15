@@ -12,6 +12,7 @@ import {
   ContractInteractor,
   Environment,
   EnvironmentsKeys,
+  RelayCallGasLimitCalculationHelper,
   VersionsManager,
   gsnRequiredVersion,
   gsnRuntimeVersion
@@ -173,6 +174,12 @@ async function run (): Promise<void> {
   })
   console.log('Initializing interactor...\n')
   await contractInteractor.init()
+  const gasLimitCalculator = new RelayCallGasLimitCalculationHelper(
+    logger,
+    contractInteractor,
+    config.calldataEstimationSlackFactor,
+    config.maxAcceptanceBudget
+  )
   const resolvedDeployment = contractInteractor.getDeployment()
   const web3MethodsBuilder = new Web3MethodsBuilder(new Web3(web3provider as any), resolvedDeployment)
 
@@ -192,6 +199,7 @@ async function run (): Promise<void> {
     managerKeyManager,
     workersKeyManager,
     contractInteractor,
+    gasLimitCalculator,
     web3MethodsBuilder,
     gasPriceFetcher
   }

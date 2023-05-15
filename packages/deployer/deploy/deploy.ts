@@ -18,6 +18,15 @@ import {
 
 const { AddressZero } = ethers.constants
 
+const FORWARDER_FILE = '@opengsn/contracts/src/forwarder/Forwarder.sol:Forwarder'
+const PENALIZER_FILE = '@opengsn/contracts/src/Penalizer.sol:Penalizer'
+const STAKE_MANAGER_FILE = '@opengsn/contracts/src/StakeManager.sol:StakeManager'
+const RELAY_REGISTRAR_FILE = '@opengsn/contracts/src/utils/RelayRegistrar.sol:RelayRegistrar'
+const RELAY_HUB_FILE = '@opengsn/contracts/src/RelayHub.sol:RelayHub'
+const ARB_RELAY_HUB_FILE = '@opengsn/contracts/src/arbitrum/ArbRelayHub.sol:ArbRelayHub'
+const TEST_PAYMASTER_EVERYTHING_ACCEPTED_FILE = '@opengsn/contracts/src/test/TestPaymasterEverythingAccepted.sol:TestPaymasterEverythingAccepted'
+const SINGLE_RECIPIENT_PAYMASTER_FILE = '@opengsn/contracts/src/paymasters/SingleRecipientPaymaster.sol:SingleRecipientPaymaster'
+
 // helper: nicer logging view fo deployed contracts
 async function deploy (deployments: DeploymentsExtension, name: string, options: DeployOptions): Promise<DeployResult> {
   console.log('Deploying: ', name)
@@ -55,6 +64,7 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
   }
 
   const deployedForwarder = await deploy(deployments, 'Forwarder', {
+    contract: FORWARDER_FILE,
     from: deployer,
     deterministicDeployment: true
   })
@@ -67,6 +77,7 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
 
   const penalizer = await deploy(deployments, 'Penalizer', {
     from: deployer,
+    contract: PENALIZER_FILE,
     args: [
       env.penalizerConfiguration.penalizeBlockDelay,
       env.penalizerConfiguration.penalizeBlockDelay
@@ -75,22 +86,27 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
 
   const stakeManager = await deploy(deployments, 'StakeManager', {
     from: deployer,
+    contract: STAKE_MANAGER_FILE,
     args: [env.maxUnstakeDelay, env.abandonmentDelay, env.escheatmentDelay, env.stakeBurnAddress, env.relayHubConfiguration.devAddress]
   })
 
   const relayRegistrar = await deploy(deployments, 'RelayRegistrar', {
     from: deployer,
+    contract: RELAY_REGISTRAR_FILE,
     args: [env.deploymentConfiguration.registrationMaxAge]
   })
 
   const hubConfig = env.relayHubConfiguration
   let relayHub: DeployResult
   let hubContractName: string
+  let hubContractFile: string
   if (env.deploymentConfiguration?.isArbitrum ?? false) {
     console.log(`Using ${chalk.yellow('Arbitrum')} relayhub`)
     hubContractName = 'ArbRelayHub'
+    hubContractFile = ARB_RELAY_HUB_FILE
     relayHub = await deploy(deployments, hubContractName, {
       from: deployer,
+      contract: hubContractFile,
       args: [
         constants.ARBITRUM_ARBSYS, // ArbSys
         stakeManager.address,
@@ -102,8 +118,10 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
     })
   } else {
     hubContractName = 'RelayHub'
+    hubContractFile = RELAY_HUB_FILE
     relayHub = await deploy(deployments, hubContractName, {
       from: deployer,
+      contract: hubContractFile,
       args: [
         stakeManager.address,
         penalizer.address,
@@ -118,13 +136,20 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
 
   let deployedPm: DeployResult
   let paymasterContractName: string | undefined
+  let paymasterContractFile: string | undefined
   if (env.deploymentConfiguration.deployTestPaymaster) {
     paymasterContractName = 'TestPaymasterEverythingAccepted'
+    paymasterContractFile = TEST_PAYMASTER_EVERYTHING_ACCEPTED_FILE
   } else if (env.deploymentConfiguration.deploySingleRecipientPaymaster) {
     paymasterContractName = 'SingleRecipientPaymaster'
+    paymasterContractFile = SINGLE_RECIPIENT_PAYMASTER_FILE
   }
   if (paymasterContractName != null) {
-    deployedPm = await deploy(deployments, paymasterContractName, { from: deployer, log: true })
+    deployedPm = await deploy(deployments, paymasterContractName, {
+      from: deployer,
+      contract: paymasterContractFile,
+      log: true
+    })
 
     await setField(deployments, paymasterContractName, 'getRelayHub', 'setRelayHub', relayHub.address, deployer)
     await setField(deployments, paymasterContractName, 'getTrustedForwarder', 'setTrustedForwarder', deployedForwarder.address, deployer)

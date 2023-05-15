@@ -123,7 +123,10 @@ class MockHttpClient extends HttpClient {
     super(httpWrapper, logger)
   }
 
-  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{ signedTx: PrefixedHexString, nonceGapFilled: ObjectMap<PrefixedHexString> }> {
+  async relayTransaction (relayUrl: string, request: RelayTransactionRequest): Promise<{
+    signedTx: PrefixedHexString
+    nonceGapFilled: ObjectMap<PrefixedHexString>
+  }> {
     return await super.relayTransaction(this.mapUrl(relayUrl), request)
   }
 
@@ -732,7 +735,11 @@ contract('RelayClient', function (accounts) {
         })
       await relayClient.init()
       const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
-      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, relayRequest)
+      const {
+        transaction,
+        error,
+        isRelayError
+      } = await relayClient._attemptRelay(relayInfo, relayRequest, toBN(defaultGsnConfig.maxViewableGasLimit))
       assert.isUndefined(transaction)
       assert.isUndefined(isRelayError)
       // @ts-ignore
@@ -751,7 +758,7 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
-      const attempt = await relayClient._attemptRelay(relayInfo, relayRequest)
+      const attempt = await relayClient._attemptRelay(relayInfo, relayRequest, toBN(defaultGsnConfig.maxViewableGasLimit))
       assert.equal(attempt.isRelayError, true, 'timeout should not abort relay search')
       assert.equal(attempt.error?.message, 'some error describing how timeout occurred somewhere')
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
@@ -769,7 +776,7 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
-      await relayClient._attemptRelay(relayInfo, relayRequest)
+      await relayClient._attemptRelay(relayInfo, relayRequest, toBN(defaultGsnConfig.maxViewableGasLimit))
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.not.been.called
     })
 
@@ -805,7 +812,11 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
-      const { transaction, error, isRelayError } = await relayClient._attemptRelay(relayInfo, relayRequest)
+      const {
+        transaction,
+        error,
+        isRelayError
+      } = await relayClient._attemptRelay(relayInfo, relayRequest, toBN(defaultGsnConfig.maxViewableGasLimit))
       assert.isUndefined(transaction)
       assert.equal(isRelayError, true)
       assert.match(error!.message, /Transaction response verification failed. Validation results/)
@@ -1004,14 +1015,14 @@ contract('RelayClient', function (accounts) {
         })
         const workerBalance2 = await web3.eth.getBalance(relayWorkerAddress)
         console.log('workerBalance2', workerBalance2)
-        const attempt1 = await relayClient._attemptRelay(relayInfo, relayRequest)
+        const attempt1 = await relayClient._attemptRelay(relayInfo, relayRequest, constants.MAX_UINT96)
         // TODO: this test relies on order of checks!
         //  we use a wrong worker address and this error is returned from the server which is after the local view call
         assert.isTrue(attempt1.error?.message.includes('Got error response from relay: Wrong worker address:'))
 
         // try again with even less worker balance
         await web3.eth.sendTransaction({
-          value: estimatedRelayCallCost / 2,
+          value: estimatedRelayCallCost / 2.5,
           maxPriorityFeePerGas: 0,
           maxFeePerGas: relayRequest.relayData.maxFeePerGas,
           from: relayWorkerAddress,
@@ -1021,7 +1032,7 @@ contract('RelayClient', function (accounts) {
         const workerBalance3 = await web3.eth.getBalance(relayWorkerAddress)
         console.log('workerBalance3', workerBalance3)
         const relayRequest2 = await relayClient._prepareRelayRequest(optionsWithGas)
-        const attempt2 = await relayClient._attemptRelay(relayInfo, relayRequest2)
+        const attempt2 = await relayClient._attemptRelay(relayInfo, relayRequest2, constants.MAX_UINT96)
         assert.isTrue(attempt2.error?.message.includes('Check Relay Worker balance'))
         // error is either 'FWD: insufficient gas' or 'without revert string'/'out-of-gas'
         assert.isTrue(attempt2.error?.message.includes('FWD: insufficient gas'))
@@ -1040,6 +1051,7 @@ contract('RelayClient', function (accounts) {
         maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress as string }
       }, true)
+      await badContractInteractor.init()
       const transaction = Transaction.fromSerializedTx(toBuffer('0xc6808080808080'))
       const relayClient =
         new RelayClient({

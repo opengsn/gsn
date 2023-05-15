@@ -7,6 +7,7 @@ import {
   LoggerInterface,
   PaymasterDataCallback,
   PingFilter,
+  RelayCallGasLimitCalculationHelper,
   RelayFilter,
   SignTypedDataCallback,
   defaultEnvironment,
@@ -52,7 +53,7 @@ export const defaultGsnConfig: GSNConfig = {
   skipErc165Check: false,
   clientId: '1',
   requestValidSeconds: 172800, // 2 days
-  maxViewableGasLimit: '12000000',
+  maxViewableGasLimit: '20000000',
   minViewableGasLimit: '300000',
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,
@@ -72,6 +73,7 @@ export interface GSNDependencies {
   httpClient: HttpClient
   logger?: LoggerInterface
   contractInteractor: ContractInteractor
+  gasLimitCalculator: RelayCallGasLimitCalculationHelper
   knownRelaysManager: KnownRelaysManager
   accountManager: AccountManager
   transactionValidator: RelayedTransactionValidator

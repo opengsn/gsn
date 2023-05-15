@@ -17,6 +17,7 @@ import {
   LoggerInterface,
   ObjectMap,
   PaymasterDataCallback,
+  PaymasterGasAndDataLimits,
   PaymasterType,
   PingFilter,
   RelayCallABI,
@@ -61,6 +62,7 @@ import {
   GsnSignRequestEvent,
   GsnValidateRequestEvent
 } from './GsnEvents'
+import { RelayCallGasLimitCalculationHelper } from '@opengsn/common/dist/RelayCallGasLimitCalculationHelper'
 
 // forwarder requests are signed with expiration time.
 
@@ -184,7 +186,11 @@ export class RelayClient {
    *
    * @param {*} transaction - actual Ethereum transaction, signed by a relay
    */
-  async _broadcastRawTx (transaction: TypedTransaction): Promise<{ hasReceipt: boolean, broadcastError?: Error, wrongNonce?: boolean }> {
+  async _broadcastRawTx (transaction: TypedTransaction): Promise<{
+    hasReceipt: boolean
+    broadcastError?: Error
+    wrongNonce?: boolean
+  }> {
     const rawTx = '0x' + transaction.serialize().toString('hex')
     const txHash = '0x' + transaction.hash().toString('hex')
     try {
@@ -266,15 +272,19 @@ export class RelayClient {
         pingErrors: new Map<string, Error>()
       }
     }
-    if (this.config.performDryRunViewRelayCall) {
-      const dryRunError = await this._verifyDryRunSuccessful(relayRequest)
-      if (dryRunError != null) {
-        relayingErrors.set(constants.DRY_RUN_KEY, dryRunError)
-        return {
-          relayingErrors,
-          auditPromises,
-          pingErrors: new Map<string, Error>()
-        }
+
+    const gasAndDataLimits = await this.dependencies.contractInteractor.getGasAndDataLimitsFromPaymaster(relayRequest.relayData.paymaster)
+
+    const {
+      error: dryRunError,
+      viewCallGasLimit
+    } = await this._verifyDryRunSuccessful(relayRequest, gasAndDataLimits)
+    if (dryRunError != null) {
+      relayingErrors.set(constants.DRY_RUN_KEY, dryRunError)
+      return {
+        relayingErrors,
+        auditPromises,
+        pingErrors: new Map<string, Error>()
       }
     }
 
@@ -300,7 +310,7 @@ export class RelayClient {
           relayRequest.relayData.maxPriorityFeePerGas = toHex(relaySelectionResult.updatedGasFees.maxPriorityFeePerGas)
         }
         this.emit(new GsnNextRelayEvent(activeRelay.relayInfo.relayUrl))
-        relayingAttempt = await this._attemptRelay(activeRelay, relayRequest)
+        relayingAttempt = await this._attemptRelay(activeRelay, relayRequest, viewCallGasLimit)
           .catch(error => ({ error }))
         if (relayingAttempt.auditPromise != null) {
           auditPromises.push(relayingAttempt.auditPromise)
@@ -346,20 +356,16 @@ export class RelayClient {
 
   async _attemptRelay (
     relayInfo: RelayInfo,
-    relayRequest: RelayRequest
+    relayRequest: RelayRequest,
+    viewCallGasLimit: BN
   ): Promise<RelayingAttempt> {
     this.logger.info(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(relayRequest)}`)
     await this.fillRelayInfo(relayRequest, relayInfo)
     const httpRequest = await this._prepareRelayHttpRequest(relayRequest, relayInfo)
     this.emit(new GsnValidateRequestEvent())
-    const viewCallGasLimit = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
-      relayRequest.relayData.paymaster,
-      relayRequest.relayData.relayWorker,
-      toBN(relayRequest.relayData.maxFeePerGas),
-      toBN(this.config.maxViewableGasLimit),
-      toBN(this.config.minViewableGasLimit)
-    )
-    const error = await this._verifyViewCallSuccessful(relayInfo, asRelayCallAbi(httpRequest), viewCallGasLimit, false)
+    const adjustedRelayCallViewGasLimit = await this.dependencies.gasLimitCalculator.adjustRelayCallViewGasLimitForRelay(viewCallGasLimit, relayRequest.relayData.relayWorker, toBN(relayRequest.relayData.maxFeePerGas))
+
+    const error = await this._verifyViewCallSuccessful(relayInfo, asRelayCallAbi(httpRequest), adjustedRelayCallViewGasLimit, false)
     if (error != null) {
       return { error }
     }
@@ -665,6 +671,12 @@ export class RelayClient {
         calldataEstimationSlackFactor: this.config.calldataEstimationSlackFactor,
         deployment: { paymasterAddress: paymasterAddress as any }
       }).init()
+    const gasLimitCalculator = overrideDependencies?.gasLimitCalculator ?? new RelayCallGasLimitCalculationHelper(
+      this.logger,
+      contractInteractor,
+      this.config.calldataEstimationSlackFactor,
+      this.config.maxViewableGasLimit.toString()
+    )
     const accountManager = overrideDependencies?.accountManager ?? new AccountManager(provider, chainId, this.config)
 
     // TODO: accept HttpWrapper as a dependency - calling 'new' here is breaking the init flow.
@@ -682,6 +694,7 @@ export class RelayClient {
       logger: this.logger,
       httpClient,
       contractInteractor,
+      gasLimitCalculator,
       knownRelaysManager,
       accountManager,
       transactionValidator,
@@ -717,10 +730,19 @@ export class RelayClient {
       config.verifierServerUrl)
   }
 
-  async _verifyDryRunSuccessful (relayRequest: RelayRequest): Promise<Error | undefined> {
-    // TODO: only 3 fields are needed, extract fields instead of building stub object
-    const relayWorkerAddress = constants.DRY_RUN_ADDRESS
-    const maxMaxFeePerGas = '0'
+  /**
+   * @return viewCallGasLimit - just caching this value to use it again for a view call after relay worker selection
+   * @param relayRequest
+   * @param gasAndDataLimits
+   */
+  async _verifyDryRunSuccessful (
+    relayRequest: RelayRequest,
+    gasAndDataLimits: PaymasterGasAndDataLimits
+  ): Promise<
+    {
+      viewCallGasLimit: BN
+      error: Error | undefined
+    }> {
     const dryRunRelayInfo: RelayInfo = {
       relayInfo: {
         lastSeenTimestamp: toBN(0),
@@ -731,11 +753,11 @@ export class RelayClient {
         relayUrl: ''
       },
       pingResponse: {
-        relayWorkerAddress,
+        relayWorkerAddress: constants.DRY_RUN_ADDRESS,
         relayManagerAddress: constants.ZERO_ADDRESS,
         relayHubAddress: constants.ZERO_ADDRESS,
         ownerAddress: constants.ZERO_ADDRESS,
-        maxMaxFeePerGas,
+        maxMaxFeePerGas: '0',
         minMaxFeePerGas: '0',
         minMaxPriorityFeePerGas: '0',
         maxAcceptanceBudget: '0',
@@ -743,27 +765,49 @@ export class RelayClient {
         version: ''
       }
     }
+    const relayHubAddress = this.dependencies.contractInteractor.getDeployment().relayHubAddress ?? ''
+    const dryRunMetadata: RelayMetadata = {
+      domainSeparatorName: this.config.domainSeparatorName,
+      maxAcceptanceBudget: dryRunRelayInfo.pingResponse.maxAcceptanceBudget,
+      relayHubAddress,
+      relayRequestId: '',
+      relayMaxNonce: 0,
+      relayLastKnownNonce: 0,
+      signature: '0x' + 'ff'.repeat(65),
+      approvalData: '0x' + 'ff'.repeat(this.config.maxApprovalDataLength)
+    }
     // TODO: clone?
     await this.fillRelayInfo(relayRequest, dryRunRelayInfo)
-    const paymasterLimits =
-      await this.dependencies.contractInteractor.getGasAndDataLimitsFromPaymaster(relayRequest.relayData.paymaster)
-    const maxAcceptanceBudget = paymasterLimits.acceptanceBudget
-    const viewCallGasLimit = await this.dependencies.contractInteractor.calculateDryRunCallGasLimit(
+
+    const relayTransactionRequest: RelayTransactionRequest = {
+      relayRequest,
+      metadata: dryRunMetadata
+    }
+
+    // using the same method the server uses to calculate the gas limit before making a dry-run and view-call checks
+    const { maxPossibleGasUsed } = await this.dependencies.gasLimitCalculator.calculateRelayRequestLimits(
+      relayTransactionRequest, gasAndDataLimits)
+
+    const adjustedRelayCallViewGasLimit = await this.dependencies.gasLimitCalculator.adjustRelayCallViewGasLimitForPaymaster(
+      maxPossibleGasUsed,
       relayRequest.relayData.paymaster,
-      relayWorkerAddress,
       toBN(relayRequest.relayData.maxFeePerGas),
       toBN(this.config.maxViewableGasLimit),
       toBN(this.config.minViewableGasLimit)
     )
-    // note that here 'maxAcceptanceBudget' is set to the entire transaction 'maxViewableGasLimit'
+
     const relayCallABI: RelayCallABI = {
       domainSeparatorName: this.config.domainSeparatorName,
       relayRequest,
       signature: '0x',
       approvalData: '0x',
-      maxAcceptanceBudget: maxAcceptanceBudget.toString()
+      maxAcceptanceBudget: gasAndDataLimits.acceptanceBudget.toString()
     }
-    return await this._verifyViewCallSuccessful(dryRunRelayInfo, relayCallABI, viewCallGasLimit, true)
+    let error: Error | undefined
+    if (this.config.performDryRunViewRelayCall) {
+      error = await this._verifyViewCallSuccessful(dryRunRelayInfo, relayCallABI, adjustedRelayCallViewGasLimit, true)
+    }
+    return { error, viewCallGasLimit: adjustedRelayCallViewGasLimit }
   }
 
   async _verifyViewCallSuccessful (
