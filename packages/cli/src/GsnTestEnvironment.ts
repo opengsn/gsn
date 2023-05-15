@@ -42,11 +42,24 @@ import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
 import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 
-export interface TestEnvironment {
-  contractsDeployment: GSNContractsDeployment
-  relayProvider: RelayProvider
-  httpServer: HttpServer
-  relayUrl: string
+const TEST_WORKER_SEED = '0xa73df6054db4a383ed237a4dfa15527c07dcdd54950461db39e6457bb7d405a58b5cdce7a9d772a0a51b4768b4fa4982a38c60b7f9090caa1eea4aa734d0c29e'
+const TEST_MANAGER_SEED = '0x61f9525ba0929dc6cfcb5660192a420d1ddf470d0462be4bfab540588f089a6ab3ae309e08b0c3e2af89d51531691fb48409ec3ca0afe976a483cde4f2584501'
+
+export class TestEnvironment {
+  constructor (
+    readonly contractsDeployment: GSNContractsDeployment,
+    readonly relayProvider: RelayProvider,
+    readonly httpServer: HttpServer,
+    readonly relayUrl: string
+  ) {}
+
+  get workerAddress (): string | undefined {
+    return this.httpServer.relayService?.workerAddress
+  }
+
+  get managerAddress (): string | undefined {
+    return this.httpServer.relayService?.managerAddress
+  }
 }
 
 class GsnTestEnvironmentClass {
@@ -92,18 +105,22 @@ class GsnTestEnvironmentClass {
   }
 
   /**
-   *
+   * Deploy a *new* instance of GSN contracts and start an in-process Relay Server
    * @param host - the Ethereum RPC node URL
    * @param localRelayUrl - the local GSN RelayServer URL for RelayRegistrar
    * @param port - the port for the RelayServer to listen to (optional)
    * @param logger
+   * @param deterministic - whether to use same addresses for Relay Server accounts (Worker and Manager) after restarts
+   * @param relayServerParamsOverride - allows the tests to override default test server params - for advanced users
    * @return
    */
   async startGsn (
     host: string,
     localRelayUrl: string = 'http://127.0.0.1/',
     port?: number,
-    logger?: LoggerInterface
+    logger?: LoggerInterface,
+    deterministic: boolean = true,
+    relayServerParamsOverride: Partial<ServerConfigParams> = {}
   ): Promise<TestEnvironment> {
     await this.stopGsn()
     const _host: string = getNetworkUrl(host)
@@ -121,7 +138,9 @@ class GsnTestEnvironmentClass {
     const url = new URL(localRelayUrl)
     url.port = port.toString()
     const relayUrl = url.toString()
-    await this._runServer(_host, deploymentResult, from, relayUrl, port, logger)
+    await this._runServer(
+      _host, deploymentResult, from, relayUrl, port, logger, deterministic, relayServerParamsOverride
+    )
     if (this.httpServer == null) {
       throw new Error('Failed to run a local Relay Server')
     }
@@ -160,12 +179,12 @@ class GsnTestEnvironmentClass {
     }
     const relayProvider = await RelayProvider.newProvider(input).init()
     logger.error('== startGSN: ready.')
-    return {
-      contractsDeployment: deploymentResult,
+    return new TestEnvironment(
+      deploymentResult,
       relayProvider,
-      relayUrl,
-      httpServer: this.httpServer
-    }
+      this.httpServer,
+      relayUrl
+    )
   }
 
   /**
@@ -203,14 +222,21 @@ class GsnTestEnvironmentClass {
     from: Address,
     relayUrl: string,
     port: number,
-    logger: LoggerInterface
+    logger: LoggerInterface,
+    deterministic: boolean,
+    relayServerParamsOverride: Partial<ServerConfigParams>
   ): Promise<void> {
     if (this.httpServer !== undefined) {
       return
     }
-
-    const managerKeyManager = new KeyManager(1)
-    const workersKeyManager = new KeyManager(1)
+    let seeds: [string | undefined, string | undefined]
+    if (deterministic) {
+      seeds = [TEST_MANAGER_SEED, TEST_WORKER_SEED]
+    } else {
+      seeds = [undefined, undefined]
+    }
+    const managerKeyManager = new KeyManager(1, undefined, seeds[0])
+    const workersKeyManager = new KeyManager(1, undefined, seeds[1])
     const txStoreManager = new TxStoreManager({ inMemory: true }, logger)
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const environment = defaultEnvironment
@@ -257,7 +283,8 @@ class GsnTestEnvironmentClass {
       refreshStateTimeoutBlocks: 1,
       runPaymasterReputations: true,
       logLevel: 'error',
-      workerTargetBalance: 1e18
+      workerTargetBalance: 1e18,
+      ...relayServerParamsOverride
     }
     const transactionManager = new TransactionManager(relayServerDependencies, configureServer(relayServerParams))
     const backend = new RelayServer(relayServerParams, transactionManager, relayServerDependencies)
