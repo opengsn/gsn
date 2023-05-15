@@ -21,7 +21,13 @@ function retypeItem (abiOutput: Partial<ParamType>, ret: any): any {
     return toBN(ret.toString())
   } else if (abiOutput.type === 'tuple[]') {
     if (typeof ret.toArray === 'function') { // ethers.js v6 Contract treats all arrays as 'proxy' breaking our 'retype'
-      ret = ret.toArray().map((it: any) => { return it[0] })
+      ret = ret.toArray().map((it: any) => {
+        if (Object.keys(it.toObject() ?? {})?.[0] === '_') {
+          // this appears to be a bug in the Ethers.js - to be investigated
+          return it[0]
+        }
+        return it
+      })
     }
     return ret.map((item: any) => retypeItem(
       { ...abiOutput, type: 'tuple' }, item

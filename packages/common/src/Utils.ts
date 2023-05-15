@@ -298,7 +298,7 @@ export function toNumber (numberish: number | string | BN | BigInt): number {
     case 'bigint':
       return Number(numberish)
     case 'object':
-      if (isBigNumber(numberish)) {
+      if (isBigNumber(numberish) || typeof (numberish as any).toNumber === 'function') {
         // @ts-ignore
         return numberish.toNumber()
       }
