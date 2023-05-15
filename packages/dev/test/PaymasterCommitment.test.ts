@@ -92,7 +92,7 @@ async function makeRequest (
     })
 
   const sig = await getEip712Signature(
-    provider.getSigner(),
+    provider.getSigner(filledRequest.request.from),
     new TypedRequestData(
       defaultGsnConfig.domainSeparatorName,
       chainId,

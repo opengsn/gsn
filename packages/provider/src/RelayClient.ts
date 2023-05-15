@@ -16,6 +16,8 @@ import {
   GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
+  JsonRpcPayload,
+  JsonRpcResponse,
   LoggerInterface,
   ObjectMap,
   PaymasterDataCallback,
@@ -65,7 +67,6 @@ import {
   GsnValidateRequestEvent
 } from './GsnEvents'
 import { RelayCallGasLimitCalculationHelper } from '@opengsn/common/dist/RelayCallGasLimitCalculationHelper'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.

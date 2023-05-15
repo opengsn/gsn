@@ -33,8 +33,8 @@ export class TokenPaymasterInteractor {
   private ERC20Instance!: Contract<IERC20Instance>
   private PermitERC20UniswapV3Paymaster!: Contract<PermitERC20UniswapV3PaymasterInstance>
   private ChainlinkOracle!: Contract<IChainlinkOracleInstance>
-  private paymasterAddress: Address
-  private logger: LoggerInterface
+  private readonly paymasterAddress: Address
+  private readonly logger: LoggerInterface
 
   tokenAddress?: Address
   tokenSwapData?: TokenSwapData

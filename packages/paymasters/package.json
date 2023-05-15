@@ -41,7 +41,6 @@
     "@uniswap/v3-periphery": "^1.1.1",
     "ethereumjs-util": "^7.1.0",
     "web3": "^1.7.4",
-    "web3-core-helpers": "^1.7.4",
     "web3-eth-abi": "^1.7.4",
     "web3-eth-contract": "^1.7.4",
     "web3-utils": "^1.7.4"

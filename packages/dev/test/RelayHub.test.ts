@@ -424,7 +424,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           relayRequest
         )
         signatureWithPermissivePaymaster = await getEip712Signature(
-          ethersProvider.getSigner(),
+          ethersProvider.getSigner(senderAddress),
           dataToSign
         )
 
@@ -574,7 +574,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           )
 
           signature = await getEip712Signature(
-            ethersProvider.getSigner(),
+            ethersProvider.getSigner(senderAddress),
             dataToSign
           )
 
@@ -588,7 +588,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             relayRequestMisbehavingPaymaster
           )
           signatureWithMisbehavingPaymaster = await getEip712Signature(
-            ethersProvider.getSigner(),
+            ethersProvider.getSigner(senderAddress),
             dataToSign
           )
 
@@ -601,7 +601,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             relayRequestPaymasterWithContext
           )
           signatureWithContextPaymaster = await getEip712Signature(
-            ethersProvider.getSigner(),
+            ethersProvider.getSigner(senderAddress),
             dataToSign
           )
         })
@@ -661,7 +661,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             eip1559relayRequest
           )
           const signature = await getEip712Signature(
-            ethersProvider.getSigner(),
+            ethersProvider.getSigner(senderAddress),
             dataToSign
           )
           const {
@@ -720,7 +720,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             relayRequestNoCallData
           )
           signature = await getEip712Signature(
-            ethersProvider.getSigner(),
+            ethersProvider.getSigner(senderAddress),
             dataToSign
           )
           const { tx } = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequestNoCallData, signature, '0x', {
@@ -747,7 +747,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             relayRequestRevert
           )
           signature = await getEip712Signature(
-            ethersProvider.getSigner(),
+            ethersProvider.getSigner(senderAddress),
             dataToSign
           )
           const { logs } = await relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequestRevert, signature, '0x', {
@@ -920,7 +920,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               relayRequestMisbehavingPaymaster
             )
             signature = await getEip712Signature(
-              ethersProvider.getSigner(),
+              ethersProvider.getSigner(senderAddress),
               dataToSign
             )
           })
@@ -1004,7 +1004,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               relayRequest
             )
             signatureWithPermissivePaymaster = await getEip712Signature(
-              ethersProvider.getSigner(),
+              ethersProvider.getSigner(senderAddress),
               dataToSign
             )
             const {
@@ -1048,7 +1048,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
               relayRequestWithNonce
             )
             signatureWithPermissivePaymaster = await getEip712Signature(
-              ethersProvider.getSigner(),
+              ethersProvider.getSigner(senderAddress),
               dataToSign
             )
             const {
