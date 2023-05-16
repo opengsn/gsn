@@ -72,12 +72,6 @@ In order to install the GSN client library
 yarn add @opengsn/provider
 ```
 
-Note: Since version `3.0.0-beta.8` you also need to add an alias to Ethers.js v6 types as a dev dependency if your project is using TypeScript:<br/>
-```
-"devDependencies": {
-  "ethers-v6": "npm:ethers@6.3.0"
-}
-```
 Using it within your application:
 ```JavaScript
 const { RelayProvider } = require('@opengsn/provider')

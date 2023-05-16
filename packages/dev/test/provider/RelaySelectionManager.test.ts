@@ -493,9 +493,12 @@ contract('RelaySelectionManager', function (accounts) {
         results: [relayInfo],
         errors: new Map()
       }
+      assert.equal(Array.from(relaySelectionManager.priceErrors.keys()).length, 0)
       const { winner: adjustedRelayRequest, skippedRelays } = relaySelectionManager.selectWinnerByAdjustingFees(fakePingResults)
       assert.isOk(adjustedRelayRequest == null)
       assert.equal(skippedRelays.length, 1)
+      assert.equal(Array.from(relaySelectionManager.priceErrors.keys()).length, 1)
+      assert.include(relaySelectionManager.priceErrors.get(skippedRelays[0]).message, 'Skipped relay TX=')
     })
 
     // TODO: this is not a great test as it re-implements order of calls in RelaySelectionManager under test
