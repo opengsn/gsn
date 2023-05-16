@@ -1,7 +1,7 @@
 {
   "name": "@opengsn/paymasters",
   "license": "GPL-3.0-only",
-  "version": "3.0.0-beta.7",
+  "version": "3.0.0-beta.8",
   "scripts": {
     "deploy": "hardhat deploy",
     "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
@@ -33,10 +33,10 @@
   },
   "dependencies": {
     "@metamask/eth-sig-util": "^5.1.0",
-    "@opengsn/common": "^3.0.0-beta.7",
-    "@opengsn/contracts": "^3.0.0-beta.7",
-    "@opengsn/dev": "^3.0.0-beta.7",
-    "@opengsn/provider": "^3.0.0-beta.7",
+    "@opengsn/common": "^3.0.0-beta.8",
+    "@opengsn/contracts": "^3.0.0-beta.8",
+    "@opengsn/dev": "^3.0.0-beta.8",
+    "@opengsn/provider": "^3.0.0-beta.8",
     "@openzeppelin/contracts": "^4.2.0",
     "@uniswap/v3-periphery": "^1.1.1",
     "ethereumjs-util": "^7.1.0",
@@ -52,7 +52,7 @@
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
     "@nomiclabs/hardhat-web3": "^2.0.0",
-    "@opengsn/cli": "^3.0.0-beta.7",
+    "@opengsn/cli": "^3.0.0-beta.8",
     "@openzeppelin/test-helpers": "^0.5.15",
     "@truffle/hdwallet-provider": "^2.0.10",
     "@types/chai-as-promised": "^7.1.3",
