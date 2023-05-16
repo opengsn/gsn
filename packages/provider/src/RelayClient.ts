@@ -111,6 +111,7 @@ export interface RelayingResult {
   validUntilTime?: string
   transaction?: Transaction
   pingErrors: Map<string, Error>
+  priceErrors: Map<string, Error>
   relayingErrors: Map<string, Error>
   auditPromises?: Array<Promise<AuditResponse>>
 }
@@ -374,6 +375,7 @@ export class RelayClient {
       return {
         relayingErrors,
         auditPromises,
+        priceErrors: new Map<string, Error>(),
         pingErrors: new Map<string, Error>()
       }
     }
@@ -389,6 +391,7 @@ export class RelayClient {
       return {
         relayingErrors,
         auditPromises,
+        priceErrors: new Map<string, Error>(),
         pingErrors: new Map<string, Error>()
       }
     }
@@ -435,6 +438,7 @@ export class RelayClient {
         transaction: relayingAttempt?.transaction,
         relayingErrors,
         auditPromises,
+        priceErrors: relaySelectionManager.priceErrors,
         pingErrors: relaySelectionManager.errors
       }
     }
@@ -998,6 +1002,15 @@ export function _dumpRelayingResult (relayingResult: RelayingResult): string {
     str += `Relaying errors (${relayingResult.relayingErrors.size}):\n`
     Array.from(relayingResult.relayingErrors.keys()).forEach(e => {
       const err = relayingResult.relayingErrors.get(e)
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+      const error = err?.message ?? err?.toString() ?? ''
+      str += `${e} => ${error} stack:${err?.stack}`
+    })
+  }
+  if (relayingResult.relayingErrors.size > 0) {
+    str += `Gas Fees price errors (${relayingResult.priceErrors.size}):\n`
+    Array.from(relayingResult.priceErrors.keys()).forEach(e => {
+      const err = relayingResult.priceErrors.get(e)
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const error = err?.message ?? err?.toString() ?? ''
       str += `${e} => ${error} stack:${err?.stack}`

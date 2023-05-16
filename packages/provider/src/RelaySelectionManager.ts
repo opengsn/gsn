@@ -32,6 +32,7 @@ export class RelaySelectionManager {
   private isInitialized = false
 
   public errors: Map<string, Error> = new Map<string, Error>()
+  public priceErrors: Map<string, Error> = new Map<string, Error>()
 
   constructor (gsnTransactionDetails: GsnTransactionDetails, knownRelaysManager: KnownRelaysManager, httpClient: HttpClient, pingFilter: PingFilter, logger: LoggerInterface, config: GSNConfig) {
     this.gsnTransactionDetails = gsnTransactionDetails
@@ -267,12 +268,24 @@ export class RelaySelectionManager {
         const isGasPriceWithinSlack = it.maxDeltaPercent <= this.config.gasPriceSlackPercent
         if (!isGasPriceWithinSlack) {
           const skippedRelayUrl = it.relayInfo.relayInfo.relayUrl
+          const tx = {
+            maxFeePerGas: parseInt(this.gsnTransactionDetails.maxFeePerGas),
+            maxPriorityFeePerGas: parseInt(this.gsnTransactionDetails.maxPriorityFeePerGas)
+          }
+          const ping = {
+            minMaxFeePerGas: it.relayInfo.pingResponse.minMaxFeePerGas,
+            maxMaxFeePerGas: it.relayInfo.pingResponse.minMaxPriorityFeePerGas
+          }
           this.logger.debug(`
 Skipping relay (${skippedRelayUrl}) due to gas fees being higher than allowed by ${it.maxDeltaPercent}%.
 There are many reasons a Relay Server may want a higher price. See our FAQ page: https://docs.opengsn.org/faq/troubleshooting.html
 TLDR: you can set 'gasPriceSlackPercent' to ${it.maxDeltaPercent} or more to make this relay acceptable for now.
-Value currently configured is: ${this.config.gasPriceSlackPercent}%`
+Value currently configured is: ${this.config.gasPriceSlackPercent}%
+TX=${JSON.stringify(tx)}
+PING=${JSON.stringify(ping)}
+`
           )
+          this.priceErrors.set(skippedRelayUrl, new Error(`Skipped relay TX=${JSON.stringify(tx)} PING=${JSON.stringify(ping)} maxDeltaPercent=${it.maxDeltaPercent} gasPriceSlackPercent=${this.config.gasPriceSlackPercent}}`))
           skippedRelays.push(skippedRelayUrl)
         }
         return isGasPriceWithinSlack

@@ -24,6 +24,7 @@ export class BadRelayClient extends RelayClient {
     if (this.returnUndefinedTransaction) {
       return {
         transaction: undefined,
+        priceErrors: new Map<string, Error>(),
         pingErrors: new Map<string, Error>(),
         relayingErrors: new Map<string, Error>()
       }

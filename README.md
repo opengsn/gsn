@@ -72,12 +72,6 @@ In order to install the GSN client library
 yarn add @opengsn/provider
 ```
 
-Note: Since version `3.0.0-beta.8` you also need to add an alias to Ethers.js v6 types as a dev dependency if your project is using TypeScript:<br/>
-```
-"devDependencies": {
-  "ethers-v6": "npm:ethers@6.3.0"
-}
-```
 Using it within your application:
 ```JavaScript
 const { RelayProvider } = require('@opengsn/provider')
@@ -136,12 +130,20 @@ virtual machine instance can be found here:<br>
 https://docs.opengsn.org/relay-server/tutorial.html
 
 ## Active deployments
-A full list of the networks with active GSN deployments can be found on the dashboard pages.
+A full list of the networks with active GSN deployments can be found here:
+
+For GSN v3:<br>
+https://docs.opengsn.org/networks/addresses.html
+
+For GSN v2:<br>
+https://docs-v2.opengsn.org/networks/addresses.html
+
+Also, you can see registered relays and deployments on dashboard pages.
 
 For GSN v2:<br>
 https://relays-v2.opengsn.org/
 
-For GSN v3-beta:<br>
+For GSN v3:<br>
 https://relays.opengsn.org/
 
 ## FAQ
@@ -168,12 +170,12 @@ include any support for meta-transactions and requires at least a single call to
 ## Resources
 
 * [GSN documentation](https://docs.opengsn.org/)
-* [GSN support forum](https://forum.opengsn.org/)
+* [GSN Discord Server](http://discord.gg/b5Jk9kWcPG)
 
 ### On GitHub
 
+* [GSN + Ethers + React + Vite - minimal viable sample](https://github.com/opengsn/react-vite-ethers-gsn-demo)
 * [GSN example integration](https://github.com/opengsn/workshop)
-* [GSN example react dapp](https://github.com/opengsn/ctf-react)
 
 ## Live demo
 
