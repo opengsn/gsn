@@ -43,6 +43,7 @@ export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) =>
  * This data can later be used to optimize creation of Transaction Receipts
  */
 interface SubmittedRelayRequestInfo {
+  possibleTransactionHash?: string
   submissionBlock: number
   validUntilTime: string
 }
@@ -92,6 +93,7 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
    * Create a GSN Provider and Signer that are compatible with {@link Web3Provider} and {@link Signer} interfaces
    */
   static async newEthersV5Provider (input: GSNUnresolvedConstructorInput): Promise<{
+    relayProvider: RelayProvider
     gsnProvider: Web3Provider
     gsnSigner: Signer
   }> {
@@ -101,7 +103,7 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
     }
     const gsnProvider = new Web3Provider(relayProvider)
     const gsnSigner = gsnProvider.getSigner()
-    return { gsnProvider, gsnSigner }
+    return { gsnProvider, gsnSigner, relayProvider }
   }
 
   /**
@@ -109,6 +111,7 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
    * Create a GSN Provider and Signer that are compatible with {@link BrowserProvider} and {@link SignerV6} interfaces
    */
   static async newEthersV6Provider (input: GSNUnresolvedConstructorInput): Promise<{
+    relayProvider: RelayProvider
     gsnProvider: BrowserProvider
     gsnSigner: SignerV6
   }> {
@@ -120,7 +123,7 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
     // Warning: types imported from 'ethers-v6' are not technically "same" as types of dynamically imported libraries
     const gsnProvider: any = new BrowserProvider(relayProvider)
     const gsnSigner = await gsnProvider.getSigner()
-    return { gsnProvider, gsnSigner }
+    return { gsnProvider, gsnSigner, relayProvider }
   }
 
   constructor (
@@ -303,8 +306,7 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
   async _ethGetTransactionByHash (payload: JsonRpcPayload, callback: JsonRpcCallback): Promise<void> {
     // @ts-ignore
     const relayRequestID = payload.params[0]
-    const submissionDetails = await this._getSubmissionDetailsForRelayRequestId(relayRequestID)
-    let txHash = await this._getTransactionIdFromRequestId(relayRequestID, submissionDetails)
+    let txHash = await this.getTransactionHashFromRequestId(relayRequestID)
     if (!txHash.startsWith('0x')) {
       txHash = relayRequestID
     }
@@ -390,19 +392,36 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
   }
 
   /**
-   * convert relayRequestId (which is a "synthethic" transaction ID) into the actual transaction Id.
+   * @experimental
+   * May be used in case the {@link getTransactionHashFromRequestId} is unable to locate the actual transaction hash.
+   * Returns the hash of the **original** `'relayCall()'` transaction returned by the Relay Server.
+   *
+   * Actual transaction hash may be different as Relay Servers are allowed to increase transaction gas fees.
+   *
+   * But usually they don't do that, and {@link getTransactionHashFromRequestId} relies only on 'eth_getLogs'.
+   * @param relayRequestID
+   * @return transactionHash or undefined
+   */
+  getPossibleTransactionHashFromRequestId (
+    relayRequestID: string
+  ): string | undefined {
+    return this.submittedRelayRequests.get(relayRequestID)?.possibleTransactionHash
+  }
+
+  /**
+   * Convert relayRequestId (which is a "synthetic" transaction ID) into the actual transaction Id.
    * This is done by parsing RelayHub event, and can only be done after mining.
    * @param relayRequestID
-   * @param submissionDetails
-   * @return transactionId or marker:
-   * If the transaction is already mined, return a real transactionId
-   * If the transaction is no longer valid, return TX_NOTFOUND
-   * If the transaction can still be mined, returns TX_FUTURE
+   * @return transactionHash or constant marker:
+   *
+   *  * If the transaction is already mined, return a real transactionHash
+   *  * If the transaction is no longer valid, return TX_NOTFOUND
+   *  * If the transaction can still be mined, returns TX_FUTURE
    */
-  async _getTransactionIdFromRequestId (
-    relayRequestID: string,
-    submissionDetails: SubmittedRelayRequestInfo
+  async getTransactionHashFromRequestId (
+    relayRequestID: string
   ): Promise<string> {
+    const submissionDetails = await this._getSubmissionDetailsForRelayRequestId(relayRequestID)
     const extraTopics = [null, null, [relayRequestID]]
     const events = await this.relayClient.dependencies.contractInteractor.getPastEventsForHub(
       extraTopics,
@@ -424,8 +443,7 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
    */
   async _createTransactionReceiptForRelayRequestID (
     relayRequestID: string): Promise<TransactionReceipt | null> {
-    const submissionDetails = await this._getSubmissionDetailsForRelayRequestId(relayRequestID)
-    const transactionHash = await this._getTransactionIdFromRequestId(relayRequestID, submissionDetails)
+    const transactionHash = await this.getTransactionHashFromRequestId(relayRequestID)
     if (transactionHash === TX_FUTURE) {
       return null
     }
@@ -690,6 +708,7 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
       throw new Error('Missing info in RelayingResult - internal GSN error, should not happen')
     }
     this.submittedRelayRequests.set(relayingResult.relayRequestID, {
+      possibleTransactionHash: relayingResult.transaction?.hash,
       validUntilTime: relayingResult.validUntilTime,
       submissionBlock: relayingResult.submissionBlock
     })
