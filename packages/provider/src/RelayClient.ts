@@ -978,8 +978,16 @@ export class RelayClient {
 
   // TODO: this is very ugly, but Web3.js allowed overriding 'from' and we are not ready to abandon support for it yet
   async switchSigner (from?: string): Promise<void> {
-    const currentSignerAddress = await this.wrappedUnderlyingSigner.getAddress()
-    if (from != null && !isSameAddress(from, currentSignerAddress)) {
+    let currentSignerAddress: string | undefined
+    try {
+      currentSignerAddress = await this.wrappedUnderlyingSigner.getAddress()
+    } catch (e: any) {
+      // nothing to do here - signer does not have accounts and can only work with ephemeral keys
+    }
+    if (
+      currentSignerAddress == null ||
+      (from != null && !isSameAddress(from, currentSignerAddress))
+    ) {
       this.logger.warn('Warning: Passing "from" parameter override in transaction details is not supported in Ethers.js, may cause various bugs and support will be removed from GSN in the next major version.')
       this.wrappedUnderlyingSigner = this.wrappedUnderlyingProvider.getSigner(from)
       this.dependencies.accountManager.switchSigner(this.wrappedUnderlyingSigner)
