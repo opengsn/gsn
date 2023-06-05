@@ -236,4 +236,31 @@ contract('RelayClient - wrap Providers and Signers', function () {
         })
     })
   })
+
+  describe('ephemeral key with public RPC endpoint', function () {
+    // creates a real goerli transaction - only un-skip test if having issues
+    it.skip('should initialize Web3 provider', async function () {
+      const privateKeyAddress = '0x982a8CbE734cb8c29A6a7E02a3B0e4512148F6F9'
+      const privateKey = '0xd353907ab062133759f149a3afcb951f0f746a65a60f351ba05a3ebf26b67f5c'
+      const ethersV5Provider = new StaticJsonRpcProviderV5('https://rpc.ankr.com/eth_goerli')
+      const gsnProvider = await RelayProvider.newWeb3Provider({
+        provider: ethersV5Provider,
+        config: {
+          paymasterAddress: '0x7e4123407707516bD7a3aFa4E3ebCeacfcbBb107'
+        }
+      })
+
+      ContractWeb3JS.setProvider(gsnProvider)
+      const testRecipient = new ContractWeb3JS(TestRecipientJson.abi, '0xD1cfA489F7eABf322C5EE1B3779ca6Be9Ce08a8e')
+
+      const _web3 = new Web3(gsnProvider)
+      const accounts1 = await _web3.eth.getAccounts()
+      assert.equal(accounts1.length, 0)
+      gsnProvider.addAccount(privateKey)
+      const accounts2 = await _web3.eth.getAccounts()
+      assert.equal(accounts2.length, 1)
+      assert.equal(accounts2[0].toLowerCase(), privateKeyAddress.toLowerCase())
+      await testRecipient.methods.captureTheFlag().send({ from: privateKeyAddress })
+    })
+  })
 })

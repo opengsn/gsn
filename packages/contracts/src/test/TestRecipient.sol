@@ -93,4 +93,8 @@ contract TestRecipient is ERC2771Recipient {
     // only here for one method sig
     // solhint-disable-next-line no-empty-blocks
     function withdrawBalance(uint256 amount) public {}
+
+    // only here for one method sig
+    // solhint-disable-next-line no-empty-blocks
+    function captureTheFlag() external {}
 }
