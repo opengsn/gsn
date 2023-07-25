@@ -5,6 +5,8 @@
       "packages/*"
     ],
     "nohoist": [
+      "**/ethers",
+      "**/ethers/**",
       "**eslint**",
       "**stdjsonin**",
       "**ts-node**"
