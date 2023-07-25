@@ -3,7 +3,7 @@ jobs: # a collection of steps
   build: # runs not using Workflows must have a `build` job as entry point
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: cimg/node:16.6.2
+      - image: cimg/node:16.13.0
 
     steps: # a collection of executable commands
       - checkout # special step to check out source code to working directory
@@ -42,7 +42,7 @@ jobs: # a collection of steps
   build_paymasters:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: cimg/node:16.6.2
+      - image: cimg/node:16.13.0
     steps: # a collection of executable commands
       - attach_workspace:
           at: .
@@ -56,7 +56,7 @@ jobs: # a collection of steps
   test_dev:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: cimg/node:16.6.2
+      - image: cimg/node:16.13.0
     steps: # a collection of executable commands
       - attach_workspace:
           at: .
@@ -69,7 +69,7 @@ jobs: # a collection of steps
   test_paymasters:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: cimg/node:16.6.2
+      - image: cimg/node:16.13.0
     steps: # a collection of executable commands
       - attach_workspace:
           at: .
@@ -82,7 +82,7 @@ jobs: # a collection of steps
   gas_calculations:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: cimg/node:16.6.2
+      - image: cimg/node:16.13.0
     steps: # a collection of executable commands
       - attach_workspace:
           at: .
@@ -94,7 +94,7 @@ jobs: # a collection of steps
 #  test_paymasters:
 #    working_directory: ~/gls # directory where steps will run
 #    docker: # run the steps with Docker
-#      - image: cimg/node:16.6.2
+#      - image: cimg/node:16.13.0
 #    steps: # a collection of executable commands
 #      - attach_workspace:
 #          at: .
@@ -106,7 +106,7 @@ jobs: # a collection of steps
   lint:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: cimg/node:16.6.2
+      - image: cimg/node:16.13.0
     steps: # a collection of executable commands
       - attach_workspace:
           at: .
@@ -116,7 +116,7 @@ jobs: # a collection of steps
   lint_paymasters:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: cimg/node:16.6.2
+      - image: cimg/node:16.13.0
     steps: # a collection of executable commands
       - attach_workspace:
           at: .
@@ -126,7 +126,7 @@ jobs: # a collection of steps
   depcheck:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: cimg/node:16.6.2
+      - image: cimg/node:16.13.0
     steps: # a collection of executable commands
       - attach_workspace:
           at: .
@@ -137,7 +137,7 @@ jobs: # a collection of steps
   test_webpack:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: cimg/node:16.6.2
+      - image: cimg/node:16.13.0
     steps: # a collection of executable commands
       - attach_workspace:
           at: .
@@ -150,7 +150,7 @@ jobs: # a collection of steps
   test_fork:
     working_directory: ~/gls # directory where steps will run
     docker: # run the steps with Docker
-      - image: cimg/node:16.6.2
+      - image: cimg/node:16.13.0
     steps: # a collection of executable commands
       - attach_workspace:
           at: .
