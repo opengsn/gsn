@@ -102,7 +102,8 @@
     "web3-core-helpers": "^1.7.3",
     "web3-eth": "^1.7.3",
     "web3-eth-abi": "^1.7.3",
-    "web3-eth-contract": "^1.7.3",
+    "web3-eth-contract": "^1.7.4",
+    "web3-eth-accounts": "^1.7.4",
     "web3-utils": "^1.7.3",
     "webpack": "^5.73.0",
     "webpack-cli": "^4.10.0"

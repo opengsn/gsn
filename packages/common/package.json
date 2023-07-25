@@ -32,7 +32,7 @@
     "chalk": "^4.1.2",
     "ethereumjs-util": "^7.1.0",
     "ethers": "^5.7.2",
-    "ethers-v6": "npm:ethers@6.0.0",
+    "ethers-v6": "npm:ethers@^6.6.5",
     "ethjs-unit": "^0.1.6",
     "number-to-bn": "^1.7.0",
     "ow": "^0.28.1",

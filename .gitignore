@@ -47,3 +47,4 @@ hardhat.log
 /packages/deployer/contracts-link
 /packages/deployer/all-networks.json
 /packages/deployer/deployments/
+/Project.xml

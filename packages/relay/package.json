@@ -45,6 +45,7 @@
     "web3": "^1.7.4",
     "web3-core-helpers": "^1.7.4",
     "web3-eth-contract": "^1.7.4",
+    "web3-eth-accounts": "^1.7.4",
     "web3-utils": "^1.7.4"
   }
 }

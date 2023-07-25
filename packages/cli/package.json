@@ -48,7 +48,8 @@
     "web3-provider-engine": "^16.0.4"
   },
   "devDependencies": {
-    "web3-eth-contract": "^1.7.3",
+    "web3-eth-contract": "^1.7.4",
+    "web3-eth-accounts": "^1.7.4",
     "web3-utils": "^1.7.3"
   }
 }
