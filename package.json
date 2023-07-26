@@ -83,6 +83,8 @@
     "@typescript-eslint/parser": "^4.8.1",
     "bn.js": "^5.2.0",
     "depcheck": "^1.4.3",
+    "ethers": "^6.6.5",
+    "ethers-v6": "npm:ethers@^6.6.5",
     "eslint": "^7.13.0",
     "eslint-config-standard": "14.1.1",
     "eslint-config-standard-with-typescript": "18.0.2",
