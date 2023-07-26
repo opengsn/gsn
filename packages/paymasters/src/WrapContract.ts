@@ -3,7 +3,13 @@ import { ExternalProvider, JsonRpcProvider } from '@ethersproject/providers'
 import { Signer } from '@ethersproject/abstract-signer'
 
 import { TokenPaymasterProvider } from './TokenPaymasterProvider'
-import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput } from '@opengsn/provider'
+import {
+  Address,
+  GSNConfig,
+  GSNDependencies,
+  GSNUnresolvedConstructorInput,
+  SupportedTokenSymbols
+} from '@opengsn/provider'
 
 async function wrapContract (
   contract: Contract,
@@ -17,7 +23,8 @@ async function wrapContract (
 async function wrapSigner (
   signer: Signer,
   config: Partial<GSNConfig>,
-  overrideDependencies?: Partial<GSNDependencies>): Promise<Signer> {
+  overrideDependencies?: Partial<GSNDependencies>,
+  permitERC20TokenForGas?: Address | SupportedTokenSymbols): Promise<Signer> {
   const provider = signer.provider
   if (provider == null) {
     throw new Error('GSN requires a Signer instance with a provider to wrap it')
@@ -28,9 +35,9 @@ async function wrapSigner (
     overrideDependencies
   }
 
-  // types have a very small conflict about whether "jsonrpc" field is actually required so not worth wrapping again
-  const gsnProvider = await TokenPaymasterProvider.newWeb3Provider(input) as any as ExternalProvider
-  const ethersProvider = new providers.Web3Provider(gsnProvider)
+  const gsnProvider = await TokenPaymasterProvider.newProvider(input).init(permitERC20TokenForGas)
+  const gsnExternalProvider = gsnProvider as any as ExternalProvider
+  const ethersProvider = new providers.Web3Provider(gsnExternalProvider)
   const address = await signer.getAddress()
   return ethersProvider.getSigner(address)
 }

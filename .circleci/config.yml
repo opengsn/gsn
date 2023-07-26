@@ -12,8 +12,8 @@ jobs: # a collection of steps
           name: package-json-all-deps
           command: yarn create-all-deps
 
-#      - restore_cache: # special step to restore the dependency cache
-#          key: dependency-cache-{{ checksum "yarn.lock" }}-{{ checksum "all.deps" }}
+      - restore_cache: # special step to restore the dependency cache
+          key: dependency-cache-{{ checksum "yarn.lock" }}-{{ checksum "all.deps" }}
 
       - run:
           name: yarn-install-if-no-cache

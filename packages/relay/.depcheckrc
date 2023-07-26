@@ -1,1 +1,1 @@
-ignores: ["@types/nedb"]
+ignores: ["@types/nedb", "web3-eth-accounts"]
