@@ -102,6 +102,7 @@ export async function getToken (address: string): Promise<Token> {
     address,
     symbol,
     decimals,
+    // eslint-disable-next-line @typescript-eslint/return-await
     balanceOf: async (addr: string) => await token.balanceOf(addr).then((v: any) => v.div(divisor))
   }
 }
@@ -187,7 +188,8 @@ async function getTokenUpdateStakeOrNull (hub: Contract, tokenAddr: string, conf
   const minStake = await hub.getMinimumStakePerToken(tokenAddr)
   const parsedConfigMinimumStake = parseUnits(configMinimumStake, token.decimals).toString()
   const modified = parsedConfigMinimumStake !== minStake.toString()
-  console.log(`- Staking Token "${token.symbol}" ${token.address} current ${formatUnits(minStake, token.decimals)} config ${configMinimumStake}, ${modified ? '' : '(unchanged)'}`)
+  const currentStr: string = formatUnits(minStake, token.decimals)
+  console.log(`- Staking Token "${token.symbol}" ${token.address} current ${currentStr} config ${configMinimumStake}, ${modified ? '' : '(unchanged)'}`)
   if (modified) {
     return { token: tokenAddr, minimumStake: parsedConfigMinimumStake }
   } else {
