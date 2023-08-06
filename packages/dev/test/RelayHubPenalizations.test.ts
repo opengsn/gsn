@@ -28,7 +28,7 @@ import {
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance, TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 
 import { deployHub, evmMineMany, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
@@ -102,7 +102,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     encodedCallArgs.paymaster = paymaster.address

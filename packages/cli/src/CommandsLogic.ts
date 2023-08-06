@@ -1,13 +1,12 @@
 // @ts-ignore
 import io from 'console-read-write'
-import BN from 'bn.js'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import ow from 'ow'
 import { Contract } from 'web3-eth-contract'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
 import { Web3Provider } from '@ethersproject/providers'
-import { fromWei, toBN, toHex } from 'web3-utils'
+import { fromWei, toHex } from 'web3-utils'
 
 import {
   Address,
@@ -25,6 +24,7 @@ import {
   formatTokenAmount,
   isSameAddress,
   sleep,
+  toBN,
   toNumber
 } from '@opengsn/common'
 
@@ -42,6 +42,8 @@ import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { defaultGsnConfig } from '@opengsn/provider'
 
 import { registerForwarderForGsn } from './ForwarderUtil'
+import { BigNumber } from '@ethersproject/bignumber'
+import { Forwarder__factory } from '@opengsn/contracts/types/ethers-contracts'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -50,20 +52,20 @@ export interface RegisterOptions {
   sleepCount: number
   from: Address
   token?: Address
-  gasPrice?: string | BN
+  gasPrice?: string | BigNumber
   stake: string
   wrap: boolean
-  funds: string | BN
+  funds: string | BigNumber
   relayUrl: string
   unstakeDelay: string
 }
 
 export interface WithdrawOptions {
-  withdrawAmount: BN
+  withdrawAmount: BigNumber
   keyManager: KeyManager
   config: ServerConfigParams
   broadcast: boolean
-  gasPrice?: BN
+  gasPrice?: BigNumber
   withdrawTarget?: string
   useAccountBalance: boolean
 }
@@ -107,9 +109,9 @@ type WithdrawalResult = RegistrationResult
 
 export interface SendOptions {
   from: string
-  gasPrice: number | string | BN
-  gas: number | string | BN
-  value: number | string | BN
+  gasPrice: number | string | BigNumber
+  gas: number | string | BigNumber
+  value: number | string | BigNumber
 }
 
 export class CommandsLogic {
@@ -180,7 +182,7 @@ export class CommandsLogic {
     try {
       accounts = await this.web3.eth.getAccounts()
       for (const account of accounts) {
-        const balance = new BN(await this.web3.eth.getBalance(account))
+        const balance = BigNumber.from(await this.web3.eth.getBalance(account))
         if (balance.gte(requiredBalance)) {
           this.logger.info(`Found funded account ${account}`)
           return account
@@ -216,7 +218,7 @@ export class CommandsLogic {
     throw Error(`Relay not ready after ${timeout}s`)
   }
 
-  async getPaymasterBalance (paymaster: Address): Promise<BN> {
+  async getPaymasterBalance (paymaster: Address): Promise<BigNumber> {
     if (this.deployment == null) {
       throw new Error('Deployment is not initialized!')
     }
@@ -232,13 +234,13 @@ export class CommandsLogic {
    * @return deposit of the paymaster after
    */
   async fundPaymaster (
-    from: Address, paymaster: Address, amount: string | BN
-  ): Promise<BN> {
+    from: Address, paymaster: Address, amount: string | BigNumber
+  ): Promise<BigNumber> {
     if (this.deployment == null) {
       throw new Error('Deployment is not initialized!')
     }
     const currentBalance = await this.contractInteractor.hubBalanceOf(paymaster)
-    const targetAmount = new BN(amount)
+    const targetAmount = BigNumber.from(amount)
     if (currentBalance.lt(targetAmount)) {
       const value = targetAmount.sub(currentBalance).toString()
       await this.contractInteractor.hubDepositFor(paymaster, {
@@ -256,7 +258,7 @@ export class CommandsLogic {
     try {
       this.logger.info(`Registering GSN relayer at ${options.relayUrl}`)
 
-      const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
+      const gasPrice = toHex(options.gasPrice?.toString() ?? (await this.getGasPrice()).toString())
       const sendOptions: any = {
         // chainId: toHex(await this.web3.eth.getChainId()),
         from: options.from,
@@ -302,9 +304,9 @@ export class CommandsLogic {
       const tokenDecimals = await stakingTokenContract.decimals()
       const tokenSymbol = await stakingTokenContract.symbol()
 
-      const stakeParam = toBN(toNumber(options.stake) * Math.pow(10, tokenDecimals.toNumber()))
+      const stakeParam = toBN(toNumber(options.stake) * Math.pow(10, tokenDecimals))
 
-      const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, stakingToken ?? '', tokenSymbol)
+      const formatToken = (val: any): string => formatTokenAmount(BigNumber.from(val.toString()), tokenDecimals, stakingToken ?? '', tokenSymbol)
 
       this.logger.info(`current stake= ${formatToken(stake)}`)
 
@@ -347,28 +349,28 @@ export class CommandsLogic {
           }
         }
       }
-      if (unstakeDelay.gte(toBN(options.unstakeDelay)) &&
-        stake.gte(stakeParam)
+      if (unstakeDelay.gte(options.unstakeDelay) &&
+        stake.gte(stakeParam.toString())
       ) {
         this.logger.info('Relayer already staked')
       } else {
         const config = await relayHub.getConfiguration()
         const minimumStakeForToken = await relayHub.getMinimumStakePerToken(stakingToken)
-        if (minimumStakeForToken.gt(toBN(stakeParam.toString()))) {
+        if (minimumStakeForToken.gt(stakeParam.toString())) {
           throw new Error(`Given stake ${formatToken(stakeParam)} too low for the given hub ${formatToken(minimumStakeForToken)} and token ${stakingToken}`)
         }
-        if (minimumStakeForToken.eqn(0)) {
+        if (minimumStakeForToken.eq(0)) {
           throw new Error(`Selected token (${stakingToken}) is not allowed in the current RelayHub`)
         }
-        if (config.minimumUnstakeDelay.gt(toBN(options.unstakeDelay))) {
+        if (config.minimumUnstakeDelay.gt(options.unstakeDelay)) {
           throw new Error(`Given minimum unstake delay ${options.unstakeDelay.toString()} too low for the given hub ${config.minimumUnstakeDelay.toString()}`)
         }
-        const stakeValue = stakeParam.sub(stake)
+        const stakeValue = stakeParam.sub(toBN(stake.toString()))
         this.logger.info(`Staking relayer ${formatToken(stakeValue)}` +
           stake.toString() === '0' ? '' : ` (already has ${formatToken(stake)})`)
 
         const tokenBalance = await stakingTokenContract.balanceOf(options.from)
-        if (tokenBalance.lt(stakeValue) && options.wrap) {
+        if (tokenBalance.lt(stakeValue.toString()) && options.wrap) {
           // default token is wrapped eth, so deposit eth to make then into tokens.
           this.logger.info(`Wrapping ${formatToken(stakeValue)}`)
           let depositTx: any
@@ -386,7 +388,7 @@ export class CommandsLogic {
 
         const currentAllowance = await stakingTokenContract.allowance(options.from, stakeManager.address)
         this.logger.info(`Current allowance: ${formatToken(currentAllowance)}`)
-        if (currentAllowance.lt(stakeValue)) {
+        if (currentAllowance.lt(stakeValue.toString())) {
           this.logger.info(`Approving ${formatToken(stakeValue)} to StakeManager`)
           const approveTx = await stakingTokenContract.approve(stakeManager.address, stakeValue.toString(), {
             ...sendOptions,
@@ -438,7 +440,7 @@ export class CommandsLogic {
   async _findFirstToken (relayHubAddress: string): Promise<string> {
     const relayHub = await this.contractInteractor._createRelayHub(relayHubAddress)
     const fromBlock = await relayHub.getCreationBlock()
-    const toBlock = Math.min(toNumber(fromBlock) + 5000, await this.contractInteractor.getBlockNumber())
+    const toBlock = Math.min(toNumber(fromBlock.toString()) + 5000, await this.contractInteractor.getBlockNumber())
     const tokens = await this.contractInteractor.getPastEventsForHub([], {
       fromBlock: parseInt(fromBlock.toString()),
       toBlock: parseInt(toBlock.toString())
@@ -456,7 +458,7 @@ export class CommandsLogic {
     const accountBalance = toBN(await this.contractInteractor.getBalance(relayManager))
     this.logger.info(`Relay manager account balance is ${fromWei(accountBalance)}eth`)
     const hubBalance = await relayHub.balanceOf(relayManager)
-    this.logger.info(`Relay manager hub balance is ${fromWei(hubBalance)}eth`)
+    this.logger.info(`Relay manager hub balance is ${fromWei(hubBalance.toString())}eth`)
   }
 
   async withdrawToOwner (options: WithdrawOptions): Promise<WithdrawalResult> {
@@ -478,18 +480,18 @@ export class CommandsLogic {
       const withdrawTarget = options.withdrawTarget ?? owner
 
       const nonce = await this.contractInteractor.getTransactionCount(relayManager)
-      const gasPrice = toHex(options.gasPrice ?? toBN(await this.getGasPrice()))
+      const gasPrice = toHex(options.gasPrice?.toString() ?? (await this.getGasPrice()).toString())
       const gasLimit = 1e5
       let txToSign: TypedTransaction
       if (options.useAccountBalance) {
-        const balance = toBN(await this.contractInteractor.getBalance(relayManager))
-        this.logger.info(`Relay manager account balance is ${fromWei(balance)}eth`)
+        const balance = await this.contractInteractor.getBalance(relayManager)
+        this.logger.info(`Relay manager account balance is ${fromWei(balance.toString())}eth`)
         if (balance.lt(options.withdrawAmount)) {
           throw new Error('Relay manager account balance lower than withdrawal amount')
         }
         const web3TxData = {
           to: withdrawTarget,
-          value: options.withdrawAmount,
+          value: options.withdrawAmount.toString(),
           gas: gasLimit,
           gasPrice,
           nonce
@@ -502,11 +504,13 @@ export class CommandsLogic {
         txToSign = new Transaction(txData, this.contractInteractor.getRawTxOptions())
       } else {
         const balance = await relayHub.balanceOf(relayManager)
-        this.logger.info(`Relay manager hub balance is ${fromWei(balance)}eth`)
-        if (balance.lt(options.withdrawAmount)) {
+        this.logger.info(`Relay manager hub balance is ${fromWei(balance.toString())}eth`)
+        if (balance.lt(options.withdrawAmount.toString())) {
           throw new Error('Relay manager hub balance lower than withdrawal amount')
         }
-        const method = relayHub.contract.methods.withdraw(withdrawTarget, options.withdrawAmount)
+        // TODO: leaked 'method' web3.js abstraction here
+        const method = {} as any // relayHub.contract.methods.withdraw(withdrawTarget, options.withdrawAmount)
+        if (1 === 1) { process.exit(777) }
         const encodedCall = method.encodeABI()
         txToSign = new Transaction({
           to: options.config.relayHubAddress,
@@ -597,7 +601,10 @@ export class CommandsLogic {
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, fInstance, deployOptions.skipConfirmation)
     }
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, fInstance, this.logger, options)
+    // TODO: construct provider
+    // @ts-ignore
+    const ethersForwarderInstance = Forwarder__factory.connect(fInstance._address, {})
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, ethersForwarderInstance, this.logger, options)
 
     let stakingTokenAddress = deployOptions.stakingTokenAddress
 
@@ -613,7 +620,7 @@ export class CommandsLogic {
     const tokenDecimals = await stakingTokenContract.decimals()
     const tokenSymbol = await stakingTokenContract.symbol()
 
-    const formatToken = (val: any): string => formatTokenAmount(toBN(val.toString()), tokenDecimals, stakingTokenAddress ?? '', tokenSymbol)
+    const formatToken = (val: any): string => formatTokenAmount(BigNumber.from(val.toString()), tokenDecimals, stakingTokenAddress ?? '', tokenSymbol)
 
     this.logger.info(`Setting minimum stake of ${formatToken(deployOptions.minimumTokenStake)}`)
     await rInstance.methods.setMinimumStakes([stakingTokenAddress], [deployOptions.minimumTokenStake]).send({ ...options })
@@ -655,7 +662,7 @@ export class CommandsLogic {
         this.logger.debug(`tx error: ${err.message}`)
       })
       contractInstance = await deployPromise
-      this.logger.info(`Deployed ${contractName} at address ${contractInstance.options.address}\n\n`)
+      this.logger.info(`Deployed ${contractName} at address ${contractInstance.options.address as string}\n\n`)
     } else {
       this.logger.info(`Using ${contractName} at given address ${address}\n\n`)
       contractInstance = this.contract(json, address)
@@ -683,9 +690,9 @@ export class CommandsLogic {
     }
   }
 
-  async getGasPrice (): Promise<string> {
+  async getGasPrice (): Promise<BigNumber> {
     const gasPrice = await this.contractInteractor.getGasPrice()
-    this.logger.info(`Using network gas price of ${fromWei(gasPrice, 'gwei')}`)
+    this.logger.info(`Using network gas price of ${fromWei(gasPrice.toString(), 'gwei')}`)
     return gasPrice
   }
 }

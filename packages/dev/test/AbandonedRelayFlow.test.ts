@@ -1,6 +1,6 @@
 import BN from 'bn.js'
 
-import { RelayHubInstance, RelayRegistrarInstance, StakeManagerInstance, TestTokenInstance } from '@opengsn/contracts'
+import { RelayHubInstance, RelayRegistrarInstance, StakeManagerInstance, TestTokenInstance } from '../types/truffle-contracts'
 import { constants, defaultEnvironment, splitRelayUrlForRegistrar } from '@opengsn/common'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 

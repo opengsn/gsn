@@ -1,11 +1,15 @@
-import { TestPaymasterConfigurableMisbehaviorInstance, TestRecipientInstance } from '@opengsn/contracts'
+import {
+  RelayHubInstance,
+  TestPaymasterConfigurableMisbehaviorInstance,
+  TestRecipientInstance
+} from '../types/truffle-contracts'
 import { evmMine } from './TestUtils'
 import { HttpProvider } from 'web3-core'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import sinon from 'sinon'
 import { GsnTestEnvironment, TestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
-import { RelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
+import { BigNumber } from '@ethersproject/bignumber'
 
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestRecipient = artifacts.require('TestRecipient')
@@ -60,8 +64,8 @@ contract('ReputationFlow', function () {
         recipientReverted: false
       }))
       sinon.stub(relayProvider.relayClient.dependencies.contractInteractor, 'getGasFees').returns(Promise.resolve({
-        priorityFeePerGas: 30e9.toString(),
-        baseFeePerGas: 30e9.toString()
+        priorityFeePerGas: BigNumber.from(30e9),
+        baseFeePerGas: BigNumber.from(30e9)
       }))
       sinon.stub(testEnv.httpServer.relayService!, 'validateViewCallSucceeds')
       for (let i = 0; i < 20; i++) {

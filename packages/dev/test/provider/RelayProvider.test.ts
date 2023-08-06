@@ -23,7 +23,7 @@ import {
   TestRecipientInstance,
   TestTokenInstance,
   TestUtilInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../../types/truffle-contracts'
 import {
   Address,
   JsonRpcPayload,
@@ -130,7 +130,7 @@ contract('RelayProvider', function (accounts) {
     relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
 
     paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address

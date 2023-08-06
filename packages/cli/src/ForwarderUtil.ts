@@ -1,37 +1,34 @@
-import { Contract } from 'web3-eth-contract'
+import { Contract, CallOverrides } from '@ethersproject/contracts'
+import { Web3Provider } from '@ethersproject/providers'
+
 import { GsnDomainSeparatorType, GsnRequestType, LoggerInterface } from '@opengsn/common'
-import { IForwarderInstance } from '@opengsn/contracts/types/truffle-contracts'
+import { IForwarder } from '@opengsn/contracts/types/ethers-contracts'
 
 // register a forwarder for use with GSN: the request-type and domain separator we're using.
-export async function registerForwarderForGsn (domainSeparatorName: string, forwarderTruffleOrWeb3: IForwarderInstance | Contract, logger?: LoggerInterface, sendOptions: any = undefined): Promise<void> {
+export async function registerForwarderForGsn (
+  domainSeparatorName: string,
+  forwarderIn: IForwarder | Contract,
+  logger?: LoggerInterface,
+  sendOptions: CallOverrides | undefined = undefined
+): Promise<void> {
   let options
   let forwarder: Contract
-  if ((forwarderTruffleOrWeb3 as any).contract != null) {
-    forwarder = (forwarderTruffleOrWeb3 as any).contract
-    // truffle-contract carries default options (e.g. from) in the object.
-    // @ts-ignore
-    options = { ...forwarderTruffleOrWeb3.constructor.defaults(), ...sendOptions }
+  if ((forwarderIn as any).contract != null) {
+    const provider = new Web3Provider((forwarderIn as any).contract.currentProvider)
+    forwarder = new Contract((forwarderIn as any).address, (forwarderIn as any).abi, provider.getSigner())
   } else {
-    options = { ...sendOptions }
-    forwarder = forwarderTruffleOrWeb3 as any
+    forwarder = forwarderIn as any
   }
-
-  function logTx (p: any): any {
-    p.on('transactionHash', function (hash: string) {
-      logger?.debug(`Transaction broadcast: ${hash}`)
-    })
-    p.on('error', function (err: Error) {
-      logger?.debug(`tx error: ${err.message}`)
-    })
-    return p
-  }
+  options = { ...sendOptions }
 
   logger?.info(`Registering request type ${GsnRequestType.typeName} with suffix: ${GsnRequestType.typeSuffix}`)
-  await logTx(forwarder.methods.registerRequestType(
+  const res = await forwarder.registerRequestType(
     GsnRequestType.typeName,
-    GsnRequestType.typeSuffix
-  ).send(options))
+    GsnRequestType.typeSuffix,
+    options
+  )
+  logger?.debug(`Transaction broadcast: ${res?.hash}`)
 
   logger?.info(`Registering domain separator ${domainSeparatorName} with version: ${GsnDomainSeparatorType.version}`)
-  await logTx(forwarder.methods.registerDomainSeparator(domainSeparatorName, GsnDomainSeparatorType.version).send(options))
+  await forwarder.registerDomainSeparator(domainSeparatorName, GsnDomainSeparatorType.version, options)
 }

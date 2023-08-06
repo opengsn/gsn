@@ -3,7 +3,6 @@ import { PastEventOptions } from 'web3-eth-contract'
 import { EventEmitter } from 'events'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { Block } from '@ethersproject/providers'
-import { toBN, toHex } from 'web3-utils'
 
 import {
   Address,
@@ -37,6 +36,7 @@ import {
   StakeWithdrawn
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { Web3MethodsBuilder } from './Web3MethodsBuilder'
+import { BigNumber } from '@ethersproject/bignumber'
 
 export class RegistrationManager {
   balanceRequired!: AmountRequired
@@ -123,7 +123,7 @@ export class RegistrationManager {
       this.printNotRegisteredMessage()
     }
     const minimumStakePerToken = await this.contractInteractor.getMinimumStakePerToken(this.config.managerStakeTokenAddress)
-    this.balanceRequired = new AmountRequired('Balance', toBN(this.config.managerMinBalance), constants.ZERO_ADDRESS, this.logger, listener)
+    this.balanceRequired = new AmountRequired('Balance', BigNumber.from(this.config.managerMinBalance.toString()), constants.ZERO_ADDRESS, this.logger, listener)
     this.stakeRequired = new AmountRequired('Stake', minimumStakePerToken, constants.ZERO_ADDRESS, this.logger, listener, tokenMetadata)
     await this.refreshBalance()
     const latestBlockTimestamp = toNumber(latestBlock.timestamp)
@@ -288,7 +288,7 @@ export class RegistrationManager {
 
   async refreshBalance (): Promise<void> {
     const currentBalance = await this.contractInteractor.getBalance(this.managerAddress)
-    this.balanceRequired.currentValue = toBN(currentBalance)
+    this.balanceRequired.currentValue = BigNumber.from(currentBalance)
   }
 
   async refreshStake (currentBlockNumber: number, currentBlockHash: string, currentBlockTimestamp: number): Promise<PrefixedHexString[]> {
@@ -321,7 +321,7 @@ export class RegistrationManager {
     if (this._isOwnerSetOnStakeManager && !isSameAddress(stakeInfo.owner, this.config.ownerAddress)) {
       throw new Error(`This Relay Manager has set owner to already! On-chain: ${stakeInfo.owner}, in config: ${this.config.ownerAddress}`)
     }
-    if (stake.eq(toBN(0))) {
+    if (stake.eq(0)) {
       return transactionHashes
     }
 
@@ -417,13 +417,13 @@ export class RegistrationManager {
     // todo add better maxFeePerGas, maxPriorityFeePerGas
     const gasPrice = await this.contractInteractor.getGasPrice()
     const transactionHashes: PrefixedHexString[] = []
-    const managerBalance = toBN(await this.contractInteractor.getBalance(this.managerAddress))
+    const managerBalance = await this.contractInteractor.getBalance(this.managerAddress)
     const gasLimit = await this.contractInteractor.estimateGas({
       from: this.managerAddress,
       to: this.ownerAddress as string,
       value: managerBalance.toString()
     })
-    const txCost = toBN(gasLimit).mul(toBN(gasPrice))
+    const txCost = BigNumber.from(gasLimit).mul(gasPrice)
 
     // sending manager eth balance to owner
     if (managerBalance.gte(txCost)) {
@@ -433,9 +433,9 @@ export class RegistrationManager {
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
         gasLimit,
-        maxFeePerGas: gasPrice,
-        maxPriorityFeePerGas: gasPrice,
-        value: toHex(managerBalance.sub(txCost)),
+        maxFeePerGas: gasPrice.toString(),
+        maxPriorityFeePerGas: gasPrice.toString(),
+        value: managerBalance.sub(txCost).toHexString(),
         creationBlockNumber: currentBlockNumber,
         creationBlockHash: currentBlockHash,
         creationBlockTimestamp: currentBlockTimestamp
@@ -443,7 +443,7 @@ export class RegistrationManager {
       const { transactionHash } = await this.transactionManager.sendTransaction(details)
       transactionHashes.push(transactionHash)
     } else {
-      this.logger.error(`manager balance too low: ${managerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+      this.logger.error(`manager balance too low: ${managerBalance.toString()}, tx cost: ${gasLimit * gasPrice.toNumber()}`)
     }
     return transactionHashes
   }
@@ -453,13 +453,13 @@ export class RegistrationManager {
     const transactionHashes: PrefixedHexString[] = []
     // todo add better maxFeePerGas, maxPriorityFeePerGas
     const gasPrice = await this.contractInteractor.getGasPrice()
-    const workerBalance = toBN(await this.contractInteractor.getBalance(this.workerAddress))
+    const workerBalance = await this.contractInteractor.getBalance(this.workerAddress)
     const gasLimit = await this.contractInteractor.estimateGas({
       from: this.managerAddress,
       to: this.ownerAddress as string,
       value: workerBalance.toString()
     })
-    const txCost = toBN(gasLimit * parseInt(gasPrice))
+    const txCost = gasPrice.mul(gasLimit)
 
     if (workerBalance.gte(txCost)) {
       this.logger.info(`Sending workers' eth balance ${workerBalance.toString()} to owner`)
@@ -468,9 +468,9 @@ export class RegistrationManager {
         serverAction: ServerAction.VALUE_TRANSFER,
         destination: this.ownerAddress as string,
         gasLimit,
-        maxFeePerGas: gasPrice,
-        maxPriorityFeePerGas: gasPrice,
-        value: toHex(workerBalance.sub(txCost)),
+        maxFeePerGas: gasPrice.toString(),
+        maxPriorityFeePerGas: gasPrice.toString(),
+        value: workerBalance.sub(txCost).toHexString(),
         creationBlockNumber: currentBlockNumber,
         creationBlockHash: currentBlockHash,
         creationBlockTimestamp: currentBlockTimestamp
@@ -478,7 +478,7 @@ export class RegistrationManager {
       const { transactionHash } = await this.transactionManager.sendTransaction(details)
       transactionHashes.push(transactionHash)
     } else {
-      this.logger.info(`balance too low: ${workerBalance.toString()}, tx cost: ${gasLimit * parseInt(gasPrice)}`)
+      this.logger.info(`balance too low: ${workerBalance.toString()}, tx cost: ${gasLimit * gasPrice.toNumber()}`)
     }
     return transactionHashes
   }
@@ -487,7 +487,7 @@ export class RegistrationManager {
     currentBlockNumber: number,
     currentBlockHash: string,
     currentBlockTimestamp: number,
-    amount?: BN): Promise<PrefixedHexString[]> {
+    amount?: BigNumber): Promise<PrefixedHexString[]> {
     if (this.ownerAddress == null) {
       throw new Error('Owner address not initialized')
     }
@@ -503,8 +503,8 @@ export class RegistrationManager {
       gasLimit,
       gasCost,
       method
-    } = await this.web3MethodsBuilder.withdrawHubBalanceEstimateGas(this.ownerAddress, amount, this.managerAddress, gasPrice)
-    if (amount.gte(gasCost)) {
+    } = await this.web3MethodsBuilder.withdrawHubBalanceEstimateGas(this.ownerAddress, amount.toString(), this.managerAddress, gasPrice.toString())
+    if (amount.gte(gasCost.toString())) {
       this.logger.info(`Sending manager hub balance ${amount.toString()} to owner`)
       const details: SendTransactionDetails = {
         gasLimit,

@@ -7,6 +7,7 @@ import chaiAsPromised from 'chai-as-promised'
 import express from 'express'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
+import { BigNumber } from '@ethersproject/bignumber'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { ExternalProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
 import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
@@ -18,12 +19,13 @@ import {
   ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
+  RelayRegistrarInstance,
   StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance,
   TestRecipientWithoutFallbackInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../../types/truffle-contracts'
 
 import {
   Address,
@@ -82,8 +84,6 @@ import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { ether } from '@openzeppelin/test-helpers'
 import { BadContractInteractor } from '../dummies/BadContractInteractor'
 
-import { RelayRegistrarInstance } from '@opengsn/contracts'
-
 import {
   RelayedTransactionValidator,
   TransactionValidationResult
@@ -105,10 +105,10 @@ const RelayRegistrar = artifacts.require('RelayRegistrar')
 const { expect, assert } = chai.use(chaiAsPromised)
 chai.use(sinonChai)
 
-const firstSeenBlockNumber = toBN(0)
-const lastSeenBlockNumber = toBN(0)
-const firstSeenTimestamp = toBN(0)
-const lastSeenTimestamp = toBN(0)
+const firstSeenBlockNumber = 0
+const lastSeenBlockNumber = 0
+const firstSeenTimestamp = 0
+const lastSeenTimestamp = 0
 
 const localhostOne = 'http://localhost:8090'
 const localhost127One = 'http://127.0.0.1:8090'
@@ -193,7 +193,7 @@ contract('RelayClient', function (accounts) {
     testRecipient = await TestRecipient.new(forwarderAddress)
     testRecipientWithoutFallback = await TestRecipientWithoutFallback.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setTrustedForwarder(forwarderAddress)
     await paymaster.setRelayHub(relayHub.address)
@@ -342,7 +342,7 @@ contract('RelayClient', function (accounts) {
 
     it('should use alternative ERC-712 domain separator', async function () {
       const newDomainSeparatorName = 'This is not the old domain separator name'
-      await registerForwarderForGsn(newDomainSeparatorName, forwarderInstance)
+      await registerForwarderForGsn(newDomainSeparatorName, forwarderInstance as any)
       const newConfig = Object.assign({}, gsnConfig, { domainSeparatorName: newDomainSeparatorName })
       const relayClient = new RelayClient({
         provider: underlyingProvider,
@@ -739,7 +739,7 @@ contract('RelayClient', function (accounts) {
         transaction,
         error,
         isRelayError
-      } = await relayClient._attemptRelay(relayInfo, relayRequest, toBN(defaultGsnConfig.maxViewableGasLimit))
+      } = await relayClient._attemptRelay(relayInfo, relayRequest, BigNumber.from(defaultGsnConfig.maxViewableGasLimit))
       assert.isUndefined(transaction)
       assert.isUndefined(isRelayError)
       // @ts-ignore
@@ -758,7 +758,7 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
-      const attempt = await relayClient._attemptRelay(relayInfo, relayRequest, toBN(defaultGsnConfig.maxViewableGasLimit))
+      const attempt = await relayClient._attemptRelay(relayInfo, relayRequest, BigNumber.from(defaultGsnConfig.maxViewableGasLimit))
       assert.equal(attempt.isRelayError, true, 'timeout should not abort relay search')
       assert.equal(attempt.error?.message, 'some error describing how timeout occurred somewhere')
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.been.calledWith(sinon.match.any, relayManager, relayUrl)
@@ -776,7 +776,7 @@ contract('RelayClient', function (accounts) {
       // @ts-ignore (sinon allows spying on all methods of the object, but TypeScript does not seem to know that)
       sinon.spy(relayClient.dependencies.knownRelaysManager)
       const relayRequest = await relayClient._prepareRelayRequest(optionsWithGas)
-      await relayClient._attemptRelay(relayInfo, relayRequest, toBN(defaultGsnConfig.maxViewableGasLimit))
+      await relayClient._attemptRelay(relayInfo, relayRequest, BigNumber.from(defaultGsnConfig.maxViewableGasLimit))
       expect(relayClient.dependencies.knownRelaysManager.saveRelayFailure).to.have.not.been.called
     })
 
@@ -816,7 +816,7 @@ contract('RelayClient', function (accounts) {
         transaction,
         error,
         isRelayError
-      } = await relayClient._attemptRelay(relayInfo, relayRequest, toBN(defaultGsnConfig.maxViewableGasLimit))
+      } = await relayClient._attemptRelay(relayInfo, relayRequest, BigNumber.from(defaultGsnConfig.maxViewableGasLimit))
       assert.isUndefined(transaction)
       assert.equal(isRelayError, true)
       assert.match(error!.message, /Transaction response verification failed. Validation results/)
@@ -1018,7 +1018,7 @@ contract('RelayClient', function (accounts) {
         })
         const workerBalance2 = await web3.eth.getBalance(relayWorkerAddress)
         console.log('workerBalance2', workerBalance2)
-        const attempt1 = await relayClient._attemptRelay(relayInfo, relayRequest, constants.MAX_UINT96)
+        const attempt1 = await relayClient._attemptRelay(relayInfo, relayRequest, BigNumber.from(constants.MAX_UINT96.toString()))
         // TODO: this test relies on order of checks!
         //  we use a wrong worker address and this error is returned from the server which is after the local view call
         assert.isTrue(attempt1.error?.message.includes('Got error response from relay: Wrong worker address:'))
@@ -1035,7 +1035,7 @@ contract('RelayClient', function (accounts) {
         const workerBalance3 = await web3.eth.getBalance(relayWorkerAddress)
         console.log('workerBalance3', workerBalance3)
         const relayRequest2 = await relayClient._prepareRelayRequest(optionsWithGas)
-        const attempt2 = await relayClient._attemptRelay(relayInfo, relayRequest2, constants.MAX_UINT96)
+        const attempt2 = await relayClient._attemptRelay(relayInfo, relayRequest2, BigNumber.from(constants.MAX_UINT96.toString()))
         assert.isTrue(attempt2.error?.message.includes('Check Relay Worker balance'))
         // error is either 'FWD: insufficient gas' or 'without revert string'/'out-of-gas'
         assert.isTrue(attempt2.error?.message.includes('FWD: insufficient gas'))

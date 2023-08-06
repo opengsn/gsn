@@ -19,11 +19,11 @@ import {
   ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
+  RelayRegistrarInstance,
   StakeManagerInstance, TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance, TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 
-import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { cleanValue } from './utils/chaiHelper'
 import { defaultGsnConfig } from '@opengsn/provider'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
@@ -89,7 +89,7 @@ contract('RelayHub Configuration',
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
       // Register hub's RelayRequest with forwarder, if not already done.
-      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
 
       await relayHub.depositFor(paymaster.address, {
         value: ether('1'),

@@ -2,14 +2,14 @@ import {
   ForwarderInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { deployHub } from './TestUtils'
 import { defaultEnvironment, constants } from '@opengsn/common'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
-import { TestForwarderMessage } from '@opengsn/contracts/types/truffle-contracts/TestForwarderTarget'
+import { TestForwarderMessage } from '../types/truffle-contracts/TestForwarderTarget'
 import { defaultGsnConfig } from '@opengsn/provider'
 
 const StakeManager = artifacts.require('StakeManager')
@@ -52,7 +52,7 @@ contract('SampleRecipient', function (accounts) {
     const rhub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(rhub.address)
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
 
     // transfer eth into paymaster (using the normal "transfer" helper, which internally
     // uses hub.depositFor)

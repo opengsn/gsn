@@ -46,7 +46,7 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic, commander.derivationPath, commander.derivationIndex, commander.privateKeyHex)
   const from = commander.from ?? await logic.findWealthyAccount()
 
-  const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await logic.getGasPrice())
+  const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : (await logic.getGasPrice()).toString())
   const gasLimit = commander.gasLimit
 
   if (commander.testToken === (commander.stakingToken != null)) {

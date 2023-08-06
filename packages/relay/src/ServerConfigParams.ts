@@ -188,23 +188,23 @@ export interface ServerConfigParams {
   /**
    * The minimum balance of the worker. If the balance gets lower than that Relay Manager will top it up.
    */
-  workerMinBalance: number
+  workerMinBalance: string
 
   /**
    * The balance of the worker that the Relay will try to maintain by sending funds to it from the Manager.
    */
-  workerTargetBalance: number
+  workerTargetBalance: string
 
   /**
    * The minimum balance of the Relay Manager.
    * If the balance gets lower than that Relay Manager will pull its revenue from the RelayHub.
    */
-  managerMinBalance: number
+  managerMinBalance: string
 
   /**
    * The balance of the Relay Manager that the Relay will try to maintain by pulling its revenue from the RelayHub.
    */
-  managerTargetBalance: number
+  managerTargetBalance: string
 
   /**
    * The address of the ERC-20 tokens that are used as stake kept on the StakeManager contract.
@@ -214,7 +214,7 @@ export interface ServerConfigParams {
   /**
    * If the balance of the Relay Manager on the RelayHub is above this value it will be sent to the owner.
    */
-  withdrawToOwnerOnBalance?: number
+  withdrawToOwnerOnBalance?: string
 
   /**
    * The Relay will re-read relevant blockchain state after so many blocks.
@@ -352,11 +352,11 @@ export const serverDefaultConfiguration: ServerConfigParams = {
   calldataEstimationSlackFactor: 1,
   gasPriceOracleUrl: '',
   gasPriceOraclePath: '',
-  workerMinBalance: 0.1e18,
-  workerTargetBalance: 0.3e18,
-  managerMinBalance: 0.1e18, // 0.1 eth
+  workerMinBalance: 0.1e18.toString(),
+  workerTargetBalance: 0.3e18.toString(),
+  managerMinBalance: 0.1e18.toString(), // 0.1 eth
   managerStakeTokenAddress: constants.ZERO_ADDRESS,
-  managerTargetBalance: 0.3e18,
+  managerTargetBalance: 0.3e18.toString(),
   checkInterval: 10000,
   devMode: false,
   loggingProvider: LoggingProviderMode.NONE,
@@ -416,13 +416,13 @@ const ConfigParamsTypes = {
   maxAcceptanceBudget: 'number',
   alertedDelaySeconds: 'number',
 
-  workerMinBalance: 'number',
-  workerTargetBalance: 'number',
-  managerMinBalance: 'number',
+  workerMinBalance: 'string',
+  workerTargetBalance: 'string',
+  managerMinBalance: 'string',
   managerMinStake: 'string',
   managerStakeTokenAddress: 'string',
   managerTargetBalance: 'number',
-  withdrawToOwnerOnBalance: 'number',
+  withdrawToOwnerOnBalance: 'string',
   defaultGasLimit: 'number',
   requestMinValidSeconds: 'number',
 

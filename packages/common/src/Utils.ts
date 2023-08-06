@@ -1,9 +1,9 @@
 import BN from 'bn.js'
 import chalk from 'chalk'
 
-import { JsonRpcProvider, JsonRpcSigner } from '@ethersproject/providers'
-
 import { AbiCoder, Interface, JsonFragment } from '@ethersproject/abi'
+import { BigNumber } from '@ethersproject/bignumber'
+import { JsonRpcProvider, JsonRpcSigner } from '@ethersproject/providers'
 import { TypedMessage } from '@metamask/eth-sig-util'
 
 import {
@@ -18,7 +18,7 @@ import {
 import { Address, EIP1559Fees, EventData, RelaySelectionResult } from './types/Aliases'
 
 import { MessageTypes } from './EIP712/TypedRequestData'
-import { fromWei, isBigNumber, toBN, toHex, toWei } from './web3js/Web3JSUtils'
+import { fromWei, isBigNumber, toHex, toWei } from './web3js/Web3JSUtils'
 import { ethers } from 'ethers'
 import { keccak256 } from 'ethers/lib/utils'
 import { RelayRequest } from './EIP712/RelayRequest'
@@ -177,8 +177,8 @@ export async function sleep (ms: number): Promise<void> {
   return await new Promise(resolve => setTimeout(resolve, ms))
 }
 
-export function ether (n: string): BN {
-  return new BN(toWei(n, 'ether'))
+export function ether (n: string): BigNumber {
+  return BigNumber.from(toWei(n, 'ether'))
 }
 
 export function randomInRange (min: number, max: number): number {
@@ -202,13 +202,6 @@ export function getLatestEventData (events: EventData[]): EventData | undefined 
   }
   const eventDataSorted = events.sort(eventsComparator)
   return eventDataSorted[0]
-}
-
-export interface PaymasterGasAndDataLimits {
-  acceptanceBudget: BN
-  preRelayedCallGasLimit: BN
-  postRelayedCallGasLimit: BN
-  calldataSizeLimit: BN
 }
 
 interface Signature {
@@ -237,7 +230,7 @@ export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
       delete c[k]
     } else if (recursive) {
       let val = c[k]
-      if (typeof val === 'object' && !Array.isArray(val) && !BN.isBN(val)) {
+      if (typeof val === 'object' && !Array.isArray(val) && !BigNumber.isBigNumber(val)) {
         val = removeNullValues(val, recursive)
       }
       c[k] = val
@@ -247,26 +240,26 @@ export function removeNullValues<T> (obj: T, recursive = false): Partial<T> {
 }
 
 export function formatTokenAmount (
-  balance: BN,
-  decimals: BN | number,
+  balance: BigNumber,
+  decimals: BigNumber | number,
   tokenAddress: Address | undefined,
   tokenSymbol: string): string {
-  let shiftedBalance: BN
-  const tokenDecimals = toBN(decimals.toString())
-  if (tokenDecimals.eqn(18)) {
+  let shiftedBalance: BigNumber
+  const tokenDecimals = BigNumber.from(decimals.toString())
+  if (tokenDecimals.eq(18)) {
     shiftedBalance = balance
-  } else if (tokenDecimals.ltn(18)) {
-    const shift = toBN(18).sub(tokenDecimals)
-    shiftedBalance = balance.mul(toBN(10).pow(shift))
+  } else if (tokenDecimals.lt(18)) {
+    const shift = BigNumber.from(18).sub(tokenDecimals)
+    shiftedBalance = balance.mul(BigNumber.from(10).pow(shift))
   } else {
-    const shift = tokenDecimals.subn(18)
-    shiftedBalance = balance.div(toBN(10).pow(shift))
+    const shift = tokenDecimals.sub(18)
+    shiftedBalance = balance.div(BigNumber.from(10).pow(shift))
   }
   let shortTokenAddress = ''
   if (tokenAddress != null) {
     shortTokenAddress = `(${tokenAddress.substring(0, 6)}...${tokenAddress.substring(39)})`
   }
-  return `${fromWei(shiftedBalance)} ${tokenSymbol} ${shortTokenAddress}`
+  return `${fromWei(shiftedBalance.toString())} ${tokenSymbol} ${shortTokenAddress}`
 }
 
 export function splitRelayUrlForRegistrar (url: string, partsCount: number = 3): string[] {
@@ -289,7 +282,7 @@ export function packRelayUrlForRegistrar (parts: string[]): string {
       .replace(/(00)+$/g, ''), 'hex').toString()
 }
 
-export function toNumber (numberish: number | string | BN | BigInt): number {
+export function toNumber (numberish: number | string | BN | BigNumber | BigInt): number {
   switch (typeof numberish) {
     case 'string':
       return parseFloat(numberish)
@@ -476,9 +469,9 @@ export function adjustRelayRequestForPingResponse (
   }
 }
 
-export function averageBN (array: BN[]): BN {
+export function averageBN (array: BigNumber[]): BigNumber {
   const sum = array.reduce((a, v) => a.add(v))
-  return sum.divn(array.length)
+  return sum.div(array.length)
 }
 
 export function validateRelayUrl (relayUrl: string): boolean {

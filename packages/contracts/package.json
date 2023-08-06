@@ -7,7 +7,7 @@
     "solpp": "yarn --cwd=\"../..\" solpp",
     "solidity-docgen": "rm -rf docs && solidity-docgen --solc-module solc-0.8 --input=src --exclude=src/test,src/forwarder/test --templates=.",
     "truffle-compile": "ENABLE_CONSOLE_LOG=1 yarn solpp && truffle compile",
-    "typechain-generate": "yarn truffle-compile && typechain --target truffle-v5 '../cli/src/compiled/*.json' && ./replaceWeb3.sh",
+    "typechain-generate-ethers-v5": "yarn truffle-compile && typechain --target ethers-v5 '../cli/src/compiled/*.json'",
     "lint": "solhint -f unix \"src/**/*.sol\" --max-warnings 0",
     "rm-dist": "rm -rf types/truffle-contracts solpp"
   },
@@ -23,6 +23,7 @@
     "@openzeppelin/contracts": "^4.2.0"
   },
   "devDependencies": {
+    "ethers": "^5.7.2",
     "bn.js": "^5.2.1",
     "solc-0.8": "npm:solc@0.8.11",
     "solhint": "^3.3.2",

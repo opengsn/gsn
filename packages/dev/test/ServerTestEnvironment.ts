@@ -31,7 +31,7 @@ import {
   StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './ServerTestUtils'
 
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
@@ -62,6 +62,7 @@ import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
+import { BigNumber } from '@ethersproject/bignumber'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')
@@ -141,7 +142,7 @@ export class ServerTestEnvironment {
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
     this.paymaster = await TestPaymasterEverythingAccepted.new()
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, this.forwarder)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, this.forwarder as any)
 
     await this.paymaster.setTrustedForwarder(this.forwarder.address)
     await this.paymaster.setRelayHub(this.relayHub.address)
@@ -218,11 +219,11 @@ export class ServerTestEnvironment {
     })
   }
 
-  async stakeAndAuthorizeHub (stake: BN, unstakeDelay: number): Promise<void> {
-    await this.testToken.mint(stake, { from: this.relayOwner })
-    await this.testToken.approve(this.stakeManager.address, stake, { from: this.relayOwner })
+  async stakeAndAuthorizeHub (stake: BigNumber, unstakeDelay: number): Promise<void> {
+    await this.testToken.mint(stake.toString(), { from: this.relayOwner })
+    await this.testToken.approve(this.stakeManager.address, stake.toString(), { from: this.relayOwner })
     // Now owner can do its operations
-    await this.stakeManager.stakeForRelayManager(this.testToken.address, this.relayServer.managerAddress, unstakeDelay, stake, {
+    await this.stakeManager.stakeForRelayManager(this.testToken.address, this.relayServer.managerAddress, unstakeDelay, stake.toString(), {
       from: this.relayOwner
     })
     await this.stakeManager.authorizeHubByOwner(this.relayServer.managerAddress, this.relayHub.address, {
@@ -288,10 +289,10 @@ export class ServerTestEnvironment {
       relayWorkerAddress: this.relayServer.workerAddress
     }
     const eventInfo: RegistrarRelayInfo = {
-      firstSeenBlockNumber: toBN(0),
-      lastSeenBlockNumber: toBN(0),
-      firstSeenTimestamp: toBN(0),
-      lastSeenTimestamp: toBN(0),
+      firstSeenBlockNumber: 0,
+      lastSeenBlockNumber: 0,
+      firstSeenTimestamp: 0,
+      lastSeenTimestamp: 0,
       relayManager: '',
       relayUrl: ''
     }

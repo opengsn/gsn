@@ -1,3 +1,5 @@
+import { BigNumber } from '@ethersproject/bignumber'
+
 import { LoggerInterface, ContractInteractor } from '@opengsn/common'
 
 import axios from 'axios'
@@ -25,7 +27,7 @@ export class GasPriceFetcher {
     return this.getJsonElement(sub, rest, origPath)
   }
 
-  async getGasPrice (): Promise<string> {
+  async getGasPrice (): Promise<BigNumber> {
     if (this.gasPriceOracleUrl !== '') {
       try {
         const res = await axios.get(this.gasPriceOracleUrl, { timeout: 2000 })
@@ -33,7 +35,7 @@ export class GasPriceFetcher {
         if (typeof ret !== 'number' || isNaN(ret)) {
           throw new Error(`not a number: ${ret}`)
         }
-        return (ret * 1e9).toString()
+        return BigNumber.from(ret * 1e9)
       } catch (e: any) {
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         this.logger.error(`failed to access gas oracle. using getGasPrice() instead.\n(url=${this.gasPriceOracleUrl} path=${this.gasPriceOraclePath} err: ${e.message})`)

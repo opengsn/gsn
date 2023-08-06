@@ -1,11 +1,11 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
-import BN from 'bn.js'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { BigNumber } from '@ethersproject/bignumber'
 import { PastEventOptions } from 'web3-eth-contract'
 import {
+  RelayRegistrarInstance,
   ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
@@ -14,7 +14,7 @@ import {
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRelayHubForRegistrarInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../../types/truffle-contracts'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
 import {
   ContractInteractor,
@@ -39,11 +39,10 @@ import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { deployHub } from '../TestUtils'
 
 import { toHex } from 'web3-utils'
-import { IRelayRegistrarInstance } from '../../../contracts/types/truffle-contracts'
-import { RelayRegistrarInstance } from '@opengsn/contracts'
 
 import { ether } from '@openzeppelin/test-helpers'
 import { defaultGsnConfig } from '@opengsn/provider'
+import { IRelayRegistrar } from '@opengsn/contracts/types/ethers-contracts'
 
 const { expect } = chai.use(chaiAsPromised)
 
@@ -224,7 +223,7 @@ contract('ContractInteractor', function (accounts) {
         })
       await contractInteractor.init()
       const blockGasLimit = await contractInteractor.getBlockGasLimit()
-      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
+      const ret = await contractInteractor.validateRelayCall(encodedData, BigNumber.from(blockGasLimit), false)
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'view call to \'relayCall\' reverted in client: Paymaster balance too low',
@@ -280,7 +279,7 @@ contract('ContractInteractor', function (accounts) {
         signature: '0xdeadbeef',
         approvalData: '0x'
       }
-      const ret = await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
+      const ret = await contractInteractor.validateRelayCall(encodedData, BigNumber.from(blockGasLimit), false)
       assert.deepEqual(ret, {
         paymasterAccepted: false,
         returnValue: 'You asked me to revert, remember?',
@@ -304,7 +303,7 @@ contract('ContractInteractor', function (accounts) {
       const spy = sinon.spy(contractInteractor.provider, 'send')
       try {
         contractInteractor.transactionType = TransactionType.LEGACY
-        await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
+        await contractInteractor.validateRelayCall(encodedData, BigNumber.from(blockGasLimit), false)
       } finally {
         sinon.assert.calledOnce(spy)
         const method = spy.getCall(0).args[0]
@@ -330,7 +329,7 @@ contract('ContractInteractor', function (accounts) {
       const blockGasLimit = await contractInteractor.getBlockGasLimit()
       const spy = sinon.spy(contractInteractor.provider, 'send')
       try {
-        await contractInteractor.validateRelayCall(encodedData, new BN(blockGasLimit), false)
+        await contractInteractor.validateRelayCall(encodedData, BigNumber.from(blockGasLimit), false)
       } finally {
         sinon.assert.calledOnce(spy)
         const method = spy.getCall(0).args[0]
@@ -770,48 +769,6 @@ contract('ContractInteractor', function (accounts) {
         await expect(contractInteractor.estimateInnerCallGasLimit(gsnTransactionDetails))
           .to.eventually.be.rejectedWith(/calldataGasCost\(.*\) exceeded originalGasEstimation\(100000\)/)
       })
-    })
-  })
-
-  context('#LightTruffleContract', () => {
-    let contractInteractor: ContractInteractor
-    let relayReg: RelayRegistrarInstance
-    let testRelayHub: TestRelayHubForRegistrarInstance
-    let lightreg: IRelayRegistrarInstance
-
-    before(async () => {
-      // Using contractInteractor, since hard to test directly: it has (deliberately) the same names as truffle contracts..
-      contractInteractor = new ContractInteractor(
-        {
-          environment,
-          provider: ethersProvider,
-          logger,
-          maxPageSize,
-          deployment: { paymasterAddress: pm.address }
-        })
-      await contractInteractor.init()
-      relayReg = await RelayRegistrar.new(constants.yearInSec)
-      lightreg = await contractInteractor._createRelayRegistrar(relayReg.address)
-      testRelayHub = await TestRelayHubForRegistrar.new()
-
-      await testRelayHub.setRelayManagerStaked(accounts[1], true)
-      await testRelayHub.setRelayManagerStaked(accounts[2], true)
-      await relayReg.registerRelayServer(testRelayHub.address, splitRelayUrlForRegistrar('url1'), { from: accounts[1] })
-      await relayReg.registerRelayServer(testRelayHub.address, splitRelayUrlForRegistrar('url2'), { from: accounts[2] })
-    })
-
-    // it('should get matching numeric return value', async () => {
-    //   expect(await lightreg.countRelays())
-    //     .to.deep.equal(await relayReg.countRelays())
-    // })
-    it('should get matching returned struct', async () => {
-      expect(await lightreg.getRelayInfo(testRelayHub.address, accounts[1]))
-        .to.eql(await relayReg.getRelayInfo(testRelayHub.address, accounts[1]))
-    })
-    // note: this is no longer true - we retype tuples to BN in LightTruffleContracts while actual Truffle doesn't do so
-    it.skip('should get matching mixed return values', async () => {
-      expect(await lightreg.readRelayInfosInRange(constants.ZERO_ADDRESS, 0, 0, 100))
-        .to.eql(await relayReg.readRelayInfosInRange(constants.ZERO_ADDRESS, 0, 0, 100))
     })
   })
 })

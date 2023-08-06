@@ -22,10 +22,10 @@ import {
   GsnRequestType
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { expectEvent } from '@openzeppelin/test-helpers'
-import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '@opengsn/contracts/types/truffle-contracts'
+import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../../types/truffle-contracts'
 import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
 import { encodeRevertReason } from '../TestUtils'
-import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
+import { DomainRegistered, RequestTypeRegistered } from '../../types/truffle-contracts/IForwarder'
 
 import { toBN } from 'web3-utils'
 import { defaultGsnConfig } from '@opengsn/provider'

@@ -10,7 +10,7 @@ import {
   RelayHubContract,
   RelayHubInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import {
   Address,
   Environment,

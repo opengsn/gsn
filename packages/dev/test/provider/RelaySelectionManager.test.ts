@@ -49,10 +49,10 @@ contract('RelaySelectionManager', function (accounts) {
     waitForSuccessSliceSize
   })
   const eventInfo: RegistrarRelayInfo = {
-    firstSeenBlockNumber: toBN(0),
-    lastSeenBlockNumber: toBN(0),
-    firstSeenTimestamp: toBN(0),
-    lastSeenTimestamp: toBN(0),
+    firstSeenBlockNumber: 0,
+    lastSeenBlockNumber: 0,
+    firstSeenTimestamp: 0,
+    lastSeenTimestamp: 0,
     relayManager: '',
     relayUrl: 'http://relayUrl'
   }

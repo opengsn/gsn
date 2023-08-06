@@ -25,7 +25,7 @@ import {
   TestRecipientInstance,
   ForwarderInstance,
   TestPaymasterConfigurableMisbehaviorInstance, RelayRegistrarInstance, TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
@@ -154,7 +154,7 @@ contract('Paymaster Commitment', function ([_, relayOwner, relayManager, relayWo
     const testUtil = await TestUtil.new()
     chainId = (await testUtil.libGetChainID()).toNumber()
 
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
 
     target = recipientContract.address
     relayHub = relayHubInstance.address

@@ -6,7 +6,7 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import { deployHub, emptyBalance, evmMineMany, serverWorkDir, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
@@ -60,7 +60,7 @@ contract('runServer', function (accounts) {
     TestRecipient.web3 = new Web3(web3.currentProvider.host)
     sr = await TestRecipient.new(forwarder.address)
 
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarder)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarder as any)
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setTrustedForwarder(forwarder.address)

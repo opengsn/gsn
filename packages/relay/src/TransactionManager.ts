@@ -194,7 +194,7 @@ data                     | ${transaction.data}
 
   async sendTransaction (txDetails: SendTransactionDetails): Promise<SignedTransactionDetails> {
     const encodedCall = txDetails.method?.encodeABI() ?? '0x'
-    const maxFeePerGas = parseInt(txDetails.maxFeePerGas ?? await this.gasPriceFetcher.getGasPrice())
+    const maxFeePerGas = parseInt(txDetails.maxFeePerGas ?? (await this.gasPriceFetcher.getGasPrice()).toString())
     const maxPriorityFeePerGas = parseInt(txDetails.maxPriorityFeePerGas ?? maxFeePerGas.toString())
 
     let gasLimit = txDetails.gasLimit
@@ -211,7 +211,7 @@ data                     | ${transaction.data}
     const {
       requiredBalance,
       isSufficient
-    } = await this.validateBalance(txDetails.signer, maxFeePerGas, gasLimit, signerBalance)
+    } = await this.validateBalance(txDetails.signer, maxFeePerGas, gasLimit, signerBalance.toString())
     if (!isSufficient) {
       throw new Error(`signer ${txDetails.signer} balance ${signerBalance} too low: tx cost is ${requiredBalance}`)
     }
@@ -305,7 +305,7 @@ data                     | ${transaction.data}
       balanceRequiredDetails: BalanceRequiredDetails
     }> {
     const signerBalance = await this.contractInteractor.getBalance(tx.from)
-    const balanceRequiredDetails = await this.validateBalance(tx.from, newMaxFee, tx.gas, signerBalance)
+    const balanceRequiredDetails = await this.validateBalance(tx.from, newMaxFee, tx.gas, signerBalance.toString())
     if (!balanceRequiredDetails.isSufficient) {
       return { balanceRequiredDetails }
     }
@@ -471,7 +471,7 @@ data                     | ${transaction.data}
       newMaxFee,
       newMaxPriorityFee,
       isMaxGasPriceReached
-    } = this._resolveNewGasPrice(oldestPendingTx.maxFeePerGas, oldestPendingTx.maxPriorityFeePerGas, minMaxPriorityFee, parseInt(gasFees.baseFeePerGas))
+    } = this._resolveNewGasPrice(oldestPendingTx.maxFeePerGas, oldestPendingTx.maxPriorityFeePerGas, minMaxPriorityFee, gasFees.baseFeePerGas.toNumber())
     for (const transaction of pendingTxs) {
       // The tx is underpriced, boost it
       if (transaction.maxFeePerGas < newMaxFee || transaction.maxPriorityFeePerGas < newMaxPriorityFee) {

@@ -14,10 +14,10 @@ export interface RelayInfo {
 }
 
 export interface RegistrarRelayInfo {
-  lastSeenBlockNumber: BN
-  lastSeenTimestamp: BN
-  firstSeenBlockNumber: BN
-  firstSeenTimestamp: BN
+  lastSeenBlockNumber: number
+  lastSeenTimestamp: number
+  firstSeenBlockNumber: number
+  firstSeenTimestamp: number
   relayUrl: string
   relayManager: string
 }

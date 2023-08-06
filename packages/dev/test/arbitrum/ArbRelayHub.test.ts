@@ -5,10 +5,11 @@ import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import {
   ArbRelayHubInstance,
   ForwarderInstance,
+  RelayRegistrarInstance,
   StakeManagerInstance,
   TestRecipientInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../../types/truffle-contracts'
 import {
   RelayRequest,
   TypedRequestData,
@@ -19,8 +20,7 @@ import {
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
 
-import { TransactionRelayed } from '@opengsn/contracts/types/truffle-contracts/RelayHub'
-import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { TransactionRelayed } from '../../types/truffle-contracts/RelayHub'
 import { defaultGsnConfig } from '@opengsn/provider'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
@@ -78,7 +78,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
 
     // TODO: extract repetitive test code to test utils
     before('prepare the relay request and relay worker', async function () {
-      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarder)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarder as any)
       testRecipient = await TestRecipient.new(forwarder.address)
       const paymaster = await TestPaymasterEverythingAccepted.new()
       await paymaster.setTrustedForwarder(forwarder.address)

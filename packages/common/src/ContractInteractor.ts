@@ -1,17 +1,8 @@
-import BN from 'bn.js'
-import { Contract as EthersContract, ethers, EventFilter } from 'ethers'
+import { Contract, ethers, EventFilter, PayableOverrides } from 'ethers'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { TxOptions } from './ethereumjstx/TxOptions'
 
 import { RelayRequest } from './EIP712/RelayRequest'
-import paymasterAbi from './interfaces/IPaymaster.json'
-import relayHubAbi from './interfaces/IRelayHub.json'
-import forwarderAbi from './interfaces/IForwarder.json'
-import stakeManagerAbi from './interfaces/IStakeManager.json'
-import penalizerAbi from './interfaces/IPenalizer.json'
-import gsnRecipientAbi from './interfaces/IERC2771Recipient.json'
-import relayRegistrarAbi from './interfaces/IRelayRegistrar.json'
-import iErc20TokenAbi from './interfaces/IERC20Token.json'
 
 import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
@@ -24,20 +15,27 @@ import {
   event2topic,
   formatTokenAmount,
   isSameAddress,
-  packRelayUrlForRegistrar,
-  PaymasterGasAndDataLimits
+  packRelayUrlForRegistrar
 } from './Utils'
 import {
-  IERC165Instance,
-  IERC20TokenInstance,
-  IERC2771RecipientInstance,
-  IForwarderInstance,
-  IPaymasterInstance,
-  IPenalizerInstance,
-  IRelayHubInstance,
-  IRelayRegistrarInstance,
-  IStakeManagerInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+  IERC165,
+  IERC20Token,
+  IERC20Token__factory,
+  IERC2771Recipient,
+  IERC2771Recipient__factory,
+  IForwarder,
+  IForwarder__factory,
+  IPaymaster,
+  IPaymaster__factory,
+  IPenalizer,
+  IPenalizer__factory,
+  IRelayHub,
+  IRelayHub__factory,
+  IRelayRegistrar,
+  IRelayRegistrar__factory,
+  IStakeManager,
+  IStakeManager__factory
+} from '@opengsn/contracts/types/ethers-contracts'
 
 import {
   Address,
@@ -50,14 +48,12 @@ import {
 } from './types/Aliases'
 import { GsnTransactionDetails } from './types/GsnTransactionDetails'
 
-import { Contract, TruffleContract } from './LightTruffleContract'
 import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from '@ethereumjs/common'
 import { GSNContractsDeployment } from './GSNContractsDeployment'
 import { ActiveManagerEvents, RelayServerRegistered, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
 import { Environment } from './environments/Environments'
-import { RelayHubConfiguration } from './types/RelayHubConfiguration'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from '@ethersproject/bignumber'
 import { TransactionType } from './types/TransactionType'
@@ -65,13 +61,12 @@ import { RegistrarRelayInfo } from './types/RelayInfo'
 import { constants, erc165Interfaces, RelayCallStatusCodes } from './Constants'
 import { MainnetCalldataGasEstimation } from './environments/MainnetCalldataGasEstimation'
 import { AsyncZeroAddressCalldataGasEstimation } from './environments/AsyncZeroAddressCalldataGasEstimation'
-import { toBN, toHex } from './web3js/Web3JSUtils'
+import { toHex } from './web3js/Web3JSUtils'
 import { FeeHistoryResult } from './web3js/FeeHistoryResult'
 import { Network } from '@ethersproject/networks'
 
 import { Block, BlockTag, JsonRpcProvider, TransactionRequest, TransactionResponse } from '@ethersproject/providers'
 import { AbiCoder, Interface } from '@ethersproject/abi'
-import TransactionDetails = Truffle.TransactionDetails
 
 export type EventFilterBlocks = EventFilter & { fromBlock?: BlockTag, toBlock?: BlockTag }
 
@@ -115,7 +110,7 @@ export interface ERC20TokenMetadata {
   tokenAddress: Address
   tokenName: string
   tokenSymbol: string
-  tokenDecimals: BN
+  tokenDecimals: number
 }
 
 export interface ViewCallVerificationResult {
@@ -126,24 +121,15 @@ export interface ViewCallVerificationResult {
 }
 
 export class ContractInteractor {
-  private readonly IPaymasterContract: Contract<IPaymasterInstance>
-  private readonly IRelayHubContract: Contract<IRelayHubInstance>
-  private readonly IForwarderContract: Contract<IForwarderInstance>
-  private readonly IStakeManager: Contract<IStakeManagerInstance>
-  private readonly IPenalizer: Contract<IPenalizerInstance>
-  private readonly IERC2771Recipient: Contract<IERC2771RecipientInstance>
-  private readonly IRelayRegistrar: Contract<IRelayRegistrarInstance>
-  private readonly IERC20Token: Contract<IERC20TokenInstance>
-
-  private paymasterInstance!: IPaymasterInstance
-  relayHubInstance!: IRelayHubInstance
-  relayHubConfiguration!: RelayHubConfiguration
-  private forwarderInstance!: IForwarderInstance
-  private stakeManagerInstance!: IStakeManagerInstance
-  penalizerInstance!: IPenalizerInstance
-  private erc2771RecipientInstance?: IERC2771RecipientInstance
-  relayRegistrar!: IRelayRegistrarInstance
-  erc20Token!: IERC20TokenInstance
+  private paymasterInstance!: IPaymaster
+  relayHubInstance!: IRelayHub
+  relayHubConfiguration!: IRelayHub.RelayHubConfigStructOutput
+  private forwarderInstance!: IForwarder
+  private stakeManagerInstance!: IStakeManager
+  penalizerInstance!: IPenalizer
+  private erc2771RecipientInstance?: IERC2771Recipient
+  relayRegistrar!: IRelayRegistrar
+  erc20Token!: IERC20Token
 
   readonly calculateCalldataGasUsed: CalldataGasEstimation
   readonly provider: JsonRpcProvider
@@ -192,54 +178,6 @@ export class ContractInteractor {
         ? AsyncZeroAddressCalldataGasEstimation
         : MainnetCalldataGasEstimation
     this.domainSeparatorName = domainSeparatorName ?? ''
-    this.IPaymasterContract = TruffleContract({
-      useEthersV6,
-      contractName: 'IPaymaster',
-      abi: paymasterAbi
-    })
-    this.IRelayHubContract = TruffleContract({
-      useEthersV6,
-      contractName: 'IRelayHub',
-      abi: relayHubAbi
-    })
-    this.IForwarderContract = TruffleContract({
-      useEthersV6,
-      contractName: 'IForwarder',
-      abi: forwarderAbi
-    })
-    this.IStakeManager = TruffleContract({
-      useEthersV6,
-      contractName: 'IStakeManager',
-      abi: stakeManagerAbi
-    })
-    this.IPenalizer = TruffleContract({
-      useEthersV6,
-      contractName: 'IPenalizer',
-      abi: penalizerAbi
-    })
-    this.IERC2771Recipient = TruffleContract({
-      useEthersV6,
-      contractName: 'IERC2771Recipient',
-      abi: gsnRecipientAbi
-    })
-    this.IRelayRegistrar = TruffleContract({
-      useEthersV6,
-      contractName: 'IRelayRegistrar',
-      abi: relayRegistrarAbi
-    })
-    this.IERC20Token = TruffleContract({
-      useEthersV6,
-      contractName: 'IERC20Token',
-      abi: iErc20TokenAbi
-    })
-    this.IStakeManager.setProvider(this.provider, undefined)
-    this.IRelayHubContract.setProvider(this.provider, undefined)
-    this.IPaymasterContract.setProvider(this.provider, undefined)
-    this.IForwarderContract.setProvider(this.provider, undefined)
-    this.IPenalizer.setProvider(this.provider, undefined)
-    this.IERC2771Recipient.setProvider(this.provider, undefined)
-    this.IRelayRegistrar.setProvider(this.provider, undefined)
-    this.IERC20Token.setProvider(this.provider, undefined)
   }
 
   async init (): Promise<ContractInteractor> {
@@ -391,7 +329,7 @@ export class ContractInteractor {
 
   private async _trySupportsInterface (
     contractName: string,
-    contractInstance: IERC165Instance | null,
+    contractInstance: IERC165 | null,
     interfaceId: PrefixedHexString): Promise<boolean> {
     if (contractInstance == null) {
       throw new Error(`ERC-165 interface check failed. ${contractName} instance is not initialized`)
@@ -438,40 +376,40 @@ export class ContractInteractor {
     return this.rawTxOptions
   }
 
-  async _createRecipient (address: Address): Promise<IERC2771RecipientInstance> {
+  async _createRecipient (address: Address): Promise<IERC2771Recipient> {
     if (this.erc2771RecipientInstance != null && this.erc2771RecipientInstance.address.toLowerCase() === address.toLowerCase()) {
       return this.erc2771RecipientInstance
     }
-    this.erc2771RecipientInstance = await this.IERC2771Recipient.at(address)
+    this.erc2771RecipientInstance = await IERC2771Recipient__factory.connect(address, this.provider)
     return this.erc2771RecipientInstance
   }
 
-  async _createPaymaster (address: Address): Promise<IPaymasterInstance> {
-    return await this.IPaymasterContract.at(address)
+  async _createPaymaster (address: Address): Promise<IPaymaster> {
+    return IPaymaster__factory.connect(address, this.provider)
   }
 
-  async _createRelayHub (address: Address): Promise<IRelayHubInstance> {
-    return await this.IRelayHubContract.at(address)
+  async _createRelayHub (address: Address): Promise<IRelayHub> {
+    return IRelayHub__factory.connect(address, this.provider)
   }
 
-  async _createForwarder (address: Address): Promise<IForwarderInstance> {
-    return await this.IForwarderContract.at(address)
+  async _createForwarder (address: Address): Promise<IForwarder> {
+    return IForwarder__factory.connect(address, this.provider)
   }
 
-  async _createStakeManager (address: Address): Promise<IStakeManagerInstance> {
-    return await this.IStakeManager.at(address)
+  async _createStakeManager (address: Address): Promise<IStakeManager> {
+    return IStakeManager__factory.connect(address, this.provider)
   }
 
-  async _createPenalizer (address: Address): Promise<IPenalizerInstance> {
-    return await this.IPenalizer.at(address)
+  async _createPenalizer (address: Address): Promise<IPenalizer> {
+    return IPenalizer__factory.connect(address, this.provider)
   }
 
-  async _createRelayRegistrar (address: Address): Promise<IRelayRegistrarInstance> {
-    return await this.IRelayRegistrar.at(address)
+  async _createRelayRegistrar (address: Address): Promise<IRelayRegistrar> {
+    return IRelayRegistrar__factory.connect(address, this.provider)
   }
 
-  async _createERC20 (address: Address): Promise<IERC20TokenInstance> {
-    return await this.IERC20Token.at(address)
+  async _createERC20 (address: Address): Promise<IERC20Token> {
+    return IERC20Token__factory.connect(address, this.provider)
   }
 
   /**
@@ -483,7 +421,7 @@ export class ContractInteractor {
     return await this.formatTokenAmount(balance)
   }
 
-  async formatTokenAmount (balance: BN): Promise<string> {
+  async formatTokenAmount (balance: BigNumber): Promise<string> {
     const { tokenSymbol, tokenDecimals, tokenAddress } = await this.getErc20TokenMetadata()
     return formatTokenAmount(balance, tokenDecimals, tokenAddress, tokenSymbol)
   }
@@ -501,11 +439,11 @@ export class ContractInteractor {
     } catch (_) {
       tokenSymbol = `ERC-20 token ${this.erc20Token.address}`
     }
-    let tokenDecimals: BN
+    let tokenDecimals: number
     try {
       tokenDecimals = await this.erc20Token.decimals()
     } catch (_) {
-      tokenDecimals = toBN(0)
+      tokenDecimals = 0
     }
     const tokenAddress = this.erc20Token.address
     return { tokenName, tokenSymbol, tokenAddress, tokenDecimals }
@@ -554,7 +492,7 @@ export class ContractInteractor {
    */
   async validateRelayCall (
     relayCallABIData: RelayCallABI,
-    viewCallGasLimit: BN | number,
+    viewCallGasLimit: BigNumber | number,
     isDryRun: boolean): Promise<ViewCallVerificationResult> {
     if (viewCallGasLimit == null || relayCallABIData.relayRequest.relayData.maxFeePerGas == null || relayCallABIData.relayRequest.relayData.maxPriorityFeePerGas == null) {
       throw new Error('validateRelayCall: invalid input')
@@ -681,25 +619,25 @@ export class ContractInteractor {
   encodeABI (
     _: RelayCallABI
   ): PrefixedHexString {
-    const iface = new Interface(this.relayHubInstance.contract.interface.fragments)
+    const iface = new Interface(this.relayHubInstance.interface.fragments)
     return iface.encodeFunctionData('relayCall', [_.domainSeparatorName, _.maxAcceptanceBudget, _.relayRequest, _.signature, _.approvalData])
   }
 
   async getPastEventsForHub (extraTopics: Array<string[] | string | null>, options: EventFilterBlocks, names: EventName[] = ActiveManagerEvents): Promise<EventData[]> {
-    return await this._getPastEventsPaginated(this.relayHubInstance.contract, names, extraTopics, options)
+    return await this._getPastEventsPaginated(this.relayHubInstance, names, extraTopics, options)
   }
 
   async getPastEventsForRegistrar (extraTopics: Array<string[] | string | null>, options: EventFilterBlocks, names: EventName[] = [RelayServerRegistered]): Promise<EventData[]> {
-    return await this._getPastEventsPaginated(this.relayRegistrar.contract, names, extraTopics, options)
+    return await this._getPastEventsPaginated(this.relayRegistrar, names, extraTopics, options)
   }
 
   async getPastEventsForStakeManager (names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
     const stakeManager = await this.stakeManagerInstance
-    return await this._getPastEventsPaginated(stakeManager.contract, names, extraTopics, options)
+    return await this._getPastEventsPaginated(stakeManager, names, extraTopics, options)
   }
 
   async getPastEventsForPenalizer (names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
-    return await this._getPastEventsPaginated(this.penalizerInstance.contract, names, extraTopics, options)
+    return await this._getPastEventsPaginated(this.penalizerInstance, names, extraTopics, options)
   }
 
   getLogsPagesForRange (fromBlock: BlockTag = 1, toBlock?: BlockTag): {
@@ -755,7 +693,7 @@ export class ContractInteractor {
    * Splits requested range into pages to avoid fetching too many blocks at once.
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
-  async _getPastEventsPaginated (contract: EthersContract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
+  async _getPastEventsPaginated (contract: Contract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
@@ -836,7 +774,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return relayEventParts.flat()
   }
 
-  async _getPastEvents (contract: EthersContract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
+  async _getPastEvents (contract: Contract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
     const topics: Array<string[] | string | null> = []
     const eventTopic = event2topic(contract, names)
     topics.push(eventTopic)
@@ -855,8 +793,8 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return logs.map(it => { return Object.assign(it, contract.interface.parseLog(it)) })
   }
 
-  async getBalance (address: Address, defaultBlock: BlockTag = 'latest'): Promise<string> {
-    return (await this.provider.getBalance(address, defaultBlock)).toString()
+  async getBalance (address: Address, defaultBlock: BlockTag = 'latest'): Promise<BigNumber> {
+    return await this.provider.getBalance(address, defaultBlock)
   }
 
   async getBlockNumberRightNow (): Promise<number> {
@@ -918,7 +856,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return adjustedEstimation
   }
 
-  async getGasAndDataLimitsFromPaymaster (paymaster: string): Promise<PaymasterGasAndDataLimits> {
+  async getGasAndDataLimitsFromPaymaster (paymaster: string): Promise<IPaymaster.GasAndDataLimitsStructOutput> {
     try {
       const paymasterContract = await this._createPaymaster(paymaster)
       return await paymasterContract.getGasAndDataLimits()
@@ -983,14 +921,13 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     relayData: any,
     txDetails: any): Promise<any> {
     // removing Ethers 'signer' to allow overriding 'from' address
-    // note that it will remove the mapping of types to BN!
-    const viewOnlyHub: IRelayHubInstance = this.relayHubInstance.contract.connect(this.provider)
+    const viewOnlyHub: IRelayHub = this.relayHubInstance.connect(this.provider)
     return await viewOnlyHub.calculateCharge(gas, relayData, txDetails)
   }
 
   // TODO: !This method is not really necessary - only used for a fraction of transactions. Replace with 'getGasFees'.
   // TODO: cache response for some time to optimize. It doesn't make sense to optimize these requests in calling code.
-  async getGasPrice (): Promise<IntString> {
+  async getGasPrice (): Promise<BigNumber> {
     // TODO: this still uses pre-1559 gas value which may be a problem.
     const gasPriceFromNode = await this.provider.perform('getGasPrice', [])
     if (gasPriceFromNode == null) {
@@ -1001,27 +938,25 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
       this.logger.warn('Environment not set')
       return gasPriceFromNode
     }
-    const gasPriceActual =
-      toBN(gasPriceFromNode)
-        .muln(this.environment.getGasPriceFactor)
-    return gasPriceActual.toString()
+    return BigNumber.from(gasPriceFromNode)
+      .mul(this.environment.getGasPriceFactor)
   }
 
-  async getFeeHistory (blockCount: number | BigNumber | BN | string, lastBlock: number | BigNumber | BN | string, rewardPercentiles: number[]): Promise<FeeHistoryResult> {
+  async getFeeHistory (blockCount: number | BigNumber | string, lastBlock: number | BigNumber | string, rewardPercentiles: number[]): Promise<FeeHistoryResult> {
     return await this.provider.send('eth_feeHistory', [blockCount, lastBlock, rewardPercentiles])
   }
 
   async getGasFees (
     blockCount: number,
     rewardPercentile: number
-  ): Promise<{ baseFeePerGas: string, priorityFeePerGas: string }> {
+  ): Promise<{ baseFeePerGas: BigNumber, priorityFeePerGas: BigNumber }> {
     if (this.transactionType === TransactionType.LEGACY) {
       const gasPrice = await this.getGasPrice()
       return { baseFeePerGas: gasPrice, priorityFeePerGas: gasPrice }
     }
     const networkHistoryFees = await this.getFeeHistory(toHex(blockCount), 'pending', [rewardPercentile])
-    const baseFeePerGas = networkHistoryFees.baseFeePerGas[0]
-    const priorityFeePerGas = averageBN(networkHistoryFees.reward.map(rewards => rewards[0]).map(toBN)).toString()
+    const baseFeePerGas = BigNumber.from(networkHistoryFees.baseFeePerGas[0])
+    const priorityFeePerGas = averageBN(networkHistoryFees.reward.map(rewards => rewards[0]).map(BigNumber.from))
     return { baseFeePerGas, priorityFeePerGas }
   }
 
@@ -1065,7 +1000,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return await this.relayHubInstance.getWorkerManager(worker)
   }
 
-  async getMinimumStakePerToken (tokenAddress: Address): Promise<BN> {
+  async getMinimumStakePerToken (tokenAddress: Address): Promise<BigNumber> {
     return await this.relayHubInstance.getMinimumStakePerToken(tokenAddress)
   }
 
@@ -1073,7 +1008,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
    * Gets balance of an address on the current RelayHub.
    * @param address - can be a Paymaster or a Relay Manger
    */
-  async hubBalanceOf (address: Address): Promise<BN> {
+  async hubBalanceOf (address: Address): Promise<BigNumber> {
     return await this.relayHubInstance.balanceOf(address)
   }
 
@@ -1089,7 +1024,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
 
   async isRelayManagerStakedOnHub (relayManager: Address): Promise<ManagerStakeStatus> {
     const res: ManagerStakeStatus = await new Promise((resolve) => {
-      const iface = new Interface(this.relayHubInstance.contract.interface.fragments)
+      const iface = new Interface(this.relayHubInstance.interface.fragments)
       const data = iface.encodeFunctionData('verifyRelayManagerStaked', [relayManager])
       const params = [
         {
@@ -1137,7 +1072,8 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return await this.provider.send('eth_sendRawTransaction', [signedTransaction])
   }
 
-  async hubDepositFor (paymaster: Address, transactionDetails: TransactionDetails): Promise<any> {
+  // TODO: figure out type for overrides here
+  async hubDepositFor (paymaster: Address, transactionDetails: any | PayableOverrides & { from?: string }): Promise<any> {
     return await this.relayHubInstance.depositFor(paymaster, transactionDetails)
   }
 
@@ -1155,8 +1091,8 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return versionsMap
   }
 
-  async queryDeploymentBalances (): Promise<ObjectMap<IntString>> {
-    const balances: ObjectMap<IntString> = {}
+  async queryDeploymentBalances (): Promise<ObjectMap<BigNumber>> {
+    const balances: ObjectMap<BigNumber> = {}
     if (this.deployment.relayHubAddress != null) {
       balances[this.deployment.relayHubAddress] = await this.getBalance(this.deployment.relayHubAddress)
     }
@@ -1189,7 +1125,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return this.penalizerInstance.address
   }
 
-  async getRelayRegistrationMaxAge (): Promise<BN> {
+  async getRelayRegistrationMaxAge (): Promise<BigNumber> {
     return await this.relayRegistrar.getRelayRegistrationMaxAge()
   }
 
@@ -1202,7 +1138,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
    * get registered relayers from registrar
    * (output format matches event info)
    */
-  async getRegisteredRelays (): Promise<RegistrarRelayInfo[]> {
+  async getRegisteredRelays (): Promise<RegistrarRelayInfo[] | any> {
     if (this.relayRegistrar == null) {
       throw new Error('Relay Registrar is not initialized')
     }
@@ -1219,7 +1155,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     })
   }
 
-  async getCreationBlockFromRelayHub (): Promise<BN> {
+  async getCreationBlockFromRelayHub (): Promise<BigNumber> {
     return await this.relayHubInstance.getCreationBlock()
   }
 

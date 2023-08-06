@@ -132,7 +132,7 @@ async function getProvider (
   }
   const methodParams = commander.methodParams
 
-  const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await logic.getGasPrice())
+  const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : (await logic.getGasPrice()).toString())
   const gas = commander.gasLimit
 
   const receipt = await method(...methodParams).send({

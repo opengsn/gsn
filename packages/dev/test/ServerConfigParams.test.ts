@@ -15,7 +15,7 @@ import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   RelayHubInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import { constants } from '@opengsn/common'
 import { deployHub } from './TestUtils'
 
@@ -141,8 +141,8 @@ context('#ServerConfigParams', () => {
     it('should throw if workerMinBalance > workerTargetBalance', function () {
       const config: ServerConfigParams = {
         ...serverDefaultConfiguration,
-        workerTargetBalance: 1e18,
-        workerMinBalance: 2e18
+        workerTargetBalance: 1e18.toString(),
+        workerMinBalance: 2e18.toString()
       }
       try {
         validateBalanceParams(config)
@@ -154,8 +154,8 @@ context('#ServerConfigParams', () => {
     it('should throw if managerMinBalance > managerTargetBalance', function () {
       const config: ServerConfigParams = {
         ...serverDefaultConfiguration,
-        managerTargetBalance: 1e18,
-        managerMinBalance: 2e18
+        managerTargetBalance: 1e18.toString(),
+        managerMinBalance: 2e18.toString()
       }
       try {
         validateBalanceParams(config)
@@ -167,9 +167,9 @@ context('#ServerConfigParams', () => {
     it('should throw if managerTargetBalance + workerTargetBalance > withdrawToOwnerOnBalance', function () {
       const config: ServerConfigParams = {
         ...serverDefaultConfiguration,
-        managerTargetBalance: 1e18,
-        workerTargetBalance: 1e18,
-        withdrawToOwnerOnBalance: 1.9e18
+        managerTargetBalance: 1e18.toString(),
+        workerTargetBalance: 1e18.toString(),
+        withdrawToOwnerOnBalance: 1.9e18.toString()
       }
       try {
         validateBalanceParams(config)
@@ -184,13 +184,13 @@ context('#ServerConfigParams', () => {
     it('should not throw on valid balance parameters with/without owner withdrawal', function () {
       const config: ServerConfigParams = {
         ...serverDefaultConfiguration,
-        managerTargetBalance: 1e18,
-        workerTargetBalance: 1e18,
-        workerMinBalance: 0.5e18,
-        managerMinBalance: 0.5e18
+        managerTargetBalance: 1e18.toString(),
+        workerTargetBalance: 1e18.toString(),
+        workerMinBalance: 0.5e18.toString(),
+        managerMinBalance: 0.5e18.toString()
       }
       validateBalanceParams(config)
-      config.withdrawToOwnerOnBalance = 4e18
+      config.withdrawToOwnerOnBalance = 4e18.toString()
       validateBalanceParams(config)
     })
   })

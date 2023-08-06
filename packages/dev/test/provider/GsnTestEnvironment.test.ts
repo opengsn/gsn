@@ -2,7 +2,7 @@ import { GsnTestEnvironment, TestEnvironment } from '@opengsn/cli/dist/GsnTestEn
 import { HttpProvider } from 'web3-core'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { expectEvent } from '@openzeppelin/test-helpers'
-import { TestRecipientInstance } from '@opengsn/contracts/types/truffle-contracts'
+import { TestRecipientInstance } from '../../types/truffle-contracts'
 import { toChecksumAddress } from 'ethereumjs-util'
 import { saveDeployment } from '@opengsn/cli/dist/utils'
 import { constants, defaultEnvironment } from '@opengsn/common'

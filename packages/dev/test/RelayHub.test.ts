@@ -21,6 +21,7 @@ import {
   ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
+  RelayRegistrarInstance,
   StakeManagerInstance,
   TestGatewayForwarderInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
@@ -28,11 +29,10 @@ import {
   TestPaymasterStoreContextInstance,
   TestRecipientInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import { deployHub, encodeRevertReason, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
-import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { defaultGsnConfig } from '@opengsn/provider'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
@@ -102,7 +102,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
     recipientContract = await TestRecipient.new(forwarder)
 
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
 
     target = recipientContract.address
     paymaster = paymasterContract.address
@@ -960,7 +960,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           before(async function () {
             relayRequest = cloneRelayRequest(sharedRelayRequestData)
             gatewayForwarder = await TestGatewayForwarder.new()
-            await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, gatewayForwarder)
+            await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, gatewayForwarder as any)
             relayHubInstance = await deployHub(stakeManager.address, penalizer.address, batchGateway, testToken.address, oneEther.toString())
             recipientContract = await TestRecipient.new(gatewayForwarder.address)
             await gatewayForwarder.setTrustedRelayHub(relayHubInstance.address)

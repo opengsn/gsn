@@ -49,11 +49,11 @@ export class Web3MethodsBuilder {
     return this.IStakeManager.methods.setRelayManagerOwner(owner)
   }
 
-  async getWithdrawMethod (destination: Address, amount: BN): Promise<any> {
-    return this.IRelayHubContract.methods.withdraw(destination, amount.toString())
+  async getWithdrawMethod (destination: Address, amount: string): Promise<any> {
+    return this.IRelayHubContract.methods.withdraw(destination, amount)
   }
 
-  async withdrawHubBalanceEstimateGas (destination: Address, amount: BN, managerAddress: Address, gasPrice: IntString): Promise<{
+  async withdrawHubBalanceEstimateGas (destination: Address, amount: string, managerAddress: Address, gasPrice: IntString): Promise<{
     gasCost: BN
     gasLimit: number
     method: any

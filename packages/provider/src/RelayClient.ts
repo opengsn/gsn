@@ -1,4 +1,5 @@
 import { AbiCoder } from '@ethersproject/abi'
+import { BigNumber } from '@ethersproject/bignumber'
 import { EventEmitter } from 'events'
 import { ExternalProvider, JsonRpcProvider, JsonRpcSigner, Web3Provider } from '@ethersproject/providers'
 import { Signer } from '@ethersproject/abstract-signer'
@@ -21,7 +22,6 @@ import {
   LoggerInterface,
   ObjectMap,
   PaymasterDataCallback,
-  PaymasterGasAndDataLimits,
   PaymasterType,
   PingFilter,
   RelayCallABI,
@@ -40,7 +40,6 @@ import {
   gsnRuntimeVersion,
   isSameAddress,
   removeNullValues,
-  toBN,
   toHex
 } from '@opengsn/common'
 
@@ -67,6 +66,7 @@ import {
   GsnValidateRequestEvent
 } from './GsnEvents'
 import { RelayCallGasLimitCalculationHelper } from '@opengsn/common/dist/RelayCallGasLimitCalculationHelper'
+import { IPaymaster } from '@opengsn/contracts/types/ethers-contracts'
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -451,12 +451,12 @@ export class RelayClient {
   async calculateGasFees (): Promise<EIP1559Fees> {
     const pct = this.config.gasPriceFactorPercent
     const gasFees = await this.dependencies.contractInteractor.getGasFees(this.config.getGasFeesBlocks, this.config.getGasFeesPercentile)
-    let priorityFee = Math.round(parseInt(gasFees.priorityFeePerGas) * (pct + 100) / 100)
+    let priorityFee = Math.round(gasFees.priorityFeePerGas.toNumber() * (pct + 100) / 100)
     if (this.config.minMaxPriorityFeePerGas != null && priorityFee < this.config.minMaxPriorityFeePerGas) {
       priorityFee = this.config.minMaxPriorityFeePerGas
     }
     const maxPriorityFeePerGas = `0x${priorityFee.toString(16)}`
-    let maxFeePerGas = `0x${Math.round((parseInt(gasFees.baseFeePerGas) + priorityFee) * (pct + 100) / 100).toString(16)}`
+    let maxFeePerGas = `0x${Math.round((gasFees.baseFeePerGas.toNumber() + priorityFee) * (pct + 100) / 100).toString(16)}`
     if (parseInt(maxFeePerGas) === 0) {
       maxFeePerGas = maxPriorityFeePerGas
     }
@@ -466,13 +466,13 @@ export class RelayClient {
   async _attemptRelay (
     relayInfo: RelayInfo,
     relayRequest: RelayRequest,
-    viewCallGasLimit: BN
+    viewCallGasLimit: BigNumber
   ): Promise<RelayingAttempt> {
     this.logger.info(`attempting relay: ${JSON.stringify(relayInfo)} transaction: ${JSON.stringify(relayRequest)}`)
     await this.fillRelayInfo(relayRequest, relayInfo)
     const httpRequest = await this._prepareRelayHttpRequest(relayRequest, relayInfo)
     this.emit(new GsnValidateRequestEvent())
-    const adjustedRelayCallViewGasLimit = await this.dependencies.gasLimitCalculator.adjustRelayCallViewGasLimitForRelay(viewCallGasLimit, relayRequest.relayData.relayWorker, toBN(relayRequest.relayData.maxFeePerGas))
+    const adjustedRelayCallViewGasLimit = await this.dependencies.gasLimitCalculator.adjustRelayCallViewGasLimitForRelay(viewCallGasLimit, relayRequest.relayData.relayWorker, BigNumber.from(relayRequest.relayData.maxFeePerGas))
 
     const error = await this._verifyViewCallSuccessful(relayInfo, asRelayCallAbi(httpRequest), adjustedRelayCallViewGasLimit, false)
     if (error != null) {
@@ -864,18 +864,18 @@ export class RelayClient {
    */
   async _verifyDryRunSuccessful (
     relayRequest: RelayRequest,
-    gasAndDataLimits: PaymasterGasAndDataLimits
+    gasAndDataLimits: IPaymaster.GasAndDataLimitsStructOutput
   ): Promise<
     {
-      viewCallGasLimit: BN
+      viewCallGasLimit: BigNumber
       error: Error | undefined
     }> {
     const dryRunRelayInfo: RelayInfo = {
       relayInfo: {
-        lastSeenTimestamp: toBN(0),
-        lastSeenBlockNumber: toBN(0),
-        firstSeenTimestamp: toBN(0),
-        firstSeenBlockNumber: toBN(0),
+        lastSeenTimestamp: 0,
+        lastSeenBlockNumber: 0,
+        firstSeenTimestamp: 0,
+        firstSeenBlockNumber: 0,
         relayManager: '',
         relayUrl: ''
       },
@@ -918,9 +918,9 @@ export class RelayClient {
     const adjustedRelayCallViewGasLimit = await this.dependencies.gasLimitCalculator.adjustRelayCallViewGasLimitForPaymaster(
       maxPossibleGasUsed,
       relayRequest.relayData.paymaster,
-      toBN(relayRequest.relayData.maxFeePerGas),
-      toBN(this.config.maxViewableGasLimit),
-      toBN(this.config.minViewableGasLimit)
+      BigNumber.from(relayRequest.relayData.maxFeePerGas),
+      BigNumber.from(this.config.maxViewableGasLimit),
+      BigNumber.from(this.config.minViewableGasLimit)
     )
 
     const relayCallABI: RelayCallABI = {
@@ -940,7 +940,7 @@ export class RelayClient {
   async _verifyViewCallSuccessful (
     relayInfo: RelayInfo,
     relayCallABI: RelayCallABI,
-    viewCallGasLimit: BN,
+    viewCallGasLimit: BigNumber,
     isDryRun: boolean
   ): Promise<Error | undefined> {
     const acceptRelayCallResult =

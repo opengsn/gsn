@@ -31,7 +31,7 @@ import {
   PenalizerInstance,
   RelayRegistrarInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import { deployHub, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
@@ -106,7 +106,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(relayHub.address)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
 
     await relayHub.depositFor(paymaster.address, {
       value: ether('1'),

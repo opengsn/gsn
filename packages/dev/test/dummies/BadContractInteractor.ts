@@ -1,3 +1,4 @@
+import { BigNumber } from '@ethersproject/bignumber'
 import { TransactionResponse } from '@ethersproject/providers'
 import { ContractInteractor, ConstructorParams, RelayCallABI } from '@opengsn/common'
 
@@ -12,7 +13,7 @@ export class BadContractInteractor extends ContractInteractor {
     this.failValidateARC = failValidateARC
   }
 
-  async validateRelayCall (relayCallABIData: RelayCallABI, viewCallGasLimit: BN, isDryRun: boolean): Promise<{ paymasterAccepted: boolean, returnValue: string, relayHubReverted: boolean, recipientReverted: boolean }> {
+  async validateRelayCall (relayCallABIData: RelayCallABI, viewCallGasLimit: BigNumber, isDryRun: boolean): Promise<{ paymasterAccepted: boolean, returnValue: string, relayHubReverted: boolean, recipientReverted: boolean }> {
     if (this.failValidateARC) {
       return {
         paymasterAccepted: false,
