@@ -3,8 +3,8 @@
   "include": [
     "src/**/*.ts",
     "src/interfaces/*.json",
-    "../contracts/types/truffle-contracts/index.d.ts",
-    "../contracts/types/truffle-contracts/types.d.ts"
+    "../contracts/types/ethers-contracts/index.d.ts",
+    "../contracts/types/ethers-contracts/types.d.ts"
   ],
   "compilerOptions": {
     "rootDir": "src",

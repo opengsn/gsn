@@ -1,7 +1,7 @@
 import chalk from 'chalk'
 import { EventEmitter } from 'events'
 import { toBN, toHex } from 'web3-utils'
-import { PrefixedHexString, BN } from 'ethereumjs-util'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { Block } from '@ethersproject/providers'
 
 import {

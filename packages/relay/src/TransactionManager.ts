@@ -213,7 +213,7 @@ data                     | ${transaction.data}
       isSufficient
     } = await this.validateBalance(txDetails.signer, maxFeePerGas, gasLimit, signerBalance.toString())
     if (!isSufficient) {
-      throw new Error(`signer ${txDetails.signer} balance ${signerBalance} too low: tx cost is ${requiredBalance}`)
+      throw new Error(`signer ${txDetails.signer} balance ${signerBalance.toString()} too low: tx cost is ${requiredBalance}`)
     }
     if (isSameAddress(txDetails.destination, constants.ZERO_ADDRESS)) {
       const msg = `Preventing to send transaction with action id ${txDetails.serverAction} to address(0)! Validate your configuration!`
