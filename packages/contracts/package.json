@@ -2,6 +2,7 @@
   "name": "@opengsn/contracts",
   "license": "GPL-3.0-only",
   "version": "3.0.0-beta.8",
+  "main": "dist/types/ethers-contracts/index.js",
   "scripts": {
     "tsc": "tsc",
     "solpp": "yarn --cwd=\"../..\" solpp",
@@ -22,11 +23,12 @@
     "access": "public"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.2.0"
+    "@openzeppelin/contracts": "^4.2.0",
+    "@ethersproject/abi": "^5.7.0",
+    "@ethersproject/providers": "^5.7.2"
   },
   "devDependencies": {
     "ethers": "^5.7.2",
-    "bn.js": "^5.2.1",
     "solc-0.8": "npm:solc@0.8.11",
     "solhint": "^3.3.2",
     "solidity-docgen": "^0.5.16",

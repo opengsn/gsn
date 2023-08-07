@@ -29,7 +29,6 @@
   "dependencies": {
     "@opengsn/cli": "^3.0.0-beta.8",
     "@opengsn/common": "^3.0.0-beta.8",
-    "@opengsn/contracts": "^3.0.0-beta.8",
     "@opengsn/logger": "^3.0.0-beta.8",
     "@opengsn/provider": "^3.0.0-beta.8",
     "@opengsn/relay": "^3.0.0-beta.8"

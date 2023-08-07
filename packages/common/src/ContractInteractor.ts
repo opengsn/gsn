@@ -35,7 +35,7 @@ import {
   IRelayRegistrar__factory,
   IStakeManager,
   IStakeManager__factory
-} from '@opengsn/contracts/types/ethers-contracts'
+} from '@opengsn/contracts'
 
 import {
   Address,

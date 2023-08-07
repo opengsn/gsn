@@ -25,6 +25,8 @@
   },
   "dependencies": {
     "@ethereumjs/tx": "^3.2.0",
+    "@ethersproject/bignumber": "^5.7.0",
+    "@ethersproject/contracts": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "@opengsn/common": "^3.0.0-beta.8",
     "@opengsn/contracts": "^3.0.0-beta.8",
@@ -35,7 +37,6 @@
     "@types/node": "^13.0.0",
     "@types/web3": "1.0.20",
     "@types/web3-provider-engine": "^14.0.1",
-    "bn.js": "^5.2.1",
     "commander": "^6.1.0",
     "console-read-write": "^0.1.1",
     "ethereum-cryptography": "^1.1.2",
