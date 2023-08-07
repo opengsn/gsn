@@ -11,7 +11,6 @@ export async function registerForwarderForGsn (
   logger?: LoggerInterface,
   sendOptions: CallOverrides | undefined = undefined
 ): Promise<void> {
-  let options
   let forwarder: Contract
   if ((forwarderIn as any).contract != null) {
     const provider = new Web3Provider((forwarderIn as any).contract.currentProvider)
@@ -19,16 +18,15 @@ export async function registerForwarderForGsn (
   } else {
     forwarder = forwarderIn as any
   }
-  options = { ...sendOptions }
 
   logger?.info(`Registering request type ${GsnRequestType.typeName} with suffix: ${GsnRequestType.typeSuffix}`)
   const res = await forwarder.registerRequestType(
     GsnRequestType.typeName,
     GsnRequestType.typeSuffix,
-    options
+    { ...sendOptions }
   )
-  logger?.debug(`Transaction broadcast: ${res?.hash}`)
+  logger?.debug(`Transaction broadcast: ${res?.hash as string}`)
 
   logger?.info(`Registering domain separator ${domainSeparatorName} with version: ${GsnDomainSeparatorType.version}`)
-  await forwarder.registerDomainSeparator(domainSeparatorName, GsnDomainSeparatorType.version, options)
+  await forwarder.registerDomainSeparator(domainSeparatorName, GsnDomainSeparatorType.version, { ...sendOptions })
 }

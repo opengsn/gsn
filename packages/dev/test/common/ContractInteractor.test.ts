@@ -5,14 +5,12 @@ import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { BigNumber } from '@ethersproject/bignumber'
 import { PastEventOptions } from 'web3-eth-contract'
 import {
-  RelayRegistrarInstance,
   ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance,
   TestDecimalsTokenInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
-  TestRelayHubForRegistrarInstance,
   TestTokenInstance
 } from '../../types/truffle-contracts'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
@@ -29,7 +27,7 @@ import {
   defaultEnvironment,
   gsnRequiredVersion,
   gsnRuntimeVersion,
-  splitRelayUrlForRegistrar, environments
+  environments
 } from '@opengsn/common'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
@@ -42,11 +40,9 @@ import { toHex } from 'web3-utils'
 
 import { ether } from '@openzeppelin/test-helpers'
 import { defaultGsnConfig } from '@opengsn/provider'
-import { IRelayRegistrar } from '@opengsn/contracts/types/ethers-contracts'
 
 const { expect } = chai.use(chaiAsPromised)
 
-const TestRelayHubForRegistrar = artifacts.require('TestRelayHubForRegistrar')
 const TestDecimalsToken = artifacts.require('TestDecimalsToken')
 const TestPaymasterConfigurableMisbehavior = artifacts.require('TestPaymasterConfigurableMisbehavior')
 const TestToken = artifacts.require('TestToken')

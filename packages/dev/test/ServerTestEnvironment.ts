@@ -5,7 +5,7 @@ import crypto from 'crypto'
 import sinon from 'sinon'
 import { HttpProvider } from 'web3-core'
 import { JsonRpcProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
-import { toBN, toHex } from 'web3-utils'
+import { toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
 import {
   Address,

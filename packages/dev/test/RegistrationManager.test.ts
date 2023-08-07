@@ -1,6 +1,5 @@
 import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
-import BN from 'bn.js'
 import { toChecksumAddress } from 'ethereumjs-util'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 

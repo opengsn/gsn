@@ -367,7 +367,7 @@ export class CommandsLogic {
         }
         const stakeValue = stakeParam.sub(toBN(stake.toString()))
         this.logger.info(`Staking relayer ${formatToken(stakeValue)}` +
-          stake.toString() === '0' ? '' : ` (already has ${formatToken(stake)})`)
+        stake.toString() === '0' ? '' : ` (already has ${formatToken(stake)})`)
 
         const tokenBalance = await stakingTokenContract.balanceOf(options.from)
         if (tokenBalance.lt(stakeValue.toString()) && options.wrap) {
@@ -508,10 +508,7 @@ export class CommandsLogic {
         if (balance.lt(options.withdrawAmount.toString())) {
           throw new Error('Relay manager hub balance lower than withdrawal amount')
         }
-        // TODO: leaked 'method' web3.js abstraction here
-        const method = {} as any // relayHub.contract.methods.withdraw(withdrawTarget, options.withdrawAmount)
-        if (1 === 1) { process.exit(777) }
-        const encodedCall = method.encodeABI()
+        const encodedCall = relayHub.interface.encodeFunctionData('withdraw', [withdrawTarget, options.withdrawAmount])
         txToSign = new Transaction({
           to: options.config.relayHubAddress,
           value: 0,
@@ -521,11 +518,10 @@ export class CommandsLogic {
           nonce
         }, this.contractInteractor.getRawTxOptions())
         this.logger.info('Calling in view mode')
-        await method.call({
+        await relayHub.callStatic.withdraw(withdrawTarget, options.withdrawAmount, {
           from: relayManager,
-          to: options.config.relayHubAddress,
           value: 0,
-          gas: gasLimit,
+          gasLimit,
           gasPrice
         })
       }
@@ -662,7 +658,7 @@ export class CommandsLogic {
         this.logger.debug(`tx error: ${err.message}`)
       })
       contractInstance = await deployPromise
-      this.logger.info(`Deployed ${contractName} at address ${contractInstance.options.address as string}\n\n`)
+      this.logger.info(`Deployed ${contractName} at address ${contractInstance.options.address}\n\n`)
     } else {
       this.logger.info(`Using ${contractName} at given address ${address}\n\n`)
       contractInstance = this.contract(json, address)

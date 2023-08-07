@@ -1,6 +1,5 @@
 import chaiAsPromised from 'chai-as-promised'
 import sinon, { SinonStub } from 'sinon'
-import { toBN } from 'web3-utils'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
