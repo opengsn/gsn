@@ -65,7 +65,14 @@ import { toHex } from './web3js/Web3JSUtils'
 import { FeeHistoryResult } from './web3js/FeeHistoryResult'
 import { Network } from '@ethersproject/networks'
 
-import { Block, BlockTag, JsonRpcProvider, TransactionRequest, TransactionResponse } from '@ethersproject/providers'
+import {
+  Block,
+  BlockTag,
+  JsonRpcProvider,
+  JsonRpcSigner,
+  TransactionRequest,
+  TransactionResponse
+} from '@ethersproject/providers'
 import { AbiCoder, Interface } from '@ethersproject/abi'
 
 export type EventFilterBlocks = EventFilter & { fromBlock?: BlockTag, toBlock?: BlockTag }
@@ -133,6 +140,7 @@ export class ContractInteractor {
 
   readonly calculateCalldataGasUsed: CalldataGasEstimation
   readonly provider: JsonRpcProvider
+  signer!: JsonRpcSigner
   // private readonly provider: Web3ProviderBaseInterface
   private deployment: GSNContractsDeployment
   private readonly versionManager: VersionsManager
@@ -197,6 +205,12 @@ export class ContractInteractor {
         this.logger.warn('Call to \'eth_feeHistory\' failed. Falling back to Legacy Transaction Type.')
         this.transactionType = TransactionType.LEGACY
       }
+    }
+    const [address] = await this.provider.listAccounts()
+    this.signer = this.provider.getSigner(address)
+    this.logger.info(`Initializing for address ${address}`)
+    if (this.signer == null) {
+      throw new Error(`Unable to create signer for address ${address}`)
     }
     await this._resolveDeployment()
     await this._initializeContracts()
@@ -380,36 +394,36 @@ export class ContractInteractor {
     if (this.erc2771RecipientInstance != null && this.erc2771RecipientInstance.address.toLowerCase() === address.toLowerCase()) {
       return this.erc2771RecipientInstance
     }
-    this.erc2771RecipientInstance = await IERC2771Recipient__factory.connect(address, this.provider)
+    this.erc2771RecipientInstance = await IERC2771Recipient__factory.connect(address, this.signer)
     return this.erc2771RecipientInstance
   }
 
   async _createPaymaster (address: Address): Promise<IPaymaster> {
-    return IPaymaster__factory.connect(address, this.provider)
+    return IPaymaster__factory.connect(address, this.signer)
   }
 
   async _createRelayHub (address: Address): Promise<IRelayHub> {
-    return IRelayHub__factory.connect(address, this.provider)
+    return IRelayHub__factory.connect(address, this.signer)
   }
 
   async _createForwarder (address: Address): Promise<IForwarder> {
-    return IForwarder__factory.connect(address, this.provider)
+    return IForwarder__factory.connect(address, this.signer)
   }
 
   async _createStakeManager (address: Address): Promise<IStakeManager> {
-    return IStakeManager__factory.connect(address, this.provider)
+    return IStakeManager__factory.connect(address, this.signer)
   }
 
   async _createPenalizer (address: Address): Promise<IPenalizer> {
-    return IPenalizer__factory.connect(address, this.provider)
+    return IPenalizer__factory.connect(address, this.signer)
   }
 
   async _createRelayRegistrar (address: Address): Promise<IRelayRegistrar> {
-    return IRelayRegistrar__factory.connect(address, this.provider)
+    return IRelayRegistrar__factory.connect(address, this.signer)
   }
 
   async _createERC20 (address: Address): Promise<IERC20Token> {
-    return IERC20Token__factory.connect(address, this.provider)
+    return IERC20Token__factory.connect(address, this.signer)
   }
 
   /**

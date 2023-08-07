@@ -50,6 +50,8 @@ contract('GsnTestEnvironment', function (accounts: string[]) {
     it('should verify the deployment is valid', async function () {
       const host = (web3.currentProvider as HttpProvider).host
       const logic = new CommandsLogic(host, console, {})
+      await logic.init()
+
       const deploymentResult = await logic.deployGsnContracts({
         from: accounts[0],
         gasPrice: 1e10.toString(),

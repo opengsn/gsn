@@ -3,6 +3,7 @@
 import { SignTypedDataVersion, recoverTypedSignature, TypedDataUtils } from '@metamask/eth-sig-util'
 import chaiAsPromised from 'chai-as-promised'
 import chai, { expect } from 'chai'
+import { BigNumber } from '@ethersproject/bignumber'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
@@ -234,9 +235,9 @@ contract('Utils', function (accounts) {
         c: null,
         d: { e: null, f: 3 },
         arr: [10, null, 30],
-        bn: toBN(123)
+        bn: BigNumber.from(123)
       }, true)).to.deep
-        .equal({ a: 1, b: 'string', d: { f: 3 }, arr: [10, null, 30], bn: toBN(123) })
+        .equal({ a: 1, b: 'string', d: { f: 3 }, arr: [10, null, 30], bn: BigNumber.from(123) })
     })
   })
 

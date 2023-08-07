@@ -568,9 +568,7 @@ export async function resolveServerConfig (config: Partial<ServerConfigParams>, 
     },
     environment
   })
-  await contractInteractor._resolveDeployment()
-  await contractInteractor._initializeContracts()
-  await contractInteractor._initializeNetworkParams()
+  await contractInteractor.init()
 
   if (config.relayHubAddress == null) {
     error('missing param: must have relayHubAddress')

@@ -400,6 +400,7 @@ contract('ContractInteractor', function (accounts) {
         maxPageSize,
         environment
       })
+      contractInteractor.signer = ethersProvider.getSigner()
       await contractInteractor._resolveDeployment()
       const deploymentOut = contractInteractor.getDeployment()
       assert.equal(deploymentOut.paymasterAddress, pm.address)
@@ -419,6 +420,7 @@ contract('ContractInteractor', function (accounts) {
         maxPageSize,
         environment
       })
+      contractInteractor.signer = ethersProvider.getSigner()
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith('Not a paymaster contract')
     })
@@ -434,6 +436,7 @@ contract('ContractInteractor', function (accounts) {
         maxPageSize,
         environment
       })
+      contractInteractor.signer = ethersProvider.getSigner()
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith('Not a paymaster contract')
     })
@@ -451,6 +454,7 @@ contract('ContractInteractor', function (accounts) {
         maxPageSize,
         environment
       })
+      contractInteractor.signer = ethersProvider.getSigner()
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith(/Provided.*version.*does not satisfy the requirement/)
     })

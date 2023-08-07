@@ -44,6 +44,7 @@ gsnCommander(['n', 'f', 'm', 'g', 'l'])
   const relayHubConfiguration = getRelayHubConfiguration(commander.config) ?? environment.relayHubConfiguration
   const penalizerConfiguration = environment.penalizerConfiguration
   const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic, commander.derivationPath, commander.derivationIndex, commander.privateKeyHex)
+  await logic.init()
   const from = commander.from ?? await logic.findWealthyAccount()
 
   const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : (await logic.getGasPrice()).toString())

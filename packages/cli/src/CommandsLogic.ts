@@ -110,7 +110,7 @@ type WithdrawalResult = RegistrationResult
 export interface SendOptions {
   from: string
   gasPrice: number | string | BigNumber
-  gas: number | string | BigNumber
+  gasLimit: number | string | BigNumber
   value: number | string | BigNumber
 }
 
@@ -557,7 +557,7 @@ export class CommandsLogic {
     ow(deployOptions, ow.object.partialShape(DeployOptionsPartialShape))
     const options: Required<SendOptions> = {
       from: deployOptions.from,
-      gas: deployOptions.gasLimit,
+      gasLimit: deployOptions.gasLimit,
       value: 0,
       gasPrice: deployOptions.gasPrice
     }
@@ -597,9 +597,9 @@ export class CommandsLogic {
     if (deployOptions.deployPaymaster ?? false) {
       pmInstance = await this.deployPaymaster({ ...options }, rInstance.options.address, fInstance, deployOptions.skipConfirmation)
     }
-    // TODO: construct provider
+    const provider = new Web3Provider(this.web3.currentProvider as any)
     // @ts-ignore
-    const ethersForwarderInstance = Forwarder__factory.connect(fInstance._address, {})
+    const ethersForwarderInstance = Forwarder__factory.connect(fInstance._address, provider.getSigner())
     await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, ethersForwarderInstance, this.logger, options)
 
     let stakingTokenAddress = deployOptions.stakingTokenAddress
@@ -642,8 +642,8 @@ export class CommandsLogic {
         .contract(json)
         .deploy(constructorArgs)
       const estimatedGasCost = await sendMethod.estimateGas()
-      const maxCost = toBN(options.gasPrice.toString()).mul(toBN(options.gas.toString()))
-      this.logger.info(`Deploying ${contractName} contract with gas limit of ${options.gas.toLocaleString()} at ${fromWei(options.gasPrice.toString(), 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
+      const maxCost = toBN(options.gasPrice.toString()).mul(toBN(options.gasLimit.toString()))
+      this.logger.info(`Deploying ${contractName} contract with gas limit of ${options.gasLimit.toLocaleString()} at ${fromWei(options.gasPrice.toString(), 'gwei')}gwei (estimated gas: ${estimatedGasCost.toLocaleString()}) and maximum cost of ~ ${fromWei(maxCost)} ETH`)
       if (!skipConfirmation) {
         await this.confirm()
       }

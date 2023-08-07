@@ -622,7 +622,7 @@ contract('RegistrationManager', function (accounts) {
   // note: relies on first 'before' to initialize server
   describe('#assertRegistered()', function () {
     before(function () {
-      relayServer.registrationManager.stakeRequired._requiredValue = BigNumber.from(1e20)
+      relayServer.registrationManager.stakeRequired._requiredValue = BigNumber.from(1e20.toString())
     })
 
     it('should return false if the stake requirement is not satisfied', async function () {

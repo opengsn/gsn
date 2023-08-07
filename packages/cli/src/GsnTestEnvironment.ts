@@ -317,6 +317,7 @@ class GsnTestEnvironmentClass {
         environment: defaultEnvironment,
         deployment
       })
+    await contractInteractor.init()
     await contractInteractor.initDeployment(deployment)
     await contractInteractor._validateERC165InterfacesClient(true)
     await contractInteractor._validateERC165InterfacesRelay()
