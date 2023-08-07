@@ -40,7 +40,7 @@
     "extract_abi_paymasters": "./scripts/extract_abi.js paymasters",
     "solpp": "./scripts/solpp.js",
     "tsc": "yarn lerna-tsc",
-    "lerna-typechain-generate": "lerna run typechain-generate --stream --ignore @opengsn/paymasters",
+    "lerna-typechain-generate": "lerna run typechain-generate --stream --ignore @opengsn/paymasters && lerna run typechain-generate-truffle --stream --ignore @opengsn/paymasters",
     "lerna-typechain-generate-paymasters": "lerna run typechain-generate --stream --scope @opengsn/paymasters",
     "lerna-publish": "lerna publish --pre-dist-tag next",
     "lerna-publish-force-no-git": "lerna publish --no-push --no-git-tag-version --force-publish",

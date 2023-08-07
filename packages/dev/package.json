@@ -19,7 +19,6 @@
     "truffle-console": "truffle console",
     "truffle-compile": "truffle compile",
     "test-local": "ENABLE_CONSOLE_LOG=1 yarn solpp && npx truffle test --compile-all",
-    "typechain-generate": "yarn typechain-generate-truffle",
     "typechain-generate-truffle": "yarn truffle-compile && typechain --target truffle-v5 '../cli/src/compiled/*.json' && ./replaceWeb3.sh",
     "gas-calculations": "ENABLE_CONSOLE_LOG=0 yarn solpp && GAS_CALCULATIONS=1 truffle test test/RelayHubGasCalculations.test.ts test/PaymasterCommitment.test.ts --compile-all --network npmtest",
     "test-webpack": "TEST_WEBPACK=1 truffle test test/RelayServer.webpack.test.ts --network npmtest",
