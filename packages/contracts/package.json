@@ -2,8 +2,8 @@
   "name": "@opengsn/contracts",
   "license": "GPL-3.0-only",
   "version": "3.0.0-beta.8",
-  "main": "types/truffle-contracts/index.d.ts",
   "scripts": {
+    "tsc": "tsc",
     "solpp": "yarn --cwd=\"../..\" solpp",
     "solidity-docgen": "rm -rf docs && solidity-docgen --solc-module solc-0.8 --input=src --exclude=src/test,src/forwarder/test --templates=.",
     "truffle-compile": "ENABLE_CONSOLE_LOG=1 yarn solpp && truffle compile",
@@ -14,6 +14,7 @@
   },
   "files": [
     "src/*",
+    "dist/*",
     "types/*",
     "README.md"
   ],

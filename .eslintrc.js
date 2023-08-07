@@ -24,6 +24,7 @@ module.exports = {
   },
   ignorePatterns: [
     '**/types/truffle-contracts',
+    '**/types/ethers-contracts',
     'dist/'
   ],
   rules: {
