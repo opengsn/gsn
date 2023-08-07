@@ -12,9 +12,12 @@ import {
   toBN
 } from '@opengsn/provider'
 import { GsnTestEnvironment } from '@opengsn/cli'
-import { RelayHubInstance, TestRecipientInstance } from '@opengsn/contracts'
 
-import { SingletonWhitelistPaymasterInstance } from '../types/truffle-contracts'
+import {
+  RelayHubInstance,
+  SingletonWhitelistPaymasterInstance,
+  TestRecipientInstance
+} from '../types/truffle-contracts'
 import { GAS_PRICE, impersonateAccount } from './ForkTestUtils'
 import { defaultEnvironment } from '@opengsn/common'
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'

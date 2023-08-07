@@ -1,6 +1,6 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { PrefixedHexString, fromRpcSig } from 'ethereumjs-util'
-import { getEip712Signature, TruffleContract, Address, IntString } from '@opengsn/common'
+import { getEip712Signature, Address, IntString } from '@opengsn/common'
 import { TypedMessage } from '@metamask/eth-sig-util'
 
 import {
@@ -13,6 +13,7 @@ import {
 import daiPermitAbi from './interfaces/PermitInterfaceDAI.json'
 import eip2612PermitAbi from './interfaces/PermitInterfaceEIP2612.json'
 import BN from 'bn.js'
+import { Contract } from 'ethers'
 
 interface Types extends MessageTypes {
   EIP712Domain: MessageTypeProperty[]
@@ -116,14 +117,7 @@ export async function signAndEncodeDaiPermit (
   forceNonce?: number,
   skipValidation = false
 ): Promise<PrefixedHexString> {
-  const DaiContract = TruffleContract({
-    useEthersV6: false,
-    contractName: 'DAIPermitInterface',
-    abi: daiPermitAbi
-  })
-
-  DaiContract.setProvider(provider, undefined)
-  const daiInstance = await DaiContract.at(token)
+  const daiInstance = new Contract(token, daiPermitAbi, provider)
   const nonce = (forceNonce ?? await daiInstance.nonces(holder)).toString()
   const chainId = parseInt((await provider.getNetwork()).chainId.toString())
   const permit: PermitInterfaceDAI = {
@@ -169,14 +163,8 @@ export async function signAndEncodeEIP2612Permit (
   forceNonce?: number,
   skipValidation = false
 ): Promise<PrefixedHexString> {
-  const EIP2612Contract = TruffleContract({
-    useEthersV6: false,
-    contractName: 'EIP2612Contract',
-    abi: eip2612PermitAbi
-  })
+  const eip2612TokenInstance = new Contract(token, eip2612PermitAbi, provider)
 
-  EIP2612Contract.setProvider(provider, undefined)
-  const eip2612TokenInstance = await EIP2612Contract.at(token)
   const nonce = forceNonce ?? await eip2612TokenInstance.nonces(owner)
   const chainId = parseInt((await provider.getNetwork()).chainId.toString())
   const permit: PermitInterfaceEIP2612 = {

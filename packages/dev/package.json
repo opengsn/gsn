@@ -11,7 +11,7 @@
     "access": "public"
   },
   "scripts": {
-    "tsc": "tsc",
+    "tsc": "tsc && cp -R types dist",
     "watch-tsc": "tsc -w --preserveWatchOutput",
     "lint": "eslint -f unix .",
     "lint-fix": "yarn lint --fix",
