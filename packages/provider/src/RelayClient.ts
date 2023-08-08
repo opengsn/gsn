@@ -158,9 +158,14 @@ export async function wrapInputProviderLike (input: SupportedProviderLikeType): 
         signer: input as any
       }
     } else {
+      // this seems to be Ethers v6 signer input - wrapping its provider's "send" function
+      const provider = new Web3Provider(async (method: string, params?: any[]) => {
+        const providerIn = (input as any).provider
+        return providerIn.send.bind(providerIn)(method, params)
+      })
       return {
         inputProviderType: InputProviderType.SignerEthersV6,
-        provider: (input as any).provider,
+        provider,
         signer: input as any
       }
     }
@@ -178,10 +183,14 @@ export async function wrapInputProviderLike (input: SupportedProviderLikeType): 
         signer: (input as any).getSigner()
       }
     } else {
+      // this seems to be Ethers v6 provider input - wrapping its "send" function
+      const provider = new Web3Provider(async (method: string, params?: any[]) => {
+        return (input as any).send.bind(input)(method, params)
+      })
       return {
         inputProviderType: InputProviderType.ProviderEthersV6,
-        provider: input as any,
-        signer: await (input as any).getSigner()
+        provider,
+        signer: provider.getSigner()
       }
     }
   }

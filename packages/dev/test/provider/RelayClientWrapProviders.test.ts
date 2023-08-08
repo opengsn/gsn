@@ -113,7 +113,7 @@ contract('RelayClient - wrap Providers and Signers', function () {
     })
   })
 
-  describe.skip('Ethers.js v6', function () {
+  describe('Ethers.js v6', function () {
     it('Ethers.js v6 Provider', async function () {
       const ethersV6Provider = new JsonRpcProviderV6(currentTestProviderUrl)
       const { gsnSigner } = await RelayProvider.newEthersV6Provider({
