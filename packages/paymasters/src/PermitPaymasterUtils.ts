@@ -144,9 +144,9 @@ export async function signAndEncodeDaiPermit (
   const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)
   if (!skipValidation) {
-    await daiInstance.contract.estimateGas.permit(holder, spender, nonce, expiry, true, v, r, s)
+    await daiInstance.estimateGas.permit(holder, spender, nonce, expiry, true, v, r, s)
   }
-  return daiInstance.contract.interface.encodeFunctionData('permit', [holder, spender, nonce, expiry, true, v, r, s])
+  return daiInstance.interface.encodeFunctionData('permit', [holder, spender, nonce, expiry, true, v, r, s])
 }
 
 export async function signAndEncodeEIP2612Permit (
@@ -192,7 +192,7 @@ export async function signAndEncodeEIP2612Permit (
   const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)
   if (!skipValidation) {
-    await eip2612TokenInstance.contract.estimateGas.permit(owner, spender, value, deadline, v, r, s)
+    await eip2612TokenInstance.estimateGas.permit(owner, spender, value, deadline, v, r, s)
   }
-  return eip2612TokenInstance.contract.interface.encodeFunctionData('permit', [owner, spender, value, deadline, v, r, s])
+  return eip2612TokenInstance.interface.encodeFunctionData('permit', [owner, spender, value, deadline, v, r, s])
 }
