@@ -1,31 +1,30 @@
-import BN from 'bn.js'
+import { BigNumber } from '@ethersproject/bignumber'
 
 import { ERC20TokenMetadata } from './ContractInteractor'
 import { LoggerInterface } from './LoggerInterface'
 import { boolString, formatTokenAmount, isSameAddress } from './Utils'
 import { constants } from './Constants'
 import { Address } from './types/Aliases'
-import { toBN } from './web3js/Web3JSUtils'
 
 const ether: ERC20TokenMetadata = {
   tokenAddress: constants.ZERO_ADDRESS,
   tokenName: 'Ether',
   tokenSymbol: 'ETH',
-  tokenDecimals: toBN(18)
+  tokenDecimals: 18
 }
 
 export class AmountRequired {
   logger: LoggerInterface
   _name: string
-  _currentValue = toBN(0)
-  _requiredValue = toBN(0)
+  _currentValue = BigNumber.from(0)
+  _requiredValue = BigNumber.from(0)
   _currentTokenAddress = constants.ZERO_ADDRESS
   _listener?: () => void
   _tokenMetadata: ERC20TokenMetadata
 
   constructor (
     name: string,
-    requiredValue: BN,
+    requiredValue: BigNumber,
     requiredTokenAddress: string,
     logger: LoggerInterface,
     listener?: () => void,
@@ -38,11 +37,11 @@ export class AmountRequired {
     this._listener = listener
   }
 
-  get currentValue (): BN {
+  get currentValue (): BigNumber {
     return this._currentValue
   }
 
-  set currentValue (newValue: BN) {
+  set currentValue (newValue: BigNumber) {
     const didChange = !this._currentValue.eq(newValue)
     const wasSatisfied = this.isSatisfied
     this._currentValue = newValue
@@ -64,11 +63,11 @@ export class AmountRequired {
     }
   }
 
-  get requiredValue (): BN {
+  get requiredValue (): BigNumber {
     return this._requiredValue
   }
 
-  set requiredValue (newValue: BN) {
+  set requiredValue (newValue: BigNumber) {
     const didChange = !this._requiredValue.eq(newValue)
     const wasSatisfied = this.isSatisfied
     this._requiredValue = newValue

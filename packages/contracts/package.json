@@ -2,17 +2,20 @@
   "name": "@opengsn/contracts",
   "license": "GPL-3.0-only",
   "version": "3.0.0-beta.8",
-  "main": "types/truffle-contracts/index.d.ts",
+  "main": "dist/types/ethers-contracts/index.js",
   "scripts": {
+    "tsc": "tsc",
     "solpp": "yarn --cwd=\"../..\" solpp",
     "solidity-docgen": "rm -rf docs && solidity-docgen --solc-module solc-0.8 --input=src --exclude=src/test,src/forwarder/test --templates=.",
     "truffle-compile": "ENABLE_CONSOLE_LOG=1 yarn solpp && truffle compile",
-    "typechain-generate": "yarn truffle-compile && typechain --target truffle-v5 '../cli/src/compiled/*.json' && ./replaceWeb3.sh",
+    "typechain-generate": "yarn typechain-generate-ethers-v5",
+    "typechain-generate-ethers-v5": "yarn truffle-compile && typechain --target ethers-v5 '../cli/src/compiled/*.json'",
     "lint": "solhint -f unix \"src/**/*.sol\" --max-warnings 0",
     "rm-dist": "rm -rf types/truffle-contracts solpp"
   },
   "files": [
     "src/*",
+    "dist/*",
     "types/*",
     "README.md"
   ],
@@ -20,10 +23,12 @@
     "access": "public"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.2.0"
+    "@openzeppelin/contracts": "^4.2.0",
+    "@ethersproject/abi": "^5.7.0",
+    "@ethersproject/providers": "^5.7.2"
   },
   "devDependencies": {
-    "bn.js": "^5.2.1",
+    "ethers": "^5.7.2",
     "solc-0.8": "npm:solc@0.8.11",
     "solhint": "^3.3.2",
     "solidity-docgen": "^0.5.16",

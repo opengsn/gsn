@@ -5,10 +5,11 @@ import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import {
   ArbRelayHubInstance,
   ForwarderInstance,
+  RelayRegistrarInstance,
   StakeManagerInstance,
   TestRecipientInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../../types/truffle-contracts'
 import {
   RelayRequest,
   TypedRequestData,
@@ -19,8 +20,7 @@ import {
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
 
-import { TransactionRelayed } from '@opengsn/contracts/types/truffle-contracts/RelayHub'
-import { RelayRegistrarInstance } from '@opengsn/contracts'
+import { TransactionRelayed } from '../../types/truffle-contracts/RelayHub'
 import { defaultGsnConfig } from '@opengsn/provider'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 

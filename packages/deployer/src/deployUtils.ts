@@ -14,8 +14,7 @@ import { ethers } from 'hardhat'
 import { DeploymentsExtension, TxOptions } from 'hardhat-deploy/types'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { HttpNetworkConfig } from 'hardhat/src/types/config'
-import { Contract } from 'ethers'
-import { formatUnits, parseUnits } from 'ethers/lib/utils'
+import { Contract, formatUnits, parseUnits } from 'ethers'
 
 export function deploymentConfigFile (): string {
   return process.env.DEPLOY_CONFIG ?? path.resolve(__dirname, '../deployments', 'deployment-config.ts')
@@ -97,13 +96,14 @@ export async function getToken (address: string): Promise<Token> {
   if (symbol == null || decimals == null) {
     throw new Error(`invalid token: ${address} (Symbol: ${symbol} Decimals: ${decimals})`)
   }
-  const divisor = Math.pow(10, decimals)
+  const divisor = Math.pow(10, Number(decimals))
 
   return {
     address,
     symbol,
     decimals,
-    balanceOf: async (addr: string) => token.balanceOf(addr).then((v: any) => v.div(divisor))
+    // eslint-disable-next-line @typescript-eslint/return-await
+    balanceOf: async (addr: string) => await token.balanceOf(addr).then((v: any) => v.div(divisor))
   }
 }
 
@@ -143,8 +143,8 @@ async function getStakingInfo (hre: HardhatRuntimeEnvironment, env: Environment)
 export async function printRelayInfo (hre: HardhatRuntimeEnvironment, isArbitrum: boolean = false): Promise<void> {
   const { getChainId } = hre
   console.log('Connected to URL: ', (hre.network.config as HttpNetworkConfig).url)
-  const accounts = await ethers.provider.listAccounts()
-  const deployer = accounts[0]
+  const signer = await hre.ethers.provider.getSigner(0)
+  const deployer = await signer.getAddress()
 
   const chainId = parseInt(await getChainId())
   const env: Environment = getMergedEnvironment(chainId, deployer)
@@ -170,8 +170,8 @@ export async function printRelayInfo (hre: HardhatRuntimeEnvironment, isArbitrum
 export async function getDeploymentEnv (hre: HardhatRuntimeEnvironment): Promise<{ deployer: string, deployments: DeploymentsExtension, env: Environment }> {
   const { deployments, getChainId } = hre
   console.log('Connected to URL: ', (hre.network.config as HttpNetworkConfig).url)
-  const accounts = await hre.ethers.provider.listAccounts()
-  const deployer = accounts[0]
+  const signer = await hre.ethers.provider.getSigner(0)
+  const deployer = await signer.getAddress()
   const chainId = parseInt(await getChainId())
   const env: Environment = getMergedEnvironment(chainId, deployer)
 
@@ -227,14 +227,16 @@ function clean (obj: any): string {
 }
 
 async function applyHubConfiguration (env: Environment, hub: Contract): Promise<void> {
-  const currentConfig = clean(await hub.getConfiguration())
+  const currentConfigProxy = await hub.getConfiguration()
+  const currentConfig = clean(currentConfigProxy.toObject())
   const newConfig = clean(env.relayHubConfiguration)
   if (currentConfig === newConfig) {
     console.log('RelayHub: no configuration change')
   } else {
     console.log('RelayHub: apply new config', newConfig)
     await hub.setConfiguration(JSON.parse(newConfig))
-    const updatedConfig = clean(await hub.getConfiguration())
+    const resultConfig = await hub.getConfiguration()
+    const updatedConfig = clean(resultConfig.toObject())
     if (updatedConfig !== newConfig) {
       throw new Error(`FATAL: get/set configuration mismatch\nset=${newConfig}\nget=${updatedConfig}}`)
     }
@@ -246,7 +248,7 @@ export async function applyDeploymentConfig (hre: HardhatRuntimeEnvironment): Pr
 
   const contracts = await deployments.all()
   const relayHub = contracts.RelayHub ?? contracts.ArbRelayHub
-  const hub = new ethers.Contract(relayHub.address, relayHub.abi, ethers.provider.getSigner())
+  const hub = new ethers.Contract(relayHub.address, relayHub.abi, await ethers.provider.getSigner())
 
   await applyHubConfiguration(env, hub)
   await applyStakingTokenConfiguration(hre, env, hub)

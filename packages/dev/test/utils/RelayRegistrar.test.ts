@@ -1,4 +1,4 @@
-import { RelayRegistrarInstance, TestRelayHubForRegistrarInstance } from '@opengsn/contracts'
+import { RelayRegistrarInstance, TestRelayHubForRegistrarInstance } from '../../types/truffle-contracts'
 import { expect } from 'chai'
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 

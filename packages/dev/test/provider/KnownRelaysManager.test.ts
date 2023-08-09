@@ -20,7 +20,7 @@ import {
   StakeManagerInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
   TestRecipientInstance, TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../../types/truffle-contracts'
 import { configureGSN, deployHub, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
 

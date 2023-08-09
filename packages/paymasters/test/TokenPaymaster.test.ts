@@ -10,14 +10,13 @@ import {
   TestProxyInstance,
   TestTokenInstance,
   TestUniswapInstance,
-  TokenPaymasterInstance
-} from '../types/truffle-contracts'
-import {
+  TokenPaymasterInstance,
   ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
   StakeManagerInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
+
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import {
   RelayRequest,

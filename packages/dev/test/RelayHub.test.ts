@@ -21,6 +21,7 @@ import {
   ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
+  RelayRegistrarInstance,
   StakeManagerInstance,
   TestGatewayForwarderInstance,
   TestPaymasterConfigurableMisbehaviorInstance,
@@ -28,11 +29,10 @@ import {
   TestPaymasterStoreContextInstance,
   TestRecipientInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import { deployHub, encodeRevertReason, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
 import chaiAsPromised from 'chai-as-promised'
-import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { defaultGsnConfig } from '@opengsn/provider'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 

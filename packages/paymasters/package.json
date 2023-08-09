@@ -6,7 +6,9 @@
     "deploy": "hardhat deploy",
     "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
     "truffle-compile": "truffle compile --compile-all",
-    "typechain-generate": "yarn truffle-compile && typechain --target truffle-v5 './build/contracts/**/*.json'",
+    "typechain-generate": "yarn truffle-compile && yarn typechain-generate-truffle && yarn typechain-generate-ethers-v5",
+    "typechain-generate-truffle": "typechain --target truffle-v5 './build/contracts/**/*.json'",
+    "typechain-generate-ethers-v5": "typechain --target ethers-v5 './build/contracts/**/*.json'",
     "tsc": "tsc",
     "lint": "yarn run lint:js && yarn run lint:sol",
     "lint:js": "eslint -f unix .",
@@ -43,6 +45,7 @@
     "web3": "^1.7.4",
     "web3-eth-abi": "^1.7.4",
     "web3-eth-contract": "^1.7.4",
+    "web3-eth-accounts": "^1.7.4",
     "web3-utils": "^1.7.4"
   },
   "devDependencies": {

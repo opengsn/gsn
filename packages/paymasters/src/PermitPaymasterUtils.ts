@@ -1,6 +1,6 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { PrefixedHexString, fromRpcSig } from 'ethereumjs-util'
-import { getEip712Signature, TruffleContract, Address, IntString } from '@opengsn/common'
+import { getEip712Signature, Address, IntString } from '@opengsn/common'
 import { TypedMessage } from '@metamask/eth-sig-util'
 
 import {
@@ -13,6 +13,7 @@ import {
 import daiPermitAbi from './interfaces/PermitInterfaceDAI.json'
 import eip2612PermitAbi from './interfaces/PermitInterfaceEIP2612.json'
 import BN from 'bn.js'
+import { Contract } from 'ethers'
 
 interface Types extends MessageTypes {
   EIP712Domain: MessageTypeProperty[]
@@ -116,14 +117,7 @@ export async function signAndEncodeDaiPermit (
   forceNonce?: number,
   skipValidation = false
 ): Promise<PrefixedHexString> {
-  const DaiContract = TruffleContract({
-    useEthersV6: false,
-    contractName: 'DAIPermitInterface',
-    abi: daiPermitAbi
-  })
-
-  DaiContract.setProvider(provider, undefined)
-  const daiInstance = await DaiContract.at(token)
+  const daiInstance = new Contract(token, daiPermitAbi, provider)
   const nonce = (forceNonce ?? await daiInstance.nonces(holder)).toString()
   const chainId = parseInt((await provider.getNetwork()).chainId.toString())
   const permit: PermitInterfaceDAI = {
@@ -150,9 +144,9 @@ export async function signAndEncodeDaiPermit (
   const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)
   if (!skipValidation) {
-    await daiInstance.contract.estimateGas.permit(holder, spender, nonce, expiry, true, v, r, s)
+    await daiInstance.estimateGas.permit(holder, spender, nonce, expiry, true, v, r, s)
   }
-  return daiInstance.contract.interface.encodeFunctionData('permit', [holder, spender, nonce, expiry, true, v, r, s])
+  return daiInstance.interface.encodeFunctionData('permit', [holder, spender, nonce, expiry, true, v, r, s])
 }
 
 export async function signAndEncodeEIP2612Permit (
@@ -169,14 +163,8 @@ export async function signAndEncodeEIP2612Permit (
   forceNonce?: number,
   skipValidation = false
 ): Promise<PrefixedHexString> {
-  const EIP2612Contract = TruffleContract({
-    useEthersV6: false,
-    contractName: 'EIP2612Contract',
-    abi: eip2612PermitAbi
-  })
+  const eip2612TokenInstance = new Contract(token, eip2612PermitAbi, provider)
 
-  EIP2612Contract.setProvider(provider, undefined)
-  const eip2612TokenInstance = await EIP2612Contract.at(token)
   const nonce = forceNonce ?? await eip2612TokenInstance.nonces(owner)
   const chainId = parseInt((await provider.getNetwork()).chainId.toString())
   const permit: PermitInterfaceEIP2612 = {
@@ -204,7 +192,7 @@ export async function signAndEncodeEIP2612Permit (
   const { r, s, v } = fromRpcSig(signature)
   // we use 'estimateGas' to check against the permit method revert (hard to debug otherwise)
   if (!skipValidation) {
-    await eip2612TokenInstance.contract.estimateGas.permit(owner, spender, value, deadline, v, r, s)
+    await eip2612TokenInstance.estimateGas.permit(owner, spender, value, deadline, v, r, s)
   }
-  return eip2612TokenInstance.contract.interface.encodeFunctionData('permit', [owner, spender, value, deadline, v, r, s])
+  return eip2612TokenInstance.interface.encodeFunctionData('permit', [owner, spender, value, deadline, v, r, s])
 }

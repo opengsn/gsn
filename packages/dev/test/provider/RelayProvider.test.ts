@@ -23,7 +23,7 @@ import {
   TestRecipientInstance,
   TestTokenInstance,
   TestUtilInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../../types/truffle-contracts'
 import {
   Address,
   JsonRpcPayload,

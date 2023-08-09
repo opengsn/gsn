@@ -1,3 +1,5 @@
+import { BigNumber } from '@ethersproject/bignumber'
+
 import { CommandsLogic, WithdrawOptions } from '../CommandsLogic'
 import { gsnCommander, getKeystorePath, getServerConfig } from '../utils'
 import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
@@ -36,11 +38,11 @@ const commander = gsnCommander(['g'])
     config,
     broadcast: commander.broadcast,
     withdrawTarget: commander.target,
-    gasPrice: commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei') : undefined,
+    gasPrice: commander.gasPrice != null ? BigNumber.from(toWei(commander.gasPrice, 'gwei')) : undefined,
     useAccountBalance: commander.ethAccountAmount != null
   }
 
-  console.log(`Withdrawal amount is ${fromWei(withdrawOptions.withdrawAmount)}eth`)
+  console.log(`Withdrawal amount is ${fromWei(withdrawOptions.withdrawAmount.toString())}eth`)
   console.log('Should broadcast?', withdrawOptions.broadcast)
   console.log('Withdrawing to', withdrawOptions.withdrawTarget ?? '(owner)')
   const result = await logic.withdrawToOwner(withdrawOptions)

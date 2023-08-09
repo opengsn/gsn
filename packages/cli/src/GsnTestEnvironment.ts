@@ -98,7 +98,7 @@ class GsnTestEnvironmentClass {
 
     if (deploymentResult.paymasterAddress != null) {
       const balance = await commandsLogic.fundPaymaster(from, deploymentResult.paymasterAddress, ether('1'))
-      logger?.info(`Naive Paymaster successfully funded, balance: ${Web3.utils.fromWei(balance)}`)
+      logger?.info(`Naive Paymaster successfully funded, balance: ${Web3.utils.fromWei(balance.toString())}`)
     }
 
     return deploymentResult
@@ -283,7 +283,7 @@ class GsnTestEnvironmentClass {
       refreshStateTimeoutBlocks: 1,
       runPaymasterReputations: true,
       logLevel: 'error',
-      workerTargetBalance: 1e18,
+      workerTargetBalance: 1e18.toString(),
       ...relayServerParamsOverride
     }
     const transactionManager = new TransactionManager(relayServerDependencies, configureServer(relayServerParams))
@@ -317,6 +317,7 @@ class GsnTestEnvironmentClass {
         environment: defaultEnvironment,
         deployment
       })
+    await contractInteractor.init()
     await contractInteractor.initDeployment(deployment)
     await contractInteractor._validateERC165InterfacesClient(true)
     await contractInteractor._validateERC165InterfacesRelay()

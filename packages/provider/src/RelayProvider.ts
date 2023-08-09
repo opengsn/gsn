@@ -5,11 +5,12 @@ import { BigNumber } from '@ethersproject/bignumber'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { TypedMessage } from '@metamask/eth-sig-util'
 import {
-  JsonRpcProvider,
-  TransactionReceipt,
   ExternalProvider,
+  JsonRpcProvider,
+  JsonRpcSigner,
+  TransactionReceipt,
   TransactionRequest,
-  Web3Provider, JsonRpcSigner
+  Web3Provider
 } from '@ethersproject/providers'
 import { Interface, LogDescription } from '@ethersproject/abi'
 
@@ -19,15 +20,15 @@ import {
   Address,
   EventData,
   GSNConfig,
+  gsnRuntimeVersion,
   GsnTransactionDetails,
+  isSameAddress,
   JsonRpcPayload,
   JsonRpcResponse,
   LoggerInterface,
   SignTypedDataCallback,
   TransactionRejectedByPaymaster,
-  TransactionRelayed,
-  gsnRuntimeVersion,
-  isSameAddress
+  TransactionRelayed
 } from '@opengsn/common'
 
 import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
@@ -450,7 +451,7 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
     if (transactionHash === TX_NOTFOUND) {
       return this._createTransactionRevertedReceipt()
     }
-    const originalTransactionReceipt = await this.origProvider.getTransactionReceipt(transactionHash)
+    const originalTransactionReceipt = await this.origProvider.send('eth_getTransactionReceipt', [transactionHash])
     if (originalTransactionReceipt == null) {
       return null
     }
@@ -476,6 +477,9 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
       it.logIndex = it.logIndex ?? it.index
     })
     fixedTransactionReceipt.transactionHash = relayRequestID ?? fixedTransactionReceipt.transactionHash
+    // TODO: this was never intended, but it seems 'hash' is read by Ethers v6
+    // @ts-ignore
+    fixedTransactionReceipt.hash = fixedTransactionReceipt.actualTransactionHash
 
     // older Web3.js versions require 'status' to be an integer. Will be set to '0' if needed later in this method.
     // @ts-ignore

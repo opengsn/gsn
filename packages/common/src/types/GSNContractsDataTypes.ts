@@ -1,6 +1,6 @@
 import { Address, EventName, IntString } from './Aliases'
-import BN from 'bn.js'
 import { PrefixedHexString } from 'ethereumjs-util'
+import { BigNumber } from '@ethersproject/bignumber'
 
 // Empty interface used on purpose to mark various Event Infos in collections, used in StatisticsManager.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -100,12 +100,6 @@ export interface StakePenalizedEventInfo extends GNSContractsEvent {
   reward: IntString
 }
 
-export type StakeChangeEvent =
-  StakeAddedEventInfo
-  | StakeUnlockedEventInfo
-  | StakeWithdrawnEventInfo
-  | StakePenalizedEventInfo
-
 export interface HubAuthorizedEventInfo extends GNSContractsEvent {
   relayManager: Address
   relayHub: Address
@@ -118,9 +112,9 @@ export interface HubUnauthorizedEventInfo extends GNSContractsEvent {
 }
 
 export interface StakeInfo {
-  stake: BN
-  unstakeDelay: BN
-  withdrawTime: BN
+  stake: BigNumber
+  unstakeDelay: BigNumber
+  withdrawTime: BigNumber
   owner: Address
   token: Address
 }

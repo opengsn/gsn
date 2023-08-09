@@ -1,10 +1,8 @@
 import chalk from 'chalk'
 import { EventEmitter } from 'events'
 import { toBN, toHex } from 'web3-utils'
-import { PrefixedHexString, BN } from 'ethereumjs-util'
+import { PrefixedHexString } from 'ethereumjs-util'
 import { Block } from '@ethersproject/providers'
-
-import { IRelayHubInstance } from '@opengsn/contracts/types/truffle-contracts'
 
 import {
   Address,
@@ -38,7 +36,6 @@ import { GasPriceFetcher } from './GasPriceFetcher'
 import {
   address2topic,
   decodeRevertReason,
-  PaymasterGasAndDataLimits,
   randomInRange,
   sleep
 } from '@opengsn/common/dist/Utils'
@@ -54,6 +51,8 @@ import { ServerAction, ShortBlockInfo } from './StoredTransaction'
 import { TxStoreManager } from './TxStoreManager'
 import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
 import { Web3MethodsBuilder } from './Web3MethodsBuilder'
+import { IPaymaster, IRelayHub } from '@opengsn/contracts/types/ethers-contracts'
+import { BigNumber } from '@ethersproject/bignumber'
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
@@ -85,9 +84,9 @@ export class RelayServer extends EventEmitter {
   registrationManager: RegistrationManager
   chainId!: number
   networkId!: number
-  relayHubContract!: IRelayHubInstance
+  relayHubContract!: IRelayHub
 
-  trustedPaymastersGasAndDataLimits: Map<String | undefined, PaymasterGasAndDataLimits> = new Map<String | undefined, PaymasterGasAndDataLimits>()
+  trustedPaymastersGasAndDataLimits: Map<String | undefined, IPaymaster.GasAndDataLimitsStructOutput> = new Map<String | undefined, IPaymaster.GasAndDataLimitsStructOutput>()
 
   workerBalanceRequired: AmountRequired
 
@@ -110,7 +109,7 @@ export class RelayServer extends EventEmitter {
     this.transactionManager = transactionManager
     this.managerAddress = this.transactionManager.managerKeyManager.getAddress(0)
     this.workerAddress = this.transactionManager.workersKeyManager.getAddress(0)
-    this.workerBalanceRequired = new AmountRequired('Worker Balance', toBN(this.config.workerMinBalance), constants.ZERO_ADDRESS, this.logger)
+    this.workerBalanceRequired = new AmountRequired('Worker Balance', BigNumber.from(this.config.workerMinBalance.toString()), constants.ZERO_ADDRESS, this.logger)
     if (this.config.runPaymasterReputations) {
       if (dependencies.reputationManager == null) {
         throw new Error('ReputationManager is not initialized')
@@ -303,7 +302,7 @@ export class RelayServer extends EventEmitter {
   async validatePaymasterGasAndDataLimits (
     relayTransactionRequest: RelayTransactionRequest,
     relayRequestLimits: RelayRequestLimits,
-    gasAndDataLimits: PaymasterGasAndDataLimits
+    gasAndDataLimits: IPaymaster.GasAndDataLimitsStructOutput
   ): Promise<void> {
     const paymaster = relayTransactionRequest.relayRequest.relayData.paymaster
     this.verifyTransactionCalldataGasUsed(relayTransactionRequest, relayRequestLimits.transactionCalldataGasUsed)
@@ -347,11 +346,11 @@ export class RelayServer extends EventEmitter {
     }
   }
 
-  async verifyPaymasterBalance (maxPossibleCharge: BN, maxPossibleGasFactorReserve: number, paymaster: string): Promise<void> {
+  async verifyPaymasterBalance (maxPossibleCharge: BigNumber, maxPossibleGasFactorReserve: number, paymaster: string): Promise<void> {
     const paymasterBalance = await this.relayHubContract.balanceOf(paymaster)
     this.logger.debug(`paymaster balance: ${paymasterBalance.toString()}, maxCharge: ${maxPossibleCharge.toString()}`)
     this.logger.debug(`Estimated max charge of relayed tx: ${maxPossibleCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGasFactorReserve}`)
-    if (paymasterBalance.lt(maxPossibleCharge)) {
+    if (paymasterBalance.lt(maxPossibleCharge.toString())) {
       throw new Error(`paymaster balance too low: ${paymasterBalance.toString()}, maxCharge: ${maxPossibleCharge.toString()}`)
     }
   }
@@ -548,7 +547,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _replenishWorker (
-    workerReplenishAmount: BN,
+    workerReplenishAmount: BigNumber,
     currentBlockNumber: number,
     currentBlockHash: string,
     currentBlockTimestamp: number
@@ -558,7 +557,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       signer: this.managerAddress,
       serverAction: ServerAction.VALUE_TRANSFER,
       destination: this.workerAddress,
-      value: toHex(workerReplenishAmount),
+      value: workerReplenishAmount.toHexString(),
       creationBlockNumber: currentBlockNumber,
       creationBlockHash: currentBlockHash,
       creationBlockTimestamp: currentBlockTimestamp
@@ -568,14 +567,14 @@ latestBlock timestamp   | ${latestBlock.timestamp}
   }
 
   async _withdrawHubDeposit (
-    managerHubBalance: BN,
+    managerHubBalance: BigNumber,
     currentBlockNumber: number,
     currentBlockHash: string,
     currentBlockTimestamp: number
   ): Promise<PrefixedHexString> {
     this.logger.info(`withdrawing manager hub balance (${managerHubBalance.toString()}) to manager`)
     // Refill manager eth balance from hub balance
-    const method = await this.web3MethodsBuilder.getWithdrawMethod(this.managerAddress, managerHubBalance)
+    const method = await this.web3MethodsBuilder.getWithdrawMethod(this.managerAddress, managerHubBalance.toString())
     const details: SendTransactionDetails = {
       signer: this.managerAddress,
       serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
@@ -598,23 +597,23 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const transactionHashes: PrefixedHexString[] = []
     // get balances
     let managerEthBalance = this.registrationManager.balanceRequired.currentValue
-    const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
+    const managerHubBalance = await this.contractInteractor.hubBalanceOf(this.managerAddress)
 
     const isWithdrawalPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.DEPOSIT_WITHDRAWAL, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks)
     const isReplenishPendingForWorker = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.VALUE_TRANSFER, currentBlockNumber, this.config.recentActionAvoidRepeatDistanceBlocks, this.workerAddress)
     const mustReplenishWorker = !this.workerBalanceRequired.isSatisfied && !isReplenishPendingForWorker
-    const mustReplenishManager = toBN(this.config.managerMinBalance).gt(managerEthBalance) && !isWithdrawalPending
+    const mustReplenishManager = BigNumber.from(this.config.managerMinBalance.toString()).gt(managerEthBalance) && !isWithdrawalPending
 
     if (!mustReplenishManager && !mustReplenishWorker) {
       // all filled, nothing to do
       return transactionHashes
     }
 
-    const workerReplenishAmount = toBN(this.config.workerTargetBalance.toString()).sub(this.workerBalanceRequired.currentValue)
-    const managerReplenishAmount = toBN(this.config.managerTargetBalance.toString()).sub(managerEthBalance)
-    const canReplenishManager = managerHubBalance.gte(managerReplenishAmount)
-    const cantReplenishWorkerFromBalance = managerEthBalance.sub(toBN(this.config.managerMinBalance)).lt(workerReplenishAmount)
-    const canReplenishWorkerFromHubAndBalance = managerHubBalance.add(managerEthBalance).sub(toBN(this.config.managerMinBalance)).gte(workerReplenishAmount)
+    const workerReplenishAmount = BigNumber.from(this.config.workerTargetBalance.toString()).sub(this.workerBalanceRequired.currentValue)
+    const managerReplenishAmount = BigNumber.from(this.config.managerTargetBalance.toString()).sub(managerEthBalance)
+    const canReplenishManager = managerHubBalance.gte(managerReplenishAmount.toString())
+    const cantReplenishWorkerFromBalance = managerEthBalance.sub(BigNumber.from(this.config.managerMinBalance.toString())).lt(workerReplenishAmount)
+    const canReplenishWorkerFromHubAndBalance = managerHubBalance.add(managerEthBalance.toString()).sub(this.config.managerMinBalance.toString()).gte(workerReplenishAmount.toString())
     const mustWithdrawHubDeposit =
       (mustReplenishManager && canReplenishManager) ||
       (mustReplenishWorker && cantReplenishWorkerFromBalance && canReplenishWorkerFromHubAndBalance)
@@ -629,7 +628,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       this.logger.debug(
         `== replenishServer: manager eth balance=${managerEthBalance.toString()}  manager hub balance=${managerHubBalance.toString()}
           \n${this.workerBalanceRequired.description}\n refill=${workerReplenishAmount.toString()}`)
-      if (workerReplenishAmount.lt(managerEthBalance.sub(toBN(this.config.managerMinBalance)))) {
+      if (workerReplenishAmount.lt(managerEthBalance.sub(BigNumber.from(this.config.managerMinBalance.toString())))) {
         const transactionHash = await this._replenishWorker(workerReplenishAmount, currentBlockNumber, currentBlockHash, currentBlockTimestamp)
         transactionHashes.push(transactionHash)
       } else {
@@ -695,9 +694,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     if (this.shouldRefreshBalances) {
       await this.registrationManager.refreshBalance()
       this.workerBalanceRequired.currentValue = await this.getWorkerBalance(0)
-
-      isManagerBalanceReady = this.registrationManager.balanceRequired.currentValue.gte(toBN(this.config.managerMinBalance.toString()).divn(minBalanceToNotReadyFactor))
-      isWorkerBalanceReady = this.workerBalanceRequired.currentValue.gte(toBN(this.config.workerMinBalance.toString()).divn(minBalanceToNotReadyFactor))
+      isManagerBalanceReady = this.registrationManager.balanceRequired.currentValue.gte(BigNumber.from(this.config.managerMinBalance).div(minBalanceToNotReadyFactor))
+      isWorkerBalanceReady = this.workerBalanceRequired.currentValue.gte(BigNumber.from(this.config.workerMinBalance).div(minBalanceToNotReadyFactor))
 
       if (!isManagerBalanceReady || !isWorkerBalanceReady) {
         this.setReadyState(false)
@@ -708,8 +706,8 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       if (!isManagerBalanceReady) {
         this.logger.debug('manager balance too low')
       }
-      const shouldReplenishManager = this.registrationManager.balanceRequired.currentValue.lt(toBN(this.config.managerMinBalance.toString()))
-      const shouldReplenishWorker = this.workerBalanceRequired.currentValue.lt(toBN(this.config.workerMinBalance.toString()))
+      const shouldReplenishManager = this.registrationManager.balanceRequired.currentValue.lt(this.config.managerMinBalance.toString())
+      const shouldReplenishWorker = this.workerBalanceRequired.currentValue.lt(this.config.workerMinBalance.toString())
       this.shouldRefreshBalances = shouldReplenishManager || shouldReplenishWorker
     }
     return isManagerBalanceReady
@@ -722,9 +720,9 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     } = await this.contractInteractor.getGasFees(this.config.getGasFeesBlocks, this.config.getGasFeesPercentile)
 
     // server will not accept Relay Requests with MaxFeePerGas lower than BaseFeePerGas of a recent block
-    this.minMaxFeePerGas = parseInt(baseFeePerGas)
+    this.minMaxFeePerGas = baseFeePerGas.toNumber()
 
-    this.minMaxPriorityFeePerGas = Math.floor(parseInt(priorityFeePerGas) * this.config.gasPriceFactor)
+    this.minMaxPriorityFeePerGas = Math.floor(priorityFeePerGas.toNumber() * this.config.gasPriceFactor)
     if (this.minMaxPriorityFeePerGas === 0 && parseInt(this.config.defaultPriorityFee) > 0) {
       this.logger.debug(`Priority fee received from node is 0. Setting priority fee to ${this.config.defaultPriorityFee}`)
       this.minMaxPriorityFeePerGas = parseInt(this.config.defaultPriorityFee)
@@ -738,7 +736,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       throw new Error(`network minMaxFeePerGas ${this.minMaxFeePerGas} is higher than config.maxMaxFeePerGas ${this.config.maxMaxFeePerGas}`)
     }
 
-    const currentNetworkFeePerGas = parseInt(baseFeePerGas) + parseInt(priorityFeePerGas)
+    const currentNetworkFeePerGas = baseFeePerGas.toNumber() + priorityFeePerGas.toNumber()
     const shareOfMaximum = currentNetworkFeePerGas / parseInt(this.config.maxMaxFeePerGas)
     if (shareOfMaximum > 0.7) {
       this.logger.warn(`WARNING! Current network's reasonable fee per gas ${currentNetworkFeePerGas} is dangerously close to the config.maxMaxFeePerGas ${this.config.maxMaxFeePerGas}`)
@@ -785,12 +783,12 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     return transactionHashes
   }
 
-  async getManagerBalance (): Promise<BN> {
-    return toBN(await this.contractInteractor.getBalance(this.managerAddress, 'pending'))
+  async getManagerBalance (): Promise<BigNumber> {
+    return await this.contractInteractor.getBalance(this.managerAddress, 'pending')
   }
 
-  async getWorkerBalance (workerIndex: number): Promise<BN> {
-    return toBN(await this.contractInteractor.getBalance(this.workerAddress, 'pending'))
+  async getWorkerBalance (workerIndex: number): Promise<BigNumber> {
+    return await this.contractInteractor.getBalance(this.workerAddress, 'pending')
   }
 
   async _shouldRegisterAgain (currentBlockNumber: number, currentBlockTimestamp: number): Promise<boolean> {
@@ -886,10 +884,10 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       const reserveBalance = toBN(this.config.managerTargetBalance).add(toBN(this.config.workerTargetBalance))
       const effectiveWithdrawOnBalance = toBN(this.config.withdrawToOwnerOnBalance).add(reserveBalance)
       const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
-      if (managerHubBalance.lt(effectiveWithdrawOnBalance)) {
+      if (managerHubBalance.lt(effectiveWithdrawOnBalance.toString())) {
         return txHashes
       }
-      const withdrawalAmount = managerHubBalance.sub(reserveBalance)
+      const withdrawalAmount = managerHubBalance.sub(reserveBalance.toString())
       txHashes = txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(currentBlockNumber, currentBlockHash, currentBlockTimestamp, withdrawalAmount))
       this.logger.info(`Withdrew ${withdrawalAmount.toString()} to owner`)
       return txHashes

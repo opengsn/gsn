@@ -1,6 +1,5 @@
 import chaiAsPromised from 'chai-as-promised'
 import sinon, { SinonStub } from 'sinon'
-import { toBN } from 'web3-utils'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
@@ -49,10 +48,10 @@ contract('RelaySelectionManager', function (accounts) {
     waitForSuccessSliceSize
   })
   const eventInfo: RegistrarRelayInfo = {
-    firstSeenBlockNumber: toBN(0),
-    lastSeenBlockNumber: toBN(0),
-    firstSeenTimestamp: toBN(0),
-    lastSeenTimestamp: toBN(0),
+    firstSeenBlockNumber: 0,
+    lastSeenBlockNumber: 0,
+    firstSeenTimestamp: 0,
+    lastSeenTimestamp: 0,
     relayManager: '',
     relayUrl: 'http://relayUrl'
   }

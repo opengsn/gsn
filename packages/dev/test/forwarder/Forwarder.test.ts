@@ -2,7 +2,7 @@ import {
   ForwarderInstance,
   TestForwarderInstance,
   TestForwarderTargetInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../../types/truffle-contracts'
 
 import {
   SignTypedDataVersion,
@@ -16,7 +16,7 @@ import ethWallet from 'ethereumjs-wallet'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { ether, expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
-import { DomainRegistered, RequestTypeRegistered } from '@opengsn/contracts/types/truffle-contracts/IForwarder'
+import { DomainRegistered, RequestTypeRegistered } from '../../types/truffle-contracts/IForwarder'
 import { ForwardRequest } from '@opengsn/common'
 
 const TestForwarderTarget = artifacts.require('TestForwarderTarget')

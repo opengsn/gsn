@@ -1,46 +1,41 @@
-import BN from 'bn.js'
-
 import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
 
 import {
   Address,
-  Contract,
   LoggerInterface,
-  TruffleContract,
-  constants,
-  toBN
+  constants
 } from '@opengsn/common'
-import { IERC20Instance } from '@opengsn/contracts'
-import { IChainlinkOracleInstance, PermitERC20UniswapV3PaymasterInstance } from '../types/truffle-contracts'
+import { IERC20 } from '@opengsn/contracts'
+import {
+  IChainlinkOracle, IChainlinkOracle__factory,
+  IERC20__factory,
+  PermitERC20UniswapV3Paymaster,
+  PermitERC20UniswapV3Paymaster__factory
+} from '../types/ethers-contracts'
 
-import IERC20TokenInterface from '@opengsn/common/dist/interfaces/IERC20Token.json'
-import PermitERC20UniswapV3Paymaster from './interfaces/PermitERC20UniswapV3Paymaster.json'
-import IChainlinkOracle from './interfaces/IChainlinkOracle.json'
 import { wrapInputProviderLike } from '@opengsn/provider'
+import { BigNumber } from 'ethers'
 
 export interface TokenSwapData {
   priceFeed: string
   reverseQuote: boolean
-  uniswapPoolFee: BN
-  slippage: BN
+  uniswapPoolFee: number
+  slippage: number
   permitMethodSelector: string
-  priceDivisor: BN
-  validFromBlockNumber: BN
+  priceDivisor: BigNumber
+  validFromBlockNumber: BigNumber
 }
 
 export class TokenPaymasterInteractor {
   private provider: JsonRpcProvider
-  private ERC20Instance!: Contract<IERC20Instance>
-  private PermitERC20UniswapV3Paymaster!: Contract<PermitERC20UniswapV3PaymasterInstance>
-  private ChainlinkOracle!: Contract<IChainlinkOracleInstance>
   private readonly paymasterAddress: Address
   private readonly logger: LoggerInterface
 
   tokenAddress?: Address
   tokenSwapData?: TokenSwapData
 
-  paymaster!: PermitERC20UniswapV3PaymasterInstance
-  token!: IERC20Instance
+  paymaster!: PermitERC20UniswapV3Paymaster
+  token!: IERC20
 
   constructor (
     provider: JsonRpcProvider | ExternalProvider,
@@ -54,24 +49,6 @@ export class TokenPaymasterInteractor {
 
   async init (): Promise<this> {
     this.provider = (await wrapInputProviderLike(this.provider)).provider
-    this.ERC20Instance = TruffleContract({
-      useEthersV6: false,
-      contractName: 'ERC20Instance',
-      abi: IERC20TokenInterface
-    })
-    this.PermitERC20UniswapV3Paymaster = TruffleContract({
-      useEthersV6: false,
-      contractName: 'PermitERC20UniswapV3Paymaster',
-      abi: PermitERC20UniswapV3Paymaster
-    })
-    this.ChainlinkOracle = TruffleContract({
-      useEthersV6: false,
-      contractName: 'IChainlinkOracle',
-      abi: IChainlinkOracle
-    })
-    this.ChainlinkOracle.setProvider(this.provider, undefined)
-    this.ERC20Instance.setProvider(this.provider, undefined)
-    this.PermitERC20UniswapV3Paymaster.setProvider(this.provider, undefined)
     this.paymaster = await this._createPermitERC20UniswapV3Paymaster(this.paymasterAddress)
     return this
   }
@@ -82,19 +59,19 @@ export class TokenPaymasterInteractor {
     this.tokenSwapData = await this.paymaster.getTokenSwapData(tokenAddress)
   }
 
-  async _createIERC20Instance (address: Address): Promise<IERC20Instance> {
-    return await this.ERC20Instance.at(address)
+  async _createIERC20Instance (address: Address): Promise<IERC20> {
+    return IERC20__factory.connect(address, this.provider)
   }
 
-  async _createPermitERC20UniswapV3Paymaster (address: Address): Promise<PermitERC20UniswapV3PaymasterInstance> {
-    return await this.PermitERC20UniswapV3Paymaster.at(address)
+  async _createPermitERC20UniswapV3Paymaster (address: Address): Promise<PermitERC20UniswapV3Paymaster> {
+    return PermitERC20UniswapV3Paymaster__factory.connect(address, this.provider)
   }
 
-  async _createChainlinkOracleInstance (address: Address): Promise<IChainlinkOracleInstance> {
-    return await this.ChainlinkOracle.at(address)
+  async _createChainlinkOracleInstance (address: Address): Promise<IChainlinkOracle> {
+    return IChainlinkOracle__factory.connect(address, this.provider)
   }
 
-  async getAllowance (owner: Address, spender: Address): Promise<BN> {
+  async getAllowance (owner: Address, spender: Address): Promise<BigNumber> {
     return await this.token.allowance(owner, spender)
   }
 
@@ -106,19 +83,19 @@ export class TokenPaymasterInteractor {
     return await this.paymaster.isTokenSupported(token)
   }
 
-  async tokenBalanceOf (owner: Address, tokenAddress: Address): Promise<BN> {
+  async tokenBalanceOf (owner: Address, tokenAddress: Address): Promise<BigNumber> {
     const tokenInstance = await this._createIERC20Instance(tokenAddress)
     return await tokenInstance.balanceOf(owner)
   }
 
-  async tokenPaymasterAllowance (owner: Address, tokenAddress: Address): Promise<BN> {
+  async tokenPaymasterAllowance (owner: Address, tokenAddress: Address): Promise<BigNumber> {
     const tokenInstance = await this._createIERC20Instance(tokenAddress)
     return await tokenInstance.allowance(owner, this.paymaster.address)
   }
 
-  async tokenToWei (tokenAddress: Address, tokenAmount: BN): Promise<{
-    actualQuote: BN
-    amountInWei: BN
+  async tokenToWei (tokenAddress: Address, tokenAmount: BigNumber): Promise<{
+    actualQuote: BigNumber
+    amountInWei: BigNumber
   }> {
     const tokenSwapData = await this.paymaster.getTokenSwapData(tokenAddress)
     const chainlinkInstance = await this._createChainlinkOracleInstance(tokenSwapData.priceFeed)
@@ -128,11 +105,11 @@ export class TokenPaymasterInteractor {
     try {
       const actualQuote = await this.paymaster.toActualQuote(quote.toString(), tokenSwapData.priceDivisor.toString())
       this.logger.debug(`actualQuote=${actualQuote.toString()}`)
-      if (tokenAmount.gt(toBN(10).pow(toBN(30)))) {
+      if (tokenAmount.gt(BigNumber.from(10).pow(30))) {
         this.logger.debug(`Amount to convert is > 1e30 which is infinity in most cases (tokenAddress=${tokenAddress})`)
         return {
-          actualQuote: toBN(0),
-          amountInWei: constants.MAX_UINT256
+          actualQuote: BigNumber.from(0),
+          amountInWei: BigNumber.from(constants.MAX_UINT256.toString())
         }
       }
       const amountInWei = await this.paymaster.tokenToWei(tokenAmount.toString(), actualQuote.toString(), tokenSwapData.reverseQuote)
@@ -142,8 +119,8 @@ export class TokenPaymasterInteractor {
       this.logger.error(`Failed to convert token balance to Ether quote ${description}`)
       this.logger.error(error)
       return {
-        actualQuote: toBN(0),
-        amountInWei: toBN(0)
+        actualQuote: BigNumber.from(0),
+        amountInWei: BigNumber.from(0)
       }
     }
   }

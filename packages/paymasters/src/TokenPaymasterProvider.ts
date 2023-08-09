@@ -80,7 +80,7 @@ export class TokenPaymasterProvider extends RelayProvider {
     }
     const allowance = await this.tokenPaymasterInteractor.getAllowance(relayRequest.request.from, relayRequest.relayData.paymaster)
     let permitMethod = ''
-    if (allowance.eqn(0)) {
+    if (allowance.eq(0)) {
       const domainSeparator: EIP712Domain =
         this.config.tokenPaymasterDomainSeparators[this.tokenPaymasterInteractor.token.address]
       if (this.tokenPaymasterInteractor.tokenSwapData?.permitMethodSelector === PERMIT_SELECTOR_DAI) {

@@ -32,6 +32,7 @@ yarn-error.log
 /lerna-debug.log
 /packages/contracts/build/
 /packages/contracts/json-input.json
+/packages/contracts/types/ethers-contracts/
 /packages/contracts/types/truffle-contracts/
 /verdaccio/db/
 /.yarnrc
@@ -47,3 +48,5 @@ hardhat.log
 /packages/deployer/contracts-link
 /packages/deployer/all-networks.json
 /packages/deployer/deployments/
+/Project.xml
+/packages/dev/types/truffle-contracts/

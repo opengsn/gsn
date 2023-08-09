@@ -6,7 +6,7 @@ import {
   RelayRegistrarInstance,
   StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance, TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import { deployHub } from './TestUtils'
 import { defaultEnvironment, constants, splitRelayUrlForRegistrar } from '@opengsn/common'
 

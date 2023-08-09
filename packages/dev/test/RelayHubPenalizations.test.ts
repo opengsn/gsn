@@ -28,7 +28,7 @@ import {
   RelayHubInstance, StakeManagerInstance,
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance, TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 
 import { deployHub, evmMineMany, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 

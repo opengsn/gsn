@@ -19,11 +19,11 @@ import {
   ForwarderInstance,
   PenalizerInstance,
   RelayHubInstance,
+  RelayRegistrarInstance,
   StakeManagerInstance, TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance, TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 
-import { RelayRegistrarInstance } from '@opengsn/contracts'
 import { cleanValue } from './utils/chaiHelper'
 import { defaultGsnConfig } from '@opengsn/provider'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'

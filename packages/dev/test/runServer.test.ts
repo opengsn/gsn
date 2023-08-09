@@ -6,7 +6,7 @@ import {
   TestPaymasterEverythingAcceptedInstance,
   TestRecipientInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import { deployHub, emptyBalance, evmMineMany, serverWorkDir, startRelay, stopRelay } from './TestUtils'
 import { ChildProcessWithoutNullStreams } from 'child_process'
 import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'

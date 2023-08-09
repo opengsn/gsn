@@ -5,7 +5,7 @@ import { defaultGsnConfig } from '@opengsn/provider'
 
 import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
-import { formatEther, parseEther } from 'ethers/lib/utils'
+import { formatEther, parseEther } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { ethers } from 'hardhat'
 
@@ -15,8 +15,6 @@ import {
   printRelayInfo,
   setField
 } from '../src/deployUtils'
-
-const { AddressZero } = ethers.constants
 
 const FORWARDER_FILE = '@opengsn/contracts/src/forwarder/Forwarder.sol:Forwarder'
 const PENALIZER_FILE = '@opengsn/contracts/src/Penalizer.sol:Penalizer'
@@ -111,7 +109,7 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
         constants.ARBITRUM_ARBSYS, // ArbSys
         stakeManager.address,
         penalizer.address,
-        AddressZero, // batch gateway
+        ethers.ZeroAddress, // batch gateway
         relayRegistrar.address,
         hubConfig
       ]
@@ -125,7 +123,7 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
       args: [
         stakeManager.address,
         penalizer.address,
-        AddressZero, // batch gateway
+        ethers.ZeroAddress, // batch gateway
         relayRegistrar.address,
         hubConfig
       ]
@@ -155,7 +153,7 @@ export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): P
     await setField(deployments, paymasterContractName, 'getTrustedForwarder', 'setTrustedForwarder', deployedForwarder.address, deployer)
 
     const paymasterBalance = await deployments.read(hubContractName, 'balanceOf', deployedPm.address)
-    console.log('current paymaster balance=', formatEther(paymasterBalance))
+    console.log('current paymaster balance=', formatEther(paymasterBalance.toString()))
     const depositValue = parseEther(env.deploymentConfiguration.paymasterDeposit)
 
     if (paymasterBalance.toString() === '0') {

@@ -31,7 +31,7 @@ import {
   PenalizerInstance,
   RelayRegistrarInstance,
   TestTokenInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../types/truffle-contracts'
 import { deployHub, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'

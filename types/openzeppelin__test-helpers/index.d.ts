@@ -1,5 +1,5 @@
 declare module '@openzeppelin/test-helpers' {
-  export function ether (value: string): BN
+  export function ether (value: string): any
 
   export const expectEvent: any
   export const expectRevert: any

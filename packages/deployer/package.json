@@ -15,6 +15,7 @@
     "test-only": "hardhat test --network npmtest"
   },
   "dependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.4",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
     "@nomiclabs/hardhat-web3": "^2.0.0",
@@ -23,8 +24,8 @@
     "axios": "^0.27.2",
     "chai": "^4.3.6",
     "chalk": "^4.1.2",
-    "ethers": "^5.7.2",
-    "hardhat": "^2.6.8",
+    "ethers": "^6.6.5",
+    "hardhat": "^2.17.0",
     "hardhat-deploy": "^0.11.5"
   }
 }

@@ -1,11 +1,10 @@
 {
   "extends": "../../tsconfig.packages.json",
   "include": [
-    "src/**/*.ts",
-    "src/interfaces/*.json"
+    "types/**/*.ts",
   ],
   "compilerOptions": {
-    "rootDir": "src",
+    "rootDir": ".",
     "outDir": "dist"
   }
 }

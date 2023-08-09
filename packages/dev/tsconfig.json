@@ -4,10 +4,10 @@
     "src/**/*.ts",
     "deploy/*.ts",
     "deployment-config.ts",
-    "hardhat.config.ts",
+    "../contracts/hardhat.config.ts",
     "test/**/*.ts",
-    "../contracts/types/truffle-contracts/index.d.ts",
-    "../contracts/types/truffle-contracts/types.d.ts"
+    "types/truffle-contracts/index.d.ts",
+    "types/truffle-contracts/types.d.ts"
   ],
   "compilerOptions": {
     "outDir": "dist"

@@ -1,1 +1,1 @@
-ignores: ["@openzeppelin/contracts", "@uniswap/v3-periphery", "solc-0.8"]
+ignores: ["@openzeppelin/contracts", "@uniswap/v3-periphery", "solc-0.8", "web3-eth-accounts"]

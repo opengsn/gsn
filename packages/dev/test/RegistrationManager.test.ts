@@ -1,6 +1,5 @@
 import { HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
-import BN from 'bn.js'
 import { toChecksumAddress } from 'ethereumjs-util'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
@@ -39,6 +38,7 @@ import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
+import { BigNumber } from '@ethersproject/bignumber'
 
 const TestRelayHub = artifacts.require('TestRelayHub')
 const TestToken = artifacts.require('TestToken')
@@ -86,7 +86,7 @@ contract('RegistrationManager', function (accounts) {
       assert.equal(transactionHashes.length, 0)
       const expectedBalance = env.web3.utils.toWei('2', 'ether')
       let managerBalance = await relayServer.getManagerBalance()
-      assert.notEqual(managerBalance.cmp(toBN(expectedBalance)), 0)
+      assert.isFalse(managerBalance.eq(expectedBalance))
       await env.web3.eth.sendTransaction({
         to: relayServer.managerAddress,
         from: relayOwner,
@@ -94,7 +94,7 @@ contract('RegistrationManager', function (accounts) {
       })
       latestBlock = await provider.getBlock('latest')
       managerBalance = await relayServer.getManagerBalance()
-      assert.equal(managerBalance.cmp(toBN(expectedBalance)), 0, 'should have balance now')
+      assert.isTrue(managerBalance.eq(expectedBalance), 'should have balance now')
       transactionHashes = await relayServer._worker(latestBlock)
       assert.equal(transactionHashes.length, 1, 'should only set owner 1')
       const tx = await web3.eth.getTransaction(transactionHashes[0])
@@ -287,18 +287,18 @@ contract('RegistrationManager', function (accounts) {
     describe('Withdrawn event', function () {
       async function assertSendBalancesToOwner (
         server: RelayServer,
-        managerHubBalanceBefore: BN,
-        managerBalanceBefore: BN,
-        workerBalanceBefore: BN): Promise<void> {
+        managerHubBalanceBefore: BigNumber,
+        managerBalanceBefore: BigNumber,
+        workerBalanceBefore: BigNumber): Promise<void> {
         const gasPrice = await env.web3.eth.getGasPrice()
-        const ownerBalanceBefore = toBN(await env.web3.eth.getBalance(server.registrationManager.ownerAddress!))
+        const ownerBalanceBefore = BigNumber.from(await env.web3.eth.getBalance(server.registrationManager.ownerAddress!))
         assert.equal(server.registrationManager.stakeRequired.currentValue.toString(), oneEther.toString())
         // TODO: assert on withdrawal block?
         // assert.equal(server.config.withdrawBlock?.toString(), '0')
         const latestBlock = await provider.getBlock('latest')
         const receipts = await server._worker(latestBlock)
-        const totalTxCosts: BN = await getTotalTxCosts(receipts, gasPrice)
-        const ownerBalanceAfter = toBN(await env.web3.eth.getBalance(server.registrationManager.ownerAddress!))
+        const totalTxCosts = await getTotalTxCosts(receipts, gasPrice)
+        const ownerBalanceAfter = BigNumber.from(await env.web3.eth.getBalance(server.registrationManager.ownerAddress!))
         assert.equal(
           ownerBalanceAfter.sub(
             ownerBalanceBefore).toString(),
@@ -311,8 +311,8 @@ contract('RegistrationManager', function (accounts) {
         const managerBalanceAfter = await server.getManagerBalance()
         const workerBalanceAfter = await server.getWorkerBalance(workerIndex)
         assert.isTrue(managerHubBalanceAfter.eqn(0))
-        assert.isTrue(managerBalanceAfter.eqn(0))
-        assert.isTrue(workerBalanceAfter.eqn(0))
+        assert.isTrue(managerBalanceAfter.eq(0))
+        assert.isTrue(workerBalanceAfter.eq(0))
         // TODO
         // assert.isTrue(server.withdrawBlock?.gtn(0))
       }
@@ -343,9 +343,9 @@ contract('RegistrationManager', function (accounts) {
         const managerBalanceBefore = await newServer.getManagerBalance()
         const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
         assert.isTrue(managerHubBalanceBefore.gtn(0))
-        assert.isTrue(managerBalanceBefore.gtn(0))
-        assert.isTrue(workerBalanceBefore.gtn(0))
-        await assertSendBalancesToOwner(newServer, managerHubBalanceBefore, managerBalanceBefore, workerBalanceBefore)
+        assert.isTrue(managerBalanceBefore.gt(0))
+        assert.isTrue(workerBalanceBefore.gt(0))
+        await assertSendBalancesToOwner(newServer, BigNumber.from(managerHubBalanceBefore.toString()), managerBalanceBefore, workerBalanceBefore)
       })
 
       it('send balances to owner when manager hub balance < tx cost ', async function () {
@@ -365,9 +365,9 @@ contract('RegistrationManager', function (accounts) {
         const managerBalanceBefore = await newServer.getManagerBalance()
         const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
         assert.isTrue(managerHubBalanceBefore.eqn(0))
-        assert.isTrue(managerBalanceBefore.gtn(0))
-        assert.isTrue(workerBalanceBefore.gtn(0))
-        await assertSendBalancesToOwner(newServer, managerHubBalanceBefore, managerBalanceBefore, workerBalanceBefore)
+        assert.isTrue(managerBalanceBefore.gt(0))
+        assert.isTrue(workerBalanceBefore.gt(0))
+        await assertSendBalancesToOwner(newServer, BigNumber.from(managerHubBalanceBefore.toString()), managerBalanceBefore, workerBalanceBefore)
       })
     })
 
@@ -448,10 +448,10 @@ contract('RegistrationManager', function (accounts) {
 
         const managerHubBalanceBefore = await env.relayHub.balanceOf(newServer.managerAddress)
         const managerBalanceBefore = await newServer.getManagerBalance()
-        const workerBalanceBefore: BN = await newServer.getWorkerBalance(workerIndex)
+        const workerBalanceBefore = await newServer.getWorkerBalance(workerIndex)
         assert.isTrue(managerHubBalanceBefore.gtn(0))
-        assert.isTrue(managerBalanceBefore.gtn(0))
-        assert.isTrue(workerBalanceBefore.gtn(0))
+        assert.isTrue(managerBalanceBefore.gt(0))
+        assert.isTrue(workerBalanceBefore.gt(0))
         const ownerBalanceBefore = toBN(await env.web3.eth.getBalance(relayOwner))
         assert.isTrue(newServer.registrationManager.isHubAuthorized, 'Hub should be authorized in server')
 
@@ -463,19 +463,19 @@ contract('RegistrationManager', function (accounts) {
         const gasPrice = await env.web3.eth.getGasPrice()
         assert.equal(receipts.length, 2)
         // TODO: these two hard-coded indexes are dependent on the order of operations in 'withdrawAllFunds'
-        const workerEthTxCost: BN = await getTotalTxCosts([receipts[1]], gasPrice)
+        const workerEthTxCost = await getTotalTxCosts([receipts[1]], gasPrice)
         const managerHubSendTxCost = await getTotalTxCosts([receipts[0]], gasPrice)
         const ownerBalanceAfter = toBN(await env.web3.eth.getBalance(relayOwner))
         const managerHubBalanceAfter = await env.relayHub.balanceOf(newServer.managerAddress)
         const managerBalanceAfter = await newServer.getManagerBalance()
         const workerBalanceAfter = await newServer.getWorkerBalance(workerIndex)
         assert.isTrue(managerHubBalanceAfter.eqn(0))
-        assert.isTrue(workerBalanceAfter.eqn(0))
+        assert.isTrue(workerBalanceAfter.eq(0))
         assert.equal(managerBalanceAfter.toString(), managerBalanceBefore.sub(managerHubSendTxCost).toString())
         assert.equal(
           ownerBalanceAfter.sub(
             ownerBalanceBefore).toString(),
-          managerHubBalanceBefore.add(workerBalanceBefore).sub(workerEthTxCost).toString(),
+          BigNumber.from(managerHubBalanceBefore.toString()).add(workerBalanceBefore).sub(workerEthTxCost).toString(),
           `ownerBalanceAfter(${ownerBalanceAfter.toString()}) - ownerBalanceBefore(${ownerBalanceBefore.toString()}) !=
          managerHubBalanceBefore(${managerHubBalanceBefore.toString()}) + workerBalanceBefore(${workerBalanceBefore.toString()})
          - workerEthTxCost(${workerEthTxCost.toString()})`)
@@ -530,8 +530,8 @@ contract('RegistrationManager', function (accounts) {
         // TODO: this is horrible!!!
         newServer.registrationManager.isStakeLocked = true
         newServer.registrationManager.isHubAuthorized = true
-        newServer.registrationManager.stakeRequired.requiredValue = toBN(0)
-        newServer.registrationManager.balanceRequired.requiredValue = toBN(0)
+        newServer.registrationManager.stakeRequired.requiredValue = BigNumber.from(0)
+        newServer.registrationManager.balanceRequired.requiredValue = BigNumber.from(0)
         await newServer.registrationManager.refreshStake(latestBlock.number, latestBlock.hash, toNumber(latestBlock.timestamp))
         assert.equal(newServer.registrationManager.stakeRequired.currentValue.toString(), oneEther.toString())
         assert.equal(newServer.registrationManager.ownerAddress, relayOwner, 'owner should be set after refreshing stake')
@@ -571,8 +571,8 @@ contract('RegistrationManager', function (accounts) {
         await newServer._worker(latestBlock)
         newServer.registrationManager.isStakeLocked = true
         newServer.registrationManager.isHubAuthorized = true
-        newServer.registrationManager.stakeRequired.requiredValue = toBN(0)
-        newServer.registrationManager.balanceRequired.requiredValue = toBN(0)
+        newServer.registrationManager.stakeRequired.requiredValue = BigNumber.from(0)
+        newServer.registrationManager.balanceRequired.requiredValue = BigNumber.from(0)
       })
 
       afterEach(async function () {
@@ -600,9 +600,9 @@ contract('RegistrationManager', function (accounts) {
       it('should not attempt registration if incorrect token is staked on hub', async function () {
         const wrongToken = await TestToken.new()
         const stake = ether('10')
-        await wrongToken.mint(stake, { from: env.relayOwner })
-        await wrongToken.approve(env.stakeManager.address, stake, { from: env.relayOwner })
-        await env.stakeManager.stakeForRelayManager(wrongToken.address, env.relayServer.managerAddress, unstakeDelay, stake, {
+        await wrongToken.mint(stake.toString(), { from: env.relayOwner })
+        await wrongToken.approve(env.stakeManager.address, stake.toString(), { from: env.relayOwner })
+        await env.stakeManager.stakeForRelayManager(wrongToken.address, env.relayServer.managerAddress, unstakeDelay, stake.toString(), {
           from: env.relayOwner
         })
         await env.stakeManager.authorizeHubByOwner(env.relayServer.managerAddress, env.relayHub.address, {
@@ -622,7 +622,7 @@ contract('RegistrationManager', function (accounts) {
   // note: relies on first 'before' to initialize server
   describe('#assertRegistered()', function () {
     before(function () {
-      relayServer.registrationManager.stakeRequired._requiredValue = toBN(1e20)
+      relayServer.registrationManager.stakeRequired._requiredValue = BigNumber.from(1e20.toString())
     })
 
     it('should return false if the stake requirement is not satisfied', async function () {

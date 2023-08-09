@@ -98,6 +98,8 @@ async function getProvider (
   const logger = createCommandsLogger(commander.loglevel)
   const mnemonic = getMnemonic(commander.mnemonic)
   const logic = new CommandsLogic(nodeURL, logger, {}, mnemonic, commander.derivationPath, commander.derivationIndex, commander.privateKeyHex)
+  await logic.init()
+
   const { provider, from } = await getProvider(
     commander.to,
     commander.paymaster,
@@ -132,7 +134,7 @@ async function getProvider (
   }
   const methodParams = commander.methodParams
 
-  const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : await logic.getGasPrice())
+  const gasPrice = toHex(commander.gasPrice != null ? toWei(commander.gasPrice, 'gwei').toString() : (await logic.getGasPrice()).toString())
   const gas = commander.gasLimit
 
   const receipt = await method(...methodParams).send({

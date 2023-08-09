@@ -14,7 +14,7 @@ import Web3 from 'web3'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import {
   TestRecipientInstance
-} from '@opengsn/contracts/types/truffle-contracts'
+} from '../../types/truffle-contracts'
 import { Address } from '@opengsn/common'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'

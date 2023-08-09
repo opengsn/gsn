@@ -1,7 +1,7 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
+import { BigNumber } from '@ethersproject/bignumber'
 import { TransactionReceipt } from 'web3-core'
-import { toBN } from 'web3-utils'
 
 import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
@@ -67,11 +67,11 @@ export async function assertRelayAdded (
   }
 }
 
-export async function getTotalTxCosts (transactionHashes: PrefixedHexString[], gasPrice: string): Promise<BN> {
+export async function getTotalTxCosts (transactionHashes: PrefixedHexString[], gasPrice: string): Promise<BigNumber> {
   const receipts = await resolveAllReceipts(transactionHashes)
   // @ts-ignore
-  return receipts.map(r => toBN(r.gasUsed).mul(toBN(r.effectiveGasPrice))).reduce(
-    (previous, current) => previous.add(current), toBN(0))
+  return receipts.map(r => BigNumber.from(r.gasUsed).mul(BigNumber.from(r.effectiveGasPrice))).reduce(
+    (previous, current) => previous.add(current), BigNumber.from(0))
 }
 
 export interface ServerWorkdirs {

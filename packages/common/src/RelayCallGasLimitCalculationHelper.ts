@@ -1,12 +1,13 @@
-import BN from 'bn.js'
+import { BigNumber } from '@ethersproject/bignumber'
+import { IPaymaster } from '@opengsn/contracts/types/ethers-contracts'
 
 import { Address, IntString } from './types/Aliases'
 import { ContractInteractor, RelayCallABI } from './ContractInteractor'
 import { LoggerInterface } from './LoggerInterface'
-import { PaymasterGasAndDataLimits, toNumber } from './Utils'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { constants } from './Constants'
 import { toBN } from './web3js/Web3JSUtils'
+import { toNumber, bigNumberMin } from './Utils'
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -24,8 +25,8 @@ const GAS_RESERVE = 100000
 
 export interface RelayRequestLimits {
   effectiveAcceptanceBudgetGasUsed: number
-  maxPossibleGasUsed: BN
-  maxPossibleCharge: BN
+  maxPossibleGasUsed: BigNumber
+  maxPossibleCharge: BigNumber
   transactionCalldataGasUsed: number
 }
 
@@ -51,7 +52,7 @@ export class RelayCallGasLimitCalculationHelper {
    */
   async calculateRelayRequestLimits (
     relayTransactionRequest: RelayTransactionRequest,
-    gasAndDataLimits: PaymasterGasAndDataLimits
+    gasAndDataLimits: IPaymaster.GasAndDataLimitsStructOutput
   ): Promise<RelayRequestLimits> {
     const relayCallAbiInput: RelayCallABI = {
       domainSeparatorName: relayTransactionRequest.metadata.domainSeparatorName,
@@ -89,8 +90,8 @@ export class RelayCallGasLimitCalculationHelper {
     return {
       effectiveAcceptanceBudgetGasUsed,
       transactionCalldataGasUsed,
-      maxPossibleCharge: toBN(maxPossibleCharge.toString()),
-      maxPossibleGasUsed: toBN(maxPossibleGasUsedFactorReserve)
+      maxPossibleCharge: BigNumber.from(maxPossibleCharge.toString()),
+      maxPossibleGasUsed: BigNumber.from(maxPossibleGasUsedFactorReserve)
     }
   }
 
@@ -101,22 +102,22 @@ export class RelayCallGasLimitCalculationHelper {
   calculateTransactionMaxPossibleGasUsed (
     // TODO: maybe I need a function to return 'msgDataLength', 'calldataGasUsed'?
     msgDataLength: number,
-    gasAndDataLimits: PaymasterGasAndDataLimits,
+    gasAndDataLimits: IPaymaster.GasAndDataLimitsStructOutput,
     innerRecipientCallGasLimit: string,
     calldataGasUsed: number
-  ): BN {
+  ): BigNumber {
     const msgDataGasCostInsideTransaction: number =
       toBN(this.contractInteractor.environment.dataOnChainHandlingGasCostPerByte)
         .muln(msgDataLength)
         .toNumber()
 
     const gasOverhead = this.contractInteractor.relayHubConfiguration.gasOverhead
-    const result = toNumber(gasOverhead) +
+    const result = toNumber(gasOverhead.toString()) +
       msgDataGasCostInsideTransaction +
       calldataGasUsed +
       parseInt(innerRecipientCallGasLimit) +
-      toNumber(gasAndDataLimits.preRelayedCallGasLimit) +
-      toNumber(gasAndDataLimits.postRelayedCallGasLimit)
+      toNumber(gasAndDataLimits.preRelayedCallGasLimit.toString()) +
+      toNumber(gasAndDataLimits.postRelayedCallGasLimit.toString())
 
     this.logger.debug(`
 msgDataLength: ${msgDataLength}
@@ -128,7 +129,7 @@ dataOnChainHandlingGasCostPerByte: ${this.contractInteractor.environment.dataOnC
 relayHubGasOverhead: ${gasOverhead.toString()}
 calculateTransactionMaxPossibleGas: result: ${result}
 `)
-    return toBN(result)
+    return BigNumber.from(result)
   }
 
   /**
@@ -136,17 +137,17 @@ calculateTransactionMaxPossibleGas: result: ${result}
    * Does not take into account any balance requirements that the Paymaster may have in 'preRelayedCall'
    */
   async adjustRelayCallViewGasLimitForRelay (
-    viewCallGasLimit: BN,
+    viewCallGasLimit: BigNumber,
     workerAddress: Address,
-    maxFeePerGas: BN
-  ): Promise<BN> {
+    maxFeePerGas: BigNumber
+  ): Promise<BigNumber> {
     const workerBalanceStr = await this.contractInteractor.getBalance(workerAddress, 'pending')
 
-    const workerBalanceGasLimit = this.balanceToGas(toBN(workerBalanceStr), maxFeePerGas)
+    const workerBalanceGasLimit = this.balanceToGas(BigNumber.from(workerBalanceStr), maxFeePerGas)
 
     if (workerBalanceGasLimit.lt(viewCallGasLimit)) {
       const warning =
-        `Relay Worker balance: ${workerBalanceStr}\n` +
+        `Relay Worker balance: ${workerBalanceStr.toString()}\n` +
         `This is only enough for ${workerBalanceGasLimit.toString()} gas for a view call at ${maxFeePerGas.toString()} per gas.\n` +
         'Limiting the view call gas limit but successful relaying is not likely.'
       this.logger.warn(warning)
@@ -156,23 +157,23 @@ calculateTransactionMaxPossibleGas: result: ${result}
   }
 
   balanceToGas (
-    balance: BN,
-    maxFeePerGas: BN
-  ): BN {
-    const pctRelayFeeDev = toBN(this.contractInteractor.relayHubConfiguration.pctRelayFee.toString()).addn(100)
+    balance: BigNumber,
+    maxFeePerGas: BigNumber
+  ): BigNumber {
+    const pctRelayFeeDev = BigNumber.from(this.contractInteractor.relayHubConfiguration.pctRelayFee.toString()).add(100)
     return balance.div(maxFeePerGas)
-      .muln(100)
+      .mul(100)
       .div(pctRelayFeeDev)
-      .muln(3).divn(4) // hard-coded to use 75% of available balance
+      .mul(3).div(4) // hard-coded to use 75% of available balance
   }
 
   async adjustRelayCallViewGasLimitForPaymaster (
-    maxPossibleGasUsed: BN,
+    maxPossibleGasUsed: BigNumber,
     paymasterAddress: Address,
-    maxFeePerGas: BN,
-    maxViewableGasLimit: BN,
-    minViewableGasLimit: BN
-  ): Promise<BN> {
+    maxFeePerGas: BigNumber,
+    maxViewableGasLimit: BigNumber,
+    minViewableGasLimit: BigNumber
+  ): Promise<BigNumber> {
     // 1. adjust to minimum and maximum viewable gas limits
     if (maxPossibleGasUsed.gt(maxViewableGasLimit)) {
       this.logger.warn(`Adjusting view call gas limit: using maximum ${maxViewableGasLimit.toString()} instead of estimation ${maxPossibleGasUsed.toString()}`)
@@ -188,10 +189,10 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const paymasterBalanceGasLimit = this.balanceToGas(paymasterBalance, maxFeePerGas)
 
     const blockGasLimitNum = await this.contractInteractor.getBlockGasLimit()
-    const blockGasLimit = toBN(blockGasLimitNum)
-      .muln(3).divn(4) // hard-coded to use 75% of available block gas limit
+    const blockGasLimit = BigNumber.from(blockGasLimitNum)
+      .mul(3).div(4) // hard-coded to use 75% of available block gas limit
 
-    const minimalLimit = BN.min(paymasterBalanceGasLimit, blockGasLimit)
+    const minimalLimit = bigNumberMin(paymasterBalanceGasLimit, blockGasLimit)
 
     if (minimalLimit.lt(maxPossibleGasUsed)) {
       const warning =

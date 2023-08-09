@@ -11,7 +11,7 @@ contract('RelayServerRequestsProfiling', function (accounts) {
   const refreshStateTimeoutBlocks = 2
   const callsPerStateRefresh = 13
   const callsPerBlock = 0
-  const callsPerTransaction = 10
+  const callsPerTransaction = 9
 
   let ethersProvider: JsonRpcProvider
   let provider: ProfilingProvider
@@ -24,7 +24,7 @@ contract('RelayServerRequestsProfiling', function (accounts) {
     // @ts-ignore
     const currentProviderHost = web3.currentProvider.host
     ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
-    provider = new ProfilingProvider(currentProviderHost)
+    provider = new ProfilingProvider(currentProviderHost, true)
     const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = new ContractInteractor({
