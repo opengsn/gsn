@@ -26,6 +26,7 @@ jobs: # a collection of steps
             - ./packages/cli/node_modules
             - ./packages/common/node_modules
             - ./packages/contracts/node_modules
+            - ./packages/deployer/node_modules
             - ./packages/dev/node_modules
             - ./packages/paymasters/node_modules
             - ./packages/provider/node_modules
