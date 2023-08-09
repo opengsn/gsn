@@ -89,7 +89,7 @@ contract('RelayHub Configuration',
       await paymaster.setTrustedForwarder(forwarder)
       await paymaster.setRelayHub(relayHub.address)
       // Register hub's RelayRequest with forwarder, if not already done.
-      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
       await relayHub.depositFor(paymaster.address, {
         value: ether('1'),

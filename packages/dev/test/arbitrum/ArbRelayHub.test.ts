@@ -78,7 +78,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
 
     // TODO: extract repetitive test code to test utils
     before('prepare the relay request and relay worker', async function () {
-      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarder as any)
+      await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarder)
       testRecipient = await TestRecipient.new(forwarder.address)
       const paymaster = await TestPaymasterEverythingAccepted.new()
       await paymaster.setTrustedForwarder(forwarder.address)

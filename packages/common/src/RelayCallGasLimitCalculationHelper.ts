@@ -1,12 +1,13 @@
+import { BigNumber } from '@ethersproject/bignumber'
+import { IPaymaster } from '@opengsn/contracts/types/ethers-contracts'
+
 import { Address, IntString } from './types/Aliases'
 import { ContractInteractor, RelayCallABI } from './ContractInteractor'
 import { LoggerInterface } from './LoggerInterface'
-import { toNumber } from './Utils'
 import { RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { constants } from './Constants'
 import { toBN } from './web3js/Web3JSUtils'
-import { IPaymaster } from '@opengsn/contracts/types/ethers-contracts'
-import { BigNumber } from '@ethersproject/bignumber'
+import { toNumber, bigNumberMin } from './Utils'
 
 /**
  * After EIP-150, every time the call stack depth is increased without explicit call gas limit set,
@@ -191,11 +192,7 @@ calculateTransactionMaxPossibleGas: result: ${result}
     const blockGasLimit = BigNumber.from(blockGasLimitNum)
       .mul(3).div(4) // hard-coded to use 75% of available block gas limit
 
-    // TODO: implement in utils
-    function bignumberMin (a: BigNumber, b: BigNumber): BigNumber {
-      return a
-    }
-    const minimalLimit = bignumberMin(paymasterBalanceGasLimit, blockGasLimit)
+    const minimalLimit = bigNumberMin(paymasterBalanceGasLimit, blockGasLimit)
 
     if (minimalLimit.lt(maxPossibleGasUsed)) {
       const warning =

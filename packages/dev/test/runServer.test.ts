@@ -60,7 +60,7 @@ contract('runServer', function (accounts) {
     TestRecipient.web3 = new Web3(web3.currentProvider.host)
     sr = await TestRecipient.new(forwarder.address)
 
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarder as any)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarder)
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setTrustedForwarder(forwarder.address)

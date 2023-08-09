@@ -130,7 +130,7 @@ contract('RelayProvider', function (accounts) {
     relayHub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, testToken.address, stake.toString())
     const forwarderInstance = await Forwarder.new()
     forwarderAddress = forwarderInstance.address
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     paymasterInstance = await TestPaymasterEverythingAccepted.new()
     paymaster = paymasterInstance.address

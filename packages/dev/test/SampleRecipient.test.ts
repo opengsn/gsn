@@ -52,7 +52,7 @@ contract('SampleRecipient', function (accounts) {
     const rhub = await deployHub(stakeManager.address, penalizer.address, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, '0')
     await paymaster.setTrustedForwarder(forwarder)
     await paymaster.setRelayHub(rhub.address)
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     // transfer eth into paymaster (using the normal "transfer" helper, which internally
     // uses hub.depositFor)

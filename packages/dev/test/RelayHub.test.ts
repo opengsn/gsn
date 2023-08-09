@@ -102,7 +102,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
     recipientContract = await TestRecipient.new(forwarder)
 
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     target = recipientContract.address
     paymaster = paymasterContract.address
@@ -960,7 +960,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
           before(async function () {
             relayRequest = cloneRelayRequest(sharedRelayRequestData)
             gatewayForwarder = await TestGatewayForwarder.new()
-            await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, gatewayForwarder as any)
+            await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, gatewayForwarder)
             relayHubInstance = await deployHub(stakeManager.address, penalizer.address, batchGateway, testToken.address, oneEther.toString())
             recipientContract = await TestRecipient.new(gatewayForwarder.address)
             await gatewayForwarder.setTrustedRelayHub(relayHubInstance.address)

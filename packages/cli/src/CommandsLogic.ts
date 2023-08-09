@@ -3,6 +3,7 @@ import io from 'console-read-write'
 import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import ow from 'ow'
+import { BigNumber } from '@ethersproject/bignumber'
 import { Contract } from 'web3-eth-contract'
 import { Transaction, TypedTransaction } from '@ethereumjs/tx'
 import { Web3Provider } from '@ethersproject/providers'
@@ -40,10 +41,9 @@ import TestWrappedNativeToken from './compiled/TestWrappedNativeToken.json'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { defaultGsnConfig } from '@opengsn/provider'
+import { Forwarder__factory } from '@opengsn/contracts/types/ethers-contracts'
 
 import { registerForwarderForGsn } from './ForwarderUtil'
-import { BigNumber } from '@ethersproject/bignumber'
-import { Forwarder__factory } from '@opengsn/contracts/types/ethers-contracts'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */

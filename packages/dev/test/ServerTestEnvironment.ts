@@ -142,7 +142,7 @@ export class ServerTestEnvironment {
     this.forwarder = await Forwarder.new()
     this.recipient = await TestRecipient.new(this.forwarder.address)
     this.paymaster = await TestPaymasterEverythingAccepted.new()
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, this.forwarder as any)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, this.forwarder)
 
     await this.paymaster.setTrustedForwarder(this.forwarder.address)
     await this.paymaster.setRelayHub(this.relayHub.address)

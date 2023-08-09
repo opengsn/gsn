@@ -102,7 +102,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
     forwarder = forwarderInstance.address
     recipient = await TestRecipient.new(forwarder)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
 
     paymaster = await TestPaymasterEverythingAccepted.new()
     encodedCallArgs.paymaster = paymaster.address

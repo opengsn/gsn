@@ -1,8 +1,9 @@
 import chalk from 'chalk'
-import { PastEventOptions } from 'web3-eth-contract'
-import { EventEmitter } from 'events'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { BigNumber } from '@ethersproject/bignumber'
 import { Block } from '@ethersproject/providers'
+import { EventEmitter } from 'events'
+import { PastEventOptions } from 'web3-eth-contract'
+import { PrefixedHexString } from 'ethereumjs-util'
 
 import {
   Address,
@@ -36,7 +37,6 @@ import {
   StakeWithdrawn
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { Web3MethodsBuilder } from './Web3MethodsBuilder'
-import { BigNumber } from '@ethersproject/bignumber'
 
 export class RegistrationManager {
   balanceRequired!: AmountRequired

@@ -1086,8 +1086,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return await this.provider.send('eth_sendRawTransaction', [signedTransaction])
   }
 
-  // TODO: figure out type for overrides here
-  async hubDepositFor (paymaster: Address, transactionDetails: any | PayableOverrides & { from?: string }): Promise<any> {
+  async hubDepositFor (paymaster: Address, transactionDetails: PayableOverrides & { from?: string }): Promise<any> {
     return await this.relayHubInstance.depositFor(paymaster, transactionDetails)
   }
 
@@ -1152,7 +1151,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
    * get registered relayers from registrar
    * (output format matches event info)
    */
-  async getRegisteredRelays (): Promise<RegistrarRelayInfo[] | any> {
+  async getRegisteredRelays (): Promise<RegistrarRelayInfo[]> {
     if (this.relayRegistrar == null) {
       throw new Error('Relay Registrar is not initialized')
     }

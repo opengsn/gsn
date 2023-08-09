@@ -491,3 +491,7 @@ export function appendSlashTrim (urlInput: string): string {
   }
   return urlInput
 }
+
+export function bigNumberMin (a: BigNumber, b: BigNumber): BigNumber {
+  return a.lt(b) ? a : b
+}

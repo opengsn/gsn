@@ -193,7 +193,7 @@ contract('RelayClient', function (accounts) {
     testRecipient = await TestRecipient.new(forwarderAddress)
     testRecipientWithoutFallback = await TestRecipientWithoutFallback.new(forwarderAddress)
     // register hub's RelayRequest with forwarder, if not already done.
-    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance as any)
+    await registerForwarderForGsn(defaultGsnConfig.domainSeparatorName, forwarderInstance)
     paymaster = await TestPaymasterEverythingAccepted.new()
     await paymaster.setTrustedForwarder(forwarderAddress)
     await paymaster.setRelayHub(relayHub.address)
@@ -342,7 +342,7 @@ contract('RelayClient', function (accounts) {
 
     it('should use alternative ERC-712 domain separator', async function () {
       const newDomainSeparatorName = 'This is not the old domain separator name'
-      await registerForwarderForGsn(newDomainSeparatorName, forwarderInstance as any)
+      await registerForwarderForGsn(newDomainSeparatorName, forwarderInstance)
       const newConfig = Object.assign({}, gsnConfig, { domainSeparatorName: newDomainSeparatorName })
       const relayClient = new RelayClient({
         provider: underlyingProvider,

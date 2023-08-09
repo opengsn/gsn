@@ -4,15 +4,19 @@ import { Web3Provider } from '@ethersproject/providers'
 import { GsnDomainSeparatorType, GsnRequestType, LoggerInterface } from '@opengsn/common'
 import { IForwarder } from '@opengsn/contracts/types/ethers-contracts'
 
+interface TruffleContract {
+  contract: any
+}
+
 // register a forwarder for use with GSN: the request-type and domain separator we're using.
 export async function registerForwarderForGsn (
   domainSeparatorName: string,
-  forwarderIn: IForwarder | Contract,
+  forwarderIn: IForwarder | Contract | TruffleContract,
   logger?: LoggerInterface,
   sendOptions: CallOverrides | undefined = undefined
 ): Promise<void> {
   let forwarder: Contract
-  if ((forwarderIn as any).contract != null) {
+  if ((forwarderIn as TruffleContract).contract != null) {
     const provider = new Web3Provider((forwarderIn as any).contract.currentProvider)
     forwarder = new Contract((forwarderIn as any).address, (forwarderIn as any).abi, provider.getSigner())
   } else {
