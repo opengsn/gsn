@@ -5,6 +5,7 @@
       "packages/*"
     ],
     "nohoist": [
+      "@nomicfoundation/hardhat-ethers",
       "**/ethers",
       "**/ethers/**",
       "**eslint**",
