@@ -13,14 +13,14 @@ jobs: # a collection of steps
           command: yarn create-all-deps
 
       - restore_cache: # special step to restore the dependency cache
-          key: dependency-cache-{{ checksum "yarn.lock" }}-{{ checksum "all.deps" }}
+          key: dependency-cache-{{ .Environment.CACHE_VERSION }}-{{ checksum "yarn.lock" }}-{{ checksum "all.deps" }}
 
       - run:
           name: yarn-install-if-no-cache
           command:  test -d node_modules/truffle || yarn
 
       - save_cache: # special step to save the dependency cache
-          key: dependency-cache-{{ checksum "yarn.lock" }}-{{ checksum "all.deps" }}
+          key: dependency-cache-{{ .Environment.CACHE_VERSION }}-{{ checksum "yarn.lock" }}-{{ checksum "all.deps" }}
           paths:
             - ./node_modules
             - ./packages/cli/node_modules
