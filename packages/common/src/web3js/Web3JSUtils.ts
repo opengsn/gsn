@@ -6,6 +6,7 @@
 import BN from 'bn.js'
 import numberToBN from 'number-to-bn'
 import ethjsUnit from 'ethjs-unit'
+import { BigNumber } from '@ethersproject/bignumber'
 
 /**
  * Takes an input and transforms it into an BN
@@ -51,7 +52,7 @@ export var toHex = function (value, returnType?: any) {
     return '0x' + value.toString('hex')
   }
 
-  if (typeof value === 'object' && !!value && !isBigNumber(value) && !isBN(value)) {
+  if (typeof value === 'object' && !!value && !BigNumber.isBigNumber(value) && !isBN(value)) {
     return returnType ? 'string' : utf8ToHex(JSON.stringify(value))
   }
 
