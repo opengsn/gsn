@@ -25,13 +25,15 @@ contract('RelayServerRequestsProfiling', function (accounts) {
     const currentProviderHost = web3.currentProvider.host
     ethersProvider = new StaticJsonRpcProvider(currentProviderHost)
     provider = new ProfilingProvider(currentProviderHost, true)
+    const [account] = await provider.listAccounts()
+    const signer = provider.getSigner(account)
     const contractFactory = async function (deployment: GSNContractsDeployment): Promise<ContractInteractor> {
       const maxPageSize = Number.MAX_SAFE_INTEGER
       const contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         maxPageSize,
         provider,
-        signer: provider.getSigner(),
+        signer,
         logger,
         deployment
       })

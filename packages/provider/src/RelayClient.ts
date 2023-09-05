@@ -163,6 +163,8 @@ export async function wrapInputProviderLike (input: SupportedProviderLikeType): 
         const providerIn = (input as any).provider
         return providerIn.send.bind(providerIn)(method, params)
       })
+      // @ts-ignore
+      input._isSigner = true
       return {
         inputProviderType: InputProviderType.SignerEthersV6,
         provider,
