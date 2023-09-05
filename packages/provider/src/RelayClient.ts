@@ -784,6 +784,7 @@ export class RelayClient {
       await new ContractInteractor({
         useEthersV6,
         provider: this.wrappedUnderlyingProvider,
+        signer: this.wrappedUnderlyingSigner,
         versionManager,
         logger: this.logger,
         maxPageSize: this.config.pastEventsQueryMaxPageSize,

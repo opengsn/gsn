@@ -167,6 +167,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       domainSeparatorName: defaultGsnConfig.domainSeparatorName,
       environment: defaultEnvironment,
       provider: ethersProvider,
+      signer: ethersProvider.getSigner(),
       logger,
       maxPageSize,
       deployment

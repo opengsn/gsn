@@ -96,6 +96,7 @@ contract('RelaySelectionManager', function (accounts) {
       contractInteractor = await new ContractInteractor({
         environment: defaultEnvironment,
         provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
         maxPageSize,
         logger
       }).init()

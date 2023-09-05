@@ -80,6 +80,7 @@ async function makeRequest (
     domainSeparatorName: defaultGsnConfig.domainSeparatorName,
     environment: defaultEnvironment,
     provider,
+    signer: provider.getSigner(),
     logger: createServerLogger('error', '', ''),
     deployment,
     maxPageSize: Number.MAX_SAFE_INTEGER

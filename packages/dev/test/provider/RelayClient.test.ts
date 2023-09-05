@@ -722,6 +722,7 @@ contract('RelayClient', function (accounts) {
       const badContractInteractor = new BadContractInteractor({
         environment: defaultEnvironment,
         provider: underlyingProvider,
+        signer: underlyingProvider.getSigner(),
         logger,
         maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress as string }
@@ -786,6 +787,7 @@ contract('RelayClient', function (accounts) {
       const contractInteractor = await new ContractInteractor({
         environment: defaultEnvironment,
         provider: underlyingProvider,
+        signer: underlyingProvider.getSigner(),
         logger,
         maxPageSize,
         deployment: { paymasterAddress: paymaster.address }
@@ -832,6 +834,7 @@ contract('RelayClient', function (accounts) {
       const contractInteractor = await new ContractInteractor({
         environment: defaultEnvironment,
         provider: underlyingProvider,
+        signer: underlyingProvider.getSigner(),
         logger,
         maxPageSize,
         deployment: { paymasterAddress: paymaster.address }
@@ -1050,6 +1053,7 @@ contract('RelayClient', function (accounts) {
       const badContractInteractor = new BadContractInteractor({
         environment: defaultEnvironment,
         provider: underlyingProvider,
+        signer: underlyingProvider.getSigner(),
         logger,
         maxPageSize,
         deployment: { paymasterAddress: gsnConfig.paymasterAddress as string }

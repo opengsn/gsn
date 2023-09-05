@@ -1,4 +1,4 @@
-import { Contract, ethers, EventFilter, PayableOverrides } from 'ethers'
+import { Contract, ethers, EventFilter, PayableOverrides, Signer } from 'ethers'
 import { PrefixedHexString } from 'ethereumjs-util'
 import { TxOptions } from './ethereumjstx/TxOptions'
 
@@ -69,7 +69,6 @@ import {
   Block,
   BlockTag,
   JsonRpcProvider,
-  JsonRpcSigner,
   TransactionRequest,
   TransactionResponse
 } from '@ethersproject/providers'
@@ -80,6 +79,7 @@ export type EventFilterBlocks = EventFilter & { fromBlock?: BlockTag, toBlock?: 
 export interface ConstructorParams {
   useEthersV6?: boolean
   provider: JsonRpcProvider
+  signer: Signer
   logger: LoggerInterface
   versionManager?: VersionsManager
   deployment?: GSNContractsDeployment
@@ -140,7 +140,7 @@ export class ContractInteractor {
 
   readonly calculateCalldataGasUsed: CalldataGasEstimation
   readonly provider: JsonRpcProvider
-  signer!: JsonRpcSigner
+  readonly signer: Signer
   // private readonly provider: Web3ProviderBaseInterface
   private deployment: GSNContractsDeployment
   private readonly versionManager: VersionsManager
@@ -165,6 +165,7 @@ export class ContractInteractor {
       maxPageSize,
       maxPageCount,
       provider,
+      signer,
       versionManager,
       logger,
       environment,
@@ -178,6 +179,7 @@ export class ContractInteractor {
     this.versionManager = versionManager ?? new VersionsManager(gsnRuntimeVersion, gsnRequiredVersion)
     this.deployment = deployment
     this.provider = provider
+    this.signer = signer
     this.calldataEstimationSlackFactor = calldataEstimationSlackFactor ?? 1
     this.lastBlockNumber = 0
     this.environment = environment
@@ -206,12 +208,8 @@ export class ContractInteractor {
         this.transactionType = TransactionType.LEGACY
       }
     }
-    const [address] = await this.provider.listAccounts()
-    this.signer = this.provider.getSigner(address)
+    const [address] = await this.signer.getAddress()
     this.logger.info(`Initializing for address ${address}`)
-    if (this.signer == null) {
-      throw new Error(`Unable to create signer for address ${address}`)
-    }
     await this._resolveDeployment()
     await this._initializeContracts()
     await this._validateCompatibility()

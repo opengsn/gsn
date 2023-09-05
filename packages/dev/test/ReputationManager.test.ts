@@ -54,6 +54,7 @@ contract('ReputationManager', function () {
     contractInteractor = new ContractInteractor({
       environment: defaultEnvironment,
       provider: ethersProvider,
+      signer: ethersProvider.getSigner(),
       maxPageSize,
       logger
     })

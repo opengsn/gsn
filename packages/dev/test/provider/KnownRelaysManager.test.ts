@@ -99,6 +99,7 @@ contract('KnownRelaysManager', function (
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
         maxPageSize,
         logger,
         deployment: { relayHubAddress: relayHub.address }
@@ -272,6 +273,7 @@ contract('KnownRelaysManager 2', function (accounts) {
     contractInteractor = new ContractInteractor({
       environment: defaultEnvironment,
       provider: ethersProvider,
+      signer: ethersProvider.getSigner(),
       maxPageSize,
       logger
     })
@@ -311,6 +313,7 @@ contract('KnownRelaysManager 2', function (accounts) {
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
         logger,
         maxPageSize,
         deployment
