@@ -716,7 +716,7 @@ export class ContractInteractor {
     // save 'getBlockNumber' roundtrip for a known max value (must match check in getLogsPagesForRange)
     if (this.maxPageSize !== Number.MAX_SAFE_INTEGER && options.toBlock === 'latest') {
       options.toBlock = await this.getBlockNumber()
-      if (options.fromBlock > options.toBlock) {
+      if (parseInt(options.fromBlock.toString()) > options.toBlock) {
         options.toBlock = options.fromBlock
       }
     }
