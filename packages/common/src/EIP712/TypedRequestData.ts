@@ -1,8 +1,8 @@
-import { Address } from '../types/Aliases'
-import { RelayRequest } from './RelayRequest'
+import { type Address } from '../types/Aliases'
+import { type RelayRequest } from './RelayRequest'
 
-import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
-import { TypedDataUtils, TypedMessage, SignTypedDataVersion } from '@metamask/eth-sig-util'
+import { bufferToHex, type PrefixedHexString } from 'ethereumjs-util'
+import { TypedDataUtils, type TypedMessage, SignTypedDataVersion } from '@metamask/eth-sig-util'
 
 export interface MessageTypeProperty {
   name: string
@@ -77,7 +77,7 @@ export function getDomainSeparator (name: string, verifier: Address, chainId: nu
   return {
     name,
     version: GsnDomainSeparatorType.version,
-    chainId: chainId,
+    chainId,
     verifyingContract: verifier
   }
 }

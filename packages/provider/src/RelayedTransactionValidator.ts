@@ -1,19 +1,19 @@
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 
-import { Transaction, parse } from '@ethersproject/transactions'
+import { type Transaction, parse } from '@ethersproject/transactions'
 
 import { Interface } from '@ethersproject/abi'
 
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import {
-  ContractInteractor,
-  LoggerInterface,
-  ObjectMap,
-  RelayTransactionRequest,
+  type ContractInteractor,
+  type LoggerInterface,
+  type ObjectMap,
+  type RelayTransactionRequest,
   isSameAddress
 } from '@opengsn/common'
 
-import { GSNConfig } from './GSNConfigurator'
+import { type GSNConfig } from './GSNConfigurator'
 
 export interface GasPriceValidationResult {
   isTransactionTypeValid: boolean

@@ -1,6 +1,6 @@
-import { BigNumber } from '@ethersproject/bignumber'
-import { TransactionResponse } from '@ethersproject/providers'
-import { ContractInteractor, ConstructorParams, RelayCallABI } from '@opengsn/common'
+import { type BigNumber } from '@ethersproject/bignumber'
+import { type TransactionResponse } from '@ethersproject/providers'
+import { ContractInteractor, type ConstructorParams, type RelayCallABI } from '@opengsn/common'
 
 export class BadContractInteractor extends ContractInteractor {
   static readonly message = 'This is not the contract you are looking for'

@@ -1,22 +1,22 @@
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
-import { PrefixedHexString } from 'ethereumjs-util'
-import { TxOptions } from '@ethereumjs/tx'
+import { type PrefixedHexString } from 'ethereumjs-util'
+import { type TxOptions } from '@ethereumjs/tx'
 import { toBN, toHex } from 'web3-utils'
 
 import {
   ContractInteractor,
-  GSNContractsDeployment,
-  GsnTransactionDetails,
-  LoggerInterface,
+  type GSNContractsDeployment,
+  type GsnTransactionDetails,
+  type LoggerInterface,
   defaultEnvironment
 } from '@opengsn/common'
 
 import { NetworkSimulatingProvider } from '@opengsn/common/dist/dev/NetworkSimulatingProvider'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
-import { BoostingResult, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
+import { type BoostingResult, type SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
 import { signedTransactionToHash } from '@opengsn/relay/dist/penalizer/PenalizerUtils'
-import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { type GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 import { evmMine, increaseTime, revert, snapshot } from './TestUtils'
 
@@ -210,7 +210,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
       })
       it('should not boost any transactions if config.pendingTransactionTimeoutBlocks did not pass yet', async function () {
         await env.relayServer.txStoreManager.clearAll()
-        await env.relayServer.transactionManager._initNonces()
+        env.relayServer.transactionManager._initNonces()
         await sendMultipleRelayedTransactions(stuckTransactionsCount)
 
         const storedTxs = await env.relayServer.txStoreManager.getAll()
@@ -265,7 +265,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
     async function assertBoostAndRebroadcast (): Promise<void> {
       originalTxHashes.length = 0
       await env.relayServer.txStoreManager.clearAll()
-      await env.relayServer.transactionManager._initNonces()
+      env.relayServer.transactionManager._initNonces()
       const spy = sinon.spy(env.relayServer.transactionManager, 'resendTransaction')
       await sendMultipleRelayedTransactions(stuckTransactionsCount)
       const storedTxsBefore = await env.relayServer.txStoreManager.getAll()

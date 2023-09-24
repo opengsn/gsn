@@ -1,6 +1,6 @@
 import { BigNumber } from '@ethersproject/bignumber'
 
-import { LoggerInterface, ContractInteractor } from '@opengsn/common'
+import { type LoggerInterface, type ContractInteractor } from '@opengsn/common'
 
 import axios from 'axios'
 

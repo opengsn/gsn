@@ -1,30 +1,30 @@
 import * as fs from 'fs'
 import parseArgs from 'minimist'
 
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { type JsonRpcProvider } from '@ethersproject/providers'
 
 import {
-  Address,
+  type Address,
   ContractInteractor,
-  Environment,
+  type Environment,
   EnvironmentsKeys,
-  LoggerInterface,
-  NpmLogLevel,
-  RelayCallGasLimitCalculationHelper,
+  type LoggerInterface,
+  type NpmLogLevel,
+  type RelayCallGasLimitCalculationHelper,
   constants,
   defaultEnvironment,
   environments
 } from '@opengsn/common'
 
-import { KeyManager } from './KeyManager'
-import { TxStoreManager } from './TxStoreManager'
+import { type KeyManager } from './KeyManager'
+import { type TxStoreManager } from './TxStoreManager'
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
-import { GasPriceFetcher } from './GasPriceFetcher'
-import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
+import { type GasPriceFetcher } from './GasPriceFetcher'
+import { type ReputationManager, type ReputationManagerConfiguration } from './ReputationManager'
 
 import { toBN } from 'web3-utils'
-import { Web3MethodsBuilder } from './Web3MethodsBuilder'
+import { type Web3MethodsBuilder } from './Web3MethodsBuilder'
 
 export enum LoggingProviderMode {
   NONE,

@@ -1,34 +1,34 @@
 import { AbiCoder } from '@ethersproject/abi'
 import { BigNumber } from '@ethersproject/bignumber'
 import { EventEmitter } from 'events'
-import { ExternalProvider, JsonRpcProvider, JsonRpcSigner, Web3Provider } from '@ethersproject/providers'
-import { Signer } from '@ethersproject/abstract-signer'
+import { type ExternalProvider, JsonRpcProvider, type JsonRpcSigner, Web3Provider } from '@ethersproject/providers'
+import { type Signer } from '@ethersproject/abstract-signer'
 import { type JsonRpcApiProvider as ProviderEthersV6, type Signer as SignerEthersV6 } from 'ethers-v6'
-import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
-import { Transaction, parse, serialize } from '@ethersproject/transactions'
+import { type PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { type Transaction, parse, serialize } from '@ethersproject/transactions'
 
 import {
-  Address,
-  ApprovalDataCallback,
-  AuditResponse,
+  type Address,
+  type ApprovalDataCallback,
+  type AuditResponse,
   ContractInteractor,
-  EIP1559Fees,
-  EIP712Domain,
-  GsnTransactionDetails,
+  type EIP1559Fees,
+  type EIP712Domain,
+  type GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
-  JsonRpcPayload,
-  JsonRpcResponse,
-  LoggerInterface,
-  ObjectMap,
-  PaymasterDataCallback,
+  type JsonRpcPayload,
+  type JsonRpcResponse,
+  type LoggerInterface,
+  type ObjectMap,
+  type PaymasterDataCallback,
   PaymasterType,
-  PingFilter,
-  RelayCallABI,
-  RelayInfo,
-  RelayMetadata,
-  RelayRequest,
-  RelayTransactionRequest,
+  type PingFilter,
+  type RelayCallABI,
+  type RelayInfo,
+  type RelayMetadata,
+  type RelayRequest,
+  type RelayTransactionRequest,
   TokenDomainSeparators,
   VersionsManager,
   asRelayCallAbi,
@@ -43,7 +43,7 @@ import {
   toHex
 } from '@opengsn/common'
 
-import { AccountKeypair, AccountManager } from './AccountManager'
+import { type AccountKeypair, AccountManager } from './AccountManager'
 import { DefaultRelayFilter, KnownRelaysManager } from './KnownRelaysManager'
 import { RelaySelectionManager } from './RelaySelectionManager'
 import {
@@ -52,11 +52,11 @@ import {
   DEFAULT_VERIFIER_SERVER_URL
 } from './VerifierUtils'
 import { isTransactionValid, RelayedTransactionValidator } from './RelayedTransactionValidator'
-import { defaultGsnConfig, GSNConfig, GSNDependencies } from './GSNConfigurator'
+import { defaultGsnConfig, type GSNConfig, type GSNDependencies } from './GSNConfigurator'
 
 import {
   GsnDoneRefreshRelaysEvent,
-  GsnEvent,
+  type GsnEvent,
   GsnInitEvent,
   GsnNextRelayEvent,
   GsnRefreshRelaysEvent,
@@ -66,7 +66,7 @@ import {
   GsnValidateRequestEvent
 } from './GsnEvents'
 import { RelayCallGasLimitCalculationHelper } from '@opengsn/common/dist/RelayCallGasLimitCalculationHelper'
-import { IPaymaster } from '@opengsn/contracts/types/ethers-contracts'
+import { type IPaymaster } from '@opengsn/contracts/types/ethers-contracts'
 
 // generate "approvalData" and "paymasterData" for a request.
 // both are bytes arrays. paymasterData is part of the client request.
@@ -118,7 +118,7 @@ export interface RelayingResult {
 
 type sendWeb3js = (payload: JsonRpcPayload, callback: (error: Error | null, result?: JsonRpcResponse) => unknown) => void
 
-interface Web3JsProvider {send: sendWeb3js}
+interface Web3JsProvider { send: sendWeb3js }
 
 type SupportedProviderLikeType =
   JsonRpcProvider
@@ -577,7 +577,7 @@ export class RelayClient {
         to: gsnTransactionDetails.to,
         data: gsnTransactionDetails.data,
         from: gsnTransactionDetails.from,
-        value: value,
+        value,
         nonce: senderNonce,
         gas: gasLimit,
         validUntilTime
@@ -708,6 +708,7 @@ export class RelayClient {
     await this._resolveVerifierConfig(config, chainId)
 
     // EIP-712 Domain Separators are not so much config as extra info and should be merged
+    // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
     const tokenPaymasterDomainSeparators: { [address: Address]: EIP712Domain } = {
       ...TokenDomainSeparators[chainId],
       ...configFromServer.tokenPaymasterDomainSeparators,

@@ -1,21 +1,21 @@
 /* global artifacts describe */
 // @ts-ignore
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import chai from 'chai'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import chaiAsPromised from 'chai-as-promised'
-import { StaticJsonRpcProvider, Block } from '@ethersproject/providers'
+import { StaticJsonRpcProvider, type Block } from '@ethersproject/providers'
 
-import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { RelayServer } from '@opengsn/relay/dist/RelayServer'
-import { SendTransactionDetails, SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
-import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
-import { TestPaymasterConfigurableMisbehaviorInstance } from '../types/truffle-contracts'
+import { type GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { type RelayServer } from '@opengsn/relay/dist/RelayServer'
+import { type SendTransactionDetails, type SignedTransactionDetails } from '@opengsn/relay/dist/TransactionManager'
+import { type ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { type TestPaymasterConfigurableMisbehaviorInstance } from '../types/truffle-contracts'
 import {
-  GsnTransactionDetails,
-  RelayTransactionRequest,
+  type GsnTransactionDetails,
+  type RelayTransactionRequest,
   TransactionType,
   defaultEnvironment,
   sleep,
@@ -26,7 +26,7 @@ import { evmMine, evmMineMany, INCORRECT_ECDSA_SIGNATURE, increaseTime, revert, 
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
 
 import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts } from './ServerTestUtils'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 import { BigNumber } from '@ethersproject/bignumber'
 
@@ -200,7 +200,7 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
     let clock: sinon.SinonFakeTimers
     const time = 10000
     beforeEach(async function () {
-      await env.newServerInstanceNoFunding()
+      env.newServerInstanceNoFunding()
       await env.fundServer()
       await env.relayServer.init()
       clock = sinon.useFakeTimers(Date.now())
@@ -423,13 +423,13 @@ contract('RelayServer', function (accounts: Truffle.Accounts) {
           const req = await env.createRelayHttpRequest()
           req.relayRequest.relayData.paymaster = whitelistedPaymaster
           req.relayRequest.request.to = notWhitelistedRecipient
-          expect(() => env.relayServer.validateInput(req)).to.throw(`Recipient ${notWhitelistedRecipient} is not whitelisted!`)
+          expect(() => { env.relayServer.validateInput(req) }).to.throw(`Recipient ${notWhitelistedRecipient} is not whitelisted!`)
         })
 
         it('should fail to relay in private mode with Paymaster not in a whitelist', async function () {
           const req = await env.createRelayHttpRequest()
           req.relayRequest.relayData.paymaster = notWhitelistedPaymaster
-          expect(() => env.relayServer.validateInput(req)).to.throw(`Paymaster ${notWhitelistedPaymaster} is not whitelisted!`)
+          expect(() => { env.relayServer.validateInput(req) }).to.throw(`Paymaster ${notWhitelistedPaymaster} is not whitelisted!`)
         })
 
         it('should validate request in private mode with empty Paymaster and Recipient whitelists', async function () {

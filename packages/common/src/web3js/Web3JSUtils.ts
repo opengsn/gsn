@@ -7,6 +7,7 @@ import BN from 'bn.js'
 import numberToBN from 'number-to-bn'
 import ethjsUnit from 'ethjs-unit'
 import { BigNumber } from '@ethersproject/bignumber'
+import { utils } from 'ethers'
 
 /**
  * Takes an input and transforms it into an BN
@@ -84,6 +85,11 @@ var numberToHex = function (value) {
 
   if (!isFinite(value) && !isHexStrict(value)) {
     throw new Error('Given input "' + value + '" is not a number.')
+  }
+
+  // Added to avoid "BigNumber.toString does not accept any parameters" log
+  if (BigNumber.isBigNumber(value)) {
+    return utils.hexValue(value)
   }
 
   var number = toBN(value)

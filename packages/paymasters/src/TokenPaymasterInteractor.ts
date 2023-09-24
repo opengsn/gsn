@@ -1,15 +1,15 @@
-import { JsonRpcProvider, ExternalProvider } from '@ethersproject/providers'
+import { type JsonRpcProvider, type ExternalProvider } from '@ethersproject/providers'
 
 import {
-  Address,
-  LoggerInterface,
+  type Address,
+  type LoggerInterface,
   constants
 } from '@opengsn/common'
-import { IERC20 } from '@opengsn/contracts'
+import { type IERC20 } from '@opengsn/contracts'
 import {
-  IChainlinkOracle, IChainlinkOracle__factory,
+  type IChainlinkOracle, IChainlinkOracle__factory,
   IERC20__factory,
-  PermitERC20UniswapV3Paymaster,
+  type PermitERC20UniswapV3Paymaster,
   PermitERC20UniswapV3Paymaster__factory
 } from '../types/ethers-contracts'
 

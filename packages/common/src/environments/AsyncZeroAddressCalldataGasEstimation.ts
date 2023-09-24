@@ -1,9 +1,9 @@
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 
-import { CalldataGasEstimation } from '../types/Aliases'
-import { Environment } from './Environments'
+import { type CalldataGasEstimation } from '../types/Aliases'
+import { type Environment } from './Environments'
 import { constants } from '../Constants'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { type JsonRpcProvider } from '@ethersproject/providers'
 
 /**
  * In most L2s, the cost of the transaction is dynamic and depends on L1 gas price.

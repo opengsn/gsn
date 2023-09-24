@@ -1,9 +1,9 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
 import crypto from 'crypto'
-import { Transaction as EthereumJsTransaction, TxOptions, TxData } from '@ethereumjs/tx'
-import { TransactionResponse } from '@ethersproject/providers'
-import { bufferToHex, isZeroAddress, PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { Transaction as EthereumJsTransaction, type TxOptions, type TxData } from '@ethereumjs/tx'
+import { type TransactionResponse } from '@ethersproject/providers'
+import { bufferToHex, isZeroAddress, type PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import * as ethUtils from 'ethereumjs-util'
 
 import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
@@ -11,11 +11,11 @@ import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
 
 import {
-  AuditRequest,
-  AuditResponse,
+  type AuditRequest,
+  type AuditResponse,
   CommitAdded,
-  ContractInteractor,
-  LoggerInterface,
+  type ContractInteractor,
+  type LoggerInterface,
   VersionsManager,
   address2topic,
   constants,
@@ -27,14 +27,14 @@ import {
 } from '@opengsn/common'
 
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
-import { BlockExplorerInterface } from './BlockExplorerInterface'
+import { type BlockExplorerInterface } from './BlockExplorerInterface'
 import { getDataAndSignature } from './PenalizerUtils'
 
 import { ServerAction } from '../StoredTransaction'
-import { TransactionManager } from '../TransactionManager'
+import { type TransactionManager } from '../TransactionManager'
 
-import { ServerConfigParams } from '../ServerConfigParams'
-import { Web3MethodsBuilder } from '../Web3MethodsBuilder'
+import { type ServerConfigParams } from '../ServerConfigParams'
+import { type Web3MethodsBuilder } from '../Web3MethodsBuilder'
 
 import Timeout = NodeJS.Timeout
 

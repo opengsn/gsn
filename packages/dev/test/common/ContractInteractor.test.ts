@@ -3,24 +3,24 @@ import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { BigNumber } from '@ethersproject/bignumber'
-import { PastEventOptions } from 'web3-eth-contract'
+import { type PastEventOptions } from 'web3-eth-contract'
 import {
-  ForwarderInstance,
-  PenalizerInstance,
-  RelayHubInstance,
-  StakeManagerInstance,
-  TestDecimalsTokenInstance,
-  TestPaymasterConfigurableMisbehaviorInstance,
-  TestTokenInstance
+  type ForwarderInstance,
+  type PenalizerInstance,
+  type RelayHubInstance,
+  type StakeManagerInstance,
+  type TestDecimalsTokenInstance,
+  type TestPaymasterConfigurableMisbehaviorInstance,
+  type TestTokenInstance
 } from '../../types/truffle-contracts'
 import { ProfilingProvider } from '@opengsn/common/dist/dev/ProfilingProvider'
 import {
   ContractInteractor,
-  EventName,
-  GSNContractsDeployment,
-  GsnTransactionDetails,
-  RelayCallABI,
-  RelayRequest,
+  type EventName,
+  type GSNContractsDeployment,
+  type GsnTransactionDetails,
+  type RelayCallABI,
+  type RelayRequest,
   TransactionType,
   VersionsManager,
   constants,
@@ -29,7 +29,7 @@ import {
   gsnRuntimeVersion,
   environments
 } from '@opengsn/common'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 import { Transaction } from '@ethereumjs/tx'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'

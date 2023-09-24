@@ -1,14 +1,14 @@
-import { Contract, providers } from 'ethers'
-import { ExternalProvider, JsonRpcProvider } from '@ethersproject/providers'
-import { Signer } from '@ethersproject/abstract-signer'
+import { type Contract, providers } from 'ethers'
+import { type ExternalProvider, type JsonRpcProvider } from '@ethersproject/providers'
+import { type Signer } from '@ethersproject/abstract-signer'
 
 import { TokenPaymasterProvider } from './TokenPaymasterProvider'
 import {
-  Address,
-  GSNConfig,
-  GSNDependencies,
-  GSNUnresolvedConstructorInput,
-  SupportedTokenSymbols
+  type Address,
+  type GSNConfig,
+  type GSNDependencies,
+  type GSNUnresolvedConstructorInput,
+  type SupportedTokenSymbols
 } from '@opengsn/provider'
 
 async function wrapContract (

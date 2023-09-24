@@ -7,7 +7,7 @@ import { BigNumber } from '@ethersproject/bignumber'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
-  RelayRequest,
+  type RelayRequest,
   constants,
   getEip712Signature,
   packRelayUrlForRegistrar,
@@ -23,10 +23,10 @@ import {
   GsnRequestType
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import { expectEvent } from '@openzeppelin/test-helpers'
-import { ForwarderInstance, TestRecipientInstance, TestUtilInstance } from '../../types/truffle-contracts'
-import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
+import { type ForwarderInstance, type TestRecipientInstance, type TestUtilInstance } from '../../types/truffle-contracts'
+import { bufferToHex, type PrefixedHexString } from 'ethereumjs-util'
 import { encodeRevertReason } from '../TestUtils'
-import { DomainRegistered, RequestTypeRegistered } from '../../types/truffle-contracts/IForwarder'
+import { type DomainRegistered, type RequestTypeRegistered } from '../../types/truffle-contracts/IForwarder'
 
 import { toBN } from 'web3-utils'
 import { defaultGsnConfig } from '@opengsn/provider'

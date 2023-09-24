@@ -1,13 +1,13 @@
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 
-import { PingResponse } from './PingResponse'
-import { LoggerInterface } from './LoggerInterface'
+import { type PingResponse } from './PingResponse'
+import { type LoggerInterface } from './LoggerInterface'
 
-import { HttpWrapper } from './HttpWrapper'
-import { RelayTransactionRequest } from './types/RelayTransactionRequest'
-import { AuditRequest, AuditResponse } from './types/AuditRequest'
-import { ConfigResponse } from './ConfigResponse'
-import { Address, ObjectMap } from './types/Aliases'
+import { type HttpWrapper } from './HttpWrapper'
+import { type RelayTransactionRequest } from './types/RelayTransactionRequest'
+import { type AuditRequest, type AuditResponse } from './types/AuditRequest'
+import { type ConfigResponse } from './ConfigResponse'
+import { type Address, type ObjectMap } from './types/Aliases'
 import { appendSlashTrim } from './Utils'
 
 export class HttpClient {

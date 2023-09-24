@@ -4,21 +4,21 @@ import HDWalletProvider from '@truffle/hdwallet-provider'
 import Web3 from 'web3'
 import ow from 'ow'
 import { BigNumber } from '@ethersproject/bignumber'
-import { Contract } from 'web3-eth-contract'
-import { Transaction, TypedTransaction } from '@ethereumjs/tx'
+import { type Contract } from 'web3-eth-contract'
+import { Transaction, type TypedTransaction } from '@ethereumjs/tx'
 import { Web3Provider } from '@ethersproject/providers'
 import { fromWei, toHex } from 'web3-utils'
 
 import {
-  Address,
+  type Address,
   ContractInteractor,
-  GSNContractsDeployment,
+  type GSNContractsDeployment,
   HttpClient,
   HttpWrapper,
-  IntString,
-  LoggerInterface,
-  PenalizerConfiguration,
-  RelayHubConfiguration,
+  type IntString,
+  type LoggerInterface,
+  type PenalizerConfiguration,
+  type RelayHubConfiguration,
   constants,
   defaultEnvironment,
   ether,
@@ -38,8 +38,8 @@ import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
 import Forwarder from './compiled/Forwarder.json'
 import TestWrappedNativeToken from './compiled/TestWrappedNativeToken.json'
 
-import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
+import { type KeyManager } from '@opengsn/relay/dist/KeyManager'
+import { type ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { defaultGsnConfig } from '@opengsn/provider'
 import { Forwarder__factory } from '@opengsn/contracts/types/ethers-contracts'
 
@@ -288,7 +288,7 @@ export class CommandsLogic {
       const relayHubAddress = response.relayHubAddress
       await this.contractInteractor._resolveDeploymentFromRelayHub(relayHubAddress)
 
-      const relayHub = await this.contractInteractor.relayHubInstance
+      const relayHub = this.contractInteractor.relayHubInstance
       const stakeManagerAddress = await relayHub.getStakeManager()
       const stakeManager = await this.contractInteractor._createStakeManager(stakeManagerAddress)
       const { stake, unstakeDelay, owner, token } = (await stakeManager.getStakeInfo(relayAddress))[0]
@@ -368,7 +368,9 @@ export class CommandsLogic {
         }
         const stakeValue = stakeParam.sub(toBN(stake.toString()))
         this.logger.info(`Staking relayer ${formatToken(stakeValue)}` +
-        stake.toString() === '0' ? '' : ` (already has ${formatToken(stake)})`)
+        stake.toString() === '0'
+          ? ''
+          : ` (already has ${formatToken(stake)})`)
 
         const tokenBalance = await stakingTokenContract.balanceOf(options.from)
         if (tokenBalance.lt(stakeValue.toString()) && options.wrap) {

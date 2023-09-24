@@ -1,5 +1,5 @@
 import { keccak256, toBN } from 'web3-utils'
-import { RelayRequest } from '@opengsn/common'
+import { type RelayRequest } from '@opengsn/common'
 import abi from 'web3-eth-abi'
 
 import IForwarder from '@opengsn/common/dist/interfaces/IForwarder.json'

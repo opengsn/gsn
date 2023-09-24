@@ -1,18 +1,18 @@
 import chalk from 'chalk'
 import { BigNumber } from '@ethersproject/bignumber'
-import { Block } from '@ethersproject/providers'
-import { EventEmitter } from 'events'
-import { PastEventOptions } from 'web3-eth-contract'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type Block } from '@ethersproject/providers'
+import { type EventEmitter } from 'events'
+import { type PastEventOptions } from 'web3-eth-contract'
+import { type PrefixedHexString } from 'ethereumjs-util'
 
 import {
-  Address,
+  type Address,
   AmountRequired,
-  ContractInteractor,
-  EventData,
-  EventFilterBlocks,
-  LoggerInterface,
-  RegistrarRelayInfo,
+  type ContractInteractor,
+  type EventData,
+  type EventFilterBlocks,
+  type LoggerInterface,
+  type RegistrarRelayInfo,
   constants,
   toNumber
 } from '@opengsn/common'
@@ -23,9 +23,9 @@ import {
   boolString
 } from '@opengsn/common/dist/Utils'
 
-import { SendTransactionDetails, TransactionManager } from './TransactionManager'
-import { ServerConfigParams } from './ServerConfigParams'
-import { TxStoreManager } from './TxStoreManager'
+import { type SendTransactionDetails, type TransactionManager } from './TransactionManager'
+import { type ServerConfigParams } from './ServerConfigParams'
+import { type TxStoreManager } from './TxStoreManager'
 import { ServerAction } from './StoredTransaction'
 
 import {
@@ -36,7 +36,7 @@ import {
   StakeUnlocked,
   StakeWithdrawn
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
-import { Web3MethodsBuilder } from './Web3MethodsBuilder'
+import { type Web3MethodsBuilder } from './Web3MethodsBuilder'
 
 export class RegistrationManager {
   balanceRequired!: AmountRequired
@@ -250,7 +250,7 @@ export class RegistrationManager {
     return {
       name: event.name,
       address: event.address,
-      args: args
+      args
     }
   }
 
@@ -533,7 +533,7 @@ export class RegistrationManager {
   }
 
   async isRegistered (): Promise<boolean> {
-    const isRegistrationCorrect = await this._isRegistrationCorrect()
+    const isRegistrationCorrect = this._isRegistrationCorrect()
     return this.stakeRequired.isSatisfied &&
       this.isStakeLocked &&
       this.isHubAuthorized &&

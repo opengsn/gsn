@@ -10,7 +10,7 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "target": "es2017",
-    "module": "commonjs",
+    "module": "node16",
     "strict": true,
     "moduleResolution": "node16",
     "noImplicitThis": true,

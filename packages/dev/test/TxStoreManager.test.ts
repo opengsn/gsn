@@ -1,10 +1,10 @@
 import fs from 'fs'
 
-import { ServerAction, StoredTransaction } from '@opengsn/relay/dist/StoredTransaction'
+import { ServerAction, type StoredTransaction } from '@opengsn/relay/dist/StoredTransaction'
 import { TXSTORE_FILENAME, TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { toHex } from 'web3-utils'
-import { Logger } from 'winston'
+import { type Logger } from 'winston'
 import sinon from 'sinon'
 import { serverDefaultConfiguration } from '@opengsn/relay/dist/ServerConfigParams'
 import chai from 'chai'

@@ -1,9 +1,9 @@
 import {
   createStoredTransaction,
   ServerAction,
-  StoredTransaction,
-  StoredTransactionMetadata,
-  StoredTransactionSerialized
+  type StoredTransaction,
+  type StoredTransactionMetadata,
+  type StoredTransactionSerialized
 } from '@opengsn/relay/dist/StoredTransaction'
 import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
 

@@ -1,8 +1,8 @@
 import log from 'loglevel'
-import winston, { transport } from 'winston'
-import { HttpTransportOptions } from 'winston/lib/winston/transports'
+import winston, { type transport } from 'winston'
+import { type HttpTransportOptions } from 'winston/lib/winston/transports'
 
-import { gsnRuntimeVersion, LoggerInterface, LoggerConfiguration } from '@opengsn/common'
+import { gsnRuntimeVersion, type LoggerInterface, type LoggerConfiguration } from '@opengsn/common'
 
 const format = winston.format.combine(
   winston.format.uncolorize(),
@@ -26,6 +26,7 @@ function getOrCreateUserId (): string {
 
 export function createClientLogger (loggerConfiguration?: LoggerConfiguration): LoggerInterface {
   loggerConfiguration = loggerConfiguration ?? { logLevel: 'info' }
+  // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
   if (loggerConfiguration.loggerUrl == null || typeof window === 'undefined' || window.localStorage == null) {
     log.setLevel(loggerConfiguration.logLevel)
     return log

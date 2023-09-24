@@ -1,19 +1,20 @@
 import bodyParser from 'body-parser'
 import cors from 'cors'
-import express, { Express, Request, Response } from 'express'
-import { Server } from 'http'
+import express, { type Express, type Request, type Response } from 'express'
+import { type Server } from 'http'
 import ow from 'ow'
 
-import { PenalizerService } from './penalizer/PenalizerService'
+import { type PenalizerService } from './penalizer/PenalizerService'
 import {
-  AuditRequest,
+  type AuditRequest,
   AuditRequestShape,
-  AuditResponse,
-  LoggerInterface,
+  type AuditResponse,
+  type LoggerInterface,
   RelayTransactionRequestShape
 } from '@opengsn/common'
-import { RelayServer } from './RelayServer'
+import { type RelayServer } from './RelayServer'
 
+// eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
 export interface ParamsDictionary {
   [key: string]: string
 }

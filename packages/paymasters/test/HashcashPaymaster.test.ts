@@ -2,14 +2,14 @@ import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import {
   createHashcashAsyncApproval, calculateHashcashApproval, calculateHashcash
 } from '../src/HashCashApproval'
-import { HashcashPaymasterInstance, SampleRecipientInstance } from '../types/truffle-contracts'
-import { GSNConfig, RelayProvider } from '@opengsn/provider'
-import { RelayRequest } from '@opengsn/common'
+import { type HashcashPaymasterInstance, type SampleRecipientInstance } from '../types/truffle-contracts'
+import { type GSNConfig, RelayProvider } from '@opengsn/provider'
+import { type RelayRequest } from '@opengsn/common'
 
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { expectRevert } from '@openzeppelin/test-helpers'
-import { HttpProvider } from 'web3-core'
-import { GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClient'
+import { type HttpProvider } from 'web3-core'
+import { type GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClient'
 import { disableTruffleAutoEstimateGas } from '@opengsn/dev/dist/test/TestUtils'
 
 const HashcashPaymaster = artifacts.require('HashcashPaymaster')

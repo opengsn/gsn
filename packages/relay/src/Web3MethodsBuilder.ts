@@ -1,11 +1,11 @@
-import BN from 'bn.js'
-import Web3 from 'web3'
+import type BN from 'bn.js'
+import type Web3 from 'web3'
 
 import {
-  Address,
-  GSNContractsDeployment,
-  IntString,
-  RelayRequest,
+  type Address,
+  type GSNContractsDeployment,
+  type IntString,
+  type RelayRequest,
   splitRelayUrlForRegistrar,
   toBN
 } from '@opengsn/common'

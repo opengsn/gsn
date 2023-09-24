@@ -1,9 +1,9 @@
 import {
   RelayedTransactionValidator,
-  TransactionValidationResult
+  type TransactionValidationResult
 } from '@opengsn/provider/dist/RelayedTransactionValidator'
-import { ContractInteractor, RelayTransactionRequest, LoggerInterface, ObjectMap } from '@opengsn/common'
-import { GSNConfig } from '@opengsn/provider/dist'
+import { type ContractInteractor, type RelayTransactionRequest, type LoggerInterface, type ObjectMap } from '@opengsn/common'
+import { type GSNConfig } from '@opengsn/provider/dist'
 
 export class BadRelayedTransactionValidator extends RelayedTransactionValidator {
   private readonly failValidation: boolean

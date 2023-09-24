@@ -1,5 +1,5 @@
-import { RelayData } from './RelayData'
-import { ForwardRequest } from './ForwardRequest'
+import { type RelayData } from './RelayData'
+import { type ForwardRequest } from './ForwardRequest'
 
 export interface RelayRequest {
   request: ForwardRequest

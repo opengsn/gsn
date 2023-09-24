@@ -9,5 +9,5 @@ import hre from 'hardhat'
 
   await printRelayInfo(hre)
 })()
-  .catch(e => console.log(e))
+  .catch(e => { console.log(e) })
   .finally(process.exit)

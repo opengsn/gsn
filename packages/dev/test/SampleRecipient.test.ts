@@ -1,15 +1,15 @@
 import {
-  ForwarderInstance,
-  TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance
+  type ForwarderInstance,
+  type TestPaymasterEverythingAcceptedInstance,
+  type TestRecipientInstance
 } from '../types/truffle-contracts'
 import BN from 'bn.js'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 import { deployHub } from './TestUtils'
 import { defaultEnvironment, constants } from '@opengsn/common'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
-import { TestForwarderMessage } from '../types/truffle-contracts/TestForwarderTarget'
+import { type TestForwarderMessage } from '../types/truffle-contracts/TestForwarderTarget'
 import { defaultGsnConfig } from '@opengsn/provider'
 
 const StakeManager = artifacts.require('StakeManager')
@@ -69,7 +69,7 @@ contract('SampleRecipient', function (accounts) {
     const owner = await paymaster.owner()
     const res = await paymaster.withdrawRelayHubDepositTo(depositActual, owner, {
       from: owner,
-      gasPrice: gasPrice
+      gasPrice
     })
     const txCost = (new BN(res.receipt.gasUsed)).mul(gasPrice)
     const a0BalanceAfter = await web3.eth.getBalance(accounts[0])

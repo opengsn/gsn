@@ -2,33 +2,33 @@
 import Web3 from 'web3'
 import chaiAsPromised from 'chai-as-promised'
 import sinon from 'sinon'
-import { ChildProcessWithoutNullStreams } from 'child_process'
-import { HttpProvider } from 'web3-core'
-import { TypedMessage } from '@metamask/eth-sig-util'
+import { type ChildProcessWithoutNullStreams } from 'child_process'
+import { type HttpProvider } from 'web3-core'
+import { type TypedMessage } from '@metamask/eth-sig-util'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
 import { toChecksumAddress } from 'ethereumjs-util'
-import { StaticJsonRpcProvider, TransactionReceipt } from '@ethersproject/providers'
+import { StaticJsonRpcProvider, type TransactionReceipt } from '@ethersproject/providers'
 
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
-import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { defaultGsnConfig, type GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
-  RelayHubInstance,
-  PenalizerInstance,
-  StakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance,
-  TestPaymasterConfigurableMisbehaviorInstance,
-  TestRecipientContract,
-  TestRecipientInstance,
-  TestTokenInstance,
-  TestUtilInstance
+  type RelayHubInstance,
+  type PenalizerInstance,
+  type StakeManagerInstance,
+  type TestPaymasterEverythingAcceptedInstance,
+  type TestPaymasterConfigurableMisbehaviorInstance,
+  type TestRecipientContract,
+  type TestRecipientInstance,
+  type TestTokenInstance,
+  type TestUtilInstance
 } from '../../types/truffle-contracts'
 import {
-  Address,
-  JsonRpcPayload,
-  JsonRpcResponse,
-  RelayRequest,
+  type Address,
+  type JsonRpcPayload,
+  type JsonRpcResponse,
+  type RelayRequest,
   constants,
   defaultEnvironment,
   getEcRecoverMeta,
@@ -40,8 +40,8 @@ import { BadRelayClient } from '../dummies/BadRelayClient'
 
 import {
   EIP712DomainType,
-  MessageTypeProperty,
-  MessageTypes,
+  type MessageTypeProperty,
+  type MessageTypes,
   TypedRequestData
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
@@ -150,7 +150,7 @@ contract('RelayProvider', function (accounts) {
   })
 
   after(async function () {
-    await stopRelay(relayProcess)
+    stopRelay(relayProcess)
   })
 
   afterEach(async function () {

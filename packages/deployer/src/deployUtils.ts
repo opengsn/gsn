@@ -3,26 +3,24 @@ import * as util from 'util'
 import path from 'path'
 import fs from 'fs'
 import {
-  DeploymentConfiguration,
-  Environment,
+  type DeploymentConfiguration,
+  type Environment,
   environments,
   EnvironmentsKeys,
   isSameAddress,
   merge
 } from '@opengsn/common'
 import { ethers } from 'hardhat'
-import { DeploymentsExtension, TxOptions } from 'hardhat-deploy/types'
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { HttpNetworkConfig } from 'hardhat/src/types/config'
-import { Contract, formatUnits, parseUnits } from 'ethers'
+import { type DeploymentsExtension, type TxOptions } from 'hardhat-deploy/types'
+import { type HardhatRuntimeEnvironment } from 'hardhat/types'
+import { type HttpNetworkConfig } from 'hardhat/src/types/config'
+import { type Contract, formatUnits, parseUnits } from 'ethers'
 
 export function deploymentConfigFile (): string {
   return process.env.DEPLOY_CONFIG ?? path.resolve(__dirname, '../deployments', 'deployment-config.ts')
 }
 
-export interface DeploymentConfig {
-  [key: number]: Environment
-}
+export type DeploymentConfig = Record<number, Environment>
 
 export function fatal (...params: any): never {
   console.error(chalk.red('fatal:'), ...params)

@@ -3,14 +3,14 @@
 import BN from 'bn.js'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
-import { toBuffer, PrefixedHexString } from 'ethereumjs-util'
+import { toBuffer, type PrefixedHexString } from 'ethereumjs-util'
 
 import {
   ContractInteractor,
-  ForwardRequest,
-  GSNContractsDeployment,
-  RelayData,
-  RelayRequest,
+  type ForwardRequest,
+  type GSNContractsDeployment,
+  type RelayData,
+  type RelayRequest,
   TypedRequestData,
   constants,
   defaultEnvironment,
@@ -19,12 +19,12 @@ import {
 } from '@opengsn/common'
 
 import {
-  RelayHubInstance,
-  PenalizerInstance,
-  StakeManagerInstance,
-  TestRecipientInstance,
-  ForwarderInstance,
-  TestPaymasterConfigurableMisbehaviorInstance, RelayRegistrarInstance, TestTokenInstance
+  type RelayHubInstance,
+  type PenalizerInstance,
+  type StakeManagerInstance,
+  type TestRecipientInstance,
+  type ForwarderInstance,
+  type TestPaymasterConfigurableMisbehaviorInstance, type RelayRegistrarInstance, type TestTokenInstance
 } from '../types/truffle-contracts'
 
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'

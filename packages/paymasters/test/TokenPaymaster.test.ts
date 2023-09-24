@@ -6,20 +6,20 @@ import {
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
 import {
-  TestHubInstance,
-  TestProxyInstance,
-  TestTokenInstance,
-  TestUniswapInstance,
-  TokenPaymasterInstance,
-  ForwarderInstance,
-  PenalizerInstance,
-  RelayHubInstance,
-  StakeManagerInstance
+  type TestHubInstance,
+  type TestProxyInstance,
+  type TestTokenInstance,
+  type TestUniswapInstance,
+  type TokenPaymasterInstance,
+  type ForwarderInstance,
+  type PenalizerInstance,
+  type RelayHubInstance,
+  type StakeManagerInstance
 } from '../types/truffle-contracts'
 
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import {
-  RelayRequest,
+  type RelayRequest,
   cloneRelayRequest,
   defaultEnvironment,
   decodeRevertReason,
@@ -30,7 +30,7 @@ import { calculatePostGas, deployTestHub, mergeRelayRequest, registerAsRelayServ
 
 import Web3 from 'web3'
 import { toWei } from 'web3-utils'
-import { PrefixedHexString, MAX_INTEGER } from 'ethereumjs-util'
+import { type PrefixedHexString, MAX_INTEGER } from 'ethereumjs-util'
 
 import { deployHub, hardhatNodeChainId } from '@opengsn/dev/dist/test/TestUtils'
 import { defaultGsnConfig } from '@opengsn/provider'

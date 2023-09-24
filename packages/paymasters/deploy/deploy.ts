@@ -3,14 +3,14 @@ import 'hardhat-deploy'
 
 import chalk from 'chalk'
 import path from 'path'
-import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
-import { DeploymentsExtension } from 'hardhat-deploy/types'
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { HttpNetworkConfig } from 'hardhat/src/types/config'
+import { type DeployOptions, type DeployResult } from 'hardhat-deploy/dist/types'
+import { type DeploymentsExtension } from 'hardhat-deploy/types'
+import { type HardhatRuntimeEnvironment } from 'hardhat/types'
+import { type HttpNetworkConfig } from 'hardhat/src/types/config'
 import { ethers } from 'hardhat'
 import { formatEther } from 'ethers/lib/utils'
 
-import { Address, PaymasterType } from '@opengsn/common'
+import { type Address, PaymasterType } from '@opengsn/common'
 
 // TODO: extract duplicated code to utils
 // helper: nicer logging view fo deployed contracts
@@ -25,34 +25,32 @@ export function deploymentConfigFile (): string {
   return process.env.DEPLOY_CONFIG ?? path.resolve(__dirname, '../deployments', 'deployment-config.ts')
 }
 
-interface PaymasterDeploymentConfig {
-  [key: number]: {
-    PermitERC20UniswapV3Paymaster: {
-      tokens: Array<{
-        name: string
-        slippage: string
-        tokenAddress: string
-        priceFeed: string
-        uniswapPoolFee: string
-        permitMethodSignature: string
-        reverseQuote: boolean
-      }>
-      SLIPPAGE: string
-      MIN_SWAP_AMOUNT: string
-      SWAP_ROUTER_CONTRACT_ADDRESS: string
-      WETH9_CONTRACT_ADDRESS: string
-      DAI_CONTRACT_ADDRESS: string
-      CHAINLINK: string
-      PERMIT_SIGNATURE_DAI: string
-      GAS_USED_BY_POST: string
-      MIN_HUB_BALANCE: string
-      TARGET_HUB_BALANCE: string
-      MIN_WITHDRAWAL_AMOUNT: string
-      GSN_FORWARDER_CONTRACT_ADDRESS: string
-      GSN_HUB_CONTRACT_ADDRESS: string
-    }
+type PaymasterDeploymentConfig = Record<number, {
+  PermitERC20UniswapV3Paymaster: {
+    tokens: Array<{
+      name: string
+      slippage: string
+      tokenAddress: string
+      priceFeed: string
+      uniswapPoolFee: string
+      permitMethodSignature: string
+      reverseQuote: boolean
+    }>
+    SLIPPAGE: string
+    MIN_SWAP_AMOUNT: string
+    SWAP_ROUTER_CONTRACT_ADDRESS: string
+    WETH9_CONTRACT_ADDRESS: string
+    DAI_CONTRACT_ADDRESS: string
+    CHAINLINK: string
+    PERMIT_SIGNATURE_DAI: string
+    GAS_USED_BY_POST: string
+    MIN_HUB_BALANCE: string
+    TARGET_HUB_BALANCE: string
+    MIN_WITHDRAWAL_AMOUNT: string
+    GSN_FORWARDER_CONTRACT_ADDRESS: string
+    GSN_HUB_CONTRACT_ADDRESS: string
   }
-}
+}>
 
 function getPermitERC20UniswapV3PaymasterConstructorArgs (chainId: number): any[] {
   const allConfigurations = require(deploymentConfigFile()) as PaymasterDeploymentConfig
@@ -86,7 +84,7 @@ function getPermitERC20UniswapV3PaymasterConstructorArgs (chainId: number): any[
 
 export default async function deploymentFunc (hre: HardhatRuntimeEnvironment): Promise<void> {
   console.log('Connected to URL: ', (hre.network.config as HttpNetworkConfig).url)
-  const deployments = await hre.deployments
+  const deployments = hre.deployments
   const accounts = await hre.ethers.provider.listAccounts()
   const deployer = accounts[0]
   const balance = await ethers.provider.getBalance(deployer)

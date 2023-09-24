@@ -1,22 +1,22 @@
 import { AbiCoder, Interface } from '@ethersproject/abi'
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { expectRevert } from '@openzeppelin/test-helpers'
 
 import {
   constants,
-  GSNConfig,
-  GSNUnresolvedConstructorInput,
+  type GSNConfig,
+  type GSNUnresolvedConstructorInput,
   RelayProvider,
-  RelayRequest,
+  type RelayRequest,
   toBN
 } from '@opengsn/provider'
 import { GsnTestEnvironment } from '@opengsn/cli'
 
 import {
-  RelayHubInstance,
-  SingletonWhitelistPaymasterInstance,
-  TestRecipientInstance
+  type RelayHubInstance,
+  type SingletonWhitelistPaymasterInstance,
+  type TestRecipientInstance
 } from '../types/truffle-contracts'
 import { GAS_PRICE, impersonateAccount } from './ForkTestUtils'
 import { defaultEnvironment } from '@opengsn/common'
@@ -218,7 +218,7 @@ contract('SingletonWhitelistPaymaster',
         gsnProvider.relayClient.dependencies.asyncPaymasterData =
           async () => { return new AbiCoder().encode(['address'], [owner2]) }
         await expectRevert(
-          testRecipient1.emitMessageNoParams({ from: from }),
+          testRecipient1.emitMessageNoParams({ from }),
           'turning off checks is forbidden')
 
         // NOTE: ugly - restoring the original 'asyncPaymasterData'
@@ -250,7 +250,7 @@ contract('SingletonWhitelistPaymaster',
         await pm.setSharedConfiguration(POST_GAS_USE, 15, { from: paymasterDeployer })
 
         const { receipt: transactionReceipt1 } = await testRecipient1.emitMessageNoParams({
-          from: from
+          from
         })
 
         const { receipt: transactionReceipt2 } = await testRecipient1.emitMessageNoParams({

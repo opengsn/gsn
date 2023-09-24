@@ -1,17 +1,17 @@
-import { encode, List } from 'rlp'
+import { encode, type List } from 'rlp'
 import {
   Capability,
-  FeeMarketEIP1559Transaction,
-  Transaction,
+  type FeeMarketEIP1559Transaction,
+  type Transaction,
   TransactionFactory,
-  TxOptions,
-  TypedTransaction
+  type TxOptions,
+  type TypedTransaction
 } from '@ethereumjs/tx'
 
 import {
   bnToUnpaddedBuffer,
   bufferToHex,
-  PrefixedHexString,
+  type PrefixedHexString,
   toBuffer,
   unpadBuffer
 } from 'ethereumjs-util'

@@ -1,8 +1,8 @@
-import { Contract } from 'ethers'
+import { type Contract } from 'ethers'
 import { type Contract as ContractV6, type BaseContract as BaseContractV6 } from 'ethers-v6'
 
 import { RelayProvider } from './RelayProvider'
-import { GSNConfig, GSNDependencies } from './GSNConfigurator'
+import { type GSNConfig, type GSNDependencies } from './GSNConfigurator'
 
 export async function connectContractToGSN (
   contract: Contract,

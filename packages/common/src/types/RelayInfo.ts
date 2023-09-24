@@ -1,5 +1,5 @@
-import { PingResponse } from '../PingResponse'
-import { RelayInfoUrl } from './GSNContractsDataTypes'
+import { type PingResponse } from '../PingResponse'
+import { type RelayInfoUrl } from './GSNContractsDataTypes'
 
 // Well, I still don't like it
 // Some info is known from the event, some from ping

@@ -1,6 +1,6 @@
 import {
-  ForwarderInstance,
-  TestForwarderTargetInstance
+  type ForwarderInstance,
+  type TestForwarderTargetInstance
 } from '../../types/truffle-contracts'
 import { toHex } from 'web3-utils'
 

@@ -3,18 +3,18 @@ import * as bip39 from 'ethereum-cryptography/bip39'
 import Web3 from 'web3'
 import commander from 'commander'
 import fs from 'fs'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { hdkey as EthereumHDKey } from 'ethereumjs-wallet'
 import { toHex, toWei } from 'web3-utils'
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 
 import {
-  Address,
-  LoggerInterface
+  type Address,
+  type LoggerInterface
 } from '@opengsn/common'
 
-import { GSNConfig, GSNDependencies, GSNUnresolvedConstructorInput, RelayProvider } from '@opengsn/provider'
+import { type GSNConfig, type GSNDependencies, type GSNUnresolvedConstructorInput, RelayProvider } from '@opengsn/provider'
 import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 
 import { getMnemonic, getNetworkUrl, gsnCommander } from '../utils'

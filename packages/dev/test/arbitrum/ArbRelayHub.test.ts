@@ -3,15 +3,15 @@ import { ether, expectEvent } from '@openzeppelin/test-helpers'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
-  ArbRelayHubInstance,
-  ForwarderInstance,
-  RelayRegistrarInstance,
-  StakeManagerInstance,
-  TestRecipientInstance,
-  TestTokenInstance
+  type ArbRelayHubInstance,
+  type ForwarderInstance,
+  type RelayRegistrarInstance,
+  type StakeManagerInstance,
+  type TestRecipientInstance,
+  type TestTokenInstance
 } from '../../types/truffle-contracts'
 import {
-  RelayRequest,
+  type RelayRequest,
   TypedRequestData,
   constants,
   defaultEnvironment,
@@ -20,7 +20,7 @@ import {
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
 
-import { TransactionRelayed } from '../../types/truffle-contracts/RelayHub'
+import { type TransactionRelayed } from '../../types/truffle-contracts/RelayHub'
 import { defaultGsnConfig } from '@opengsn/provider'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
@@ -86,7 +86,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
 
       await arbRelayHub.depositFor(paymaster.address, {
         value: ether('1'),
-        from: from
+        from
       })
 
       await testToken.mint(stake, { from: relayOwner })
@@ -103,7 +103,7 @@ contract('ArbRelayHub', function ([from, relayWorker, relayManager, relayOwner]:
         request: {
           to: testRecipient.address,
           data: testRecipient.contract.methods.emitMessageNoParams().encodeABI(),
-          from: from,
+          from,
           nonce: '0',
           value: '0',
           gas: '1000000',

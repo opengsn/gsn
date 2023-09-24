@@ -1,29 +1,29 @@
-import BN from 'bn.js'
+import type BN from 'bn.js'
 import chalk from 'chalk'
 
-import { AbiCoder, Interface, JsonFragment } from '@ethersproject/abi'
+import { AbiCoder, Interface, type JsonFragment } from '@ethersproject/abi'
 import { BigNumber } from '@ethersproject/bignumber'
-import { JsonRpcProvider, JsonRpcSigner } from '@ethersproject/providers'
-import { TypedMessage } from '@metamask/eth-sig-util'
+import { type JsonRpcProvider, type JsonRpcSigner } from '@ethersproject/providers'
+import { type TypedMessage } from '@metamask/eth-sig-util'
 
 import {
   bufferToHex,
   ecrecover,
   hashPersonalMessage,
-  PrefixedHexString,
+  type PrefixedHexString,
   pubToAddress,
   toBuffer
 } from 'ethereumjs-util'
 
-import { Address, EIP1559Fees, EventData, RelaySelectionResult } from './types/Aliases'
+import { type Address, type EIP1559Fees, type EventData, type RelaySelectionResult } from './types/Aliases'
 
-import { MessageTypes } from './EIP712/TypedRequestData'
+import { type MessageTypes } from './EIP712/TypedRequestData'
 import { fromWei, isBigNumber, toHex, toWei } from './web3js/Web3JSUtils'
 import { ethers } from 'ethers'
 import { keccak256 } from 'ethers/lib/utils'
-import { RelayRequest } from './EIP712/RelayRequest'
-import { PartialRelayInfo } from './types/RelayInfo'
-import { LoggerInterface } from './LoggerInterface'
+import { type RelayRequest } from './EIP712/RelayRequest'
+import { type PartialRelayInfo } from './types/RelayInfo'
+import { type LoggerInterface } from './LoggerInterface'
 
 export function removeHexPrefix (hex: string): string {
   if (hex == null || typeof hex.replace !== 'function') {
@@ -148,9 +148,9 @@ export function getEcRecoverMeta (message: string, signature: string | Signature
     const s = parseHexString(signature.substr(66, 65))
     const v = parseHexString(signature.substr(130, 2))
     signature = {
-      v: v,
-      r: r,
-      s: s
+      v,
+      r,
+      s
     }
   }
   const bufSigned = hashPersonalMessage(Buffer.from(message))
@@ -174,7 +174,7 @@ export function isSameAddress (address1: Address, address2: Address): boolean {
 }
 
 export async function sleep (ms: number): Promise<void> {
-  return await new Promise(resolve => setTimeout(resolve, ms))
+  await new Promise(resolve => setTimeout(resolve, ms))
 }
 
 export function ether (n: string): BigNumber {
@@ -282,7 +282,7 @@ export function packRelayUrlForRegistrar (parts: string[]): string {
       .replace(/(00)+$/g, ''), 'hex').toString()
 }
 
-export function toNumber (numberish: number | string | BN | BigNumber | BigInt): number {
+export function toNumber (numberish: number | string | BN | BigNumber | bigint): number {
   switch (typeof numberish) {
     case 'string':
       return parseFloat(numberish)

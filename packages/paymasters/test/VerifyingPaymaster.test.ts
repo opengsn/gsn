@@ -1,16 +1,16 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
-import { SampleRecipientInstance, VerifyingPaymasterInstance } from '../types/truffle-contracts'
+import { type SampleRecipientInstance, type VerifyingPaymasterInstance } from '../types/truffle-contracts'
 
-import { GSNUnresolvedConstructorInput, RelayProvider, GSNConfig } from '@opengsn/provider'
+import { type GSNUnresolvedConstructorInput, RelayProvider, type GSNConfig } from '@opengsn/provider'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { expectRevert } from '@openzeppelin/test-helpers'
 
-import { RelayRequest, ApprovalDataCallback } from '@opengsn/common'
+import { type RelayRequest, type ApprovalDataCallback } from '@opengsn/common'
 
-import { bufferToHex, privateToAddress, PrefixedHexString } from 'ethereumjs-util'
+import { bufferToHex, privateToAddress, type PrefixedHexString } from 'ethereumjs-util'
 import { randomBytes } from 'crypto'
 import { getRequestHash, packForwardRequest, packRelayData, signRelayRequest } from '../src/VerifyingPaymasterUtils'
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 
 const VerifyingPaymaster = artifacts.require('VerifyingPaymaster')
 const SampleRecipient = artifacts.require('SampleRecipient')

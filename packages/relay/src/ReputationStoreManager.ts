@@ -1,7 +1,7 @@
 import Nedb from '@seald-io/nedb'
 
-import { LoggerInterface, Address } from '@opengsn/common'
-import { ReputationChange, ReputationEntry } from './ReputationEntry'
+import { type LoggerInterface, type Address } from '@opengsn/common'
+import { type ReputationChange, type ReputationEntry } from './ReputationEntry'
 
 export const REPUTATION_STORE_FILENAME = 'reputation_store.db'
 

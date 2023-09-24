@@ -1,5 +1,5 @@
 import { toBN } from 'web3-utils'
-import { EIP712Domain } from '@opengsn/common/dist/EIP712/TypedRequestData'
+import { type EIP712Domain } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
 import {
   DAI_CONTRACT_ADDRESS,
@@ -46,7 +46,7 @@ export async function skipWithoutFork (test: any): Promise<void> {
 }
 
 export async function impersonateAccount (address: string): Promise<void> {
-  return await new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
       jsonrpc: '2.0',

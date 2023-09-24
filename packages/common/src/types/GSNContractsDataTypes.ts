@@ -1,6 +1,6 @@
-import { Address, EventName, IntString } from './Aliases'
-import { PrefixedHexString } from 'ethereumjs-util'
-import { BigNumber } from '@ethersproject/bignumber'
+import { type Address, type EventName, type IntString } from './Aliases'
+import { type PrefixedHexString } from 'ethereumjs-util'
+import { type BigNumber } from '@ethersproject/bignumber'
 
 // Empty interface used on purpose to mark various Event Infos in collections, used in StatisticsManager.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

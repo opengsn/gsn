@@ -119,7 +119,7 @@ contract TestPaymasterConfigurableMisbehavior is TestPaymasterEverythingAccepted
         if (expensiveGasLimits) {
             uint256 sum;
             //memory access is 700gas, so we waste ~50000
-            for ( int i=0; i<100000; i+=700 ) {
+            for ( int256 i=0; i<100000; i+=700 ) {
                 sum  = sum + limits.acceptanceBudget;
             }
         }

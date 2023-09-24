@@ -1,16 +1,16 @@
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
 import {
-  Address,
-  GSNConfig,
-  GsnTransactionDetails,
-  HttpClient,
-  LoggerInterface,
-  PartialRelayInfo,
-  PingFilter,
-  RelayInfo,
-  RelayInfoUrl,
-  RelaySelectionResult,
-  WaitForSuccessResults,
+  type Address,
+  type GSNConfig,
+  type GsnTransactionDetails,
+  type HttpClient,
+  type LoggerInterface,
+  type PartialRelayInfo,
+  type PingFilter,
+  type RelayInfo,
+  type RelayInfoUrl,
+  type RelaySelectionResult,
+  type WaitForSuccessResults,
   adjustRelayRequestForPingResponse,
   isInfoFromEvent,
   isSameAddress,
@@ -18,7 +18,7 @@ import {
   waitForSuccess
 } from '@opengsn/common'
 
-import { KnownRelaysManager } from './KnownRelaysManager'
+import { type KnownRelaysManager } from './KnownRelaysManager'
 
 export class RelaySelectionManager {
   private readonly knownRelaysManager: KnownRelaysManager
@@ -82,7 +82,7 @@ export class RelaySelectionManager {
     } else {
       const managerAddress = winner.relayInfo.pingResponse.relayManagerAddress
       this.logger.debug(`finding relay register info for manager address: ${managerAddress}; known info: ${JSON.stringify(winner.relayInfo)}`)
-      const event = await this.knownRelaysManager.getRelayInfoForManager(managerAddress)
+      const event = this.knownRelaysManager.getRelayInfoForManager(managerAddress)
       if (event == null) {
         this.logger.error('Could not find registration info in the RelayRegistrar for the selected preferred relay')
         return undefined

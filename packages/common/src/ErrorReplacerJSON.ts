@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
 export function replaceErrors (key: string, value: { [key: string]: any }): any {
   if (value instanceof Map) {
     return {
@@ -5,6 +6,7 @@ export function replaceErrors (key: string, value: { [key: string]: any }): any 
       value: Array.from(value.entries())
     }
   } else if (value instanceof Error) {
+    // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
     const error: { [key: string]: any } = {}
 
     // remove "circular referenced" objects we don't really want to log...

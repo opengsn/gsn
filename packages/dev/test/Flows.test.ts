@@ -7,20 +7,20 @@ import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import {
-  Address,
-  ApprovalDataCallback,
+  type Address,
+  type ApprovalDataCallback,
   constants,
   defaultEnvironment,
   ether
 } from '@opengsn/common'
 import {
-  RelayHubInstance, StakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance, TestPaymasterPreconfiguredApprovalInstance,
-  TestRecipientInstance, TestTokenInstance
+  type RelayHubInstance, type StakeManagerInstance,
+  type TestPaymasterEverythingAcceptedInstance, type TestPaymasterPreconfiguredApprovalInstance,
+  type TestRecipientInstance, type TestTokenInstance
 } from '../types/truffle-contracts'
 import { deployHub, emptyBalance, startRelay, stopRelay } from './TestUtils'
-import { ChildProcessWithoutNullStreams } from 'child_process'
-import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { type ChildProcessWithoutNullStreams } from 'child_process'
+import { defaultGsnConfig, type GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import Web3 from 'web3'
@@ -114,7 +114,7 @@ options.forEach(params => {
     })
 
     after(async function () {
-      await stopRelay(relayproc)
+      stopRelay(relayproc)
     })
 
     if (params.relay) {
@@ -153,7 +153,7 @@ options.forEach(params => {
       let res
       try {
         const gas = await sr.contract.methods.emitMessage('hello').estimateGas()
-        res = await sr.emitMessage('hello', { from: from, gas })
+        res = await sr.emitMessage('hello', { from, gas })
       } catch (e: any) {
         console.log('error is ', e.message)
         throw e

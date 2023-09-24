@@ -9,11 +9,11 @@ import {
 } from '@opengsn/common/dist/Utils'
 import {
   ContractInteractor,
-  GSNContractsDeployment,
+  type GSNContractsDeployment,
   RelayCallStatusCodes,
-  RelayData,
-  RelayHubConfiguration,
-  RelayRequest,
+  type RelayData,
+  type RelayHubConfiguration,
+  type RelayRequest,
   TypedRequestData,
   cloneRelayRequest,
   constants,
@@ -23,14 +23,14 @@ import {
 } from '@opengsn/common'
 
 import {
-  RelayHubInstance,
-  TestRecipientInstance,
-  TestPaymasterVariableGasLimitsInstance,
-  StakeManagerInstance,
-  IForwarderInstance,
-  PenalizerInstance,
-  RelayRegistrarInstance,
-  TestTokenInstance
+  type RelayHubInstance,
+  type TestRecipientInstance,
+  type TestPaymasterVariableGasLimitsInstance,
+  type StakeManagerInstance,
+  type IForwarderInstance,
+  type PenalizerInstance,
+  type RelayRegistrarInstance,
+  type TestTokenInstance
 } from '../types/truffle-contracts'
 import { deployHub, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
@@ -276,7 +276,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
       const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequestMisbehaving, signature, '0x', {
         from: relayWorker,
         gas: externalGasLimit,
-        gasPrice: gasPrice
+        gasPrice
       })
 
       assert.equal('TransactionRejectedByPaymaster', res.logs[0].event)
@@ -383,7 +383,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
             from: relayWorker,
             gas: externalGasLimit,
-            gasPrice: gasPrice
+            gasPrice
           })
 
           const encodedData = contractInteractor.encodeABI({
@@ -475,7 +475,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
           const receipt = await relayCall.send({
             from: relayWorker,
             gas: externalGasLimit,
-            gasPrice: gasPrice
+            gasPrice
           })
           gassesUsed.push(receipt.gasUsed - await contractInteractor.calculateCalldataGasUsed(relayCall.encodeABI(), defaultEnvironment, 1, ethersProvider))
           // console.log('relayCall encodeABI len', relayCall.encodeABI().length / 2)
@@ -503,11 +503,11 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
 
   describe('check calculation does not break for different fees', function () {
     [0, 1000]
-      .forEach(messageLength =>
+      .forEach(messageLength => {
         [0, 10, 100]
-          .forEach(requestedFee =>
+          .forEach(requestedFee => {
             [0, 20].forEach(devFee => {
-              // avoid duplicate coverage checks. they do the same, and take a lot of time:
+            // avoid duplicate coverage checks. they do the same, and take a lot of time:
               if (requestedFee !== 0 && messageLength !== 0 && process.env.MODE === 'coverage') return
               // 50k tests take more than 10 seconds to complete so will run once for sanity
               if (messageLength === 50000 && requestedFee !== 10) return
@@ -564,7 +564,7 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   const res = await relayHub.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequest, signature, '0x', {
                     from: relayWorker,
                     gas: externalGasLimit,
-                    gasPrice: gasPrice
+                    gasPrice
                   })
 
                   const afterBalances = await getBalances()
@@ -623,7 +623,9 @@ contract('RelayHub gas calculations', function ([_, relayOwner, relayWorker, rel
                   assert.equal(expectedPaymasterBalance.toString(), afterBalances.paymasters.toString())
                 })
             })
+          }
           )
+      }
       )
   })
 })

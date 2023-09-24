@@ -1,7 +1,7 @@
-import { RelayRequest, ForwardRequest, RelayData } from '@opengsn/common'
-import { ecsign, keccak256, toRpcSig, PrefixedHexString } from 'ethereumjs-util'
+import { type RelayRequest, type ForwardRequest, type RelayData } from '@opengsn/common'
+import { ecsign, keccak256, toRpcSig, type PrefixedHexString } from 'ethereumjs-util'
 
-import abiCoder, { AbiCoder } from 'web3-eth-abi'
+import abiCoder, { type AbiCoder } from 'web3-eth-abi'
 
 const abi: AbiCoder = abiCoder as any
 

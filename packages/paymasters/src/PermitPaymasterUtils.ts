@@ -1,18 +1,18 @@
-import { StaticJsonRpcProvider } from '@ethersproject/providers'
-import { PrefixedHexString, fromRpcSig } from 'ethereumjs-util'
-import { getEip712Signature, Address, IntString } from '@opengsn/common'
-import { TypedMessage } from '@metamask/eth-sig-util'
+import { type StaticJsonRpcProvider } from '@ethersproject/providers'
+import { type PrefixedHexString, fromRpcSig } from 'ethereumjs-util'
+import { getEip712Signature, type Address, type IntString } from '@opengsn/common'
+import { type TypedMessage } from '@metamask/eth-sig-util'
 
 import {
-  EIP712Domain,
+  type EIP712Domain,
   EIP712DomainType,
-  MessageTypeProperty,
-  MessageTypes
+  type MessageTypeProperty,
+  type MessageTypes
 } from '@opengsn/common/dist/EIP712/TypedRequestData'
 
 import daiPermitAbi from './interfaces/PermitInterfaceDAI.json'
 import eip2612PermitAbi from './interfaces/PermitInterfaceEIP2612.json'
-import BN from 'bn.js'
+import type BN from 'bn.js'
 import { Contract } from 'ethers'
 
 interface Types extends MessageTypes {

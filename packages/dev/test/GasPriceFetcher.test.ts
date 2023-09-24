@@ -2,9 +2,9 @@ import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
-import { ContractInteractor, LoggerInterface, defaultEnvironment } from '@opengsn/common'
+import { ContractInteractor, type LoggerInterface, defaultEnvironment } from '@opengsn/common'
 
-import { Server } from 'net'
+import { type Server } from 'net'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 
 import express from 'express'

@@ -1,4 +1,4 @@
-import { Address } from './types/Aliases'
+import { type Address } from './types/Aliases'
 
 export interface GSNContractsDeployment {
   forwarderAddress?: Address

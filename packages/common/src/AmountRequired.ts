@@ -1,10 +1,10 @@
 import { BigNumber } from '@ethersproject/bignumber'
 
-import { ERC20TokenMetadata } from './ContractInteractor'
-import { LoggerInterface } from './LoggerInterface'
+import { type ERC20TokenMetadata } from './ContractInteractor'
+import { type LoggerInterface } from './LoggerInterface'
 import { boolString, formatTokenAmount, isSameAddress } from './Utils'
 import { constants } from './Constants'
-import { Address } from './types/Aliases'
+import { type Address } from './types/Aliases'
 
 const ether: ERC20TokenMetadata = {
   tokenAddress: constants.ZERO_ADDRESS,
