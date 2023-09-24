@@ -1,5 +1,5 @@
-import { PrefixedHexString } from 'ethereumjs-util'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { type PrefixedHexString } from 'ethereumjs-util'
+import { type JsonRpcProvider } from '@ethersproject/providers'
 import { utils } from 'ethers'
 
 import { WrapperProviderBase } from './WrapperProviderBase'

@@ -1,6 +1,6 @@
 import { BigNumber } from '@ethersproject/bignumber'
 
-import { CommandsLogic, WithdrawOptions } from '../CommandsLogic'
+import { CommandsLogic, type WithdrawOptions } from '../CommandsLogic'
 import { gsnCommander, getKeystorePath, getServerConfig } from '../utils'
 import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'

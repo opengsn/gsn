@@ -1,4 +1,4 @@
-import { Address } from '@opengsn/common'
+import { type Address } from '@opengsn/common'
 
 export interface ReputationChange {
   blockNumber: number

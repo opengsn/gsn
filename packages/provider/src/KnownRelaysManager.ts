@@ -1,18 +1,18 @@
 import {
-  Address,
-  ContractInteractor,
-  LoggerInterface,
-  RegistrarRelayInfo,
-  RelayFailureInfo,
-  RelayFilter,
+  type Address,
+  type ContractInteractor,
+  type LoggerInterface,
+  type RegistrarRelayInfo,
+  type RelayFailureInfo,
+  type RelayFilter,
   validateRelayUrl,
   isSameAddress,
   shuffle
 } from '@opengsn/common'
 
-import { GSNConfig } from './GSNConfigurator'
+import { type GSNConfig } from './GSNConfigurator'
 
-import { RelayInfoUrl } from '@opengsn/common/dist/types/GSNContractsDataTypes'
+import { type RelayInfoUrl } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 
 export const DefaultRelayFilter: RelayFilter = function (registrarRelayInfo: RegistrarRelayInfo): boolean {
   return true

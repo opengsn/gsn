@@ -1,24 +1,24 @@
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 import { constants, ether } from '@openzeppelin/test-helpers'
 import { toWei } from 'web3-utils'
 
 import {
-  Address,
-  ForwardRequest,
-  RelayData,
-  RelayRequest,
+  type Address,
+  type ForwardRequest,
+  type RelayData,
+  type RelayRequest,
   defaultEnvironment,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
 
 import {
-  RelayHubInstance,
-  StakeManagerInstance,
-  TestTokenInstance,
-  TokenGasCalculatorInstance
+  type RelayHubInstance,
+  type StakeManagerInstance,
+  type TestTokenInstance,
+  type TokenGasCalculatorInstance
 } from '../types/truffle-contracts'
 
-import { GasUsed } from '../types/truffle-contracts/TokenGasCalculator'
+import { type GasUsed } from '../types/truffle-contracts/TokenGasCalculator'
 
 const TestHub = artifacts.require('TestHub')
 const TokenGasCalculator = artifacts.require('TokenGasCalculator')

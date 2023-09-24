@@ -1,7 +1,7 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { ContractFactory } from 'ethers'
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { toWei } from 'web3-utils'
@@ -10,31 +10,31 @@ import { deployTestHub, mergeRelayRequest } from './TestUtils'
 import { constants } from '@opengsn/common/dist/Constants'
 import {
   defaultEnvironment,
-  GSNConfig,
+  type GSNConfig,
   removeHexPrefix,
-  RelayRequest,
+  type RelayRequest,
   DAI_CONTRACT_ADDRESS,
   UNI_CONTRACT_ADDRESS,
   USDC_CONTRACT_ADDRESS,
   WETH9_CONTRACT_ADDRESS
 } from '@opengsn/common'
 import {
-  ForwarderInstance,
-  PenalizerInstance,
-  PermitERC20UniswapV3PaymasterInstance,
-  PermitInterfaceDAIInstance,
-  PermitInterfaceEIP2612Instance,
-  RelayHubInstance,
-  SampleRecipientInstance,
-  StakeManagerInstance,
-  TestHubInstance,
-  TestTokenInstance
+  type ForwarderInstance,
+  type PenalizerInstance,
+  type PermitERC20UniswapV3PaymasterInstance,
+  type PermitInterfaceDAIInstance,
+  type PermitInterfaceEIP2612Instance,
+  type RelayHubInstance,
+  type SampleRecipientInstance,
+  type StakeManagerInstance,
+  type TestHubInstance,
+  type TestTokenInstance
 } from '../types/truffle-contracts'
 import { deployHub, revert, snapshot, startRelay, stopRelay } from '@opengsn/dev/dist/test/TestUtils'
 
 import {
-  GasAndEthConfig,
-  UniswapConfig,
+  type GasAndEthConfig,
+  type UniswapConfig,
   TokenPaymasterProvider,
   CHAINLINK_DAI_ETH_FEED_CONTRACT_ADDRESS,
   CHAINLINK_UNI_ETH_FEED_CONTRACT_ADDRESS,
@@ -65,7 +65,7 @@ import {
   skipWithoutFork
 } from './ForkTestUtils'
 
-import { ChildProcessWithoutNullStreams } from 'child_process'
+import { type ChildProcessWithoutNullStreams } from 'child_process'
 import { TokenPaymasterEthersWrapper } from '../src/WrapContract'
 
 const PermitERC20UniswapV3Paymaster = artifacts.require('PermitERC20UniswapV3Paymaster')
@@ -414,8 +414,8 @@ contract('TokenPaymasterProvider', function ([account0, relay, owner]) {
       const ethersProvider = new StaticJsonRpcProvider((web3.currentProvider as any).host)
       const signer = ethersProvider.getSigner()
       // @ts-ignores
-      const factory = await new ContractFactory(SampleRecipient.abi, SampleRecipient.bytecode, signer)
-      const recipient = await factory.attach(sampleRecipient.address)
+      const factory = new ContractFactory(SampleRecipient.abi, SampleRecipient.bytecode, signer)
+      const recipient = factory.attach(sampleRecipient.address)
       const wrappedGsnRecipient = await TokenPaymasterEthersWrapper.wrapContract(recipient, gsnConfig)
       const signerAddress = await signer.getAddress()
       const balanceBefore = await web3.eth.getBalance(signerAddress)

@@ -1,9 +1,9 @@
 import net from 'net'
 import {
-  Address,
+  type Address,
   ContractInteractor,
-  GSNContractsDeployment,
-  LoggerInterface,
+  type GSNContractsDeployment,
+  type LoggerInterface,
   RelayCallGasLimitCalculationHelper,
   constants,
   defaultEnvironment,
@@ -13,7 +13,7 @@ import {
 
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
-import { CommandsLogic, RegisterOptions } from './CommandsLogic'
+import { CommandsLogic, type RegisterOptions } from './CommandsLogic'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 
 import { getNetworkUrl, loadDeployment, supportedNetworks } from './utils'
@@ -26,16 +26,16 @@ import Web3 from 'web3'
 
 import {
   configureServer,
-  ServerConfigParams,
+  type ServerConfigParams,
   serverDefaultConfiguration,
-  ServerDependencies
+  type ServerDependencies
 } from '@opengsn/relay/dist/ServerConfigParams'
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 
-import { GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClient'
+import { type GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { type GSNUnresolvedConstructorInput } from '@opengsn/provider/dist/RelayClient'
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 
@@ -153,7 +153,7 @@ class GsnTestEnvironmentClass {
       sleepCount: 5,
       stake: '1',
       funds: ether('5'),
-      relayUrl: relayUrl,
+      relayUrl,
       gasPrice: 1e9.toString(),
       unstakeDelay: '15000'
     }

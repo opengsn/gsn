@@ -1,28 +1,28 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
-import { JsonRpcSigner, TransactionRequest } from '@ethersproject/providers'
+import { type JsonRpcSigner, type TransactionRequest } from '@ethersproject/providers'
 import { Wallet } from '@ethersproject/wallet'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 import { parse } from '@ethersproject/transactions'
 import {
   SignTypedDataVersion,
-  TypedMessage,
+  type TypedMessage,
   personalSign,
   recoverTypedSignature,
   signTypedData
 } from '@metamask/eth-sig-util'
 
 import {
-  Address,
-  RelayRequest,
-  RLPEncodedTransaction,
+  type Address,
+  type RelayRequest,
+  type RLPEncodedTransaction,
   TypedRequestData,
   getEip712Signature,
   isSameAddress,
   removeHexPrefix
 } from '@opengsn/common'
 
-import { GSNConfig } from './GSNConfigurator'
+import { type GSNConfig } from './GSNConfigurator'
 
 export interface AccountKeypair {
   privateKey: PrefixedHexString

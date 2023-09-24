@@ -6,13 +6,13 @@ import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import { Transaction, AccessListEIP2930Transaction, FeeMarketEIP1559Transaction } from '@ethereumjs/tx'
 import Common from '@ethereumjs/common'
-import { TxOptions } from '@ethereumjs/tx/dist/types'
+import { type TxOptions } from '@ethereumjs/tx/dist/types'
 import { encode, utils } from 'rlp'
 import { expect } from 'chai'
 import { privateToAddress, bnToRlp, ecsign, keccak256, bufferToHex } from 'ethereumjs-util'
 
 import {
-  RelayRequest,
+  type RelayRequest,
   StakeUnlocked,
   TypedRequestData,
   constants,
@@ -24,10 +24,10 @@ import {
 } from '@opengsn/common'
 
 import {
-  PenalizerInstance,
-  RelayHubInstance, StakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance, TestTokenInstance
+  type PenalizerInstance,
+  type RelayHubInstance, type StakeManagerInstance,
+  type TestPaymasterEverythingAcceptedInstance,
+  type TestRecipientInstance, type TestTokenInstance
 } from '../types/truffle-contracts'
 
 import { deployHub, evmMineMany, hardhatNodeChainId, revert, snapshot } from './TestUtils'
@@ -159,7 +159,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
               maxFeePerGas: encodedCallArgs.maxFeePerGas.toString(),
               maxPriorityFeePerGas: encodedCallArgs.maxPriorityFeePerGas.toString(),
               transactionCalldataGasUsed: '0',
-              relayWorker: relayWorker,
+              relayWorker,
               forwarder,
               paymaster: encodedCallArgs.paymaster,
               paymasterData,
@@ -272,7 +272,7 @@ contract('RelayHub Penalizations', function ([_, relayOwner, committer, nonCommi
           await evmMineMany(10)
           const res = await penalizer.penalizeIllegalTransaction(bufferToHex(bufferToSign), penalizableTxSignature, relayHub.address, randomValue, { from: committer })
           expectEvent(res, 'StakePenalized', {
-            relayManager: relayManager,
+            relayManager,
             beneficiary: committer,
             reward: stake.divn(2)
           })

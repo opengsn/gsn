@@ -1,14 +1,14 @@
-import { StaticJsonRpcProvider, Block } from '@ethersproject/providers'
-import { TransactionFactory, TypedTransaction } from '@ethereumjs/tx'
-import { PrefixedHexString, toBuffer } from 'ethereumjs-util'
-import { Mutex } from 'async-mutex'
+import { StaticJsonRpcProvider, type Block } from '@ethersproject/providers'
+import { TransactionFactory, type TypedTransaction } from '@ethereumjs/tx'
+import { type PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { type Mutex } from 'async-mutex'
 import * as ethUtils from 'ethereumjs-util'
 
 import { evmMine, evmMineMany, increaseTime } from './TestUtils'
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 import { ServerTestEnvironment } from './ServerTestEnvironment'
-import { SignedTransaction } from '@opengsn/relay/dist/KeyManager'
-import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
+import { type SignedTransaction } from '@opengsn/relay/dist/KeyManager'
+import { type TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 
 contract('TransactionManager', function (accounts) {
   const dbPruneTxAfterBlocks = 12
@@ -35,7 +35,7 @@ contract('TransactionManager', function (accounts) {
     it('should return new gas fees when both below maxFeePerGas', async function () {
       const maxFeePerGas = 1e10
       const maxPriorityFeePerGas = 1e9
-      const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
+      const newFees = transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
       assert.equal(newFees.newMaxFee, maxFeePerGas * transactionManager.config.retryGasPriceFactor)
       assert.equal(newFees.newMaxPriorityFee, maxPriorityFeePerGas * transactionManager.config.retryGasPriceFactor)
       assert.isFalse(newFees.isMaxGasPriceReached)
@@ -43,7 +43,7 @@ contract('TransactionManager', function (accounts) {
     it('should return new gas fees when new maxFee above maxFeePerGas', async function () {
       const maxFeePerGas = parseInt(transactionManager.config.maxMaxFeePerGas) - 1
       const maxPriorityFeePerGas = 1e9
-      const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
+      const newFees = transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
       assert.equal(newFees.newMaxFee.toString(), transactionManager.config.maxMaxFeePerGas)
       assert.equal(newFees.newMaxPriorityFee, maxPriorityFeePerGas * transactionManager.config.retryGasPriceFactor)
       assert.isTrue(newFees.isMaxGasPriceReached)
@@ -52,7 +52,7 @@ contract('TransactionManager', function (accounts) {
       const maxFeePerGas = 1e9
       const maxPriorityFeePerGas = parseInt(transactionManager.config.maxMaxFeePerGas) - 1
       assert.isTrue(maxFeePerGas < maxPriorityFeePerGas)
-      const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
+      const newFees = transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, 0, 0)
       assert.equal(newFees.newMaxFee, maxFeePerGas * transactionManager.config.retryGasPriceFactor)
       assert.equal(newFees.newMaxPriorityFee, newFees.newMaxFee)
       assert.isFalse(newFees.isMaxGasPriceReached)
@@ -62,7 +62,7 @@ contract('TransactionManager', function (accounts) {
       const maxFeePerGas = 1e9
       const minMaxPriorityFeePerGas = 1e10
       const minMaxFeePerGas = 1e11
-      const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, minMaxPriorityFeePerGas, minMaxFeePerGas)
+      const newFees = transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, minMaxPriorityFeePerGas, minMaxFeePerGas)
       assert.equal(newFees.newMaxFee, minMaxFeePerGas)
       assert.equal(newFees.newMaxPriorityFee, minMaxPriorityFeePerGas)
       assert.isFalse(newFees.isMaxGasPriceReached)
@@ -72,7 +72,7 @@ contract('TransactionManager', function (accounts) {
       const maxFeePerGas = 1e8
       const minMaxPriorityFeePerGas = 1e11
       const minMaxFeePerGas = 1e10
-      const newFees = await transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, minMaxPriorityFeePerGas, minMaxFeePerGas)
+      const newFees = transactionManager._resolveNewGasPrice(maxFeePerGas, maxPriorityFeePerGas, minMaxPriorityFeePerGas, minMaxFeePerGas)
       assert.equal(newFees.newMaxFee, minMaxFeePerGas)
       assert.equal(newFees.newMaxPriorityFee, minMaxFeePerGas)
       assert.isFalse(newFees.isMaxGasPriceReached)

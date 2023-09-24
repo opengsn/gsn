@@ -1,10 +1,10 @@
 import Nedb from '@seald-io/nedb'
 import ow from 'ow/dist'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 
-import { Address, isSameAddress, LoggerInterface } from '@opengsn/common'
+import { type Address, isSameAddress, type LoggerInterface } from '@opengsn/common'
 
-import { ServerAction, StoredTransaction } from './StoredTransaction'
+import { type ServerAction, type StoredTransaction } from './StoredTransaction'
 
 export const TXSTORE_FILENAME = 'txstore.db'
 

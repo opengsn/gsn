@@ -1,12 +1,12 @@
-import { DeploymentsExtension } from 'hardhat-deploy/types'
+import { type DeploymentsExtension } from 'hardhat-deploy/types'
 
 import { constants, GsnDomainSeparatorType, GsnRequestType } from '@opengsn/common'
 import { defaultGsnConfig } from '@opengsn/provider'
 
-import { DeployOptions, DeployResult } from 'hardhat-deploy/dist/types'
+import { type DeployOptions, type DeployResult } from 'hardhat-deploy/dist/types'
 import chalk from 'chalk'
 import { formatEther, parseEther } from 'ethers'
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
+import { type HardhatRuntimeEnvironment } from 'hardhat/types'
 import { ethers } from 'hardhat'
 
 import {

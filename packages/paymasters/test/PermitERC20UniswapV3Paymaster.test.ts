@@ -1,29 +1,29 @@
-import BN from 'bn.js'
+import type BN from 'bn.js'
 import { toBN, toWei } from 'web3-utils'
 import { toChecksumAddress } from 'ethereumjs-util'
 import {
-  IChainlinkOracleInstance,
-  IERC20MetadataInstance,
-  IQuoterInstance,
-  PermitERC20UniswapV3PaymasterInstance,
-  PermitInterfaceDAIInstance,
-  PermitInterfaceEIP2612Instance,
-  SampleRecipientInstance,
-  TestHubInstance
+  type IChainlinkOracleInstance,
+  type IERC20MetadataInstance,
+  type IQuoterInstance,
+  type PermitERC20UniswapV3PaymasterInstance,
+  type PermitInterfaceDAIInstance,
+  type PermitInterfaceEIP2612Instance,
+  type SampleRecipientInstance,
+  type TestHubInstance
 } from '../types/truffle-contracts'
 
 import { calculatePostGas, deployTestHub, mergeRelayRequest, revertReason } from './TestUtils'
 import {
-  GasAndEthConfig,
+  type GasAndEthConfig,
   signAndEncodeDaiPermit,
-  signAndEncodeEIP2612Permit, UniswapConfig
+  signAndEncodeEIP2612Permit, type UniswapConfig
 } from '../src/PermitPaymasterUtils'
 import { revert, snapshot } from '@opengsn/dev/dist/test/TestUtils'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { EIP712DomainType, EIP712DomainTypeWithoutVersion } from '@opengsn/common/dist/EIP712/TypedRequestData'
 import {
   DAI_CONTRACT_ADDRESS,
-  RelayRequest,
+  type RelayRequest,
   UNI_CONTRACT_ADDRESS,
   USDC_CONTRACT_ADDRESS,
   WETH9_CONTRACT_ADDRESS,

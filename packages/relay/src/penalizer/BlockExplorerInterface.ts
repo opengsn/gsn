@@ -1,4 +1,4 @@
-import { Address } from '@opengsn/common'
+import { type Address } from '@opengsn/common'
 
 export interface BlockExplorerInterface {
   getTransactionByNonce: (account: Address, nonce: number) => Promise<TransactionData | undefined>

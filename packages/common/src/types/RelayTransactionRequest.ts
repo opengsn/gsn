@@ -1,8 +1,8 @@
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 import ow from 'ow'
 
-import { Address } from './Aliases'
-import { RelayRequest } from '../EIP712/RelayRequest'
+import { type Address } from './Aliases'
+import { type RelayRequest } from '../EIP712/RelayRequest'
 
 export interface RelayMetadata {
   approvalData: PrefixedHexString

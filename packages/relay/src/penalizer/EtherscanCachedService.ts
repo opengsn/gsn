@@ -1,9 +1,9 @@
-import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
+import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 
-import { BlockExplorerInterface, EtherscanResponse, TransactionData } from './BlockExplorerInterface'
-import { Address, isSameAddress, LoggerInterface } from '@opengsn/common'
+import { type BlockExplorerInterface, type EtherscanResponse, type TransactionData } from './BlockExplorerInterface'
+import { type Address, isSameAddress, type LoggerInterface } from '@opengsn/common'
 
-import { TransactionDataCache } from './TransactionDataCache'
+import { type TransactionDataCache } from './TransactionDataCache'
 
 export class EtherscanCachedService implements BlockExplorerInterface {
   constructor (
@@ -39,7 +39,7 @@ export class EtherscanCachedService implements BlockExplorerInterface {
         }
       }
       response = await axios.get(this.url, params)
-      if (response.data.result == null || response.data.result.filter == null) {
+      if (response.data.result?.filter == null) {
         throw new Error(`Failed to query ${this.url}: returned ${response.data.status} ${response.data.message}`)
       } else if (response.data.status !== '0') {
         this.logger.warn(`Request to ${this.url} returned with ${response.data.status} ${response.data.message}`)

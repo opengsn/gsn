@@ -1,8 +1,8 @@
 import Nedb from '@seald-io/nedb'
 
-import { Address, LoggerInterface } from '@opengsn/common'
+import { type Address, type LoggerInterface } from '@opengsn/common'
 
-import { TransactionData } from './BlockExplorerInterface'
+import { type TransactionData } from './BlockExplorerInterface'
 
 export const TX_STORE_FILENAME = 'penalizetxcache.db'
 export const TX_PAGES_FILENAME = 'penalizetxpages.db'

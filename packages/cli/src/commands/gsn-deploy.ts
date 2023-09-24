@@ -10,7 +10,7 @@ import {
 } from '../utils'
 import { toHex, toWei } from 'web3-utils'
 import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
-import { Environment, environments, EnvironmentsKeys } from '@opengsn/common'
+import { type Environment, environments, EnvironmentsKeys } from '@opengsn/common'
 
 gsnCommander(['n', 'f', 'm', 'g', 'l'])
   .option('-w, --workdir <directory>', 'relative work directory (defaults to build/gsn/)', 'build/gsn')

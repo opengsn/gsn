@@ -1,11 +1,11 @@
 import {
-  Address,
-  IntString,
-  NpmLogLevel
+  type Address,
+  type IntString,
+  type NpmLogLevel
 } from './types/Aliases'
-import { PaymasterType } from './environments/OfficialPaymasterDeployments'
-import { Environment } from './environments/Environments'
-import { EIP712Domain } from './EIP712/TypedRequestData'
+import { type PaymasterType } from './environments/OfficialPaymasterDeployments'
+import { type Environment } from './environments/Environments'
+import { type EIP712Domain } from './EIP712/TypedRequestData'
 
 export interface LoggerConfiguration {
   logLevel: NpmLogLevel

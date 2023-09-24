@@ -4,8 +4,8 @@ import EthereumHDKey from 'ethereumjs-wallet/dist/hdkey'
 
 import fs from 'fs'
 import ow from 'ow'
-import { bufferToHex, PrefixedHexString } from 'ethereumjs-util'
-import { TypedTransaction } from '@ethereumjs/tx'
+import { bufferToHex, type PrefixedHexString } from 'ethereumjs-util'
+import { type TypedTransaction } from '@ethereumjs/tx'
 
 export const KEYSTORE_FILENAME = 'keystore'
 

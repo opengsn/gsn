@@ -1,12 +1,12 @@
-import { Contract, ethers, EventFilter, PayableOverrides, Signer } from 'ethers'
-import { PrefixedHexString } from 'ethereumjs-util'
-import { TxOptions } from './ethereumjstx/TxOptions'
+import { type Contract, ethers, type EventFilter, type PayableOverrides, type Signer } from 'ethers'
+import { type PrefixedHexString } from 'ethereumjs-util'
+import { type TxOptions } from './ethereumjstx/TxOptions'
 
-import { RelayRequest } from './EIP712/RelayRequest'
+import { type RelayRequest } from './EIP712/RelayRequest'
 
 import { VersionsManager } from './VersionsManager'
 import { replaceErrors } from './ErrorReplacerJSON'
-import { LoggerInterface } from './LoggerInterface'
+import { type LoggerInterface } from './LoggerInterface'
 import {
   address2topic,
   averageBN,
@@ -18,59 +18,59 @@ import {
   packRelayUrlForRegistrar
 } from './Utils'
 import {
-  IERC165,
-  IERC20Token,
+  type IERC165,
+  type IERC20Token,
   IERC20Token__factory,
-  IERC2771Recipient,
+  type IERC2771Recipient,
   IERC2771Recipient__factory,
-  IForwarder,
+  type IForwarder,
   IForwarder__factory,
-  IPaymaster,
+  type IPaymaster,
   IPaymaster__factory,
-  IPenalizer,
+  type IPenalizer,
   IPenalizer__factory,
-  IRelayHub,
+  type IRelayHub,
   IRelayHub__factory,
-  IRelayRegistrar,
+  type IRelayRegistrar,
   IRelayRegistrar__factory,
-  IStakeManager,
+  type IStakeManager,
   IStakeManager__factory
 } from '@opengsn/contracts'
 
 import {
-  Address,
-  CalldataGasEstimation,
-  EventData,
-  EventName,
-  IntString,
-  ObjectMap,
-  SemVerString
+  type Address,
+  type CalldataGasEstimation,
+  type EventData,
+  type EventName,
+  type IntString,
+  type ObjectMap,
+  type SemVerString
 } from './types/Aliases'
-import { GsnTransactionDetails } from './types/GsnTransactionDetails'
+import { type GsnTransactionDetails } from './types/GsnTransactionDetails'
 
 import { gsnRequiredVersion, gsnRuntimeVersion } from './Version'
 import Common from '@ethereumjs/common'
-import { GSNContractsDeployment } from './GSNContractsDeployment'
-import { ActiveManagerEvents, RelayServerRegistered, RelayWorkersAdded, StakeInfo } from './types/GSNContractsDataTypes'
+import { type GSNContractsDeployment } from './GSNContractsDeployment'
+import { ActiveManagerEvents, RelayServerRegistered, RelayWorkersAdded, type StakeInfo } from './types/GSNContractsDataTypes'
 import { sleep } from './Utils.js'
-import { Environment } from './environments/Environments'
-import { RelayTransactionRequest } from './types/RelayTransactionRequest'
+import { type Environment } from './environments/Environments'
+import { type RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { BigNumber } from '@ethersproject/bignumber'
 import { TransactionType } from './types/TransactionType'
-import { RegistrarRelayInfo } from './types/RelayInfo'
+import { type RegistrarRelayInfo } from './types/RelayInfo'
 import { constants, erc165Interfaces, RelayCallStatusCodes } from './Constants'
 import { MainnetCalldataGasEstimation } from './environments/MainnetCalldataGasEstimation'
 import { AsyncZeroAddressCalldataGasEstimation } from './environments/AsyncZeroAddressCalldataGasEstimation'
 import { toHex } from './web3js/Web3JSUtils'
-import { FeeHistoryResult } from './web3js/FeeHistoryResult'
-import { Network } from '@ethersproject/networks'
+import { type FeeHistoryResult } from './web3js/FeeHistoryResult'
+import { type Network } from '@ethersproject/networks'
 
 import {
-  Block,
-  BlockTag,
-  JsonRpcProvider,
-  TransactionRequest,
-  TransactionResponse
+  type Block,
+  type BlockTag,
+  type JsonRpcProvider,
+  type TransactionRequest,
+  type TransactionResponse
 } from '@ethersproject/providers'
 import { AbiCoder, Interface } from '@ethersproject/abi'
 
@@ -392,7 +392,7 @@ export class ContractInteractor {
     if (this.erc2771RecipientInstance != null && this.erc2771RecipientInstance.address.toLowerCase() === address.toLowerCase()) {
       return this.erc2771RecipientInstance
     }
-    this.erc2771RecipientInstance = await IERC2771Recipient__factory.connect(address, this.signer)
+    this.erc2771RecipientInstance = IERC2771Recipient__factory.connect(address, this.signer)
     return this.erc2771RecipientInstance
   }
 
@@ -565,7 +565,7 @@ export class ContractInteractor {
         returnValue = this._decodeRevertFromResponse({}, { result: returnValue }) ?? returnValue
       }
       return {
-        returnValue: returnValue,
+        returnValue,
         paymasterAccepted,
         recipientReverted,
         relayHubReverted: false
@@ -644,7 +644,7 @@ export class ContractInteractor {
   }
 
   async getPastEventsForStakeManager (names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
-    const stakeManager = await this.stakeManagerInstance
+    const stakeManager = this.stakeManagerInstance
     return await this._getPastEventsPaginated(stakeManager, names, extraTopics, options)
   }
 
@@ -726,7 +726,7 @@ export class ContractInteractor {
       this.logger.error(message)
       throw new Error(message)
     }
-    let { pagesForRange: pagesCurrent, rangeSize } = await this.getLogsPagesForRange(options.fromBlock, options.toBlock)
+    let { pagesForRange: pagesCurrent, rangeSize } = this.getLogsPagesForRange(options.fromBlock, options.toBlock)
     if (pagesCurrent > this.maxPageCount) {
       throw new Error(
         `Failed to make a paginated request to 'getPastEvents' in block range [${options.fromBlock.toString()}..${options.toBlock.toString()}] with page size ${rangeSize}.
@@ -734,7 +734,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     }
     const relayEventParts: EventData[][] = []
     while (true) {
-      const rangeParts = await this.splitRange(options.fromBlock, options.toBlock, pagesCurrent)
+      const rangeParts = this.splitRange(options.fromBlock, options.toBlock, pagesCurrent)
       try {
         // eslint-disable-next-line
         for (const { fromBlock, toBlock } of rangeParts) {
@@ -800,7 +800,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
       fromBlock: options.fromBlock,
       toBlock: options.toBlock,
       address: (contract as any).target ?? contract.address,
-      topics: topics
+      topics
     })
     return logs.map(it => { return Object.assign(it, contract.interface.parseLog(it)) })
   }

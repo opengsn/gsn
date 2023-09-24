@@ -1,8 +1,8 @@
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 
-import { CalldataGasEstimation } from '../types/Aliases'
+import { type CalldataGasEstimation } from '../types/Aliases'
 import { calculateCalldataBytesZeroNonzero } from '../Utils'
-import { Environment } from './Environments'
+import { type Environment } from './Environments'
 
 /**
  * On the Ethereum Mainnet, the transaction cost is currently determined by the EIP-2028.

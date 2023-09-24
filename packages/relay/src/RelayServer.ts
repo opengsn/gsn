@@ -1,25 +1,25 @@
 import chalk from 'chalk'
 import { EventEmitter } from 'events'
 import { toBN, toHex } from 'web3-utils'
-import { PrefixedHexString } from 'ethereumjs-util'
-import { Block } from '@ethersproject/providers'
+import { type PrefixedHexString } from 'ethereumjs-util'
+import { type Block } from '@ethersproject/providers'
 
 import {
-  Address,
+  type Address,
   AmountRequired,
-  ContractInteractor,
-  Environment,
-  EventData,
-  IntString,
-  LoggerInterface,
-  ObjectMap,
-  PingResponse,
-  ReadinessInfo,
-  RelayCallGasLimitCalculationHelper,
-  RelayRequest,
-  RelayRequestLimits,
-  RelayTransactionRequest,
-  StatsResponse,
+  type ContractInteractor,
+  type Environment,
+  type EventData,
+  type IntString,
+  type LoggerInterface,
+  type ObjectMap,
+  type PingResponse,
+  type ReadinessInfo,
+  type RelayCallGasLimitCalculationHelper,
+  type RelayRequest,
+  type RelayRequestLimits,
+  type RelayTransactionRequest,
+  type StatsResponse,
   TransactionRejectedByPaymaster,
   TransactionRelayed,
   TransactionType,
@@ -31,7 +31,7 @@ import {
   toNumber
 } from '@opengsn/common'
 
-import { GasPriceFetcher } from './GasPriceFetcher'
+import { type GasPriceFetcher } from './GasPriceFetcher'
 
 import {
   address2topic,
@@ -41,17 +41,17 @@ import {
 } from '@opengsn/common/dist/Utils'
 
 import { RegistrationManager } from './RegistrationManager'
-import { PaymasterStatus, ReputationManager } from './ReputationManager'
+import { PaymasterStatus, type ReputationManager } from './ReputationManager'
 import {
-  BoostingResult,
-  SendTransactionDetails,
-  TransactionManager
+  type BoostingResult,
+  type SendTransactionDetails,
+  type TransactionManager
 } from './TransactionManager'
-import { ServerAction, ShortBlockInfo } from './StoredTransaction'
-import { TxStoreManager } from './TxStoreManager'
-import { configureServer, ServerConfigParams, ServerDependencies } from './ServerConfigParams'
-import { Web3MethodsBuilder } from './Web3MethodsBuilder'
-import { IPaymaster, IRelayHub } from '@opengsn/contracts/types/ethers-contracts'
+import { ServerAction, type ShortBlockInfo } from './StoredTransaction'
+import { type TxStoreManager } from './TxStoreManager'
+import { configureServer, type ServerConfigParams, type ServerDependencies } from './ServerConfigParams'
+import { type Web3MethodsBuilder } from './Web3MethodsBuilder'
+import { type IPaymaster, type IRelayHub } from '@opengsn/contracts/types/ethers-contracts'
 import { BigNumber } from '@ethersproject/bignumber'
 
 export class RelayServer extends EventEmitter {
@@ -86,7 +86,7 @@ export class RelayServer extends EventEmitter {
   networkId!: number
   relayHubContract!: IRelayHub
 
-  trustedPaymastersGasAndDataLimits: Map<String | undefined, IPaymaster.GasAndDataLimitsStructOutput> = new Map<String | undefined, IPaymaster.GasAndDataLimitsStructOutput>()
+  trustedPaymastersGasAndDataLimits: Map<string | undefined, IPaymaster.GasAndDataLimitsStructOutput> = new Map<string | undefined, IPaymaster.GasAndDataLimitsStructOutput>()
 
   workerBalanceRequired: AmountRequired
 
@@ -518,7 +518,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     if (!this.config.skipErc165Check) {
       await this.contractInteractor._validateERC165InterfacesRelay()
     }
-    this.relayHubContract = await this.contractInteractor.relayHubInstance
+    this.relayHubContract = this.contractInteractor.relayHubInstance
 
     const relayHubAddress = this.relayHubContract.address
     const code = await this.contractInteractor.getCode(relayHubAddress)

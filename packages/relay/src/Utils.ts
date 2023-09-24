@@ -1,6 +1,6 @@
-import { EventData } from 'web3-eth-contract'
-import { ServerConfigParams } from './ServerConfigParams'
-import { Address, isSameAddress, packRelayUrlForRegistrar } from '@opengsn/common'
+import { type EventData } from 'web3-eth-contract'
+import { type ServerConfigParams } from './ServerConfigParams'
+import { type Address, isSameAddress, packRelayUrlForRegistrar } from '@opengsn/common'
 
 export function isRegistrationValid (registerEvent: EventData | undefined, config: ServerConfigParams, managerAddress: Address): boolean {
   return registerEvent != null &&

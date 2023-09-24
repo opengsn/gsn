@@ -13,7 +13,7 @@ contract TestArbSys is ArbSys {
     * @notice Get Arbitrum block number (distinct from L1 block number; Arbitrum genesis block has block number 0)
     * @return block number as int
      */
-    function arbBlockNumber() external override view returns (uint){
+    function arbBlockNumber() external override view returns (uint256){
         return block.number * 17;
     }
 

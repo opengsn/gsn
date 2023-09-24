@@ -1,14 +1,14 @@
 import {
-  ForwarderInstance,
-  TestForwarderInstance,
-  TestForwarderTargetInstance
+  type ForwarderInstance,
+  type TestForwarderInstance,
+  type TestForwarderTargetInstance
 } from '../../types/truffle-contracts'
 
 import {
   SignTypedDataVersion,
   TypedDataUtils,
-  TypedMessage,
-  MessageTypes,
+  type TypedMessage,
+  type MessageTypes,
   signTypedData
 } from '@metamask/eth-sig-util'
 // @ts-ignore
@@ -16,8 +16,8 @@ import ethWallet from 'ethereumjs-wallet'
 import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util'
 import { ether, expectRevert } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'web3-utils'
-import { DomainRegistered, RequestTypeRegistered } from '../../types/truffle-contracts/IForwarder'
-import { ForwardRequest } from '@opengsn/common'
+import { type DomainRegistered, type RequestTypeRegistered } from '../../types/truffle-contracts/IForwarder'
+import { type ForwardRequest } from '@opengsn/common'
 
 const TestForwarderTarget = artifacts.require('TestForwarderTarget')
 
@@ -537,7 +537,7 @@ contract('Forwarder', ([from]) => {
         const sig = signTypedData({ privateKey: senderPrivateKey, data: { ...data, message: req1 }, version: SignTypedDataVersion.V4 })
 
         // first gas estimation, with only value for the TX
-        await web3.eth.sendTransaction({ from, to: fwd.address, value: value })
+        await web3.eth.sendTransaction({ from, to: fwd.address, value })
         const estim = await testfwd.callExecute.estimateGas(fwd.address, req1, domainSeparator, typeHash, '0x', sig).catch(e => e.message)
         const extraFunds = ether('4')
         await web3.eth.sendTransaction({ from, to: fwd.address, value: extraFunds })

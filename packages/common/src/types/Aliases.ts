@@ -1,13 +1,13 @@
-import { PrefixedHexString } from 'ethereumjs-util'
-import { JsonRpcProvider, Log } from '@ethersproject/providers'
-import { LogDescription } from '@ethersproject/abi'
+import { type PrefixedHexString } from 'ethereumjs-util'
+import { type JsonRpcProvider, type Log } from '@ethersproject/providers'
+import { type LogDescription } from '@ethersproject/abi'
 
-import { PingResponse } from '../PingResponse'
-import { RelayRequest } from '../EIP712/RelayRequest'
-import { GsnTransactionDetails } from './GsnTransactionDetails'
-import { RegistrarRelayInfo, PartialRelayInfo } from './RelayInfo'
-import { TypedMessage } from '@metamask/eth-sig-util'
-import { Environment } from '../environments/Environments'
+import { type PingResponse } from '../PingResponse'
+import { type RelayRequest } from '../EIP712/RelayRequest'
+import { type GsnTransactionDetails } from './GsnTransactionDetails'
+import { type RegistrarRelayInfo, type PartialRelayInfo } from './RelayInfo'
+import { type TypedMessage } from '@metamask/eth-sig-util'
+import { type Environment } from '../environments/Environments'
 
 export type Address = string
 export type EventName = string
@@ -60,6 +60,4 @@ export interface EIP1559Fees {
   maxPriorityFeePerGas: PrefixedHexString
 }
 
-export interface ObjectMap<T> {
-  [key: string]: T
-}
+export type ObjectMap<T> = Record<string, T>

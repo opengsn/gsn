@@ -1,13 +1,13 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { JsonRpcProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
+import { type JsonRpcProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
 import { SignTypedDataVersion, recoverTypedSignature } from '@metamask/eth-sig-util'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { constants } from '@openzeppelin/test-helpers'
 
 import { AccountManager } from '@opengsn/provider/dist/AccountManager'
-import { RelayRequest, TypedRequestData, isSameAddress } from '@opengsn/common'
+import { type RelayRequest, TypedRequestData, isSameAddress } from '@opengsn/common'
 
 import { configureGSN, hardhatNodeChainId } from '../TestUtils'
 import { defaultGsnConfig } from '@opengsn/provider'
@@ -45,11 +45,11 @@ contract('AccountManager', function (accounts) {
 
     it('should throw if the provided keypair is not valid', async function () {
       const invalidPrivateKey = privateKey.replace('a', '')
-      await expect(() => {
+      expect(() => {
         accountManager.addAccount(invalidPrivateKey)
       }).to.throw('Expected private key to be an Uint8Array with length 32')
 
-      await expect(() => {
+      expect(() => {
         accountManager.addAccount(privateKeyAllZero)
       }).to.throw('Private key does not satisfy the curve requirements')
     })

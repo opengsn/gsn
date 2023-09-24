@@ -1,8 +1,8 @@
 import { isValidAddress } from 'ethereumjs-util'
 
-import { Address } from '../types/Aliases'
-import { EIP712Domain } from '../EIP712/TypedRequestData'
-import { LoggerInterface } from '../LoggerInterface'
+import { type Address } from '../types/Aliases'
+import { type EIP712Domain } from '../EIP712/TypedRequestData'
+import { type LoggerInterface } from '../LoggerInterface'
 import { gsnRuntimeVersion } from '../Version'
 
 export enum PaymasterType {
@@ -72,9 +72,9 @@ type PaymasterDeploymentsObject = {
   [paymasterType in PaymasterType]?: PaymasterDeployment
 }
 
-interface DomainSeparatorObject {[address: Address]: EIP712Domain}
+type DomainSeparatorObject = Record<Address, EIP712Domain>
 
-interface DeploymentObject {[chainId: number]: PaymasterDeploymentsObject}
+type DeploymentObject = Record<number, PaymasterDeploymentsObject>
 
 export const DAI_CONTRACT_ADDRESS = '0x6b175474e89094c44da98b954eedeac495271d0f'
 export const UNI_CONTRACT_ADDRESS = '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984'
@@ -169,7 +169,7 @@ export const OfficialPaymasterDeployments: DeploymentObject = {
 /**
  * Using Address here as key to simplify merging object with the user-provided token data if necessary.
  */
-export const TokenDomainSeparators: { [chainId: number]: DomainSeparatorObject } = {
+export const TokenDomainSeparators: Record<number, DomainSeparatorObject> = {
   1: {
     [DAI_CONTRACT_ADDRESS]: {
       name: 'Dai Stablecoin',

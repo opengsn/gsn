@@ -9,7 +9,7 @@
 // map values inside object using mapping func.
 import chai from 'chai'
 
-export function objValues (obj: { [key: string]: any }, mapFunc: (val: any, key?: string) => any): any {
+export function objValues (obj: Record<string, any>, mapFunc: (val: any, key?: string) => any): any {
   return Object.keys(obj)
     .filter(key => key.match(/^[\d_]/) == null)
     .reduce((set, key) => ({

@@ -1,10 +1,10 @@
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { Transaction } from '@ethereumjs/tx'
 import { toBN } from 'web3-utils'
 
-import { PenalizerDependencies, PenalizerService } from '@opengsn/relay/dist/penalizer/PenalizerService'
-import { AuditRequest, constants, Address } from '@opengsn/common'
+import { type PenalizerDependencies, PenalizerService } from '@opengsn/relay/dist/penalizer/PenalizerService'
+import { type AuditRequest, constants, type Address } from '@opengsn/common'
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { ServerTestEnvironment } from '../ServerTestEnvironment'

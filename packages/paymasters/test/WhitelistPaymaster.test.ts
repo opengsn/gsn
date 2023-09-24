@@ -1,11 +1,11 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
-import { SampleRecipientInstance, WhitelistPaymasterInstance } from '../types/truffle-contracts'
+import { type SampleRecipientInstance, type WhitelistPaymasterInstance } from '../types/truffle-contracts'
 
-import { GSNUnresolvedConstructorInput, RelayProvider, GSNConfig } from '@opengsn/provider'
+import { type GSNUnresolvedConstructorInput, RelayProvider, type GSNConfig } from '@opengsn/provider'
 import { GsnTestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { expectRevert } from '@openzeppelin/test-helpers'
 
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 
 const WhitelistPaymaster = artifacts.require('WhitelistPaymaster')
 const SampleRecipient = artifacts.require('SampleRecipient')

@@ -1,6 +1,6 @@
-import winston, { transport } from 'winston'
+import winston, { type transport } from 'winston'
 
-import { NpmLogLevel, LoggerInterface } from '@opengsn/common'
+import { type NpmLogLevel, type LoggerInterface } from '@opengsn/common'
 
 const format = winston.format.combine(
   winston.format.cli()

@@ -3,32 +3,32 @@ import EthVal from 'ethval'
 import chalk from 'chalk'
 import { EventEmitter } from 'events'
 import { Mutex } from 'async-mutex'
-import { FeeMarketEIP1559Transaction, Transaction, TxOptions, TypedTransaction } from '@ethereumjs/tx'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { FeeMarketEIP1559Transaction, Transaction, type TxOptions, type TypedTransaction } from '@ethereumjs/tx'
+import { type PrefixedHexString } from 'ethereumjs-util'
 
 import {
-  Address,
-  ContractInteractor,
-  IntString,
-  LoggerInterface,
-  ObjectMap,
+  type Address,
+  type ContractInteractor,
+  type IntString,
+  type LoggerInterface,
+  type ObjectMap,
   TransactionType,
   constants,
   isSameAddress
 } from '@opengsn/common'
 
-import { TxStoreManager } from './TxStoreManager'
-import { KeyManager, SignedTransaction } from './KeyManager'
-import { ServerConfigParams, ServerDependencies } from './ServerConfigParams'
+import { type TxStoreManager } from './TxStoreManager'
+import { type KeyManager, type SignedTransaction } from './KeyManager'
+import { type ServerConfigParams, type ServerDependencies } from './ServerConfigParams'
 import {
   createStoredTransaction,
-  ServerAction,
-  ShortBlockInfo,
-  StoredTransaction,
-  StoredTransactionMetadata
+  type ServerAction,
+  type ShortBlockInfo,
+  type StoredTransaction,
+  type StoredTransactionMetadata
 } from './StoredTransaction'
 
-import { GasPriceFetcher } from './GasPriceFetcher'
+import { type GasPriceFetcher } from './GasPriceFetcher'
 import { toBN } from 'web3-utils'
 
 export interface SignedTransactionDetails {
@@ -232,9 +232,9 @@ data                     | ${transaction.data}
         txToSign = new FeeMarketEIP1559Transaction({
           to: txDetails.destination,
           value: txDetails.value,
-          gasLimit: gasLimit,
+          gasLimit,
           maxFeePerGas,
-          maxPriorityFeePerGas: maxPriorityFeePerGas,
+          maxPriorityFeePerGas,
           data: Buffer.from(encodedCall.slice(2), 'hex'),
           nonce
         }, this.rawTxOptions)
@@ -242,7 +242,7 @@ data                     | ${transaction.data}
         txToSign = new Transaction({
           to: txDetails.destination,
           value: txDetails.value,
-          gasLimit: gasLimit,
+          gasLimit,
           gasPrice: maxFeePerGas,
           data: Buffer.from(encodedCall.slice(2), 'hex'),
           nonce

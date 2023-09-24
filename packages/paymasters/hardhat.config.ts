@@ -5,8 +5,8 @@ import '@nomiclabs/hardhat-etherscan'
 
 import fs from 'fs'
 
-import { HardhatUserConfig } from 'hardhat/config'
-import { NetworkUserConfig } from 'hardhat/src/types/config'
+import { type HardhatUserConfig } from 'hardhat/config'
+import { type NetworkUserConfig } from 'hardhat/src/types/config'
 
 // TODO: extract and reuse duplicated code
 const mnemonicFileName = process.env.MNEMONIC_FILE

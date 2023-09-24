@@ -7,7 +7,7 @@ import { deployHub, evmMine, hardhatNodeChainId, setNextBlockTimestamp } from '.
 
 import chaiAsPromised from 'chai-as-promised'
 import {
-  RelayRequest,
+  type RelayRequest,
   TypedRequestData,
   constants,
   defaultEnvironment,
@@ -16,12 +16,12 @@ import {
   toNumber
 } from '@opengsn/common/dist'
 import {
-  ForwarderInstance,
-  PenalizerInstance,
-  RelayHubInstance,
-  RelayRegistrarInstance,
-  StakeManagerInstance, TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance, TestTokenInstance
+  type ForwarderInstance,
+  type PenalizerInstance,
+  type RelayHubInstance,
+  type RelayRegistrarInstance,
+  type StakeManagerInstance, type TestPaymasterEverythingAcceptedInstance,
+  type TestRecipientInstance, type TestTokenInstance
 } from '../types/truffle-contracts'
 
 import { cleanValue } from './utils/chaiHelper'

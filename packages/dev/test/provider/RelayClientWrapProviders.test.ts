@@ -10,7 +10,7 @@ import { StaticJsonRpcProvider as StaticJsonRpcProviderV5 } from '@ethersproject
 
 import { RelayProvider, connectContractToGSN, connectContractV6ToGSN } from '@opengsn/provider'
 import { GsnTestEnvironment } from '@opengsn/cli'
-import { GSNContractsDeployment } from '@opengsn/common'
+import { type GSNContractsDeployment } from '@opengsn/common'
 import { evmMineMany } from '../TestUtils'
 
 const { expect } = chai.use(chaiAsPromised)

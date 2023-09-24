@@ -1,23 +1,23 @@
 /* eslint-disable @typescript-eslint/strict-boolean-expressions */
-import childProcess, { ChildProcessWithoutNullStreams } from 'child_process'
+import childProcess, { type ChildProcessWithoutNullStreams } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 
 import { ether } from '@openzeppelin/test-helpers'
 
 import {
-  StakeManagerInstance,
-  RelayHubContract,
-  RelayHubInstance,
-  TestTokenInstance
+  type StakeManagerInstance,
+  type RelayHubContract,
+  type RelayHubInstance,
+  type TestTokenInstance
 } from '../types/truffle-contracts'
 import {
-  Address,
-  Environment,
+  type Address,
+  type Environment,
   HttpClient,
   HttpWrapper,
-  IntString,
-  RelayHubConfiguration,
+  type IntString,
+  type RelayHubConfiguration,
   constants,
   defaultEnvironment,
   isSameAddress,
@@ -25,9 +25,9 @@ import {
   toNumber
 } from '@opengsn/common'
 
-import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { defaultGsnConfig, type GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
@@ -124,7 +124,7 @@ export async function startRelay (
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   let relaylog = function (_: string): void {}
   if (options.relaylog) {
-    relaylog = (msg: string) => msg.split('\n').forEach(line => console.log(`relay-${proc.pid?.toString()}> ${line}`))
+    relaylog = (msg: string) => { msg.split('\n').forEach(line => { console.log(`relay-${proc.pid?.toString()}> ${line}`) }) }
   }
 
   await new Promise((resolve, reject) => {
@@ -141,7 +141,7 @@ export async function startRelay (
     }
     proc.stdout.on('data', listener)
     proc.stderr.on('data', listener)
-    const doaListener = (code: Object): void => {
+    const doaListener = (code: any): void => {
       // @ts-ignore
       if (!proc.alreadystarted) {
         relaylog(`died before init code=${JSON.stringify(code)}`)
@@ -222,7 +222,7 @@ export function stopRelay (proc: ChildProcessWithoutNullStreams): void {
 }
 
 export async function increaseTime (time: number): Promise<void> {
-  return await new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -230,16 +230,16 @@ export async function increaseTime (time: number): Promise<void> {
       params: [time],
       id: Date.now()
     }, (err: Error | null) => {
-      if (err) return reject(err)
+      if (err) { reject(err); return }
       evmMine()
-        .then((r: any) => resolve(r))
-        .catch((e: Error) => reject(e))
+        .then((r: any) => { resolve(r) })
+        .catch((e: Error) => { reject(e) })
     })
   })
 }
 
 export async function setNextBlockTimestamp (time: number | string | BN): Promise<void> {
-  return await new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -291,14 +291,14 @@ export async function snapshot (): Promise<{ id: number, jsonrpc: string, result
       method: 'evm_snapshot',
       id: Date.now()
     }, (err: Error | null, snapshotId: { id: number, jsonrpc: string, result: string }) => {
-      if (err) { return reject(err) }
-      return resolve(snapshotId)
+      if (err) { reject(err); return }
+      resolve(snapshotId)
     })
   })
 }
 
 export async function revert (id: string): Promise<void> {
-  return await new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
       jsonrpc: '2.0',
@@ -306,8 +306,8 @@ export async function revert (id: string): Promise<void> {
       params: [id],
       id: Date.now()
     }, (err: Error | null, result: any) => {
-      if (err) { return reject(err) }
-      return resolve(result)
+      if (err) { reject(err); return }
+      resolve(result)
     })
   })
 }

@@ -2,41 +2,41 @@
 // @ts-ignore
 
 import { BigNumber } from '@ethersproject/bignumber'
-import { PrefixedHexString } from 'ethereumjs-util'
-import { TypedMessage } from '@metamask/eth-sig-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
+import { type TypedMessage } from '@metamask/eth-sig-util'
 import {
-  ExternalProvider,
-  JsonRpcProvider,
-  JsonRpcSigner,
-  TransactionReceipt,
-  TransactionRequest,
+  type ExternalProvider,
+  type JsonRpcProvider,
+  type JsonRpcSigner,
+  type TransactionReceipt,
+  type TransactionRequest,
   Web3Provider
 } from '@ethersproject/providers'
-import { Interface, LogDescription } from '@ethersproject/abi'
+import { Interface, type LogDescription } from '@ethersproject/abi'
 
 import { type Eip1193Provider, type BrowserProvider, type Signer as SignerV6 } from 'ethers-v6/providers'
 
 import {
-  Address,
-  EventData,
-  GSNConfig,
+  type Address,
+  type EventData,
+  type GSNConfig,
   gsnRuntimeVersion,
-  GsnTransactionDetails,
+  type GsnTransactionDetails,
   isSameAddress,
-  JsonRpcPayload,
-  JsonRpcResponse,
-  LoggerInterface,
-  SignTypedDataCallback,
+  type JsonRpcPayload,
+  type JsonRpcResponse,
+  type LoggerInterface,
+  type SignTypedDataCallback,
   TransactionRejectedByPaymaster,
   TransactionRelayed
 } from '@opengsn/common'
 
 import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
 
-import { AccountKeypair } from './AccountManager'
-import { GsnEvent } from './GsnEvents'
-import { _dumpRelayingResult, GSNUnresolvedConstructorInput, RelayClient, RelayingResult } from './RelayClient'
-import { Signer } from '@ethersproject/abstract-signer'
+import { type AccountKeypair } from './AccountManager'
+import { type GsnEvent } from './GsnEvents'
+import { _dumpRelayingResult, type GSNUnresolvedConstructorInput, RelayClient, type RelayingResult } from './RelayClient'
+import { type Signer } from '@ethersproject/abstract-signer'
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
 
@@ -254,7 +254,7 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
         callback(error, rpcResponse)
         return
       }
-      if (rpcResponse == null || rpcResponse.result == null) {
+      if (rpcResponse?.result == null) {
         callback(error, rpcResponse)
         return
       }
@@ -358,8 +358,10 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
     }
     try {
       const r = await this.relayClient.relayTransaction(gsnTransactionDetails)
+      // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
       void this._onRelayTransactionFulfilled(r, payload, callback)
     } catch (reason) {
+      // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
       void this._onRelayTransactionRejected(reason, callback)
     }
   }

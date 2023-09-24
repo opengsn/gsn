@@ -1,16 +1,16 @@
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import {
-  RelayHubInstance,
-  StakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance,
-  TestTokenInstance
+  type RelayHubInstance,
+  type StakeManagerInstance,
+  type TestPaymasterEverythingAcceptedInstance,
+  type TestRecipientInstance,
+  type TestTokenInstance
 } from '../types/truffle-contracts'
 import { deployHub, emptyBalance, evmMineMany, serverWorkDir, startRelay, stopRelay } from './TestUtils'
-import { ChildProcessWithoutNullStreams } from 'child_process'
-import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
-import { defaultEnvironment, constants, ether, Address } from '@opengsn/common'
+import { type ChildProcessWithoutNullStreams } from 'child_process'
+import { defaultGsnConfig, type GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { defaultEnvironment, constants, ether, type Address } from '@opengsn/common'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import Web3 from 'web3'
@@ -127,7 +127,7 @@ contract('runServer', function (accounts) {
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         assert.isTrue(ex == null, `should succeed sending gasless transaction through relay. got: ${ex?.toString()}`)
       } finally {
-        await stopRelay(relayProcess)
+        stopRelay(relayProcess)
       }
     }
     // Sanity check that there are three directories in the test workdir for each hub

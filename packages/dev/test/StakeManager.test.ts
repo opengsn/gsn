@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { evmMineMany, revert, snapshot } from './TestUtils'
 import BN from 'bn.js'
 
-import { StakeManagerInstance, TestTokenInstance } from '../types/truffle-contracts'
+import { type StakeManagerInstance, type TestTokenInstance } from '../types/truffle-contracts'
 import { defaultEnvironment, constants, toNumber } from '@opengsn/common'
 
 import { balanceTrackerErc20 } from './utils/ERC20BalanceTracker'

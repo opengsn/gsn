@@ -1,4 +1,4 @@
-import { RelayRequest } from '@opengsn/common'
+import { type RelayRequest } from '@opengsn/common'
 import { defaultGsnConfig } from '@opengsn/provider'
 
 const TestRelayHubValidator = artifacts.require('TestRelayHubValidator')
@@ -48,7 +48,7 @@ contract('RelayHubValidator', ([from, senderAddress, target, paymaster, relayWor
           maxFeePerGas: '0',
           maxPriorityFeePerGas: '0',
           relayWorker,
-          paymaster: paymaster,
+          paymaster,
           paymasterData: appended.paymasterData ?? '0x',
           clientId: '3',
           transactionCalldataGasUsed: '4',

@@ -8,43 +8,43 @@ import express from 'express'
 import sinon from 'sinon'
 import sinonChai from 'sinon-chai'
 import { BigNumber } from '@ethersproject/bignumber'
-import { ChildProcessWithoutNullStreams } from 'child_process'
-import { ExternalProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
+import { type ChildProcessWithoutNullStreams } from 'child_process'
+import { type ExternalProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
 import { FeeMarketEIP1559Transaction, Transaction } from '@ethereumjs/tx'
-import { bufferToHex, PrefixedHexString, toBuffer } from 'ethereumjs-util'
+import { bufferToHex, type PrefixedHexString, toBuffer } from 'ethereumjs-util'
 import { parse } from '@ethersproject/transactions'
 import { toBN, toHex } from 'web3-utils'
 
 import {
-  ForwarderInstance,
-  PenalizerInstance,
-  RelayHubInstance,
-  RelayRegistrarInstance,
-  StakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance,
-  TestRecipientInstance,
-  TestRecipientWithoutFallbackInstance,
-  TestTokenInstance
+  type ForwarderInstance,
+  type PenalizerInstance,
+  type RelayHubInstance,
+  type RelayRegistrarInstance,
+  type StakeManagerInstance,
+  type TestPaymasterEverythingAcceptedInstance,
+  type TestRecipientInstance,
+  type TestRecipientWithoutFallbackInstance,
+  type TestTokenInstance
 } from '../../types/truffle-contracts'
 
 import {
-  Address,
-  ConfigResponse,
+  type Address,
+  type ConfigResponse,
   ContractInteractor,
-  EIP1559Fees,
-  GsnTransactionDetails,
+  type EIP1559Fees,
+  type GsnTransactionDetails,
   HttpClient,
   HttpWrapper,
-  LoggerConfiguration,
-  LoggerInterface,
-  ObjectMap,
-  PartialRelayInfo,
+  type LoggerConfiguration,
+  type LoggerInterface,
+  type ObjectMap,
+  type PartialRelayInfo,
   PaymasterType,
-  PingResponse,
-  RegistrarRelayInfo,
-  RelayInfo,
-  RelayRequest,
-  RelayTransactionRequest,
+  type PingResponse,
+  type RegistrarRelayInfo,
+  type RelayInfo,
+  type RelayRequest,
+  type RelayTransactionRequest,
   adjustRelayRequestForPingResponse,
   constants,
   defaultEnvironment,
@@ -54,11 +54,11 @@ import {
 import {
   _dumpRelayingResult,
   EmptyDataCallback,
-  GSNUnresolvedConstructorInput,
+  type GSNUnresolvedConstructorInput,
   RelayClient
 } from '@opengsn/provider/dist/RelayClient'
 
-import { defaultGsnConfig, GSNConfig } from '@opengsn/provider'
+import { defaultGsnConfig, type GSNConfig } from '@opengsn/provider'
 import { replaceErrors } from '@opengsn/common/dist/ErrorReplacerJSON'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
@@ -75,9 +75,9 @@ import {
   stopRelay
 } from '../TestUtils'
 
-import { GsnEvent } from '@opengsn/provider/dist/GsnEvents'
+import { type GsnEvent } from '@opengsn/provider/dist/GsnEvents'
 import bodyParser from 'body-parser'
-import { Server } from 'http'
+import { type Server } from 'http'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 
@@ -86,7 +86,7 @@ import { BadContractInteractor } from '../dummies/BadContractInteractor'
 
 import {
   RelayedTransactionValidator,
-  TransactionValidationResult
+  type TransactionValidationResult
 } from '@opengsn/provider/dist/RelayedTransactionValidator'
 import {
   DEFAULT_VERIFIER_SERVER_APPROVAL_DATA_LENGTH,
@@ -278,7 +278,7 @@ contract('RelayClient', function (accounts) {
       const constructorInput: GSNUnresolvedConstructorInput = {
         provider: metamaskProvider,
         config: {
-          minMaxPriorityFeePerGas: minMaxPriorityFeePerGas,
+          minMaxPriorityFeePerGas,
           paymasterAddress: paymaster.address,
           methodSuffix: suffix,
           jsonStringifyRequest: 5 as any
@@ -637,7 +637,7 @@ contract('RelayClient', function (accounts) {
       const gsnConfig: Partial<GSNConfig> = {
         loggerConfiguration: { logLevel: 'error' },
         paymasterAddress: paymaster.address,
-        minMaxPriorityFeePerGas: minMaxPriorityFeePerGas
+        minMaxPriorityFeePerGas
       }
       const relayClient = new RelayClient({ provider: underlyingProvider, config: gsnConfig })
       await relayClient.init()
@@ -689,7 +689,7 @@ contract('RelayClient', function (accounts) {
       await relayHub.depositFor(paymaster.address, { value: (2e18).toString() })
       pingResponse = {
         ownerAddress: relayOwner,
-        relayWorkerAddress: relayWorkerAddress,
+        relayWorkerAddress,
         relayManagerAddress: relayManager,
         relayHubAddress: relayManager,
         minMaxFeePerGas: '0',
@@ -887,17 +887,17 @@ contract('RelayClient', function (accounts) {
         }
       }
 
-      const allTransactionsRight = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, {
+      const allTransactionsRight = transactionValidator._validateNonceGapFilled(relayTransactionRequest, {
         1: tx1Right,
         2: tx2Right,
         3: tx3Right
       })
-      const oneWrongTransaction = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, {
+      const oneWrongTransaction = transactionValidator._validateNonceGapFilled(relayTransactionRequest, {
         1: tx1Right,
         2: tx2Wrong,
         3: tx3Right
       })
-      const transactionFromOutsideRange = await transactionValidator._validateNonceGapFilled(relayTransactionRequest, {
+      const transactionFromOutsideRange = transactionValidator._validateNonceGapFilled(relayTransactionRequest, {
         1: tx1Right,
         2: tx2Right,
         9: tx9Right
@@ -1182,7 +1182,7 @@ contract('RelayClient', function (accounts) {
         for (const network of supportedNetworks) {
           const config = await relayClient._resolveConfigurationFromServer(network, defaultGsnConfig.clientDefaultConfigUrl)
           const GSNConfigKeys = Object.keys(defaultGsnConfig)
-          Object.keys(config).forEach(key => assert.isTrue(GSNConfigKeys.includes(key), `key ${key} not found in GSConfig`))
+          Object.keys(config).forEach(key => { assert.isTrue(GSNConfigKeys.includes(key), `key ${key} not found in GSConfig`) })
         }
       })
       it('should not throw if docs website doesn\'t respond', async function () {

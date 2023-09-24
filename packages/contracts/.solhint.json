@@ -1,6 +1,8 @@
 {
   "extends": "solhint:recommended",
   "rules": {
+    "immutable-vars-naming": ["off"],
+    "custom-errors": ["off"],
     "no-global-import": ["off"],
     "no-console": ["off"],
     "compiler-version": ["error",">=0.6"],

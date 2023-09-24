@@ -1,8 +1,8 @@
 import { Mutex } from 'async-mutex'
-import { Address, LoggerInterface } from '@opengsn/common'
+import { type Address, type LoggerInterface } from '@opengsn/common'
 
-import { ReputationStoreManager } from './ReputationStoreManager'
-import { ReputationChange } from './ReputationEntry'
+import { type ReputationStoreManager } from './ReputationStoreManager'
+import { type ReputationChange } from './ReputationEntry'
 
 export interface ReputationManagerConfiguration {
   /** All new Paymasters start with their reputation set to this value  */

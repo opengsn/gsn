@@ -1,7 +1,7 @@
-import winston, { Logger, transport } from 'winston'
-import { ConsoleTransportOptions, HttpTransportOptions } from 'winston/lib/winston/transports'
+import winston, { type Logger, type transport } from 'winston'
+import { type ConsoleTransportOptions, type HttpTransportOptions } from 'winston/lib/winston/transports'
 
-import { gsnRuntimeVersion, NpmLogLevel } from '@opengsn/common'
+import { gsnRuntimeVersion, type NpmLogLevel } from '@opengsn/common'
 
 const service = 'gsn-server'
 
@@ -44,7 +44,7 @@ export function createServerLogger (level: NpmLogLevel, loggerUrl: string, userI
     defaultMeta: {
       version: gsnRuntimeVersion,
       service,
-      userId: userId
+      userId
     },
     transports
   })

@@ -3,51 +3,51 @@ import abiDecoder from 'abi-decoder'
 import Web3 from 'web3'
 import crypto from 'crypto'
 import sinon from 'sinon'
-import { HttpProvider } from 'web3-core'
-import { JsonRpcProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
+import { type HttpProvider } from 'web3-core'
+import { type JsonRpcProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
 import { toHex } from 'web3-utils'
 import * as ethUtils from 'ethereumjs-util'
 import {
-  Address,
+  type Address,
   ContractInteractor,
-  GSNContractsDeployment,
-  GsnTransactionDetails,
-  PingResponse,
-  RegistrarRelayInfo,
+  type GSNContractsDeployment,
+  type GsnTransactionDetails,
+  type PingResponse,
+  type RegistrarRelayInfo,
   RelayCallGasLimitCalculationHelper,
-  RelayHubConfiguration,
-  RelayInfo,
-  RelayTransactionRequest,
+  type RelayHubConfiguration,
+  type RelayInfo,
+  type RelayTransactionRequest,
   constants,
   defaultEnvironment,
   ether,
   removeHexPrefix
 } from '@opengsn/common'
 import {
-  IERC2771RecipientInstance,
-  IForwarderInstance,
-  IPenalizerInstance,
-  IRelayHubInstance,
-  StakeManagerInstance,
-  TestPaymasterEverythingAcceptedInstance,
-  TestTokenInstance
+  type IERC2771RecipientInstance,
+  type IForwarderInstance,
+  type IPenalizerInstance,
+  type IRelayHubInstance,
+  type StakeManagerInstance,
+  type TestPaymasterEverythingAcceptedInstance,
+  type TestTokenInstance
 } from '../types/truffle-contracts'
-import { assertRelayAdded, getTemporaryWorkdirs, ServerWorkdirs } from './ServerTestUtils'
+import { assertRelayAdded, getTemporaryWorkdirs, type ServerWorkdirs } from './ServerTestUtils'
 
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type PrefixedHexString } from 'ethereumjs-util'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
 import { registerForwarderForGsn } from '@opengsn/cli/dist/ForwarderUtil'
 
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import {
   configureServer,
-  ServerConfigParams,
+  type ServerConfigParams,
   serverDefaultConfiguration,
-  ServerDependencies
+  type ServerDependencies
 } from '@opengsn/relay/dist/ServerConfigParams'
 import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
-import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { defaultGsnConfig, type GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 
 import { deployHub } from './TestUtils'
 
@@ -62,7 +62,7 @@ import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
 import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 import { ReputationStoreManager } from '@opengsn/relay/dist/ReputationStoreManager'
 import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
-import { BigNumber } from '@ethersproject/bignumber'
+import { type BigNumber } from '@ethersproject/bignumber'
 
 const Forwarder = artifacts.require('Forwarder')
 const Penalizer = artifacts.require('Penalizer')

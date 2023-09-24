@@ -2,7 +2,7 @@ import { BigNumber } from '@ethersproject/bignumber'
 
 import { ether } from '@opengsn/common'
 
-import { CommandsLogic, RegisterOptions } from '../CommandsLogic'
+import { CommandsLogic, type RegisterOptions } from '../CommandsLogic'
 import { getNetworkUrl, gsnCommander, getMnemonic } from '../utils'
 import { toWei } from 'web3-utils'
 import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'

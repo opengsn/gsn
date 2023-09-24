@@ -1,5 +1,5 @@
-import { PrefixedHexString } from 'ethereumjs-util'
-import { ApprovalDataCallback, HttpWrapper, LoggerInterface, RelayRequest, appendSlashTrim } from '@opengsn/common'
+import { type PrefixedHexString } from 'ethereumjs-util'
+import { type ApprovalDataCallback, type HttpWrapper, type LoggerInterface, type RelayRequest, appendSlashTrim } from '@opengsn/common'
 
 // TODO: replace with production URL before release
 export const DEFAULT_VERIFIER_SERVER_URL = 'https://staging-api.opengsn.org'

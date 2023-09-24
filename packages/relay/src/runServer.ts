@@ -2,7 +2,7 @@
 import fs from 'fs'
 import Web3 from 'web3'
 import chalk from 'chalk'
-import { JsonRpcPayload, JsonRpcResponse } from 'web3-core-helpers'
+import { type JsonRpcPayload, type JsonRpcResponse } from 'web3-core-helpers'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { HttpServer } from './HttpServer'
 import { RelayServer } from './RelayServer'
@@ -10,7 +10,7 @@ import { KeyManager } from './KeyManager'
 import { TXSTORE_FILENAME, TxStoreManager } from './TxStoreManager'
 import {
   ContractInteractor,
-  Environment,
+  type Environment,
   EnvironmentsKeys,
   RelayCallGasLimitCalculationHelper,
   VersionsManager,
@@ -22,16 +22,16 @@ import {
   parseServerConfig,
   resolveReputationManagerConfig,
   resolveServerConfig,
-  ServerConfigParams,
-  ServerDependencies
+  type ServerConfigParams,
+  type ServerDependencies
 } from './ServerConfigParams'
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
-import { PenalizerDependencies, PenalizerService } from './penalizer/PenalizerService'
+import { type PenalizerDependencies, PenalizerService } from './penalizer/PenalizerService'
 import { TransactionManager } from './TransactionManager'
 import { EtherscanCachedService } from './penalizer/EtherscanCachedService'
 import { TransactionDataCache, TX_PAGES_FILENAME, TX_STORE_FILENAME } from './penalizer/TransactionDataCache'
 import { GasPriceFetcher } from './GasPriceFetcher'
-import { ReputationManager, ReputationManagerConfiguration } from './ReputationManager'
+import { ReputationManager, type ReputationManagerConfiguration } from './ReputationManager'
 import { REPUTATION_STORE_FILENAME, ReputationStoreManager } from './ReputationStoreManager'
 import { Web3MethodsBuilder } from './Web3MethodsBuilder'
 

@@ -6,7 +6,7 @@ import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   RelayCallStatusCodes,
-  RelayRequest,
+  type RelayRequest,
   TypedRequestData,
   cloneRelayRequest,
   constants,
@@ -18,17 +18,17 @@ import {
 } from '@opengsn/common'
 
 import {
-  ForwarderInstance,
-  PenalizerInstance,
-  RelayHubInstance,
-  RelayRegistrarInstance,
-  StakeManagerInstance,
-  TestGatewayForwarderInstance,
-  TestPaymasterConfigurableMisbehaviorInstance,
-  TestPaymasterEverythingAcceptedInstance,
-  TestPaymasterStoreContextInstance,
-  TestRecipientInstance,
-  TestTokenInstance
+  type ForwarderInstance,
+  type PenalizerInstance,
+  type RelayHubInstance,
+  type RelayRegistrarInstance,
+  type StakeManagerInstance,
+  type TestGatewayForwarderInstance,
+  type TestPaymasterConfigurableMisbehaviorInstance,
+  type TestPaymasterEverythingAcceptedInstance,
+  type TestPaymasterStoreContextInstance,
+  type TestRecipientInstance,
+  type TestTokenInstance
 } from '../types/truffle-contracts'
 import { deployHub, encodeRevertReason, hardhatNodeChainId, revert, snapshot } from './TestUtils'
 
@@ -212,7 +212,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
       })
       await expectEvent.inTransaction(tx, testRelayHubInstance, 'Withdrawn', {
         account: paymasterOwner,
-        dest: dest,
+        dest,
         amount: withdrawAmount2
       })
       expect(await address1BalanceTracker.delta()).to.be.bignumber.equal(withdrawAmount1)
@@ -797,7 +797,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             relayHubInstance.relayCall(defaultGsnConfig.domainSeparatorName, 10e6, relayRequestMisbehavingPaymaster, signatureWithMisbehavingPaymaster, '0x', {
               from: relayWorker,
               gasPrice,
-              gas: gas
+              gas
             }),
             'revert')
         })
@@ -852,7 +852,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             signatureWithMisbehavingPaymaster, '0x', {
               from: relayWorker,
               gas,
-              gasPrice: gasPrice
+              gasPrice
             })
 
           // There should not be an event emitted, which means the result of 'relayCall' was indeed reverted
@@ -874,7 +874,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             signatureWithMisbehavingPaymaster, '0x', {
               from: relayWorker,
               gas,
-              gasPrice: gasPrice
+              gasPrice
             }), 'revert')
         })
 
@@ -884,7 +884,7 @@ contract('RelayHub', function ([paymasterOwner, relayOwner, relayManager, relayW
             signatureWithMisbehavingPaymaster, '0x', {
               from: relayWorker,
               gas,
-              gasPrice: gasPrice
+              gasPrice
             })
 
           // @ts-ignore (there is a problem with web3 types annotations that must be solved)

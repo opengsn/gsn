@@ -1,16 +1,16 @@
 import sinon from 'sinon'
-import { ChildProcessWithoutNullStreams } from 'child_process'
-import { HttpProvider } from 'web3-core'
+import { type ChildProcessWithoutNullStreams } from 'child_process'
+import { type HttpProvider } from 'web3-core'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { Transaction } from '@ethereumjs/tx'
 import { ether } from '@openzeppelin/test-helpers'
 import { toBN } from 'web3-utils'
 
-import { GsnTransactionDetails, HttpClient, HttpWrapper, Address, gsnRuntimeVersion, sleep, constants } from '@opengsn/common'
+import { type GsnTransactionDetails, HttpClient, HttpWrapper, type Address, gsnRuntimeVersion, sleep, constants } from '@opengsn/common'
 
 import { ServerTestEnvironment } from '../ServerTestEnvironment'
 import { RelayClient } from '@opengsn/provider/dist/RelayClient'
-import { GSNConfig, GSNDependencies } from '@opengsn/provider/dist/GSNConfigurator'
+import { type GSNConfig, type GSNDependencies } from '@opengsn/provider/dist/GSNConfigurator'
 
 import { createClientLogger } from '@opengsn/logger/dist/ClientWinstonLogger'
 
@@ -114,7 +114,7 @@ contract('PenalizationFlow', function (accounts) {
   })
 
   after(async function () {
-    await stopRelay(penalizingRelayProcess)
+    stopRelay(penalizingRelayProcess)
   })
 
   describe('with a cheating relay', function () {

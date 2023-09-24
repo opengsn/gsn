@@ -1,11 +1,11 @@
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 import { toBN, toHex } from 'web3-utils'
 import { toChecksumAddress } from 'ethereumjs-util'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
   ContractInteractor,
-  LoggerInterface,
+  type LoggerInterface,
   RelayCallGasLimitCalculationHelper,
   constants,
   defaultEnvironment,
@@ -13,12 +13,12 @@ import {
   toNumber
 } from '@opengsn/common'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
-import { RegistrationManager } from '@opengsn/relay/dist/RegistrationManager'
+import { type RegistrationManager } from '@opengsn/relay/dist/RegistrationManager'
 import { RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { ServerAction } from '@opengsn/relay/dist/StoredTransaction'
 import {
-  ServerConfigParams,
-  ServerDependencies,
+  type ServerConfigParams,
+  type ServerDependencies,
   configureServer,
   serverDefaultConfiguration
 } from '@opengsn/relay/dist/ServerConfigParams'
@@ -27,7 +27,7 @@ import { TxStoreManager } from '@opengsn/relay/dist/TxStoreManager'
 import { deployHub, evmMine, evmMineMany, revert, setNextBlockTimestamp, snapshot } from './TestUtils'
 
 import { LocalhostOne, ServerTestEnvironment } from './ServerTestEnvironment'
-import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, ServerWorkdirs } from './ServerTestUtils'
+import { assertRelayAdded, getTemporaryWorkdirs, getTotalTxCosts, type ServerWorkdirs } from './ServerTestUtils'
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
 import { GasPriceFetcher } from '@opengsn/relay/dist/GasPriceFetcher'
@@ -156,7 +156,7 @@ contract('RegistrationManager', function (accounts) {
       txStoreManager = new TxStoreManager({ workdir: serverWorkdirs.workdir }, logger)
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
-        provider: provider,
+        provider,
         signer: provider.getSigner(),
         logger,
         maxPageSize,

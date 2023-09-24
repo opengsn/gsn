@@ -1,25 +1,25 @@
 import sinon from 'sinon'
-import { ChildProcessWithoutNullStreams } from 'child_process'
-import { HttpProvider } from 'web3-core'
+import { type ChildProcessWithoutNullStreams } from 'child_process'
+import { type HttpProvider } from 'web3-core'
 import { ether } from '@openzeppelin/test-helpers'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { KnownRelaysManager, DefaultRelayFilter } from '@opengsn/provider/dist/KnownRelaysManager'
 import {
   ContractInteractor,
-  LoggerInterface,
-  RelayInfoUrl,
-  RegistrarRelayInfo,
+  type LoggerInterface,
+  type RelayInfoUrl,
+  type RegistrarRelayInfo,
   constants,
   defaultEnvironment,
   splitRelayUrlForRegistrar
 } from '@opengsn/common'
-import { defaultGsnConfig, GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
+import { defaultGsnConfig, type GSNConfig } from '@opengsn/provider/dist/GSNConfigurator'
 import {
-  PenalizerInstance,
-  RelayHubInstance,
-  StakeManagerInstance,
-  TestPaymasterConfigurableMisbehaviorInstance,
-  TestRecipientInstance, TestTokenInstance
+  type PenalizerInstance,
+  type RelayHubInstance,
+  type StakeManagerInstance,
+  type TestPaymasterConfigurableMisbehaviorInstance,
+  type TestRecipientInstance, type TestTokenInstance
 } from '../../types/truffle-contracts'
 import { configureGSN, deployHub, revert, snapshot, startRelay, stopRelay } from '../TestUtils'
 import { prepareTransaction } from './RelayProvider.test'
@@ -334,7 +334,7 @@ contract('KnownRelaysManager 2', function (accounts) {
     })
 
     after(async function () {
-      await stopRelay(relayProcess)
+      stopRelay(relayProcess)
     })
 
     it('should consider all relay managers with stake and authorization as active', async function () {

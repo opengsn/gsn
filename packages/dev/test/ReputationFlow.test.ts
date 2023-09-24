@@ -1,13 +1,13 @@
 import {
-  RelayHubInstance,
-  TestPaymasterConfigurableMisbehaviorInstance,
-  TestRecipientInstance
+  type RelayHubInstance,
+  type TestPaymasterConfigurableMisbehaviorInstance,
+  type TestRecipientInstance
 } from '../types/truffle-contracts'
 import { evmMine } from './TestUtils'
-import { HttpProvider } from 'web3-core'
+import { type HttpProvider } from 'web3-core'
 import { RelayProvider } from '@opengsn/provider/dist/RelayProvider'
 import sinon from 'sinon'
-import { GsnTestEnvironment, TestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
+import { GsnTestEnvironment, type TestEnvironment } from '@opengsn/cli/dist/GsnTestEnvironment'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { BigNumber } from '@ethersproject/bignumber'
 

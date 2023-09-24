@@ -1,14 +1,14 @@
 // @ts-ignore
 import abiDecoder from 'abi-decoder'
 import { BigNumber } from '@ethersproject/bignumber'
-import { TransactionReceipt } from 'web3-core'
+import { type TransactionReceipt } from 'web3-core'
 
 import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
 import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
 import RelayRegistrarABI from '@opengsn/common/dist/interfaces/IRelayRegistrar.json'
 import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
-import { RelayServer } from '@opengsn/relay/dist/RelayServer'
-import { PrefixedHexString } from 'ethereumjs-util'
+import { type RelayServer } from '@opengsn/relay/dist/RelayServer'
+import { type PrefixedHexString } from 'ethereumjs-util'
 import { packRelayUrlForRegistrar } from '@opengsn/common'
 
 const TestRecipient = artifacts.require('TestRecipient')

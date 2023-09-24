@@ -1,26 +1,26 @@
 import {
-  ApprovalDataCallback,
-  ContractInteractor,
-  GSNConfig,
-  HttpClient,
-  LoggerConfiguration,
-  LoggerInterface,
-  PaymasterDataCallback,
-  PingFilter,
-  RelayCallGasLimitCalculationHelper,
-  RelayFilter,
-  SignTypedDataCallback,
+  type ApprovalDataCallback,
+  type ContractInteractor,
+  type GSNConfig,
+  type HttpClient,
+  type LoggerConfiguration,
+  type LoggerInterface,
+  type PaymasterDataCallback,
+  type PingFilter,
+  type RelayCallGasLimitCalculationHelper,
+  type RelayFilter,
+  type SignTypedDataCallback,
   defaultEnvironment,
   gsnRequiredVersion,
   gsnRuntimeVersion
 } from '@opengsn/common'
 
-import { AccountManager } from './AccountManager'
+import { type AccountManager } from './AccountManager'
 
-import { KnownRelaysManager } from './KnownRelaysManager'
-import { RelayedTransactionValidator } from './RelayedTransactionValidator'
+import { type KnownRelaysManager } from './KnownRelaysManager'
+import { type RelayedTransactionValidator } from './RelayedTransactionValidator'
 
-export type { GSNConfig } from '@opengsn/common'
+export { type GSNConfig } from '@opengsn/common'
 
 const GAS_PRICE_PERCENT = 20
 const GAS_PRICE_SLACK_PERCENT = 80

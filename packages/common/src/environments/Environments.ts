@@ -1,11 +1,11 @@
-import { RelayHubConfiguration } from '../types/RelayHubConfiguration'
-import { PaymasterConfiguration } from '../types/PaymasterConfiguration'
-import { PenalizerConfiguration } from '../types/PenalizerConfiguration'
+import { type RelayHubConfiguration } from '../types/RelayHubConfiguration'
+import { type PaymasterConfiguration } from '../types/PaymasterConfiguration'
+import { type PenalizerConfiguration } from '../types/PenalizerConfiguration'
 import { constants } from '../Constants'
 
 export interface DeploymentConfiguration {
   readonly registrationMaxAge: number
-  readonly minimumStakePerToken: { [key: string]: string }
+  readonly minimumStakePerToken: Record<string, string>
   readonly paymasterDeposit: string
   readonly deployTestPaymaster: boolean
   readonly deploySingleRecipientPaymaster: boolean
@@ -78,8 +78,8 @@ const defaultRelayHubConfiguration: RelayHubConfiguration = {
 const preRelayedCallGasLimit = 1e5
 const forwarderHubOverhead = 5e4
 const defaultPaymasterConfiguration: PaymasterConfiguration = {
-  forwarderHubOverhead: forwarderHubOverhead,
-  preRelayedCallGasLimit: preRelayedCallGasLimit,
+  forwarderHubOverhead,
+  preRelayedCallGasLimit,
   postRelayedCallGasLimit: 11e4,
   acceptanceBudget: preRelayedCallGasLimit + forwarderHubOverhead,
   calldataSizeLimit: 10404

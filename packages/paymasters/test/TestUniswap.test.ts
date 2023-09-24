@@ -1,6 +1,6 @@
 /* global contract artifacts before it */
 
-import { TestTokenInstance, TestUniswapInstance } from '../types/truffle-contracts'
+import { type TestTokenInstance, type TestUniswapInstance } from '../types/truffle-contracts'
 import BN from 'bn.js'
 import { MAX_INTEGER } from 'ethereumjs-util'
 import { toWei } from 'web3-utils'

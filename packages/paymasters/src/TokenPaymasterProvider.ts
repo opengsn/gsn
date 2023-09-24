@@ -1,7 +1,7 @@
-import { PrefixedHexString, isValidAddress } from 'ethereumjs-util'
+import { type PrefixedHexString, isValidAddress } from 'ethereumjs-util'
 
 import {
-  GSNUnresolvedConstructorInput,
+  type GSNUnresolvedConstructorInput,
   RelayClient,
   RelayProvider,
   getPaymasterAddressByTypeAndChain,
@@ -9,12 +9,12 @@ import {
 } from '@opengsn/provider'
 
 import {
-  Address,
-  EIP712Domain,
+  type Address,
+  type EIP712Domain,
   EIP712DomainType,
   EIP712DomainTypeWithoutVersion,
-  RelayRequest,
-  SupportedTokenSymbols,
+  type RelayRequest,
+  type SupportedTokenSymbols,
   constants,
   getTokenBySymbol,
   removeHexPrefix

@@ -5,7 +5,7 @@ import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import {
   PaymasterStatus,
   ReputationManager,
-  ReputationManagerConfiguration
+  type ReputationManagerConfiguration
 } from '@opengsn/relay/dist/ReputationManager'
 import { evmMineMany } from './TestUtils'
 

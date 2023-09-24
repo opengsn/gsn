@@ -4,7 +4,7 @@ import {
   filterType,
   parseServerConfig,
   resolveServerConfig,
-  ServerConfigParams,
+  type ServerConfigParams,
   serverDefaultConfiguration,
   validateBalanceParams
 } from '@opengsn/relay/dist/ServerConfigParams'
@@ -14,7 +14,7 @@ import { expectRevert } from '@openzeppelin/test-helpers'
 import { StaticJsonRpcProvider } from '@ethersproject/providers'
 
 import {
-  RelayHubInstance
+  type RelayHubInstance
 } from '../types/truffle-contracts'
 import { constants } from '@opengsn/common'
 import { deployHub } from './TestUtils'
