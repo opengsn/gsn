@@ -47,7 +47,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
 
     function whitelistSenders(address[] memory senders, bool isAllowed) external {
         address dappOwner = msg.sender;
-        for (uint i = 0; i < senders.length; i++) {
+        for (uint256 i = 0; i < senders.length; i++) {
             registeredDapps[dappOwner].senderWhitelist[senders[i]] = isAllowed;
         }
         emit WhitelistedSenders(dappOwner, senders.length);
@@ -55,7 +55,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
 
     function whitelistTargets(address[] memory targets, bool isAllowed) external {
         address dappOwner = msg.sender;
-        for (uint i = 0; i < targets.length; i++) {
+        for (uint256 i = 0; i < targets.length; i++) {
             registeredDapps[dappOwner].targetWhitelist[targets[i]] = isAllowed;
         }
         emit WhitelistedTargets(dappOwner, targets.length);
@@ -63,7 +63,7 @@ contract SingletonWhitelistPaymaster is BasePaymaster {
 
     function whitelistMethodsForTarget(address target, bytes4[] memory methods, bool isAllowed) external {
         address dappOwner = msg.sender;
-        for (uint i = 0; i < methods.length; i++) {
+        for (uint256 i = 0; i < methods.length; i++) {
             registeredDapps[dappOwner].methodWhitelist[target][methods[i]] = isAllowed;
         }
         emit WhitelistedMethodsForTarget(dappOwner, target, methods.length);
