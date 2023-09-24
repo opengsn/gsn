@@ -36,6 +36,7 @@ context('GasPriceFetcher', function () {
       environment: defaultEnvironment,
       maxPageSize: Number.MAX_SAFE_INTEGER,
       provider,
+      signer: provider.getSigner(),
       logger
     })
 

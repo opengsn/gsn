@@ -157,6 +157,7 @@ contract('RegistrationManager', function (accounts) {
       contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider: provider,
+        signer: provider.getSigner(),
         logger,
         maxPageSize,
         deployment: {
@@ -196,6 +197,7 @@ contract('RegistrationManager', function (accounts) {
       const newContractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider,
+        signer: provider.getSigner(),
         logger,
         maxPageSize,
         deployment: {

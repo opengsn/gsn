@@ -56,6 +56,7 @@ contract('Network Simulation for Relay Server', function (accounts) {
         environment: defaultEnvironment,
         maxPageSize,
         provider,
+        signer: provider.getSigner(),
         logger,
         deployment
       })

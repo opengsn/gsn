@@ -103,6 +103,7 @@ contract('ContractInteractor', function (accounts) {
         {
           environment,
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           logger,
           maxPageSize,
           deployment: { paymasterAddress: pm.address }
@@ -120,6 +121,7 @@ contract('ContractInteractor', function (accounts) {
         {
           environment,
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           logger,
           maxPageSize,
           deployment: { paymasterAddress: pm.address }
@@ -142,6 +144,7 @@ contract('ContractInteractor', function (accounts) {
         {
           environment,
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           logger,
           maxPageSize,
           deployment: { paymasterAddress: pm.address }
@@ -154,6 +157,7 @@ contract('ContractInteractor', function (accounts) {
         {
           environment,
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           logger,
           maxPageSize,
           deployment: { paymasterAddress: pm.address }
@@ -212,6 +216,7 @@ contract('ContractInteractor', function (accounts) {
         {
           environment,
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           versionManager,
           logger,
           maxPageSize,
@@ -239,6 +244,7 @@ contract('ContractInteractor', function (accounts) {
       const contractInteractor = new ContractInteractor({
         environment,
         provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
         versionManager,
         logger,
         maxPageSize: Number.MAX_SAFE_INTEGER,
@@ -289,6 +295,7 @@ contract('ContractInteractor', function (accounts) {
         {
           environment,
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           versionManager,
           logger,
           maxPageSize,
@@ -316,6 +323,7 @@ contract('ContractInteractor', function (accounts) {
         {
           environment,
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           versionManager,
           logger,
           maxPageSize,
@@ -343,6 +351,7 @@ contract('ContractInteractor', function (accounts) {
           {
             environment,
             provider: ethersProvider,
+            signer: ethersProvider.getSigner(),
             logger,
             maxPageSize,
             deployment: { paymasterAddress: pm.address }
@@ -365,7 +374,14 @@ contract('ContractInteractor', function (accounts) {
     let sampleTransactionData: PrefixedHexString
 
     before(async function () {
-      contractInteractor = new ContractInteractor({ provider, logger, maxPageSize, environment })
+      const signer = provider.getSigner()
+      contractInteractor = new ContractInteractor({
+        provider,
+        signer,
+        logger,
+        maxPageSize,
+        environment
+      })
       await contractInteractor.init()
       provider.reset()
       const nonce = await web3.eth.getTransactionCount('0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc')
@@ -395,12 +411,12 @@ contract('ContractInteractor', function (accounts) {
       }
       const contractInteractor = new ContractInteractor({
         provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
         logger,
         deployment,
         maxPageSize,
         environment
       })
-      contractInteractor.signer = ethersProvider.getSigner()
       await contractInteractor._resolveDeployment()
       const deploymentOut = contractInteractor.getDeployment()
       assert.equal(deploymentOut.paymasterAddress, pm.address)
@@ -415,12 +431,12 @@ contract('ContractInteractor', function (accounts) {
       }
       const contractInteractor = new ContractInteractor({
         provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
         logger,
         deployment,
         maxPageSize,
         environment
       })
-      contractInteractor.signer = ethersProvider.getSigner()
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith('Not a paymaster contract')
     })
@@ -431,12 +447,12 @@ contract('ContractInteractor', function (accounts) {
       }
       const contractInteractor = new ContractInteractor({
         provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
         logger,
         deployment,
         maxPageSize,
         environment
       })
-      contractInteractor.signer = ethersProvider.getSigner()
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith('Not a paymaster contract')
     })
@@ -448,13 +464,13 @@ contract('ContractInteractor', function (accounts) {
       const versionManager = new VersionsManager('1.0.0', '1.0.0-old-client')
       const contractInteractor = new ContractInteractor({
         provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
         logger,
         versionManager,
         deployment,
         maxPageSize,
         environment
       })
-      contractInteractor.signer = ethersProvider.getSigner()
       await expect(contractInteractor._resolveDeployment())
         .to.eventually.rejectedWith(/Provided.*version.*does not satisfy the requirement/)
     })
@@ -464,6 +480,7 @@ contract('ContractInteractor', function (accounts) {
         const deployment = {}
         const contractInteractor = new ContractInteractor({
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           logger,
           deployment,
           maxPageSize,
@@ -490,6 +507,7 @@ contract('ContractInteractor', function (accounts) {
         }
         let contractInteractor = new ContractInteractor({
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           logger,
           deployment,
           maxPageSize,
@@ -503,6 +521,7 @@ contract('ContractInteractor', function (accounts) {
         deployment.relayRegistrarAddress = sm.address
         contractInteractor = new ContractInteractor({
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           logger,
           deployment,
           maxPageSize,
@@ -517,6 +536,7 @@ contract('ContractInteractor', function (accounts) {
         deployment.relayRegistrarAddress = rr.address
         contractInteractor = new ContractInteractor({
           provider: ethersProvider,
+          signer: ethersProvider.getSigner(),
           logger,
           deployment,
           maxPageSize,
@@ -529,7 +549,13 @@ contract('ContractInteractor', function (accounts) {
   })
 
   describe('#splitRange', () => {
-    const contractInteractor = new ContractInteractor({ provider: ethersProvider, logger, maxPageSize, environment })
+    const contractInteractor = new ContractInteractor({
+      provider: ethersProvider,
+      signer: ethersProvider.getSigner(),
+      logger,
+      maxPageSize,
+      environment
+    })
     it('split 1', () => {
       assert.deepEqual(contractInteractor.splitRange(1, 6, 1),
         [{ fromBlock: 1, toBlock: 6 }])
@@ -570,6 +596,7 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = { managerStakeTokenAddress: testDecimalsToken.address }
       contractInteractor = new ContractInteractor({
         provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
         logger,
         deployment,
         maxPageSize,
@@ -621,6 +648,7 @@ contract('ContractInteractor', function (accounts) {
       const deployment: GSNContractsDeployment = { paymasterAddress: pm.address }
       contractInteractor = new ContractInteractor({
         provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
         logger,
         deployment,
         maxPageSize,
@@ -645,7 +673,15 @@ contract('ContractInteractor', function (accounts) {
     let contractInteractor: ContractInteractor
     before(async function () {
       const deployment: GSNContractsDeployment = { paymasterAddress: pm.address }
-      contractInteractor = new ContractInteractor({ provider, logger, deployment, maxPageSize, environment })
+      const signer = ethersProvider.getSigner()
+      contractInteractor = new ContractInteractor({
+        provider,
+        signer,
+        logger,
+        deployment,
+        maxPageSize,
+        environment
+      })
       await contractInteractor.init()
       provider.reset()
     })
@@ -698,7 +734,11 @@ contract('ContractInteractor', function (accounts) {
 
     before(async function () {
       contractInteractor = new ContractInteractor({
-        provider: ethersProvider, logger, maxPageSize, environment
+        provider: ethersProvider,
+        signer: ethersProvider.getSigner(),
+        logger,
+        maxPageSize,
+        environment
       })
       await contractInteractor.init()
     })
@@ -707,7 +747,11 @@ contract('ContractInteractor', function (accounts) {
       it('should calculate gas used for calculation only', async function () {
         const stubbedEstimateGasEthersProvider = new StaticJsonRpcProvider(currentProviderHost)
         const contractInteractor = new ContractInteractor({
-          provider: stubbedEstimateGasEthersProvider, logger, maxPageSize, environment
+          provider: stubbedEstimateGasEthersProvider,
+          signer: stubbedEstimateGasEthersProvider.getSigner(),
+          logger,
+          maxPageSize,
+          environment
         })
         await contractInteractor.init()
         sinon.stub(contractInteractor.provider, 'estimateGas')
@@ -731,6 +775,7 @@ contract('ContractInteractor', function (accounts) {
           {
             environment: environments.arbitrum,
             provider: ethersProvider,
+            signer: ethersProvider.getSigner(),
             logger,
             maxPageSize,
             deployment: { paymasterAddress: pm.address }
@@ -752,7 +797,11 @@ contract('ContractInteractor', function (accounts) {
       it('should throw if calldataGasCost estimation exceeds originalGasEstimation', async function () {
         const stubbedEstimateGasEthersProvider = new StaticJsonRpcProvider(currentProviderHost)
         const contractInteractor = new ContractInteractor({
-          provider: stubbedEstimateGasEthersProvider, logger, maxPageSize, environment
+          provider: stubbedEstimateGasEthersProvider,
+          signer: ethersProvider.getSigner(),
+          logger,
+          maxPageSize,
+          environment
         })
         await contractInteractor.init()
         sinon.stub(contractInteractor.provider, 'estimateGas')

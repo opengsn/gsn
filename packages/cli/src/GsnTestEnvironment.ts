@@ -242,9 +242,11 @@ class GsnTestEnvironmentClass {
     const environment = defaultEnvironment
     const calldataEstimationSlackFactor = 1
     const provider = new StaticJsonRpcProvider(host)
+    const signer = provider.getSigner()
     const contractInteractor = new ContractInteractor(
       {
         provider,
+        signer,
         logger,
         maxPageSize,
         environment,
@@ -309,9 +311,11 @@ class GsnTestEnvironmentClass {
   ): Promise<GSNContractsDeployment> {
     const deployment = loadDeployment(workdir)
     const provider = new StaticJsonRpcProvider(url)
+    const signer = provider.getSigner()
     const contractInteractor = new ContractInteractor(
       {
         provider,
+        signer,
         logger: console,
         maxPageSize: Number.MAX_SAFE_INTEGER,
         environment: defaultEnvironment,

@@ -159,6 +159,7 @@ export class ServerTestEnvironment {
       this.contractInteractor = new ContractInteractor({
         environment: defaultEnvironment,
         provider: this.ethersProvider,
+        signer: this.ethersProvider.getSigner(),
         logger,
         maxPageSize,
         deployment: {

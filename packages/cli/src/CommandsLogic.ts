@@ -163,6 +163,7 @@ export class CommandsLogic {
     const ethersProvider = new Web3Provider(provider)
     this.contractInteractor = new ContractInteractor({
       provider: ethersProvider,
+      signer: ethersProvider.getSigner(),
       logger: this.logger,
       deployment,
       maxPageSize,

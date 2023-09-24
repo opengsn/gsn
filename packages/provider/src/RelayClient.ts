@@ -163,6 +163,8 @@ export async function wrapInputProviderLike (input: SupportedProviderLikeType): 
         const providerIn = (input as any).provider
         return providerIn.send.bind(providerIn)(method, params)
       })
+      // @ts-ignore
+      input._isSigner = true
       return {
         inputProviderType: InputProviderType.SignerEthersV6,
         provider,
@@ -784,6 +786,7 @@ export class RelayClient {
       await new ContractInteractor({
         useEthersV6,
         provider: this.wrappedUnderlyingProvider,
+        signer: this.wrappedUnderlyingSigner,
         versionManager,
         logger: this.logger,
         maxPageSize: this.config.pastEventsQueryMaxPageSize,
