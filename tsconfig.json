@@ -7,6 +7,9 @@
       "path": "./packages/common"
     },
     {
+      "path": "./packages/contracts"
+    },
+    {
       "path": "./packages/dev"
     },
     {
