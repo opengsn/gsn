@@ -2,7 +2,6 @@ import chalk from 'chalk'
 import { EventEmitter } from 'events'
 import { toBN, toHex } from 'web3-utils'
 import { type PrefixedHexString } from 'ethereumjs-util'
-import { type Block } from '@ethersproject/providers'
 
 import {
   type Address,
@@ -51,8 +50,9 @@ import { ServerAction, type ShortBlockInfo } from './StoredTransaction'
 import { type TxStoreManager } from './TxStoreManager'
 import { configureServer, type ServerConfigParams, type ServerDependencies } from './ServerConfigParams'
 import { type Web3MethodsBuilder } from './Web3MethodsBuilder'
-import { type IPaymaster, type IRelayHub } from '@opengsn/contracts/types/ethers-contracts'
+import { type IPaymaster, type IRelayHub } from '@opengsn/contracts/dist/typechain-types'
 import { BigNumber } from '@ethersproject/bignumber'
+import { Block } from 'ethers'
 
 export class RelayServer extends EventEmitter {
   readonly logger: LoggerInterface
@@ -156,7 +156,7 @@ export class RelayServer extends EventEmitter {
     return {
       relayWorkerAddress: this.workerAddress,
       relayManagerAddress: this.managerAddress,
-      relayHubAddress: this.relayHubContract?.address ?? '',
+      relayHubAddress: this.relayHubContract?.target.toString() ?? '',
       ownerAddress: this.config.ownerAddress,
       minMaxPriorityFeePerGas: this.getMinMaxPriorityFeePerGas().toString(),
       maxMaxFeePerGas: this.config.maxMaxFeePerGas,
@@ -189,9 +189,9 @@ export class RelayServer extends EventEmitter {
 
   validateInput (req: RelayTransactionRequest): void {
     // Check that the relayHub is the correct one
-    if (req.metadata.relayHubAddress !== this.relayHubContract.address) {
+    if (req.metadata.relayHubAddress !== this.relayHubContract.target.toString()) {
       throw new Error(
-        `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract.address}, request's hub address: ${req.metadata.relayHubAddress}\n`)
+        `Wrong hub address.\nRelay server's hub address: ${this.relayHubContract.target.toString()}, request's hub address: ${req.metadata.relayHubAddress}\n`)
     }
 
     // Check the relayWorker (todo: once migrated to multiple relays, check if exists)
@@ -306,7 +306,7 @@ export class RelayServer extends EventEmitter {
   ): Promise<void> {
     const paymaster = relayTransactionRequest.relayRequest.relayData.paymaster
     this.verifyTransactionCalldataGasUsed(relayTransactionRequest, relayRequestLimits.transactionCalldataGasUsed)
-    this.verifyEffectiveAcceptanceBudget(gasAndDataLimits.acceptanceBudget.toNumber(), relayRequestLimits.effectiveAcceptanceBudgetGasUsed, parseInt(relayTransactionRequest.metadata.maxAcceptanceBudget), paymaster)
+    this.verifyEffectiveAcceptanceBudget(parseInt(gasAndDataLimits.acceptanceBudget.toString()), relayRequestLimits.effectiveAcceptanceBudgetGasUsed, parseInt(relayTransactionRequest.metadata.maxAcceptanceBudget), paymaster)
     this.verifyMaxPossibleGas(relayRequestLimits.maxPossibleGasUsed.toNumber())
     await this.verifyPaymasterBalance(relayRequestLimits.maxPossibleCharge, relayRequestLimits.maxPossibleGasUsed.toNumber(), paymaster)
   }
@@ -350,7 +350,7 @@ export class RelayServer extends EventEmitter {
     const paymasterBalance = await this.relayHubContract.balanceOf(paymaster)
     this.logger.debug(`paymaster balance: ${paymasterBalance.toString()}, maxCharge: ${maxPossibleCharge.toString()}`)
     this.logger.debug(`Estimated max charge of relayed tx: ${maxPossibleCharge.toString()}, GasLimit of relayed tx: ${maxPossibleGasFactorReserve}`)
-    if (paymasterBalance.lt(maxPossibleCharge.toString())) {
+    if (BigNumber.from(paymasterBalance.toString()).lt(maxPossibleCharge.toString())) {
       throw new Error(`paymaster balance too low: ${paymasterBalance.toString()}, maxCharge: ${maxPossibleCharge.toString()}`)
     }
   }
@@ -432,7 +432,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
         destination: req.metadata.relayHubAddress,
         gasLimit: maxPossibleGas,
         creationBlockNumber: currentBlock.number,
-        creationBlockHash: currentBlock.hash,
+        creationBlockHash: currentBlock.hash!,
         creationBlockTimestamp: currentBlockTimestamp,
         maxFeePerGas: req.relayRequest.relayData.maxFeePerGas,
         maxPriorityFeePerGas: req.relayRequest.relayData.maxPriorityFeePerGas
@@ -440,7 +440,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     const { signedTx, nonce } = await this.transactionManager.sendTransaction(details)
     const nonceGapFilled = await this.transactionManager.getNonceGapFilled(this.workerAddress, req.metadata.relayLastKnownNonce, nonce - 1)
     // after sending a transaction is a good time to check the worker's balance, and replenish it.
-    await this.replenishServer(0, currentBlock.number, currentBlock.hash, currentBlockTimestamp)
+    await this.replenishServer(0, currentBlock.number, currentBlock.hash!, currentBlockTimestamp)
     return { signedTx, nonceGapFilled }
   }
 
@@ -520,7 +520,7 @@ returnValue        | ${viewRelayCallRet.returnValue}
     }
     this.relayHubContract = this.contractInteractor.relayHubInstance
 
-    const relayHubAddress = this.relayHubContract.address
+    const relayHubAddress = this.relayHubContract.target.toString()
     const code = await this.contractInteractor.getCode(relayHubAddress)
     if (code.length < 10) {
       this.fatal(`No RelayHub deployed at address ${relayHubAddress}.`)
@@ -578,7 +578,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     const details: SendTransactionDetails = {
       signer: this.managerAddress,
       serverAction: ServerAction.DEPOSIT_WITHDRAWAL,
-      destination: this.relayHubContract.address,
+      destination: this.relayHubContract.target.toString(),
       creationBlockNumber: currentBlockNumber,
       creationBlockHash: currentBlockHash,
       creationBlockTimestamp: currentBlockTimestamp,
@@ -677,7 +677,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       return []
     }
     const currentBlockTimestamp = toNumber(block.timestamp)
-    await this.withdrawToOwnerIfNeeded(block.number, block.hash, currentBlockTimestamp)
+    await this.withdrawToOwnerIfNeeded(block.number, block.hash!, currentBlockTimestamp)
     this.lastRefreshBlock = block.number
     await this._refreshGasFees()
     const isManagerBalanceReady = await this._refreshAndCheckBalances()
@@ -773,7 +773,7 @@ latestBlock timestamp   | ${latestBlock.timestamp}
     }
     await this.handlePastHubEvents(currentBlock, hubEventsSinceLastScan)
     const workerIndex = 0
-    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, currentBlock.number, currentBlock.hash, currentBlockTimestamp))
+    transactionHashes = transactionHashes.concat(await this.replenishServer(workerIndex, currentBlock.number, currentBlock.hash!, currentBlockTimestamp))
     await this._refreshAndCheckBalances()
     this.setReadyState(true)
     if (this.alerted && this.alertedByTransactionBlockTimestamp + this.config.alertedDelaySeconds < currentBlockTimestamp) {
@@ -884,10 +884,10 @@ latestBlock timestamp   | ${latestBlock.timestamp}
       const reserveBalance = toBN(this.config.managerTargetBalance).add(toBN(this.config.workerTargetBalance))
       const effectiveWithdrawOnBalance = toBN(this.config.withdrawToOwnerOnBalance).add(reserveBalance)
       const managerHubBalance = await this.relayHubContract.balanceOf(this.managerAddress)
-      if (managerHubBalance.lt(effectiveWithdrawOnBalance.toString())) {
+      if (BigNumber.from(managerHubBalance.toString()).lt(effectiveWithdrawOnBalance.toString())) {
         return txHashes
       }
-      const withdrawalAmount = managerHubBalance.sub(reserveBalance.toString())
+      const withdrawalAmount = BigNumber.from(managerHubBalance).sub(reserveBalance.toString())
       txHashes = txHashes.concat(await this.registrationManager._sendManagerHubBalanceToOwner(currentBlockNumber, currentBlockHash, currentBlockTimestamp, withdrawalAmount))
       this.logger.info(`Withdrew ${withdrawalAmount.toString()} to owner`)
       return txHashes

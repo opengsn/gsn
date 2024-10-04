@@ -4,7 +4,6 @@ import Web3 from 'web3'
 import commander from 'commander'
 import fs from 'fs'
 import { type PrefixedHexString } from 'ethereumjs-util'
-import { StaticJsonRpcProvider } from '@ethersproject/providers'
 import { hdkey as EthereumHDKey } from 'ethereumjs-wallet'
 import { toHex, toWei } from 'web3-utils'
 import { type HttpProvider } from 'web3-core'
@@ -19,6 +18,7 @@ import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger
 
 import { getMnemonic, getNetworkUrl, gsnCommander } from '../utils'
 import { CommandsLogic } from '../CommandsLogic'
+import { JsonRpcProvider } from 'ethers'
 
 function commaSeparatedList (value: string, _dummyPrevious: string[]): string[] {
   return value.split(',')
@@ -75,7 +75,7 @@ async function getProvider (
     const overrideDependencies: Partial<GSNDependencies> = {
       logger
     }
-    const provider = new StaticJsonRpcProvider(host)
+    const provider = new JsonRpcProvider(host)
     const input: GSNUnresolvedConstructorInput = {
       provider,
       config,

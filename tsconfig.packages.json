@@ -9,7 +9,7 @@
     "allowJs": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "target": "es2017",
+    "target": "es2022",
     "module": "node16",
     "strict": true,
     "moduleResolution": "node16",

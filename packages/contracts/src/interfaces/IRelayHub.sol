@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.25;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
 
 import "../utils/GsnTypes.sol";
-import "./IStakeManager.sol";
+import "./IRelayStakeManager.sol";
 
 /**
  * @title The RelayHub interface
@@ -301,7 +301,7 @@ interface IRelayHub is IERC165 {
     function balanceOf(address target) external view returns (uint256);
 
     /// @return The `StakeManager` address for this `RelayHub`.
-    function getStakeManager() external view returns (IStakeManager);
+    function getStakeManager() external view returns (IRelayStakeManager);
 
     /// @return The `Penalizer` address for this `RelayHub`.
     function getPenalizer() external view returns (address);

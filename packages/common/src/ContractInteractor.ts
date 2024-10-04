@@ -1,4 +1,17 @@
-import { type Contract, ethers, type EventFilter, type PayableOverrides, type Signer } from 'ethers'
+import {
+  Block,
+  BlockTag,
+  Interface,
+  JsonRpcApiProvider,
+  Log,
+  LogDescription,
+  Network,
+  TransactionRequest,
+  TransactionResponse,
+  type BaseContract,
+  type EventFilter,
+  type Signer
+} from 'ethers'
 import { type PrefixedHexString } from 'ethereumjs-util'
 import { type TxOptions } from './ethereumjstx/TxOptions'
 
@@ -33,9 +46,9 @@ import {
   IRelayHub__factory,
   type IRelayRegistrar,
   IRelayRegistrar__factory,
-  type IStakeManager,
-  IStakeManager__factory
-} from '@opengsn/contracts'
+  type IRelayStakeManager,
+  IRelayStakeManager__factory
+} from '@opengsn/contracts/dist/typechain-types'
 
 import {
   type Address,
@@ -44,7 +57,6 @@ import {
   type EventName,
   type IntString,
   type ObjectMap,
-  type SemVerString
 } from './types/Aliases'
 import { type GsnTransactionDetails } from './types/GsnTransactionDetails'
 
@@ -63,22 +75,12 @@ import { MainnetCalldataGasEstimation } from './environments/MainnetCalldataGasE
 import { AsyncZeroAddressCalldataGasEstimation } from './environments/AsyncZeroAddressCalldataGasEstimation'
 import { toHex } from './web3js/Web3JSUtils'
 import { type FeeHistoryResult } from './web3js/FeeHistoryResult'
-import { type Network } from '@ethersproject/networks'
-
-import {
-  type Block,
-  type BlockTag,
-  type JsonRpcProvider,
-  type TransactionRequest,
-  type TransactionResponse
-} from '@ethersproject/providers'
-import { AbiCoder, Interface } from '@ethersproject/abi'
+import { AbiCoder } from '@ethersproject/abi'
 
 export type EventFilterBlocks = EventFilter & { fromBlock?: BlockTag, toBlock?: BlockTag }
 
 export interface ConstructorParams {
-  useEthersV6?: boolean
-  provider: JsonRpcProvider
+  provider: JsonRpcApiProvider
   signer: Signer
   logger: LoggerInterface
   versionManager?: VersionsManager
@@ -132,14 +134,14 @@ export class ContractInteractor {
   relayHubInstance!: IRelayHub
   relayHubConfiguration!: IRelayHub.RelayHubConfigStructOutput
   private forwarderInstance!: IForwarder
-  private stakeManagerInstance!: IStakeManager
+  private stakeManagerInstance!: IRelayStakeManager
   penalizerInstance!: IPenalizer
   private erc2771RecipientInstance?: IERC2771Recipient
   relayRegistrar!: IRelayRegistrar
   erc20Token!: IERC20Token
 
   readonly calculateCalldataGasUsed: CalldataGasEstimation
-  readonly provider: JsonRpcProvider
+  readonly provider: JsonRpcApiProvider
   readonly signer: Signer
   // private readonly provider: Web3ProviderBaseInterface
   private deployment: GSNContractsDeployment
@@ -154,14 +156,12 @@ export class ContractInteractor {
   chainId!: number
   network!: Network
   private networkId?: number
-  private paymasterVersion?: SemVerString
   readonly environment: Environment
   transactionType: TransactionType = TransactionType.LEGACY
   readonly domainSeparatorName: string
 
   constructor (
     {
-      useEthersV6 = false,
       maxPageSize,
       maxPageCount,
       provider,
@@ -253,7 +253,7 @@ export class ContractInteractor {
   async _resolveDeploymentFromPaymaster (paymasterAddress: Address): Promise<void> {
     this.paymasterInstance = await this._createPaymaster(paymasterAddress)
     const [
-      relayHubAddress, forwarderAddress, paymasterVersion
+      relayHubAddress, forwarderAddress
     ] = await Promise.all([
       this.paymasterInstance.getRelayHub().catch((e: Error) => { throw new Error(`Not a paymaster contract: ${e.message}`) }),
       this.paymasterInstance.getTrustedForwarder().catch(
@@ -275,7 +275,6 @@ export class ContractInteractor {
 
     this.deployment.relayHubAddress = relayHubAddress
     this.deployment.forwarderAddress = forwarderAddress
-    this.paymasterVersion = paymasterVersion
     await this._resolveDeploymentFromRelayHub(relayHubAddress)
   }
 
@@ -314,7 +313,7 @@ export class ContractInteractor {
     const pnPromise = this._trySupportsInterface('Penalizer', this.penalizerInstance, erc165Interfaces.penalizer)
     const rrPromise = this._trySupportsInterface('RelayRegistrar', this.relayRegistrar, erc165Interfaces.relayRegistrar)
     const rhPromise = this._trySupportsInterface('RelayHub', this.relayHubInstance, erc165Interfaces.relayHub)
-    const smPromise = this._trySupportsInterface('StakeManager', this.stakeManagerInstance, erc165Interfaces.stakeManager)
+    const smPromise = this._trySupportsInterface('StakeManager', this.stakeManagerInstance as any, erc165Interfaces.stakeManager)
     const [pn, rr, rh, sm] = await Promise.all([pnPromise, rrPromise, rhPromise, smPromise])
     const all = pn && rr && rh && sm
     if (!all) {
@@ -326,7 +325,7 @@ export class ContractInteractor {
     this.logger.debug(`ERC-165 interface IDs: ${JSON.stringify(erc165Interfaces)}`)
     const fwPromise = this._trySupportsInterface('Forwarder', this.forwarderInstance, erc165Interfaces.forwarder)
     let pmPromise: Promise<boolean>
-    if (allowNoPaymaster && isSameAddress(this.paymasterInstance.address, constants.ZERO_ADDRESS)) {
+    if (allowNoPaymaster && isSameAddress(this.paymasterInstance.target.toString(), constants.ZERO_ADDRESS)) {
       this.logger.debug('skipping ERC-165 check for paymaster: address is not set')
       pmPromise = Promise.resolve(true)
     } else {
@@ -349,8 +348,8 @@ export class ContractInteractor {
     try {
       return await contractInstance.supportsInterface(interfaceId)
     } catch (e: any) {
-      const isContractDeployed = await this.isContractDeployed(contractInstance.address)
-      throw new Error(`Failed call to ${contractName} supportsInterface at address: ${contractInstance.address} (isContractDeployed: ${isContractDeployed}) with error: ${e.message as string}`)
+      const isContractDeployed = await this.isContractDeployed(contractInstance.target.toString())
+      throw new Error(`Failed call to ${contractName} supportsInterface at address: ${contractInstance.target} (isContractDeployed: ${isContractDeployed}) with error: ${e.message as string}`)
     }
   }
 
@@ -389,7 +388,7 @@ export class ContractInteractor {
   }
 
   async _createRecipient (address: Address): Promise<IERC2771Recipient> {
-    if (this.erc2771RecipientInstance != null && this.erc2771RecipientInstance.address.toLowerCase() === address.toLowerCase()) {
+    if (this.erc2771RecipientInstance != null && this.erc2771RecipientInstance.target.toString().toLowerCase() === address.toLowerCase()) {
       return this.erc2771RecipientInstance
     }
     this.erc2771RecipientInstance = IERC2771Recipient__factory.connect(address, this.signer)
@@ -408,8 +407,8 @@ export class ContractInteractor {
     return IForwarder__factory.connect(address, this.signer)
   }
 
-  async _createStakeManager (address: Address): Promise<IStakeManager> {
-    return IStakeManager__factory.connect(address, this.signer)
+  async _createStakeManager (address: Address): Promise<IRelayStakeManager> {
+    return IRelayStakeManager__factory.connect(address, this.signer)
   }
 
   async _createPenalizer (address: Address): Promise<IPenalizer> {
@@ -430,7 +429,7 @@ export class ContractInteractor {
    */
   async getTokenBalanceFormatted (address: Address): Promise<string> {
     const balance = await this.erc20Token.balanceOf(address)
-    return await this.formatTokenAmount(balance)
+    return await this.formatTokenAmount(BigNumber.from(balance.toString()))
   }
 
   async formatTokenAmount (balance: BigNumber): Promise<string> {
@@ -443,21 +442,22 @@ export class ContractInteractor {
     try {
       tokenName = await this.erc20Token.name()
     } catch (_) {
-      tokenName = `ERC-20 token ${this.erc20Token.address}`
+      tokenName = `ERC-20 token ${this.erc20Token.target}`
     }
     let tokenSymbol: string
     try {
       tokenSymbol = await this.erc20Token.symbol()
     } catch (_) {
-      tokenSymbol = `ERC-20 token ${this.erc20Token.address}`
+      tokenSymbol = `ERC-20 token ${this.erc20Token.target}`
     }
     let tokenDecimals: number
     try {
-      tokenDecimals = await this.erc20Token.decimals()
+      const tokenDecimalsBigint = await this.erc20Token.decimals()
+      tokenDecimals = parseInt(tokenDecimalsBigint.toString())
     } catch (_) {
       tokenDecimals = 0
     }
-    const tokenAddress = this.erc20Token.address
+    const tokenAddress = this.erc20Token.target.toString()
     return { tokenName, tokenSymbol, tokenAddress, tokenDecimals }
   }
 
@@ -519,7 +519,7 @@ export class ContractInteractor {
           [
             {
               from,
-              to: relayHub.address,
+              to: relayHub.target.toString(),
               gas: toHex(viewCallGasLimit),
               data: encodedRelayCall,
               ...gasFees
@@ -705,7 +705,7 @@ export class ContractInteractor {
    * Splits requested range into pages to avoid fetching too many blocks at once.
    * In case 'getLogs' returned with a common error message of "more than X events" dynamically decrease page size.
    */
-  async _getPastEventsPaginated (contract: Contract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
+  async _getPastEventsPaginated (contract: BaseContract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
     if (options.toBlock == null) {
       // this is to avoid '!' for TypeScript
       options.toBlock = 'latest'
@@ -786,7 +786,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return relayEventParts.flat()
   }
 
-  async _getPastEvents (contract: Contract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<EventData[]> {
+  async _getPastEvents (contract: BaseContract, names: EventName[], extraTopics: Array<string[] | string | null>, options: EventFilterBlocks): Promise<(Log & LogDescription)[]> {
     const topics: Array<string[] | string | null> = []
     const eventTopic = event2topic(contract, names)
     topics.push(eventTopic)
@@ -799,14 +799,15 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     const logs = await this.provider.getLogs({
       fromBlock: options.fromBlock,
       toBlock: options.toBlock,
-      address: (contract as any).target ?? contract.address,
+      address: (contract as any).target ?? contract.target.toString(),
       topics
     })
     return logs.map(it => { return Object.assign(it, contract.interface.parseLog(it)) })
   }
 
   async getBalance (address: Address, defaultBlock: BlockTag = 'latest'): Promise<BigNumber> {
-    return await this.provider.getBalance(address, defaultBlock)
+    const bigintBalance = await this.provider.getBalance(address, defaultBlock)
+    return BigNumber.from(bigintBalance.toString())
   }
 
   async getBlockNumberRightNow (): Promise<number> {
@@ -836,16 +837,15 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
   }
 
   async sendSignedTransaction (rawTx: string): Promise<TransactionResponse> {
-    // noinspection ES6RedundantAwait - PromiEvent makes lint less happy about this line
-    return await this.provider.sendTransaction(rawTx)
+    return await this.provider.send('eth_sendRawTransaction', [rawTx])
   }
 
   async estimateGas (transactionDetails: TransactionRequest): Promise<number> {
-    let estimation: BigNumber | number = await this.provider.estimateGas(transactionDetails)
+    let estimation = await this.provider.estimateGas(transactionDetails)
     // there is a bug that breaks tests that rely on exact gas limit:
     // https://ethereum.stackexchange.com/questions/20878/why-estimategas-return-21001-instead-21000
     if (parseInt(estimation.toString()) === 21001) {
-      estimation = 21000
+      estimation = 21000n
     }
     return parseInt(estimation.toString())
   }
@@ -941,7 +941,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
   // TODO: cache response for some time to optimize. It doesn't make sense to optimize these requests in calling code.
   async getGasPrice (): Promise<BigNumber> {
     // TODO: this still uses pre-1559 gas value which may be a problem.
-    const gasPriceFromNode = await this.provider.perform('getGasPrice', [])
+    const gasPriceFromNode = await this.provider.send('eth_gasPrice', [])
     if (gasPriceFromNode == null) {
       throw new Error('getGasPrice: node returned null value')
     }
@@ -988,9 +988,9 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return block
   }
 
-  validateAddress (address: string, exceptionTitle = 'invalid address:'): void {
-    if (!ethers.utils.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
-  }
+  // validateAddress (address: string, exceptionTitle = 'invalid address:'): void {
+  //   if (!ethers.isAddress(address)) { throw new Error(exceptionTitle + ' ' + address) }
+  // }
 
   async getCode (address: string): Promise<string> {
     return await this.provider.getCode(address)
@@ -1013,7 +1013,8 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
   }
 
   async getMinimumStakePerToken (tokenAddress: Address): Promise<BigNumber> {
-    return await this.relayHubInstance.getMinimumStakePerToken(tokenAddress)
+    const bigintMinimumStake = await this.relayHubInstance.getMinimumStakePerToken(tokenAddress)
+    return BigNumber.from(bigintMinimumStake.toString())
   }
 
   /**
@@ -1021,7 +1022,8 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
    * @param address - can be a Paymaster or a Relay Manger
    */
   async hubBalanceOf (address: Address): Promise<BigNumber> {
-    return await this.relayHubInstance.balanceOf(address)
+    const bigintBalance = await this.relayHubInstance.balanceOf(address)
+    return BigNumber.from(bigintBalance.toString())
   }
 
   /**
@@ -1029,6 +1031,8 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
    * @param managerAddress
    */
   async getStakeInfo (managerAddress: Address): Promise<StakeInfo> {
+    // TODO: what the fuck???
+    // @ts-ignore
     const getStakeInfoResult = await this.stakeManagerInstance.getStakeInfo(managerAddress)
     // @ts-ignore - TypeChain generates incorrect type declarations for tuples
     return getStakeInfoResult[0]
@@ -1040,7 +1044,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
       const data = iface.encodeFunctionData('verifyRelayManagerStaked', [relayManager])
       const params = [
         {
-          to: this.relayHubInstance.address,
+          to: this.relayHubInstance.target.toString(),
           data
         },
         'latest'
@@ -1084,7 +1088,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     return await this.provider.send('eth_sendRawTransaction', [signedTransaction])
   }
 
-  async hubDepositFor (paymaster: Address, transactionDetails: PayableOverrides & { from?: string }): Promise<any> {
+  async hubDepositFor (paymaster: Address, transactionDetails: { from?: string, value?: string }): Promise<any> {
     return await this.relayHubInstance.depositFor(paymaster, transactionDetails)
   }
 
@@ -1097,6 +1101,8 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
       versionsMap[this.deployment.penalizerAddress] = await this.penalizerInstance.versionPenalizer()
     }
     if (this.deployment.stakeManagerAddress != null) {
+      // TODO: what the fuck???
+      // @ts-ignore
       versionsMap[this.deployment.stakeManagerAddress] = await this.stakeManagerInstance.versionSM()
     }
     return versionsMap
@@ -1121,7 +1127,7 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
   }
 
   stakeManagerAddress (): Address {
-    return this.stakeManagerInstance.address
+    return this.stakeManagerInstance.target.toString()
   }
 
   private async _hubPenalizerAddress (): Promise<Address> {
@@ -1133,15 +1139,18 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
   }
 
   penalizerAddress (): Address {
-    return this.penalizerInstance.address
+    return this.penalizerInstance.target.toString()
   }
 
   async getRelayRegistrationMaxAge (): Promise<BigNumber> {
-    return await this.relayRegistrar.getRelayRegistrationMaxAge()
+    const bigintMaxAge = await this.relayRegistrar.getRelayRegistrationMaxAge()
+    return BigNumber.from(bigintMaxAge.toString())
   }
 
   async getRelayInfo (relayManagerAddress: string): Promise<RegistrarRelayInfo> {
-    const relayInfo = await this.relayRegistrar.getRelayInfo(this.relayHubInstance.address, relayManagerAddress)
+    const relayInfo = await this.relayRegistrar.getRelayInfo(this.relayHubInstance.target.toString(), relayManagerAddress)
+    // TODO: STOPSHIP: forcing bigint into number type here
+    // @ts-ignore
     return Object.assign({}, relayInfo, { relayUrl: packRelayUrlForRegistrar(relayInfo.urlParts) })
   }
 
@@ -1153,12 +1162,14 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
     if (this.relayRegistrar == null) {
       throw new Error('Relay Registrar is not initialized')
     }
-    const relayHub = this.relayHubInstance.address
+    const relayHub = this.relayHubInstance.target.toString()
     if (relayHub == null) {
       throw new Error('RelayHub is not initialized!')
     }
     const relayInfos = await this.relayRegistrar.readRelayInfos(relayHub)
 
+    // TODO: STOPSHIP: forcing bigint into number type here
+    // @ts-ignore
     return relayInfos.map(info => {
       return Object.assign({}, info, {
         relayUrl: packRelayUrlForRegistrar(info.urlParts)
@@ -1167,7 +1178,8 @@ This would require ${pagesCurrent} requests, and configured 'pastEventsQueryMaxP
   }
 
   async getCreationBlockFromRelayHub (): Promise<BigNumber> {
-    return await this.relayHubInstance.getCreationBlock()
+    const bigintCreationBlock = await this.relayHubInstance.getCreationBlock()
+    return BigNumber.from(bigintCreationBlock.toString())
   }
 
   async getRegisteredWorkers (managerAddress: Address): Promise<Address[]> {

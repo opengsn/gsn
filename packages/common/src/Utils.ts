@@ -3,7 +3,6 @@ import chalk from 'chalk'
 
 import { AbiCoder, Interface, type JsonFragment } from '@ethersproject/abi'
 import { BigNumber } from '@ethersproject/bignumber'
-import { type JsonRpcProvider, type JsonRpcSigner } from '@ethersproject/providers'
 import { type TypedMessage } from '@metamask/eth-sig-util'
 
 import {
@@ -19,8 +18,8 @@ import { type Address, type EIP1559Fees, type EventData, type RelaySelectionResu
 
 import { type MessageTypes } from './EIP712/TypedRequestData'
 import { fromWei, isBigNumber, toHex, toWei } from './web3js/Web3JSUtils'
-import { ethers } from 'ethers'
-import { keccak256 } from 'ethers/lib/utils'
+import { ethers, JsonRpcApiProvider, Signer } from 'ethers'
+import { keccak256 } from 'ethers'
 import { type RelayRequest } from './EIP712/RelayRequest'
 import { type PartialRelayInfo } from './types/RelayInfo'
 import { type LoggerInterface } from './LoggerInterface'
@@ -88,7 +87,7 @@ export function decodeRevertReason (revertBytes: PrefixedHexString, throwOnError
   return new AbiCoder().decode(['string'], '0x' + revertBytes.slice(10))[0]
 }
 
-export async function getDefaultMethodSuffix (provider: JsonRpcProvider): Promise<string> {
+export async function getDefaultMethodSuffix (provider: JsonRpcApiProvider): Promise<string> {
   const nodeInfo: string = await provider.send('web3_clientVersion', [])
   // ganache-cli
   if (nodeInfo.toLowerCase().includes('testrpc')) return ''
@@ -105,13 +104,14 @@ BigInt.prototype.toJSON = function () {
 }
 
 export async function getEip712Signature<T extends MessageTypes> (
-  signer: JsonRpcSigner,
+  signer: Signer,
   typedRequestData: TypedMessage<T>
 ): Promise<PrefixedHexString> {
   const dataToSign = JSON.parse(JSON.stringify(typedRequestData))
   delete dataToSign.types.EIP712Domain
+  // TODO: remove v5 "support"
   // ethers v5 vs v6
-  const signFunction = signer._signTypedData?.bind(signer) ?? (signer as any).signTypedData.bind(signer)
+  const signFunction = signer.signTypedData?.bind(signer) ?? (signer as any).signTypedData.bind(signer)
   return await signFunction(dataToSign.domain, dataToSign.types, dataToSign.message)
 }
 
@@ -304,7 +304,7 @@ export function toNumber (numberish: number | string | BN | BigNumber | bigint):
 export function getRelayRequestID (relayRequest: RelayRequest, signature: PrefixedHexString): PrefixedHexString {
   const types = ['address', 'uint256', 'bytes']
   const parameters = [relayRequest.request.from, relayRequest.request.nonce, signature]
-  const abiCoder = new ethers.utils.AbiCoder()
+  const abiCoder = new ethers.AbiCoder()
   const hash = keccak256(abiCoder.encode(types, parameters))
   const rawRelayRequestId = removeHexPrefix(hash).padStart(64, '0')
   const prefixSize = 8

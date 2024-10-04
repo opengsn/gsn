@@ -1,9 +1,0 @@
-{
-  "extends": "../../tsconfig.packages.json",
-  "include": [
-    "truffle.js",
-    "deploy/deploy.ts",
-    "hardhat.config.ts",
-    "../paymasters/test/**/*.ts"
-  ]
-}

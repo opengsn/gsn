@@ -1,5 +1,5 @@
 import { BigNumber } from '@ethersproject/bignumber'
-import { type IPaymaster } from '@opengsn/contracts/types/ethers-contracts'
+import { type IPaymaster } from '@opengsn/contracts/dist/typechain-types'
 
 import { type Address, type IntString } from './types/Aliases'
 import { type ContractInteractor, type RelayCallABI } from './ContractInteractor'
@@ -70,7 +70,7 @@ export class RelayCallGasLimitCalculationHelper {
     const maxPossibleGasUsed = this.calculateTransactionMaxPossibleGasUsed(
       msgData.length, gasAndDataLimits, innerRecipientCallGasLimit, transactionCalldataGasUsed)
 
-    const effectiveAcceptanceBudgetGasUsed = gasAndDataLimits.acceptanceBudget.toNumber() + transactionCalldataGasUsed
+    const effectiveAcceptanceBudgetGasUsed = parseInt(gasAndDataLimits.acceptanceBudget.toString()) + transactionCalldataGasUsed
 
     const maxPossibleGasUsedFactorReserve = GAS_RESERVE + Math.floor(maxPossibleGasUsed.toNumber() * GAS_FACTOR)
 

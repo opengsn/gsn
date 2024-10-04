@@ -1,13 +1,17 @@
 {
   "extends": "../../tsconfig.packages.json",
   "include": [
-    "src/**/*.ts",
-    "deploy/*.ts",
-    "deployment-config.ts",
-    "../contracts/hardhat.config.ts",
-    "test/**/*.ts",
-    "types/truffle-contracts/index.d.ts",
+    "hardhat.config.ts",
+    "test/AbandonedRelayFlow.test.ts", // todo remove this line, uncomment rest
+    "test/TestUtils.ts", // todo remove this line, uncomment rest
+//    "**/*.ts",
+//    "src/**/*.ts",
+//    "test/**/*.ts"
+    "../../types/truffle/truffle.d.ts",
     "types/truffle-contracts/types.d.ts"
+  ],
+  "files": [
+    "hardhat.config.ts"
   ],
   "compilerOptions": {
     "outDir": "dist"

@@ -3,10 +3,10 @@ import abiDecoder from 'abi-decoder'
 import { BigNumber } from '@ethersproject/bignumber'
 import { type TransactionReceipt } from 'web3-core'
 
-import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
-import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
-import RelayRegistrarABI from '@opengsn/common/dist/interfaces/IRelayRegistrar.json'
-import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
+import PayMasterABI from '@opengsn/contracts/artifacts/src/interfaces/IPaymaster.sol/IPaymaster.json'
+import RelayHubABI from '@opengsn/contracts/artifacts/src/interfaces/IRelayHub.sol/IRelayHub.json'
+import RelayRegistrarABI from '@opengsn/contracts/artifacts/src/interfaces/IRelayRegistrar.sol/IRelayRegistrar.json'
+import StakeManagerABI from '@opengsn/contracts/artifacts/src/interfaces/IRelayStakeManager.sol/IRelayStakeManager.json'
 import { type RelayServer } from '@opengsn/relay/dist/RelayServer'
 import { type PrefixedHexString } from 'ethereumjs-util'
 import { packRelayUrlForRegistrar } from '@opengsn/common'
@@ -14,10 +14,10 @@ import { packRelayUrlForRegistrar } from '@opengsn/common'
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
-abiDecoder.addABI(RelayHubABI)
-abiDecoder.addABI(StakeManagerABI)
-abiDecoder.addABI(PayMasterABI)
-abiDecoder.addABI(RelayRegistrarABI)
+abiDecoder.addABI(RelayHubABI.abi)
+abiDecoder.addABI(StakeManagerABI.abi)
+abiDecoder.addABI(PayMasterABI.abi)
+abiDecoder.addABI(RelayRegistrarABI.abi)
 // @ts-ignore
 abiDecoder.addABI(TestRecipient.abi)
 // @ts-ignore

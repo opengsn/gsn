@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.25;
 
 import "../RelayHub.sol";
 
 contract TestRelayHub is RelayHub {
 
     constructor(
-        IStakeManager _stakeManager,
+        IRelayStakeManager _stakeManager,
         address _penalizer,
         address _batchGateway,
         address _relayRegistrar,

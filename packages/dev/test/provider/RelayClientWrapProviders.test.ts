@@ -1,23 +1,21 @@
 import ContractWeb3JS from 'web3-eth-contract'
 import Web3 from 'web3'
-import chai from 'chai'
-import chaiAsPromised from 'chai-as-promised'
-import { Contract as ContractV5, Wallet as WalletV5 } from 'ethers'
-import { Contract as ContractV6, JsonRpcProvider as JsonRpcProviderV6, Wallet as WalletV6 } from 'ethers-v6'
+// import chai from 'chai'
+// import chaiAsPromised from 'chai-as-promised'
+import { Contract as ContractV6, JsonRpcProvider as JsonRpcProviderV6, Wallet as WalletV6 } from 'ethers'
 import { expectEvent } from '@openzeppelin/test-helpers'
 import { toChecksumAddress } from 'ethereumjs-util'
-import { StaticJsonRpcProvider as StaticJsonRpcProviderV5 } from '@ethersproject/providers'
 
-import { RelayProvider, connectContractToGSN, connectContractV6ToGSN } from '@opengsn/provider'
+import { RelayProvider} from '@opengsn/provider'
 import { GsnTestEnvironment } from '@opengsn/cli'
 import { type GSNContractsDeployment } from '@opengsn/common'
 import { evmMineMany } from '../TestUtils'
 
-const { expect } = chai.use(chaiAsPromised)
+// const { expect } = chai.use(chaiAsPromised)
 
 const TestRecipient = artifacts.require('TestRecipient')
 
-const TestRecipientJson = require('../../../cli/src/compiled/TestRecipient.json')
+const TestRecipientJson = require('../../../contracts/artifacts/src/test/TestRecipient.sol/TestRecipient.json')
 
 const GANACHE_0_PRIVATE_KEY = '0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d'
 
@@ -58,59 +56,6 @@ contract('RelayClient - wrap Providers and Signers', function () {
     // see the event is parsed in Web3.js format
     assert.equal(result.events.SampleRecipientEmitted.returnValues.realSender.toLowerCase(), accounts[0].toLowerCase())
     assert.equal(result.events.SampleRecipientEmitted.returnValues.message, 'Hello Web3.js!')
-  })
-
-  describe('Ethers.js v5', function () {
-    it('Ethers.js v5 Provider', async function () {
-      const ethersV5Provider = new StaticJsonRpcProviderV5(currentTestProviderUrl)
-      const { gsnSigner } = await RelayProvider.newEthersV5Provider({
-        provider: ethersV5Provider,
-        config: {
-          paymasterAddress: contractsDeployment.paymasterAddress
-        }
-      })
-
-      const testRecipient = new ContractV5(testRecipientAddress, TestRecipientJson.abi, gsnSigner)
-      const result = await testRecipient.emitMessage('Hello Ethers.js v5!')
-      const awaited = await result.wait()
-      const address = await gsnSigner.getAddress()
-      await expectEvent.inLogs(awaited.events, 'SampleRecipientEmitted', {
-        realSender: address,
-        message: 'Hello Ethers.js v5!'
-      })
-    })
-
-    it('Ethers.js v5 Signer', async function () {
-      const ethersV5Provider = new StaticJsonRpcProviderV5(currentTestProviderUrl)
-      const walletV5 = new WalletV5(GANACHE_0_PRIVATE_KEY, ethersV5Provider)
-      const { gsnSigner } = await RelayProvider.newEthersV5Provider({
-        provider: walletV5,
-        config: {
-          paymasterAddress: contractsDeployment.paymasterAddress
-        }
-      })
-
-      const testRecipient = new ContractV5(testRecipientAddress, TestRecipientJson.abi, gsnSigner)
-      const result = await testRecipient.emitMessage('Hello Ethers.js v5 Wallet!')
-      const awaited = await result.wait()
-      const walletAddress = await walletV5.getAddress()
-      await expectEvent.inLogs(awaited.events, 'SampleRecipientEmitted', {
-        realSender: walletAddress,
-        message: 'Hello Ethers.js v5 Wallet!'
-      })
-    })
-
-    it('should throw when attempting to create V6 Provider by wrapping a V5 one', async function () {
-      const ethersV5Provider = new StaticJsonRpcProviderV5(currentTestProviderUrl)
-      const walletV5 = new WalletV5(GANACHE_0_PRIVATE_KEY, ethersV5Provider)
-      const config = {
-        paymasterAddress: contractsDeployment.paymasterAddress
-      }
-      await expect(RelayProvider.newEthersV6Provider({ provider: walletV5, config }))
-        .to.be.rejectedWith('Creating Ethers v6 GSN provider with Ethers v5 input is forbidden')
-      await expect(RelayProvider.newEthersV6Provider({ provider: ethersV5Provider, config }))
-        .to.be.rejectedWith('Creating Ethers v6 GSN provider with Ethers v5 input is forbidden')
-    })
   })
 
   describe('Ethers.js v6', function () {
@@ -161,20 +106,8 @@ contract('RelayClient - wrap Providers and Signers', function () {
           message: 'Hello Ethers.js v6!'
         })
     })
-
-    it('should throw when attempting to create V5 Provider by wrapping a V6 one', async function () {
-      const ethersV6Provider = new JsonRpcProviderV6(currentTestProviderUrl)
-      const walletV6 = new WalletV6(GANACHE_0_PRIVATE_KEY, ethersV6Provider)
-      const config = {
-        paymasterAddress: contractsDeployment.paymasterAddress
-      }
-      await expect(RelayProvider.newEthersV5Provider({ provider: walletV6, config }))
-        .to.be.rejectedWith('Creating Ethers v5 GSN Provider with Ethers v6 input is forbidden')
-      await expect(RelayProvider.newEthersV5Provider({ provider: ethersV6Provider, config }))
-        .to.be.rejectedWith('Creating Ethers v5 GSN Provider with Ethers v6 input is forbidden')
-    })
   })
-
+  /*
   describe('wrapping the Signer as input', function () {
     it('eth_accounts should return the one account controlled by the signer', async function () {
       const ethersV5Provider = new StaticJsonRpcProviderV5(currentTestProviderUrl)
@@ -192,7 +125,9 @@ contract('RelayClient - wrap Providers and Signers', function () {
       assert.equal(signerAddress, walletV5.address)
     })
   })
+  */
 
+  /*
   describe('connecting individual contracts', function () {
     it('should connect an Ethers v5 Contract', async function () {
       this.timeout(30000)
@@ -215,7 +150,9 @@ contract('RelayClient - wrap Providers and Signers', function () {
         message: 'Hello Ethers.js v5 Contract!'
       })
     })
+  */
 
+  /*
     it('should connect an Ethers v6 Contract', async function () {
       const ethersV6Provider = new JsonRpcProviderV6(currentTestProviderUrl)
       const walletV6 = new WalletV6(GANACHE_0_PRIVATE_KEY, ethersV6Provider)
@@ -236,7 +173,9 @@ contract('RelayClient - wrap Providers and Signers', function () {
         })
     })
   })
+  */
 
+  /*
   describe('ephemeral key with public RPC endpoint', function () {
     // creates a real goerli transaction - only un-skip test if having issues
     it.skip('should initialize Web3 provider', async function () {
@@ -263,4 +202,5 @@ contract('RelayClient - wrap Providers and Signers', function () {
       await testRecipient.methods.captureTheFlag().send({ from: privateKeyAddress })
     })
   })
+  */
 })

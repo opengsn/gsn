@@ -4,31 +4,25 @@
 /* solhint-disable avoid-tx-origin */
 /* solhint-disable bracket-align */
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.25;
 pragma abicoder v2;
 
-// #if ENABLE_CONSOLE_LOG
-import "hardhat/console.sol";
-// #endif
-
-import "./utils/MinLibBytes.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./utils/GsnUtils.sol";
-import "./utils/GsnEip712Library.sol";
-import "./utils/RelayHubValidator.sol";
-import "./utils/GsnTypes.sol";
-import "./interfaces/IRelayHub.sol";
-import "./interfaces/IPaymaster.sol";
 import "./forwarder/IForwarder.sol";
-import "./interfaces/IStakeManager.sol";
+import "./interfaces/IPaymaster.sol";
+import "./interfaces/IRelayHub.sol";
 import "./interfaces/IRelayRegistrar.sol";
-import "./interfaces/IStakeManager.sol";
+import "./utils/GsnEip712Library.sol";
+import "./utils/GsnTypes.sol";
+import "./utils/GsnUtils.sol";
+import "./utils/MinLibBytes.sol";
+import "./utils/RelayHubValidator.sol";
 
 /**
  * @title The RelayHub Implementation
@@ -45,9 +39,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         return "3.0.0-beta.3+opengsn.hub.irelayhub";
     }
 
-    IStakeManager internal immutable stakeManager;
-    address internal immutable penalizer;
-    address internal immutable batchGateway;
+    IRelayStakeManager internal immutable stakeManager;
     address internal immutable relayRegistrar;
 
     RelayHubConfig internal config;
@@ -88,16 +80,12 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     uint256 internal deprecationTime = type(uint256).max;
 
     constructor (
-        IStakeManager _stakeManager,
-        address _penalizer,
-        address _batchGateway,
+        IRelayStakeManager _stakeManager,
         address _relayRegistrar,
         RelayHubConfig memory _config
     ) {
         creationBlock = block.number;
         stakeManager = _stakeManager;
-        penalizer = _penalizer;
-        batchGateway = _batchGateway;
         relayRegistrar = _relayRegistrar;
         setConfiguration(_config);
     }
@@ -113,18 +101,8 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     }
 
     /// @inheritdoc IRelayHub
-    function getStakeManager() external override view returns (IStakeManager) {
+    function getStakeManager() external override view returns (IRelayStakeManager) {
         return stakeManager;
-    }
-
-    /// @inheritdoc IRelayHub
-    function getPenalizer() external override view returns (address) {
-        return penalizer;
-    }
-
-    /// @inheritdoc IRelayHub
-    function getBatchGateway() external override view returns (address) {
-        return batchGateway;
     }
 
     /// @inheritdoc IRelayHub
@@ -207,9 +185,6 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     function withdrawMultiple(address payable[] memory dest, uint256[] memory amount) public override {
         address payable account = payable(msg.sender);
         for (uint256 i = 0; i < amount.length; i++) {
-            // #if ENABLE_CONSOLE_LOG
-            console.log("withdrawMultiple %s %s %s", balances[account], dest[i], amount[i]);
-            // #endif
             uint256 balance = balances[account];
             require(balance >= amount[i], "insufficient funds");
             balances[account] = balance - amount[i];
@@ -288,41 +263,10 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
         vars.initialGasLeft = aggregateGasleft();
         vars.relayRequestId = GsnUtils.getRelayRequestID(relayRequest, signature);
 
-        // #if ENABLE_CONSOLE_LOG
-        console.log("relayCall relayRequestId");
-        console.logBytes32(vars.relayRequestId);
-        console.log("relayCall relayRequest.request.from", relayRequest.request.from);
-        console.log("relayCall relayRequest.request.to", relayRequest.request.to);
-        console.log("relayCall relayRequest.request.value", relayRequest.request.value);
-        console.log("relayCall relayRequest.request.gas", relayRequest.request.gas);
-        console.log("relayCall relayRequest.request.nonce", relayRequest.request.nonce);
-        console.log("relayCall relayRequest.request.validUntilTime", relayRequest.request.validUntilTime);
-
-        console.log("relayCall relayRequest.relayData.maxFeePerGas", relayRequest.relayData.maxFeePerGas);
-        console.log("relayCall relayRequest.relayData.maxPriorityFeePerGas", relayRequest.relayData.maxPriorityFeePerGas);
-        console.log("relayCall relayRequest.relayData.transactionCalldataGasUsed", relayRequest.relayData.transactionCalldataGasUsed);
-        console.log("relayCall relayRequest.relayData.relayWorker", relayRequest.relayData.relayWorker);
-        console.log("relayCall relayRequest.relayData.paymaster", relayRequest.relayData.paymaster);
-        console.log("relayCall relayRequest.relayData.forwarder", relayRequest.relayData.forwarder);
-        console.log("relayCall relayRequest.relayData.clientId", relayRequest.relayData.clientId);
-
-        console.log("relayCall domainSeparatorName");
-        console.logString(domainSeparatorName);
-        console.log("relayCall signature");
-        console.logBytes(signature);
-        console.log("relayCall approvalData");
-        console.logBytes(approvalData);
-        console.log("relayCall relayRequest.request.data");
-        console.logBytes(relayRequest.request.data);
-        console.log("relayCall relayRequest.relayData.paymasterData");
-        console.logBytes(relayRequest.relayData.paymasterData);
-        console.log("relayCall maxAcceptanceBudget", maxAcceptanceBudget);
-        // #endif
-
         require(!isDeprecated(), "hub deprecated");
         vars.functionSelector = relayRequest.request.data.length>=4 ? MinLibBytes.readBytes4(relayRequest.request.data, 0) : bytes4(0);
 
-        if (msg.sender != batchGateway && tx.origin != DRY_RUN_ADDRESS) {
+        if (tx.origin != DRY_RUN_ADDRESS) {
             require(signature.length != 0, "missing signature or bad gateway");
             require(msg.sender == tx.origin, "relay worker must be EOA");
             require(msg.sender == relayRequest.relayData.relayWorker, "Not a right worker");
@@ -569,7 +513,7 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
 
     /// @inheritdoc IRelayHub
     function verifyRelayManagerStaked(address relayManager) public override view {
-        (IStakeManager.StakeInfo memory info, bool isHubAuthorized) = stakeManager.getStakeInfo(relayManager);
+        (IRelayStakeManager.StakeInfo memory info, bool isHubAuthorized) = stakeManager.getStakeInfo(relayManager);
         uint256 minimumStake = minimumStakePerToken[info.token];
         require(info.token != IERC20(address(0)), "relay manager not staked");
         require(info.stake >= minimumStake, "stake amount is too small");
@@ -589,22 +533,6 @@ contract RelayHub is IRelayHub, Ownable, ERC165 {
     /// @inheritdoc IRelayHub
     function isDeprecated() public override view returns (bool) {
         return block.timestamp >= deprecationTime;
-    }
-
-    /// @notice Prevents any address other than the `Penalizer` from calling this method.
-    modifier penalizerOnly () {
-        require(msg.sender == penalizer, "Not penalizer");
-        _;
-    }
-
-    /// @inheritdoc IRelayHub
-    function penalize(address relayWorker, address payable beneficiary) external override penalizerOnly {
-        address relayManager = workerToManager[relayWorker];
-        // The worker must be controlled by a manager with a locked stake
-        require(relayManager != address(0), "Unknown relay worker");
-        (IStakeManager.StakeInfo memory stakeInfo,) = stakeManager.getStakeInfo(relayManager);
-        require(stakeInfo.stake > 0, "relay manager not staked");
-        stakeManager.penalizeRelayManager(relayManager, beneficiary, stakeInfo.stake);
     }
 
     /// @inheritdoc IRelayHub

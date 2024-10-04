@@ -3,7 +3,7 @@
  */
 const chainId = process.env.CHAINID == null ? 1337 : parseInt(process.env.CHAINID)
 module.exports = {
-  solidity: '0.8.7',
+  solidity: '0.8.23',
   networks: {
     hardhat: { chainId },
     npmtest: { // used from "npm test". see package.json

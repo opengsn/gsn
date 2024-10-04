@@ -1,6 +1,4 @@
 import { type PrefixedHexString } from 'ethereumjs-util'
-import { type JsonRpcProvider, type Log } from '@ethersproject/providers'
-import { type LogDescription } from '@ethersproject/abi'
 
 import { type PingResponse } from '../PingResponse'
 import { type RelayRequest } from '../EIP712/RelayRequest'
@@ -8,6 +6,7 @@ import { type GsnTransactionDetails } from './GsnTransactionDetails'
 import { type RegistrarRelayInfo, type PartialRelayInfo } from './RelayInfo'
 import { type TypedMessage } from '@metamask/eth-sig-util'
 import { type Environment } from '../environments/Environments'
+import { type JsonRpcApiProvider, type Log, type LogDescription } from 'ethers'
 
 export type Address = string
 export type EventName = string
@@ -34,7 +33,7 @@ export type SignTypedDataCallback = (signedData: TypedMessage<any>, from: Addres
  * Note that both Relay Client and Relay Server must come to the same number.
  * Also, this value does include the base transaction cost (2100 on mainnet).
  */
-export type CalldataGasEstimation = (calldata: PrefixedHexString, environment: Environment, calldataEstimationSlackFactor: number, provider: JsonRpcProvider) => Promise<number>
+export type CalldataGasEstimation = (calldata: PrefixedHexString, environment: Environment, calldataEstimationSlackFactor: number, provider: JsonRpcApiProvider) => Promise<number>
 
 export type RelayFilter = (registrarRelayInfo: RegistrarRelayInfo) => boolean
 

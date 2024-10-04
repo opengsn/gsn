@@ -6,15 +6,11 @@ import { type PrefixedHexString } from 'ethereumjs-util'
 import { type TypedMessage } from '@metamask/eth-sig-util'
 import {
   type ExternalProvider,
-  type JsonRpcProvider,
-  type JsonRpcSigner,
   type TransactionReceipt,
-  type TransactionRequest,
-  Web3Provider
 } from '@ethersproject/providers'
 import { Interface, type LogDescription } from '@ethersproject/abi'
 
-import { type Eip1193Provider, type BrowserProvider, type Signer as SignerV6 } from 'ethers-v6/providers'
+import { type Eip1193Provider, BrowserProvider, type Signer, JsonRpcApiProvider, TransactionRequest } from 'ethers'
 
 import {
   type Address,
@@ -31,12 +27,11 @@ import {
   TransactionRelayed
 } from '@opengsn/common'
 
-import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
+import relayHubAbi from '@opengsn/contracts/artifacts/src/interfaces/IRelayHub.sol/IRelayHub.json'
 
 import { type AccountKeypair } from './AccountManager'
 import { type GsnEvent } from './GsnEvents'
 import { _dumpRelayingResult, type GSNUnresolvedConstructorInput, RelayClient, type RelayingResult } from './RelayClient'
-import { type Signer } from '@ethersproject/abstract-signer'
 
 export type JsonRpcCallback = (error: Error | null, result?: JsonRpcResponse) => void
 
@@ -55,8 +50,8 @@ const TX_NOTFOUND = 'tx-notfound'
 const BLOCKS_FOR_LOOKUP = 5000
 
 export class RelayProvider implements ExternalProvider, Eip1193Provider {
-  protected origProvider!: JsonRpcProvider
-  protected origSigner!: JsonRpcSigner
+  protected origProvider!: JsonRpcApiProvider
+  protected origSigner!: Signer
   private _origProviderSend!: (method: string, params: any[]) => Promise<any>
   private asyncSignTypedData?: SignTypedDataCallback
   protected readonly submittedRelayRequests = new Map<string, SubmittedRelayRequestInfo>()
@@ -69,42 +64,10 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
   connected!: boolean
 
   /**
-   * Warning. This method has been deprecated due to ambiguity of the term 'Provider'.
-   * Library-specific methods are created instead.
-   * See: {@link newWeb3Provider},  {@link newEthersV5Provider}, {@link newEthersV6Provider}
-   * @deprecated
-   */
-  static newProvider (...args: any[]): any {
-    throw new Error(
-      'This method has been deprecated to avoid confusion. Please use one of the following:\n' +
-      'newWeb3Provider - to create an EIP-1193 Provider compatible with Web3.js\n' +
-      'newEthersV5Provider - to create a pair of Provider and Signer objects compatible with Ethers.js v5\n' +
-      'newEthersV6Provider - to create a pair of Provider and Signer objects compatible with Ethers.js v6'
-    )
-  }
-
-  /**
    * Create a GSN Provider that is compatible with both {@link ExternalProvider} and {@link Eip1193Provider} interfaces
    */
   static async newWeb3Provider (input: GSNUnresolvedConstructorInput): Promise<RelayProvider> {
     return await new RelayProvider(new RelayClient(input)).init()
-  }
-
-  /**
-   * Create a GSN Provider and Signer that are compatible with {@link Web3Provider} and {@link Signer} interfaces
-   */
-  static async newEthersV5Provider (input: GSNUnresolvedConstructorInput): Promise<{
-    relayProvider: RelayProvider
-    gsnProvider: Web3Provider
-    gsnSigner: Signer
-  }> {
-    const relayProvider = await RelayProvider.newWeb3Provider(input)
-    if (relayProvider.relayClient.isUsingEthersV6()) {
-      throw new Error('Creating Ethers v5 GSN Provider with Ethers v6 input is forbidden!')
-    }
-    const gsnProvider = new Web3Provider(relayProvider)
-    const gsnSigner = gsnProvider.getSigner()
-    return { gsnProvider, gsnSigner, relayProvider }
   }
 
   /**
@@ -114,9 +77,8 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
   static async newEthersV6Provider (input: GSNUnresolvedConstructorInput): Promise<{
     relayProvider: RelayProvider
     gsnProvider: BrowserProvider
-    gsnSigner: SignerV6
+    gsnSigner: Signer
   }> {
-    const { BrowserProvider } = await import('ethers-v6/providers')
     const relayProvider = await RelayProvider.newWeb3Provider(input)
     if (!relayProvider.relayClient.isUsingEthersV6()) {
       throw new Error('Creating Ethers v6 GSN provider with Ethers v5 input is forbidden!')
@@ -489,7 +451,7 @@ export class RelayProvider implements ExternalProvider, Eip1193Provider {
     if (respResult.logs.length === 0) {
       return fixedTransactionReceipt
     }
-    const iface = new Interface(relayHubAbi)
+    const iface = new Interface(relayHubAbi.abi)
     const logs: Array<LogDescription | undefined> = respResult.logs.map(
       it => {
         try {

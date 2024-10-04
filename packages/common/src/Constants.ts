@@ -1,11 +1,11 @@
 import BN from 'bn.js'
 
-import paymasterAbi from './interfaces/IPaymaster.json'
-import relayHubAbi from './interfaces/IRelayHub.json'
-import forwarderAbi from './interfaces/IForwarder.json'
-import stakeManagerAbi from './interfaces/IStakeManager.json'
-import penalizerAbi from './interfaces/IPenalizer.json'
-import relayRegistrarAbi from './interfaces/IRelayRegistrar.json'
+import paymasterAbi from '@opengsn/contracts/artifacts/src/interfaces/IPaymaster.sol/IPaymaster.json'
+import relayHubAbi from '@opengsn/contracts/artifacts/src/interfaces/IRelayHub.sol/IRelayHub.json'
+import forwarderAbi from '@opengsn/contracts/artifacts/src/forwarder/IForwarder.sol/IForwarder.json'
+import stakeManagerAbi from '@opengsn/contracts/artifacts/src/interfaces/IRelayStakeManager.sol/IRelayStakeManager.json'
+import penalizerAbi from '@opengsn/contracts/artifacts/src/interfaces/IPenalizer.sol/IPenalizer.json'
+import relayRegistrarAbi from '@opengsn/contracts/artifacts/src/interfaces/IRelayRegistrar.sol/IRelayRegistrar.json'
 import { getERC165InterfaceID } from './Utils'
 import { toBN } from './web3js/Web3JSUtils'
 
@@ -35,12 +35,12 @@ export const constants = {
 }
 
 export const erc165Interfaces = {
-  forwarder: getERC165InterfaceID(forwarderAbi as any),
-  paymaster: getERC165InterfaceID(paymasterAbi as any),
-  penalizer: getERC165InterfaceID(penalizerAbi as any),
-  relayRegistrar: getERC165InterfaceID(relayRegistrarAbi as any),
-  relayHub: getERC165InterfaceID(relayHubAbi as any),
-  stakeManager: getERC165InterfaceID(stakeManagerAbi as any)
+  forwarder: getERC165InterfaceID(forwarderAbi.abi),
+  paymaster: getERC165InterfaceID(paymasterAbi.abi),
+  penalizer: getERC165InterfaceID(penalizerAbi.abi),
+  relayRegistrar: getERC165InterfaceID(relayRegistrarAbi.abi),
+  relayHub: getERC165InterfaceID(relayHubAbi.abi),
+  stakeManager: getERC165InterfaceID(stakeManagerAbi.abi)
 }
 
 export const RelayCallStatusCodes = {

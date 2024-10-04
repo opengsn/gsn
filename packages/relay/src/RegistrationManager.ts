@@ -1,8 +1,6 @@
 import chalk from 'chalk'
 import { BigNumber } from '@ethersproject/bignumber'
-import { type Block } from '@ethersproject/providers'
 import { type EventEmitter } from 'events'
-import { type PastEventOptions } from 'web3-eth-contract'
 import { type PrefixedHexString } from 'ethereumjs-util'
 
 import {
@@ -37,6 +35,7 @@ import {
   StakeWithdrawn
 } from '@opengsn/common/dist/types/GSNContractsDataTypes'
 import { type Web3MethodsBuilder } from './Web3MethodsBuilder'
+import { Block } from 'ethers'
 
 export class RegistrationManager {
   balanceRequired!: AmountRequired
@@ -127,7 +126,7 @@ export class RegistrationManager {
     this.stakeRequired = new AmountRequired('Stake', minimumStakePerToken, constants.ZERO_ADDRESS, this.logger, listener, tokenMetadata)
     await this.refreshBalance()
     const latestBlockTimestamp = toNumber(latestBlock.timestamp)
-    transactionHashes = transactionHashes.concat(await this.refreshStake(latestBlock.number, latestBlock.hash, latestBlockTimestamp))
+    transactionHashes = transactionHashes.concat(await this.refreshStake(latestBlock.number, latestBlock.hash!, latestBlockTimestamp))
     this.isInitialized = true
     return transactionHashes
   }
@@ -155,7 +154,7 @@ export class RegistrationManager {
         // TODO: _isSetOwnerCalled is different from 'isActionPending' only cause we handle owner outside the event loop
         if (!this._isSetOwnerCalled) {
           this._isSetOwnerCalled = true
-          transactionHashes = transactionHashes.concat(await this.setOwnerInStakeManager(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this.setOwnerInStakeManager(currentBlock.number, currentBlock.hash!, currentBlockTimestamp))
         }
       } else {
         this.logger.debug('owner is not set and balance requirement is not satisfied')
@@ -172,11 +171,11 @@ export class RegistrationManager {
           await this._handleHubAuthorizedEvent(eventData)
           break
         case OwnerSet:
-          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash!, currentBlockTimestamp))
           this.logger.warn(`Handling OwnerSet event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           break
         case StakeAdded:
-          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash!, currentBlockTimestamp))
           this.logger.warn(`Handling StakeAdded event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
           break
         case HubUnauthorized:
@@ -188,12 +187,12 @@ export class RegistrationManager {
           break
         case StakeUnlocked:
           this.logger.warn(`Handling StakeUnlocked event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
-          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash!, currentBlockTimestamp))
           break
         case StakeWithdrawn:
           this.logger.warn(`Handling StakeWithdrawn event: ${JSON.stringify(eventData)} in block ${currentBlock.number}`)
-          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
-          transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock.number, currentBlock.hash, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this.refreshStake(currentBlock.number, currentBlock.hash!, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this._handleStakeWithdrawnEvent(eventData, currentBlock.number, currentBlock.hash!, currentBlockTimestamp))
           break
       }
     }
@@ -203,7 +202,7 @@ export class RegistrationManager {
     for (const eventData of this._extractDuePendingEvents(currentBlockTime)) {
       switch (eventData.name) {
         case HubUnauthorized:
-          transactionHashes = transactionHashes.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock.number, currentBlock.hash, currentBlockTimestamp))
+          transactionHashes = transactionHashes.concat(await this._handleHubUnauthorizedEvent(eventData, currentBlock.number, currentBlock.hash!, currentBlockTimestamp))
           break
       }
     }
@@ -212,7 +211,7 @@ export class RegistrationManager {
     const isRegistrationPending = await this.txStoreManager.isActionPendingOrRecentlyMined(ServerAction.REGISTER_SERVER, currentBlock.number, this.config.recentActionAvoidRepeatDistanceBlocks)
     if (!(isRegistrationPending || isRegistrationCorrect) || forceRegistration) {
       this.logger.debug(`will attempt registration: isRegistrationPending=${isRegistrationPending} isRegistrationCorrect=${isRegistrationCorrect} forceRegistration=${forceRegistration}`)
-      transactionHashes = transactionHashes.concat(await this.attemptRegistration(currentBlock.number, currentBlock.hash, currentBlockTimestamp))
+      transactionHashes = transactionHashes.concat(await this.attemptRegistration(currentBlock.number, currentBlock.hash!, currentBlockTimestamp))
     }
     return transactionHashes
   }
@@ -396,7 +395,7 @@ export class RegistrationManager {
     if (skipGasEstimationForRegisterRelay) {
       gasLimit = this.config.defaultGasLimit
     }
-    const registrarAddress = this.contractInteractor.relayRegistrar.address
+    const registrarAddress = this.contractInteractor.relayRegistrar.target.toString()
     const details: SendTransactionDetails = {
       serverAction: ServerAction.REGISTER_SERVER,
       gasLimit,
@@ -557,7 +556,7 @@ Config Owner   | ${this.config.ownerAddress} ${this.ownerAddress != null && !isS
     this.logger.info(message)
   }
 
-  printEvents (decodedEvents: EventData[], options: PastEventOptions): void {
+  printEvents (decodedEvents: EventData[], options: EventFilterBlocks): void {
     if (decodedEvents.length === 0) {
       return
     }

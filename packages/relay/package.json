@@ -20,7 +20,6 @@
   "dependencies": {
     "@ethereumjs/tx": "^3.2.0",
     "@ethersproject/bignumber": "^5.7.0",
-    "@ethersproject/providers": "^5.7.2",
     "@opengsn/common": "^3.0.0-beta.10",
     "@opengsn/contracts": "^3.0.0-beta.10",
     "@opengsn/logger": "^3.0.0-beta.10",

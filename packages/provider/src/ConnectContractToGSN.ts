@@ -1,19 +1,7 @@
-import { type Contract } from 'ethers'
-import { type Contract as ContractV6, type BaseContract as BaseContractV6 } from 'ethers-v6'
+import { type Contract as ContractV6, type BaseContract as BaseContractV6 } from 'ethers'
 
 import { RelayProvider } from './RelayProvider'
 import { type GSNConfig, type GSNDependencies } from './GSNConfigurator'
-
-export async function connectContractToGSN (
-  contract: Contract,
-  config: Partial<GSNConfig>,
-  overrideDependencies?: Partial<GSNDependencies>
-): Promise<Contract> {
-  const { gsnSigner } = await RelayProvider.newEthersV5Provider({
-    provider: contract.signer, config, overrideDependencies
-  })
-  return contract.connect(gsnSigner)
-}
 
 /**
  * @experimental support for Ethers.js v6 in GSN is highly experimental!

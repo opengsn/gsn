@@ -30,20 +30,23 @@ import {
 } from '@opengsn/common'
 
 // compiled folder populated by "preprocess"
-import StakeManager from './compiled/StakeManager.json'
-import RelayHub from './compiled/RelayHub.json'
-import RelayRegistrar from './compiled/RelayRegistrar.json'
-import Penalizer from './compiled/Penalizer.json'
-import Paymaster from './compiled/TestPaymasterEverythingAccepted.json'
-import Forwarder from './compiled/Forwarder.json'
-import TestWrappedNativeToken from './compiled/TestWrappedNativeToken.json'
+import StakeManager from '@opengsn/contracts/artifacts/src/StakeManager.sol/StakeManager.json'
+import RelayHub from '@opengsn/contracts/artifacts/src/RelayHub.sol/RelayHub.json'
+import RelayRegistrar from '@opengsn/contracts/artifacts/src/utils/RelayRegistrar.sol/RelayRegistrar.json'
+import Penalizer from '@opengsn/contracts/artifacts/src/Penalizer.sol/Penalizer.json'
+import Paymaster
+  from '@opengsn/contracts/artifacts/src/test/TestPaymasterEverythingAccepted.sol/TestPaymasterEverythingAccepted.json'
+import Forwarder from '@opengsn/contracts/artifacts/src/forwarder/Forwarder.sol/Forwarder.json'
+import TestWrappedNativeToken
+  from '@opengsn/contracts/artifacts/src/test/TestWrappedNativeToken.sol/TestWrappedNativeToken.json'
 
 import { type KeyManager } from '@opengsn/relay/dist/KeyManager'
 import { type ServerConfigParams } from '@opengsn/relay/dist/ServerConfigParams'
 import { defaultGsnConfig } from '@opengsn/provider'
-import { Forwarder__factory } from '@opengsn/contracts/types/ethers-contracts'
+import { Forwarder__factory } from '@opengsn/contracts/dist/typechain-types'
 
 import { registerForwarderForGsn } from './ForwarderUtil'
+import { BrowserProvider } from 'ethers'
 
 export interface RegisterOptions {
   /** ms to sleep if waiting for RelayServer to set its owner */
@@ -115,10 +118,11 @@ export interface SendOptions {
 }
 
 export class CommandsLogic {
-  private readonly contractInteractor: ContractInteractor
+  private contractInteractor!: ContractInteractor
   private readonly httpClient: HttpClient
   private readonly web3: Web3
   private readonly logger: LoggerInterface
+  private readonly provider: any
 
   private deployment?: GSNContractsDeployment
 
@@ -132,11 +136,11 @@ export class CommandsLogic {
     privateKey?: string
   ) {
     this.logger = logger
-    let provider: any = new Web3.providers.HttpProvider(host, {
+    this.provider = new Web3.providers.HttpProvider(host, {
       keepAlive: true,
       timeout: 120000
     })
-    provider.sendAsync = provider.send.bind(provider)
+    this.provider.sendAsync = this.provider.send.bind(this.provider)
     if (mnemonic != null || privateKey != null) {
       let hdWalletConstructorArguments: any
       if (mnemonic != null) {
@@ -145,35 +149,35 @@ export class CommandsLogic {
           mnemonic,
           derivationPath,
           addressIndex,
-          provider
+          provider: this.provider
         }
       } else {
         hdWalletConstructorArguments = {
           privateKeys: [privateKey],
-          provider
+          provider: this.provider
         }
       }
-      provider = new HDWalletProvider(hdWalletConstructorArguments)
-      const hdWalletAddress: string = provider.getAddress()
+      this.provider = new HDWalletProvider(hdWalletConstructorArguments)
+      const hdWalletAddress: string = this.provider.getAddress()
       this.logger.warn(`Using HDWalletProvider for address ${hdWalletAddress}`)
     }
     this.httpClient = new HttpClient(new HttpWrapper(), logger)
-    const maxPageSize = Number.MAX_SAFE_INTEGER
-    const environment = defaultEnvironment
-    const ethersProvider = new Web3Provider(provider)
-    this.contractInteractor = new ContractInteractor({
-      provider: ethersProvider,
-      signer: ethersProvider.getSigner(),
-      logger: this.logger,
-      deployment,
-      maxPageSize,
-      environment
-    })
     this.deployment = deployment
-    this.web3 = new Web3(provider)
+    this.web3 = new Web3(this.provider)
   }
 
   async init (): Promise<this> {
+    const maxPageSize = Number.MAX_SAFE_INTEGER
+    const environment = defaultEnvironment
+    const ethersProvider = new BrowserProvider(this.provider)
+    this.contractInteractor = new ContractInteractor({
+      provider: ethersProvider,
+      signer: await ethersProvider.getSigner(),
+      logger: this.logger,
+      deployment: this.deployment,
+      maxPageSize,
+      environment
+    })
     await this.contractInteractor.init()
     return this
   }
@@ -302,7 +306,7 @@ export class CommandsLogic {
         throw new Error(`Cannot use token ${stakingToken}. Relayer already uses token: ${token}`)
       }
       const stakingTokenContract = await this.contractInteractor._createERC20(stakingToken)
-      const tokenDecimals = await stakingTokenContract.decimals()
+      const tokenDecimals = parseInt((await stakingTokenContract.decimals()).toString())
       const tokenSymbol = await stakingTokenContract.symbol()
 
       const stakeParam = toBN(toNumber(options.stake) * Math.pow(10, tokenDecimals))
@@ -350,20 +354,20 @@ export class CommandsLogic {
           }
         }
       }
-      if (unstakeDelay.gte(options.unstakeDelay) &&
-        stake.gte(stakeParam.toString())
+      if (BigNumber.from(unstakeDelay.toString()).gte(options.unstakeDelay) &&
+        BigNumber.from(stake.toString()).gte(stakeParam.toString())
       ) {
         this.logger.info('Relayer already staked')
       } else {
         const config = await relayHub.getConfiguration()
-        const minimumStakeForToken = await relayHub.getMinimumStakePerToken(stakingToken)
+        const minimumStakeForToken = BigNumber.from((await relayHub.getMinimumStakePerToken(stakingToken)).toString())
         if (minimumStakeForToken.gt(stakeParam.toString())) {
           throw new Error(`Given stake ${formatToken(stakeParam)} too low for the given hub ${formatToken(minimumStakeForToken)} and token ${stakingToken}`)
         }
         if (minimumStakeForToken.eq(0)) {
           throw new Error(`Selected token (${stakingToken}) is not allowed in the current RelayHub`)
         }
-        if (config.minimumUnstakeDelay.gt(options.unstakeDelay)) {
+        if (BigNumber.from(config.minimumUnstakeDelay.toString()).gt(options.unstakeDelay)) {
           throw new Error(`Given minimum unstake delay ${options.unstakeDelay.toString()} too low for the given hub ${config.minimumUnstakeDelay.toString()}`)
         }
         const stakeValue = stakeParam.sub(toBN(stake.toString()))
@@ -373,7 +377,7 @@ export class CommandsLogic {
           : ` (already has ${formatToken(stake)})`)
 
         const tokenBalance = await stakingTokenContract.balanceOf(options.from)
-        if (tokenBalance.lt(stakeValue.toString()) && options.wrap) {
+        if (BigNumber.from(tokenBalance.toString()).lt(stakeValue.toString()) && options.wrap) {
           // default token is wrapped eth, so deposit eth to make then into tokens.
           this.logger.info(`Wrapping ${formatToken(stakeValue)}`)
           let depositTx: any
@@ -389,11 +393,11 @@ export class CommandsLogic {
           transactions.push(depositTx.hash)
         }
 
-        const currentAllowance = await stakingTokenContract.allowance(options.from, stakeManager.address)
+        const currentAllowance = await stakingTokenContract.allowance(options.from, stakeManager.target)
         this.logger.info(`Current allowance: ${formatToken(currentAllowance)}`)
-        if (currentAllowance.lt(stakeValue.toString())) {
+        if (BigNumber.from(currentAllowance.toString()).lt(stakeValue.toString())) {
           this.logger.info(`Approving ${formatToken(stakeValue)} to StakeManager`)
-          const approveTx = await stakingTokenContract.approve(stakeManager.address, stakeValue.toString(), {
+          const approveTx = await stakingTokenContract.approve(stakeManager.target, stakeValue.toString(), {
             ...sendOptions,
             from: options.from
           })
@@ -480,7 +484,7 @@ export class CommandsLogic {
           throw new Error(`Owner in relayHub ${owner} is different than in server config ${options.config.ownerAddress}`)
         }
       }
-      const withdrawTarget = options.withdrawTarget ?? owner
+      const withdrawTarget: string = options.withdrawTarget ?? owner
 
       const nonce = await this.contractInteractor.getTransactionCount(relayManager)
       const gasPrice = toHex(options.gasPrice?.toString() ?? (await this.getGasPrice()).toString())
@@ -508,10 +512,10 @@ export class CommandsLogic {
       } else {
         const balance = await relayHub.balanceOf(relayManager)
         this.logger.info(`Relay manager hub balance is ${fromWei(balance.toString())}eth`)
-        if (balance.lt(options.withdrawAmount.toString())) {
+        if (BigNumber.from(balance.toString()).lt(options.withdrawAmount.toString())) {
           throw new Error('Relay manager hub balance lower than withdrawal amount')
         }
-        const encodedCall = relayHub.interface.encodeFunctionData('withdraw', [withdrawTarget, options.withdrawAmount])
+        const encodedCall = relayHub.interface.encodeFunctionData('withdraw', [withdrawTarget, options.withdrawAmount.toString()])
         txToSign = new Transaction({
           to: options.config.relayHubAddress,
           value: 0,
@@ -521,7 +525,7 @@ export class CommandsLogic {
           nonce
         }, this.contractInteractor.getRawTxOptions())
         this.logger.info('Calling in view mode')
-        await relayHub.callStatic.withdraw(withdrawTarget, options.withdrawAmount, {
+        await relayHub.withdraw.staticCall(withdrawTarget, options.withdrawAmount.toString(), {
           from: relayManager,
           value: 0,
           gasLimit,
@@ -616,7 +620,7 @@ export class CommandsLogic {
     }
 
     const stakingTokenContract = await this.contractInteractor._createERC20(stakingTokenAddress ?? '')
-    const tokenDecimals = await stakingTokenContract.decimals()
+    const tokenDecimals = parseInt((await stakingTokenContract.decimals()).toString())
     const tokenSymbol = await stakingTokenContract.symbol()
 
     const formatToken = (val: any): string => formatTokenAmount(BigNumber.from(val.toString()), tokenDecimals, stakingTokenAddress ?? '', tokenSymbol)

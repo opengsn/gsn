@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.25;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -15,8 +15,10 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
  *
  * @notice An implementation of this interface is tasked with keeping Relay Servers' stakes, made in any ERC-20 token.
  * Note that the `RelayHub` chooses which ERC-20 tokens to support and how much stake is needed.
+ *
+ * @notice Previously called 'IStakeManager' and renamed to avoid ambiguity with IStakeManager defined in ERC-4337.
  */
-interface IStakeManager is IERC165 {
+interface IRelayStakeManager is IERC165 {
 
     /// @notice Emitted when a `stake` or `unstakeDelay` are initialized or increased.
     event StakeAdded(

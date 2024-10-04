@@ -1,7 +1,5 @@
 // @ts-ignore
 import ethWallet from 'ethereumjs-wallet'
-import { type JsonRpcSigner, type TransactionRequest } from '@ethersproject/providers'
-import { Wallet } from '@ethersproject/wallet'
 import { type PrefixedHexString } from 'ethereumjs-util'
 import { parse } from '@ethersproject/transactions'
 import {
@@ -23,6 +21,7 @@ import {
 } from '@opengsn/common'
 
 import { type GSNConfig } from './GSNConfigurator'
+import { type Signer, type TransactionRequest, Wallet } from 'ethers'
 
 export interface AccountKeypair {
   privateKey: PrefixedHexString
@@ -36,12 +35,12 @@ function toAddress (privateKey: PrefixedHexString): Address {
 
 export class AccountManager {
   // private readonly provider: JsonRpcProvider
-  private signer: JsonRpcSigner
+  private signer: Signer
   private readonly accounts: AccountKeypair[] = []
   private readonly config: GSNConfig
   readonly chainId: number
 
-  constructor (signer: JsonRpcSigner, chainId: number, config: GSNConfig) {
+  constructor (signer: Signer, chainId: number, config: GSNConfig) {
     this.signer = signer
     this.chainId = chainId
     this.config = config
@@ -91,9 +90,9 @@ export class AccountManager {
     if (transactionConfig.chainId != null && transactionConfig.chainId !== this.chainId) {
       throw new Error(`This provider is initialized for chainId ${this.chainId} but transaction targets chainId ${transactionConfig.chainId}`)
     }
-    const privateKeyBuf = Buffer.from(removeHexPrefix(this.findPrivateKey(from)), 'hex')
+    // const privateKeyBuf = Buffer.from(removeHexPrefix(this.findPrivateKey(from)), 'hex')
 
-    const wallet = new Wallet(privateKeyBuf)
+    const wallet = new Wallet(this.findPrivateKey(from))
 
     // if called from Web3.js Provider, the 'transactionConfig' object will have 'gas' field instead of 'gasLimit'
     const gasLimit = transactionConfig.gasLimit ?? (transactionConfig as any).gas
@@ -183,7 +182,7 @@ export class AccountManager {
     return this.accounts.map(it => it.address)
   }
 
-  switchSigner (signer: JsonRpcSigner): void {
+  switchSigner (signer: Signer): void {
     this.signer = signer
   }
 }

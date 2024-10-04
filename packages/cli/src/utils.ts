@@ -1,4 +1,3 @@
-// TODO: allow reading network URLs from 'truffle-config.js'
 import commander, { type CommanderStatic } from 'commander'
 import fs from 'fs'
 import path from 'path'

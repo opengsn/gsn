@@ -51,9 +51,9 @@ import { defaultGsnConfig, type GSNConfig } from '@opengsn/provider/dist/GSNConf
 
 import { deployHub } from './TestUtils'
 
-import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
-import StakeManagerABI from '@opengsn/common/dist/interfaces/IStakeManager.json'
-import PayMasterABI from '@opengsn/common/dist/interfaces/IPaymaster.json'
+import RelayHubABI from '@opengsn/contracts/artifacts/src/interfaces/IRelayHub.sol/IRelayHub.json'
+import StakeManagerABI from '@opengsn/contracts/artifacts/src/interfaces/IRelayStakeManager.sol/IRelayStakeManager.json'
+import PayMasterABI from '@opengsn/contracts/artifacts/src/interfaces/IPaymaster.sol/IPaymaster.json'
 
 import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 import { TransactionManager } from '@opengsn/relay/dist/TransactionManager'
@@ -71,9 +71,9 @@ const TestToken = artifacts.require('TestToken')
 const TestRecipient = artifacts.require('TestRecipient')
 const TestPaymasterEverythingAccepted = artifacts.require('TestPaymasterEverythingAccepted')
 
-abiDecoder.addABI(RelayHubABI)
-abiDecoder.addABI(StakeManagerABI)
-abiDecoder.addABI(PayMasterABI)
+abiDecoder.addABI(RelayHubABI.abi)
+abiDecoder.addABI(StakeManagerABI.abi)
+abiDecoder.addABI(PayMasterABI.abi)
 // @ts-ignore
 abiDecoder.addABI(TestRecipient.abi)
 // @ts-ignore

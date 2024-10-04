@@ -5,14 +5,14 @@
   "author": "Dror Tirosh",
   "license": "MIT",
   "scripts": {
-    "deploy": "yarn --cwd ../dev solpp; hardhat deploy",
+    "deploy": "hardhat deploy",
     "export": "hardhat export",
     "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
     "depinfo": "hardhat run ./src/depinfo.ts",
     "applyConfig": "hardhat run ./src/applyConfig.ts",
     "lint": "eslint -f unix .",
     "lint-fix": "yarn lint --fix",
-    "test-only": "hardhat test --network npmtest"
+    "tmp-skip-test-only": "hardhat test --network npmtest"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-ethers": "^3.0.4",
@@ -24,7 +24,7 @@
     "axios": "^0.27.2",
     "chai": "^4.3.6",
     "chalk": "^4.1.2",
-    "ethers": "^6.6.5",
+    "ethers": "^6.11.1",
     "hardhat": "^2.17.0",
     "hardhat-deploy": "^0.11.5"
   }

@@ -1,10 +1,15 @@
 import type BN from 'bn.js'
 
-import { type RelayHubInstance, type RelayRegistrarInstance, type StakeManagerInstance, type TestTokenInstance } from '../types/truffle-contracts'
 import { constants, defaultEnvironment, splitRelayUrlForRegistrar } from '@opengsn/common'
 import { ether, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 
 import { deployHub, increaseTime } from './TestUtils'
+import { artifacts, contract, web3 } from 'hardhat'
+import assert from 'node:assert'
+import { type RelayHubInstance } from '../types/truffle-contracts/src/RelayHub'
+import { type TestTokenInstance } from '../types/truffle-contracts/src/test/TestToken'
+import { type StakeManagerInstance } from '../types/truffle-contracts/src/StakeManager'
+import { type RelayRegistrarInstance } from '../types/truffle-contracts/src/utils/RelayRegistrar'
 
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 const StakeManager = artifacts.require('StakeManager')

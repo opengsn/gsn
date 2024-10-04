@@ -24,7 +24,6 @@ module.exports = {
     project: ['./tsconfig.json', './tsconfig.packages.json']
   },
   ignorePatterns: [
-    '**/types/truffle-contracts',
     '**/types/ethers-contracts',
     'dist/'
   ],

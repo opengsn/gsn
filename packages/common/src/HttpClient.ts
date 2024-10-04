@@ -6,7 +6,6 @@ import { type LoggerInterface } from './LoggerInterface'
 import { type HttpWrapper } from './HttpWrapper'
 import { type RelayTransactionRequest } from './types/RelayTransactionRequest'
 import { type AuditRequest, type AuditResponse } from './types/AuditRequest'
-import { type ConfigResponse } from './ConfigResponse'
 import { type Address, type ObjectMap } from './types/Aliases'
 import { appendSlashTrim } from './Utils'
 
@@ -55,12 +54,6 @@ export class HttpClient {
     const auditResponse: AuditResponse = await this.httpWrapper.sendPromise(url, auditRequest)
     this.logger.info(`auditTransaction response: ${JSON.stringify(auditResponse)}`)
     return auditResponse
-  }
-
-  async getNetworkConfiguration (clientDefaultConfigUrl: string): Promise<ConfigResponse> {
-    const configResponse: ConfigResponse = await this.httpWrapper.sendPromise(new URL(clientDefaultConfigUrl))
-    this.logger.info(`Config response: ${JSON.stringify(configResponse)}`)
-    return configResponse
   }
 
   async getVerifyingPaymasterAddress (verifierServerUrl: string, chainId: number): Promise<Address> {

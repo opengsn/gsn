@@ -11,8 +11,6 @@ import {
   isSameAddress
 } from '@opengsn/common'
 
-import { StaticJsonRpcProvider } from '@ethersproject/providers'
-
 import { CommandsLogic, type RegisterOptions } from './CommandsLogic'
 import { KeyManager } from '@opengsn/relay/dist/KeyManager'
 
@@ -41,6 +39,7 @@ import { ReputationManager } from '@opengsn/relay/dist/ReputationManager'
 
 import { Web3MethodsBuilder } from '@opengsn/relay/dist/Web3MethodsBuilder'
 import { createCommandsLogger } from '@opengsn/logger/dist/CommandsWinstonLogger'
+import { JsonRpcProvider } from 'ethers'
 
 const TEST_WORKER_SEED = '0xa73df6054db4a383ed237a4dfa15527c07dcdd54950461db39e6457bb7d405a58b5cdce7a9d772a0a51b4768b4fa4982a38c60b7f9090caa1eea4aa734d0c29e'
 const TEST_MANAGER_SEED = '0x61f9525ba0929dc6cfcb5660192a420d1ddf470d0462be4bfab540588f089a6ab3ae309e08b0c3e2af89d51531691fb48409ec3ca0afe976a483cde4f2584501'
@@ -171,7 +170,7 @@ class GsnTestEnvironmentClass {
       preferredRelays: [relayUrl],
       paymasterAddress: deploymentResult.paymasterAddress
     }
-    const provider = new StaticJsonRpcProvider(_host)
+    const provider = new JsonRpcProvider(_host)
     const input: GSNUnresolvedConstructorInput = {
       overrideDependencies: { logger },
       provider,
@@ -241,8 +240,8 @@ class GsnTestEnvironmentClass {
     const maxPageSize = Number.MAX_SAFE_INTEGER
     const environment = defaultEnvironment
     const calldataEstimationSlackFactor = 1
-    const provider = new StaticJsonRpcProvider(host)
-    const signer = provider.getSigner()
+    const provider = new JsonRpcProvider(host)
+    const signer = await provider.getSigner()
     const contractInteractor = new ContractInteractor(
       {
         provider,
@@ -310,8 +309,8 @@ class GsnTestEnvironmentClass {
     workdir = './build/gsn'
   ): Promise<GSNContractsDeployment> {
     const deployment = loadDeployment(workdir)
-    const provider = new StaticJsonRpcProvider(url)
-    const signer = provider.getSigner()
+    const provider = new JsonRpcProvider(url)
+    const signer = await provider.getSigner()
     const contractInteractor = new ContractInteractor(
       {
         provider,

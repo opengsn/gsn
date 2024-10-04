@@ -10,10 +10,10 @@ import {
   toBN
 } from '@opengsn/common'
 
-import penalizerAbi from '@opengsn/common/dist/interfaces/IPenalizer.json'
-import relayHubAbi from '@opengsn/common/dist/interfaces/IRelayHub.json'
-import relayRegistrarAbi from '@opengsn/common/dist/interfaces/IRelayRegistrar.json'
-import stakeManagerAbi from '@opengsn/common/dist/interfaces/IStakeManager.json'
+import penalizerAbi from '@opengsn/contracts/artifacts/src/interfaces/IPenalizer.sol/IPenalizer.json'
+import relayHubAbi from '@opengsn/contracts/artifacts/src/interfaces/IRelayHub.sol/IRelayHub.json'
+import relayRegistrarAbi from '@opengsn/contracts/artifacts/src/interfaces/IRelayRegistrar.sol/IRelayRegistrar.json'
+import stakeManagerAbi from '@opengsn/contracts/artifacts/src/interfaces/IRelayStakeManager.sol/IRelayStakeManager.json'
 
 export class Web3MethodsBuilder {
   private readonly IPenalizer: any

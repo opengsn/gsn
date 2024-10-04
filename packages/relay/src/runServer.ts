@@ -34,6 +34,7 @@ import { GasPriceFetcher } from './GasPriceFetcher'
 import { ReputationManager, type ReputationManagerConfiguration } from './ReputationManager'
 import { REPUTATION_STORE_FILENAME, ReputationStoreManager } from './ReputationStoreManager'
 import { Web3MethodsBuilder } from './Web3MethodsBuilder'
+import { JsonRpcProvider } from 'ethers'
 
 function error (err: string): never {
   console.error(err)
@@ -66,7 +67,7 @@ async function run (): Promise<void> {
   let config: ServerConfigParams
   let environment: Environment
   let web3provider
-  let ethersJsonRpcProvider: StaticJsonRpcProvider
+  let ethersJsonRpcProvider: JsonRpcProvider
   let runPenalizer: boolean
   let reputationManagerConfig: Partial<ReputationManagerConfiguration>
   let runPaymasterReputations: boolean
@@ -80,7 +81,7 @@ async function run (): Promise<void> {
     const loggingProvider: LoggingProviderMode = conf.loggingProvider ?? LoggingProviderMode.NONE
     conf.environmentName = conf.environmentName ?? EnvironmentsKeys.ethereumMainnet
     web3provider = new Web3.providers.HttpProvider(conf.ethereumNodeUrl)
-    ethersJsonRpcProvider = new StaticJsonRpcProvider(conf.ethereumNodeUrl)
+    ethersJsonRpcProvider = new JsonRpcProvider(conf.ethereumNodeUrl)
 
     if (loggingProvider !== LoggingProviderMode.NONE) {
       const orig = web3provider
@@ -162,7 +163,7 @@ async function run (): Promise<void> {
   console.log('Creating interactor...\n')
   const contractInteractor = new ContractInteractor({
     provider: ethersJsonRpcProvider,
-    signer: ethersJsonRpcProvider.getSigner(),
+    signer: await ethersJsonRpcProvider.getSigner(),
     logger,
     environment,
     calldataEstimationSlackFactor: config.calldataEstimationSlackFactor,

@@ -4,7 +4,8 @@ import { type Transaction, parse } from '@ethersproject/transactions'
 
 import { Interface } from '@ethersproject/abi'
 
-import RelayHubABI from '@opengsn/common/dist/interfaces/IRelayHub.json'
+import relayHubAbi from '@opengsn/contracts/artifacts/src/interfaces/IRelayHub.sol/IRelayHub.json'
+
 import {
   type ContractInteractor,
   type LoggerInterface,
@@ -136,7 +137,7 @@ export class RelayedTransactionValidator {
    * For transactions that are filling the nonce gap, we only check that the transaction is not penalizable.
    */
   _validateTransactionMethodSignature (transaction: Transaction): boolean {
-    const iface = new Interface(RelayHubABI)
+    const iface = new Interface(relayHubAbi.abi)
     const relayCallSignature = iface.getSighash('relayCall')
     return transaction.data.startsWith(relayCallSignature)
   }

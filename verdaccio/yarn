@@ -1,2 +1,0 @@
-#wrapper script, to run yarn with our verdaccio config.
-yarn --use-yarnrc `dirname $0`/yarnrc "$@"

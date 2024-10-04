@@ -1,13 +1,13 @@
 // solhint-disable not-rely-on-time
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.25;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
-import "./interfaces/IStakeManager.sol";
+import "./interfaces/IRelayStakeManager.sol";
 
 /**
  * @title The StakeManager implementation
@@ -17,7 +17,7 @@ import "./interfaces/IStakeManager.sol";
  *
  * @notice It cannot be changed after the first time 'stakeForRelayManager' is called as it is equivalent to withdrawal.
  */
-contract StakeManager is IStakeManager, Ownable, ERC165 {
+contract StakeManager is IRelayStakeManager, Ownable, ERC165 {
     using SafeERC20 for IERC20;
 
     string public override versionSM = "3.0.0-beta.3+opengsn.stakemanager.istakemanager";
@@ -31,35 +31,35 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
     /// maps relay managers to their stakes
     mapping(address => StakeInfo) public stakes;
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function getStakeInfo(address relayManager) external override view returns (StakeInfo memory stakeInfo, bool isSenderAuthorizedHub) {
         bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalTime == type(uint256).max;
         return (stakes[relayManager], isHubAuthorized);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function setBurnAddress(address _burnAddress) public override onlyOwner {
         burnAddress = _burnAddress;
         emit BurnAddressSet(burnAddress);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function getBurnAddress() external override view returns (address) {
         return burnAddress;
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function setDevAddress(address _devAddress) public override onlyOwner {
         abandonedRelayServerConfig.devAddress = _devAddress;
         emit DevAddressSet(abandonedRelayServerConfig.devAddress);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function getAbandonedRelayServerConfig() external override view returns (AbandonedRelayServerConfig memory) {
         return abandonedRelayServerConfig;
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function getMaxUnstakeDelay() external override view returns (uint256) {
         return maxUnstakeDelay;
     }
@@ -85,16 +85,16 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC165) returns (bool) {
-        return interfaceId == type(IStakeManager).interfaceId ||
+        return interfaceId == type(IRelayStakeManager).interfaceId ||
         super.supportsInterface(interfaceId);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function getCreationBlock() external override view returns (uint256){
         return creationBlock;
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function setRelayManagerOwner(address owner) external override {
         require(owner != address(0), "invalid owner");
         require(stakes[msg.sender].owner == address(0), "already owned");
@@ -102,7 +102,7 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
         emit OwnerSet(msg.sender, owner);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function stakeForRelayManager(IERC20 token, address relayManager, uint256 unstakeDelay, uint256 amount) external override relayOwnerOnly(relayManager) {
         require(unstakeDelay >= stakes[relayManager].unstakeDelay, "unstakeDelay cannot be decreased");
         require(unstakeDelay <= maxUnstakeDelay, "unstakeDelay too big");
@@ -118,7 +118,7 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
         emit StakeAdded(relayManager, stakes[relayManager].owner, stakes[relayManager].token, stakes[relayManager].stake, stakes[relayManager].unstakeDelay);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function unlockStake(address relayManager) external override relayOwnerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.withdrawTime == 0, "already pending");
@@ -126,7 +126,7 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
         emit StakeUnlocked(relayManager, msg.sender, info.withdrawTime);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function withdrawStake(address relayManager) external override relayOwnerOnly(relayManager) {
         StakeInfo storage info = stakes[relayManager];
         require(info.withdrawTime > 0, "Withdrawal is not scheduled");
@@ -152,12 +152,12 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
         _;
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function authorizeHubByOwner(address relayManager, address relayHub) external relayOwnerOnly(relayManager) override {
         _authorizeHub(relayManager, relayHub);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function authorizeHubByManager(address relayHub) external managerOnly override {
         _authorizeHub(msg.sender, relayHub);
     }
@@ -167,12 +167,12 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
         emit HubAuthorized(relayManager, relayHub);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function unauthorizeHubByOwner(address relayManager, address relayHub) external override relayOwnerOnly(relayManager) {
         _unauthorizeHub(relayManager, relayHub);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function unauthorizeHubByManager(address relayHub) external override managerOnly {
         _unauthorizeHub(msg.sender, relayHub);
     }
@@ -184,7 +184,7 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
         emit HubUnauthorized(relayManager, relayHub, hubInfo.removalTime);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function penalizeRelayManager(address relayManager, address beneficiary, uint256 amount) external override {
         uint256 removalTime = authorizedHubs[relayManager][msg.sender].removalTime;
         require(removalTime != 0, "hub not authorized");
@@ -203,13 +203,13 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
         emit StakePenalized(relayManager, beneficiary, stakes[relayManager].token, reward);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function isRelayEscheatable(address relayManager) public view override returns (bool) {
-        IStakeManager.StakeInfo memory stakeInfo = stakes[relayManager];
+        StakeInfo memory stakeInfo = stakes[relayManager];
         return stakeInfo.abandonedTime != 0 && stakeInfo.abandonedTime + abandonedRelayServerConfig.escheatmentDelay < block.timestamp;
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function markRelayAbandoned(address relayManager) external override onlyOwner {
         StakeInfo storage info = stakes[relayManager];
         require(info.stake > 0, "relay manager not staked");
@@ -219,7 +219,7 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
         emit RelayServerAbandoned(relayManager, info.abandonedTime);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function escheatAbandonedRelayStake(address relayManager) external override onlyOwner {
         StakeInfo storage info = stakes[relayManager];
         require(isRelayEscheatable(relayManager), "relay server not escheatable yet");
@@ -230,7 +230,7 @@ contract StakeManager is IStakeManager, Ownable, ERC165 {
         emit AbandonedRelayManagerStakeEscheated(relayManager, msg.sender, info.token, amount);
     }
 
-    /// @inheritdoc IStakeManager
+    /// @inheritdoc IRelayStakeManager
     function updateRelayKeepaliveTime(address relayManager) external override {
         StakeInfo storage info = stakes[relayManager];
         bool isHubAuthorized = authorizedHubs[relayManager][msg.sender].removalTime == type(uint256).max;

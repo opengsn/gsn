@@ -6,12 +6,6 @@ import path from 'path'
 import { ether } from '@openzeppelin/test-helpers'
 
 import {
-  type StakeManagerInstance,
-  type RelayHubContract,
-  type RelayHubInstance,
-  type TestTokenInstance
-} from '../types/truffle-contracts'
-import {
   type Address,
   type Environment,
   HttpClient,
@@ -33,6 +27,11 @@ import { createServerLogger } from '@opengsn/logger/dist/ServerWinstonLogger'
 
 import { toBN } from 'web3-utils'
 
+import { artifacts, web3 } from 'hardhat'
+import assert from 'node:assert'
+import { TestTokenInstance } from '../types/truffle-contracts/src/test/TestToken'
+import { StakeManagerInstance } from '../types/truffle-contracts/src/StakeManager'
+import { RelayHubContract, RelayHubInstance } from '../types/truffle-contracts/src/RelayHub'
 const RelayHub = artifacts.require('RelayHub')
 const RelayRegistrar = artifacts.require('RelayRegistrar')
 
@@ -238,7 +237,7 @@ export async function increaseTime (time: number): Promise<void> {
   })
 }
 
-export async function setNextBlockTimestamp (time: number | string | BN): Promise<void> {
+export async function setNextBlockTimestamp (time: number | string): Promise<void> {
   await new Promise((resolve, reject) => {
     // @ts-ignore
     web3.currentProvider.send({
@@ -373,7 +372,7 @@ export async function emptyBalance (source: Address, target: Address): Promise<v
     })
   }
   balance = toBN(await web3.eth.getBalance(source))
-  assert.isTrue(balance.eqn(0))
+  assert.equal(balance.eqn(0), true)
 }
 
 export function disableTruffleAutoEstimateGas (truffleContract: any): void {
