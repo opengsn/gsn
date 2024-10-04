@@ -58,8 +58,6 @@ export const defaultGsnConfig: GSNConfig = {
   environment: defaultEnvironment,
   maxApprovalDataLength: 0,
   maxPaymasterDataLength: 0,
-  clientDefaultConfigUrl: `https://client-config.opengsn.org/${gsnRuntimeVersion}/client-config.json`,
-  useClientDefaultConfigUrl: true,
   performDryRunViewRelayCall: true,
   performEstimateGasFromRealSender: false,
   paymasterAddress: '',

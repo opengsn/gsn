@@ -699,26 +699,18 @@ export class RelayClient {
   async _resolveConfiguration ({
     config = {}
   }: GSNUnresolvedConstructorInput): Promise<GSNConfig> {
-    let configFromServer: Partial<GSNConfig> = {}
     const network = await this.wrappedUnderlyingProvider.getNetwork()
     const chainId = parseInt(network.chainId.toString())
-    const useClientDefaultConfigUrl = config.useClientDefaultConfigUrl ?? defaultGsnConfig.useClientDefaultConfigUrl
-    if (useClientDefaultConfigUrl) {
-      this.logger.debug(`Reading default client config for chainId ${chainId.toString()}`)
-      configFromServer = await this._resolveConfigurationFromServer(chainId, defaultGsnConfig.clientDefaultConfigUrl)
-    }
     await this._resolveVerifierConfig(config, chainId)
 
     // EIP-712 Domain Separators are not so much config as extra info and should be merged
     // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
     const tokenPaymasterDomainSeparators: { [address: Address]: EIP712Domain } = {
       ...TokenDomainSeparators[chainId],
-      ...configFromServer.tokenPaymasterDomainSeparators,
       ...config.tokenPaymasterDomainSeparators
     }
     const resolvedConfig = {
       ...defaultGsnConfig,
-      ...configFromServer,
       ...removeNullValues(config),
       ...{ tokenPaymasterDomainSeparators }
     }
@@ -756,20 +748,6 @@ export class RelayClient {
       config.paymasterAddress === PaymasterType.VerifyingPaymaster.valueOf()
     ) {
       config.paymasterAddress = await this._resolveVerifyingPaymasterAddress(config.verifierServerUrl, chainId)
-    }
-  }
-
-  async _resolveConfigurationFromServer (chainId: number, clientDefaultConfigUrl: string): Promise<Partial<GSNConfig>> {
-    try {
-      const httpClient = new HttpClient(new HttpWrapper(), this.logger)
-      const jsonConfig = await httpClient.getNetworkConfiguration(clientDefaultConfigUrl)
-      if (jsonConfig.networks[chainId] == null) {
-        return {}
-      }
-      return jsonConfig.networks[chainId].gsnConfig
-    } catch (e) {
-      this.logger.error(`Could not fetch default configuration: ${(e as Error).message}`)
-      return {}
     }
   }
 

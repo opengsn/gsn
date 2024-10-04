@@ -1,5 +1,4 @@
 export * from './AmountRequired'
-export * from './ConfigResponse'
 export * from './Constants'
 export * from './ContractInteractor'
 export * from './RelayCallGasLimitCalculationHelper'
