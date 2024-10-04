@@ -18,7 +18,7 @@ const TestRelayHub = artifacts.require('TestRelayHub')
 
 const devAddress = '0x9999999999999999999999999999999999999999'
 
-contract.only('Abandoned Relay Flow', function ([_, relayManager, relayOwner, relayWorker]: string[]) {
+contract('Abandoned Relay Flow', function ([_, relayManager, relayOwner, relayWorker]: string[]) {
   const oneEther = ether('1')
   const url = 'http://relay.com'
 

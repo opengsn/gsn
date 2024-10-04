@@ -6,7 +6,6 @@ module.exports = {
   paths: {
     // CLI package needs to deploy contracts from JSON artifacts
     // contracts_build_directory: '../cli/src/compiled',
-    // contracts_directory: './solpp',
     sources: './src'
   }
 }

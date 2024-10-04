@@ -16,7 +16,7 @@
     "lint": "eslint -f unix .",
     "lint-fix": "yarn lint --fix",
     "typechain-generate-truffle": "typechain --target truffle-v5 '../contracts/**/*.sol/!(*.dbg).json' --show-stack-traces",
-    "hardhat-test": "npx hardhat test --grep Abandoned",
+    "hardhat-test": "npx hardhat test",
     "gas-calculations": "GAS_CALCULATIONS=1 hardhat test test/RelayHubGasCalculations.test.ts test/PaymasterCommitment.test.ts --compile-all --network npmtest",
     "test-webpack": "TEST_WEBPACK=1 hardhat test test/RelayServer.webpack.test.ts --network npmtest",
     "test-only": "npx hardhat test --network npmtest --grep Abandoned",

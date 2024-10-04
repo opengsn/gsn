@@ -3,10 +3,6 @@
 pragma solidity ^0.8.25;
 /* solhint-disable no-inline-assembly */
 
-// #if ENABLE_CONSOLE_LOG
-import "hardhat/console.sol";
-// #endif
-
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 

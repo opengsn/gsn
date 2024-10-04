@@ -5,7 +5,7 @@
   "author": "Dror Tirosh",
   "license": "MIT",
   "scripts": {
-    "deploy": "yarn --cwd ../dev solpp; hardhat deploy",
+    "deploy": "hardhat deploy",
     "export": "hardhat export",
     "verify": "hardhat etherscan-verify --force-license  --license GPL-3.0",
     "depinfo": "hardhat run ./src/depinfo.ts",

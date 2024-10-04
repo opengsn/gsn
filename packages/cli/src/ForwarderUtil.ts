@@ -16,11 +16,15 @@ export async function registerForwarderForGsn (
   logger?.info(`Registering request type ${GsnRequestType.typeName} with suffix: ${GsnRequestType.typeSuffix}`)
   const res = await forwarder.registerRequestType(
     GsnRequestType.typeName,
-    GsnRequestType.typeSuffix,
-    { ...sendOptions }
+    GsnRequestType.typeSuffix
+    // { ...sendOptions }
   )
   logger?.debug(`Transaction broadcast: ${res?.hash as string}`)
 
   logger?.info(`Registering domain separator ${domainSeparatorName} with version: ${GsnDomainSeparatorType.version}`)
-  await forwarder.registerDomainSeparator(domainSeparatorName, GsnDomainSeparatorType.version, { ...sendOptions })
+  await forwarder.registerDomainSeparator(
+    domainSeparatorName,
+    GsnDomainSeparatorType.version,
+    // { ...sendOptions }
+  )
 }
